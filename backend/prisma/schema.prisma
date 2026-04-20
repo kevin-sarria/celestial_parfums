@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+
+// ── Enums ───────────────────────────────────────────────────────────────────
+
+enum Genero {
+  hombre
+  mujer
+}
+
+// ── Models ──────────────────────────────────────────────────────────────────
+
+model Role {
+  id     Int    @id @default(autoincrement())
+  nombre String @unique @db.VarChar(50)
+  users  User[]
+
+  @@map("roles")
+}
+
+model User {
+  id                 Int       @id @default(autoincrement())
+  nombre             String    @db.VarChar(100)
+  apellido           String    @db.VarChar(100)
+  email              String    @unique @db.VarChar(150)
+  password           String    @db.VarChar(255)
+  rol_id             Int
+  activo             Boolean   @default(false)
+  verification_token String?   @db.VarChar(255)
+  token_expiry       DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  rol                Role      @relation(fields: [rol_id], references: [id])
+
+  @@map("users")
+}
+
+model Categoria {
+  id         Int       @id @default(autoincrement())
+  nombre     String    @unique @db.VarChar(100)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  perfumes   Perfume[]
+  combos     Combo[]
+
+  @@map("categorias")
+}
+
+model Perfume {
+  id           Int                @id @default(autoincrement())
+  nombre       String             @db.VarChar(150)
+  descripcion  String?            @db.Text
+  precio       Decimal            @db.Decimal(10, 2)
+  duracion     String?            @db.VarChar(50)
+  proyeccion   String?            @db.VarChar(50)
+  imagen_url   String?            @db.Text
+  genero       Genero?
+  categoria_id Int?
+  descuento    Int                @default(0) @db.UnsignedTinyInt
+  created_at   DateTime           @default(now())
+  updated_at   DateTime           @updatedAt
+  categoria    Categoria?         @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
+  tipos_aroma  PerfumeTipoAroma[]
+  ocasiones    PerfumeOcasion[]
+
+  @@map("perfumes")
+}
+
+model TipoAroma {
+  id         Int                @id @default(autoincrement())
+  nombre     String             @unique @db.VarChar(100)
+  created_at DateTime           @default(now())
+  updated_at DateTime           @updatedAt
+  perfumes   PerfumeTipoAroma[]
+
+  @@map("tipos_aroma")
+}
+
+model PerfumeTipoAroma {
+  perfume_id    Int
+  tipo_aroma_id Int
+  perfume       Perfume   @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+  tipo_aroma    TipoAroma @relation(fields: [tipo_aroma_id], references: [id], onDelete: Cascade)
+
+  @@id([perfume_id, tipo_aroma_id])
+  @@map("perfume_tipo_aroma")
+}
+
+model Ocasion {
+  id         Int              @id @default(autoincrement())
+  nombre     String           @unique @db.VarChar(100)
+  created_at DateTime         @default(now())
+  updated_at DateTime         @updatedAt
+  perfumes   PerfumeOcasion[]
+
+  @@map("ocasiones")
+}
+
+model PerfumeOcasion {
+  perfume_id Int
+  ocasion_id Int
+  perfume    Perfume @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+  ocasion    Ocasion @relation(fields: [ocasion_id], references: [id], onDelete: Cascade)
+
+  @@id([perfume_id, ocasion_id])
+  @@map("perfume_ocasion")
+}
+
+model Combo {
+  id           Int        @id @default(autoincrement())
+  nombre       String     @db.VarChar(150)
+  descripcion  String?    @db.Text
+  imagen_url   String?    @db.Text
+  categoria_id Int?
+  cantidad     Int
+  precio       Decimal    @db.Decimal(10, 2)
+  descuento    Int        @default(0) @db.UnsignedTinyInt
+  activo       Boolean    @default(true)
+  created_at   DateTime   @default(now())
+  updated_at   DateTime   @updatedAt
+  categoria    Categoria? @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
+
+  @@map("combos")
+}
