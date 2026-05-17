@@ -28,7 +28,7 @@ export default function PerfumeCard({ perfume }: Props) {
 
   return (
     <article
-      className="pcard pcard--clickable"
+      className={`pcard pcard--clickable${perfume.agotado ? ' pcard--agotado' : ''}`}
       onClick={() => navigate(`/perfume/${toSlug(perfume.nombre)}`)}
       role="button"
       tabIndex={0}
@@ -41,6 +41,9 @@ export default function PerfumeCard({ perfume }: Props) {
           <div className="pcard-img-placeholder">
             <span className="pcard-placeholder-icon">𝒫</span>
           </div>
+        )}
+        {perfume.agotado && (
+          <div className="pcard-agotado-badge">Agotado</div>
         )}
         {perfume.descuento > 0 ? (
           <div className="pcard-price-badge pcard-price-badge--discount">

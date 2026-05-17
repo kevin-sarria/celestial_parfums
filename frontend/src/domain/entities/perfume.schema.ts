@@ -12,8 +12,10 @@ export const perfumeSchema = z.object({
   categoria: z.string().nullable(),
   categoria_id: z.number().nullable(),
   descuento: z.number(),
+  agotado: z.boolean().default(false),
   tipos_aroma: z.array(z.string()),
   ocasiones: z.array(z.string()),
+  presentaciones: z.array(z.string()),
 });
 
 export type Perfume = z.infer<typeof perfumeSchema>;

@@ -65,11 +65,13 @@ model Perfume {
   genero       Genero?
   categoria_id Int?
   descuento    Int                @default(0) @db.UnsignedTinyInt
+  agotado      Boolean            @default(false)
   created_at   DateTime           @default(now())
   updated_at   DateTime           @updatedAt
   categoria    Categoria?         @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
-  tipos_aroma  PerfumeTipoAroma[]
-  ocasiones    PerfumeOcasion[]
+  tipos_aroma    PerfumeTipoAroma[]
+  ocasiones      PerfumeOcasion[]
+  presentaciones PerfumePresentacion[]
 
   @@map("perfumes")
 }
@@ -112,6 +114,106 @@ model PerfumeOcasion {
 
   @@id([perfume_id, ocasion_id])
   @@map("perfume_ocasion")
+}
+
+model Presentacion {
+  id         Int                   @id @default(autoincrement())
+  nombre     String                @unique @db.VarChar(20)
+  created_at DateTime              @default(now())
+  updated_at DateTime              @updatedAt
+  perfumes   PerfumePresentacion[]
+
+  @@map("presentaciones")
+}
+
+model PerfumePresentacion {
+  perfume_id      Int
+  presentacion_id Int
+  perfume         Perfume      @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+  presentacion    Presentacion @relation(fields: [presentacion_id], references: [id], onDelete: Cascade)
+
+  @@id([perfume_id, presentacion_id])
+  @@map("perfume_presentacion")
+}
+
+model Venta {
+  id                 Int      @id @default(autoincrement())
+  dia                DateTime @db.Date
+  persona            String   @db.VarChar(150)
+  cantidad_perfumes  Int
+  presentacion       String   @db.VarChar(20)
+  referencia_perfume String   @db.Text
+  valor_venta        Decimal  @db.Decimal(10, 2)
+  datos_adicionales  String?  @db.Text
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+
+  @@map("ventas")
+}
+
+model Cliente {
+  id         Int       @id @default(autoincrement())
+  nombre     String    @db.VarChar(100)
+  apellido   String    @db.VarChar(100)
+  correo     String?   @db.VarChar(150)
+  telefono   String?   @db.VarChar(20)
+  direccion  String?   @db.VarChar(255)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  creditos   Credito[]
+
+  @@map("clientes")
+}
+
+model Empresa {
+  id         Int             @id @default(autoincrement())
+  nombre     String          @db.VarChar(150)
+  nit        String?         @db.VarChar(50)
+  telefono   String?         @db.VarChar(20)
+  correo     String?         @db.VarChar(150)
+  direccion  String?         @db.VarChar(255)
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+  pagos      PagoProveedor[]
+
+  @@map("empresas")
+}
+
+model Credito {
+  id            Int      @id @default(autoincrement())
+  fecha         DateTime @db.Date
+  cliente_id    Int
+  articulos     String   @db.Text
+  deuda_inicial Decimal  @db.Decimal(10, 2)
+  abono_1       Decimal? @db.Decimal(10, 2)
+  abono_2       Decimal? @db.Decimal(10, 2)
+  abono_3       Decimal? @db.Decimal(10, 2)
+  abono_4       Decimal? @db.Decimal(10, 2)
+  abono_5       Decimal? @db.Decimal(10, 2)
+  abono_6       Decimal? @db.Decimal(10, 2)
+  abono_7       Decimal? @db.Decimal(10, 2)
+  abono_8       Decimal? @db.Decimal(10, 2)
+  abono_9       Decimal? @db.Decimal(10, 2)
+  abono_10      Decimal? @db.Decimal(10, 2)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  cliente       Cliente  @relation(fields: [cliente_id], references: [id])
+
+  @@map("creditos")
+}
+
+model PagoProveedor {
+  id                   Int      @id @default(autoincrement())
+  dia                  DateTime @db.Date
+  empresa_id           Int
+  valor_compra         Decimal  @db.Decimal(10, 2)
+  coste_envio          Decimal  @default(0) @db.Decimal(10, 2)
+  detalles_adicionales String?  @db.Text
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+  empresa              Empresa  @relation(fields: [empresa_id], references: [id])
+
+  @@map("pagos_proveedor")
 }
 
 model Combo {

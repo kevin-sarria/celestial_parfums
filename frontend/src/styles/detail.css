@@ -109,14 +109,23 @@
   opacity: 0.35;
 }
 
+.detail-img-wrap {
+  position: relative;
+  width: 100%;
+}
+
 .detail-discount-badge {
-  background: var(--accent);
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #dc2626;
   color: #fff;
   font-size: 13px;
   font-weight: 700;
-  padding: 4px 12px;
+  padding: 5px 12px;
   border-radius: 999px;
   letter-spacing: 0.3px;
+  z-index: 2;
 }
 
 /* ─── Info column ─── */
@@ -220,29 +229,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-}
-
-/* ─── WhatsApp CTA button ─── */
-.detail-whatsapp-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 13px 24px;
-  border-radius: 999px;
-  background: #25d366;
-  color: #fff;
-  font-family: var(--sans);
-  font-size: 15px;
-  font-weight: 600;
-  text-decoration: none;
-  transition: background 0.2s, transform 0.15s;
-  align-self: flex-start;
-
-  &:hover {
-    background: #1ebe5b;
-    transform: translateY(-1px);
-  }
 }
 
 /* ─── Related products section ─── */

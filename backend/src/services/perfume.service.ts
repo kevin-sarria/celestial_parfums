@@ -1,9 +1,10 @@
 import * as perfumeRepository from '../repositories/perfume.repository';
 import { CreatePerfumeDTO } from '../types/perfume.type';
 
-export const allPerfumes = async () => {
-  return await perfumeRepository.selectAllParfums();
-};
+export const allPerfumes = () => perfumeRepository.selectAllParfums();
+
+export const allPerfumesPaginated = (page: number, limit: number) =>
+  perfumeRepository.selectParfumsPaginated(page, limit);
 
 export const createPerfume = async (data: CreatePerfumeDTO) => {
   if (!data?.nombre || !data?.precio) throw new Error('Nombre y precio son obligatorios');
@@ -23,6 +24,10 @@ export const deletePerfume = async (id: string) => {
 export const patchDescuentoPerfume = async (id: string, descuento: number) => {
   const d = Math.max(0, Math.min(100, descuento));
   return perfumeRepository.patchDescuentoPerfume(id, d);
+};
+
+export const patchAgotadoPerfume = async (id: string, agotado: boolean) => {
+  return perfumeRepository.patchAgotadoPerfume(id, agotado);
 };
 
 export const getPerfumeBySlug = async (slug: string) => {
@@ -76,4 +81,17 @@ export const createCategoria = async (nombre: string) => {
 
 export const deleteCategoria = async (id: string) => {
   return await perfumeRepository.deleteCategoria(id);
+};
+
+export const getAllPresentaciones = async () => {
+  return await perfumeRepository.getAllPresentaciones();
+};
+
+export const createPresentacion = async (nombre: string) => {
+  if (!nombre?.trim()) throw new Error('El nombre de la presentación es obligatorio');
+  return await perfumeRepository.createPresentacion(nombre.trim());
+};
+
+export const deletePresentacion = async (id: string) => {
+  return await perfumeRepository.deletePresentacion(id);
 };

@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(npm install *)",
-      "Bash(*)"
+      "Bash(*)",
+      "FileSystem(read, write, delete, list)",
+      "NetworkRequest(*)",
+      "ProcessExecution(*)",
+      "WebBrowser(*)"
     ]
   }
 }

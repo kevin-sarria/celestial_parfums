@@ -8,6 +8,8 @@ export interface CreatePerfumeDTO {
   genero?: 'hombre' | 'mujer' | null;
   categoria_id?: number | null;
   descuento?: number;
+  agotado?: boolean;
   tipos_aroma: number[];
   ocasiones: number[];
+  presentaciones: number[];
 }

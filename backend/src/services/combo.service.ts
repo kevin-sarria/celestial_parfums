@@ -3,6 +3,9 @@ import { CreateComboDTO } from '../types/combo.type';
 
 export const getAllCombos = () => comboRepo.selectAllCombos();
 
+export const getCombosPaginated = (page: number, limit: number) =>
+  comboRepo.selectCombosPaginated(page, limit);
+
 export const createCombo = async (data: CreateComboDTO) => {
   if (!data?.nombre?.trim()) throw new Error('El nombre es obligatorio');
   if (!data.cantidad || data.cantidad < 1) throw new Error('La cantidad debe ser mayor a 0');

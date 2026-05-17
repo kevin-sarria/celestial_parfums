@@ -459,6 +459,28 @@
   letter-spacing: 0.2px;
 }
 
+.pcard-agotado-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 6px 16px;
+  border-radius: 999px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+.pcard--agotado .pcard-img img,
+.pcard--agotado .pcard-img-placeholder {
+  opacity: 0.45;
+  filter: grayscale(60%);
+}
+
 .pcard-genero-badge {
   position: absolute;
   top: 8px;
@@ -724,6 +746,7 @@
 
 .combo-card-categoria {
   display: inline-block;
+  width: fit-content;
   font-size: 11px;
   font-weight: 600;
   color: var(--accent, #7c3aed);
@@ -746,9 +769,9 @@
   position: fixed;
   bottom: 24px;
   right: 24px;
-  z-index: 999;
-  width: 56px;
-  height: 56px;
+  z-index: 90;
+  width: 52px;
+  height: 52px;
   border-radius: 50%;
   background: #25d366;
   color: #fff;
@@ -757,6 +780,7 @@
   justify-content: center;
   box-shadow: 0 4px 16px rgba(0 0 0 / 0.25);
   transition: transform 0.2s, box-shadow 0.2s;
+  text-decoration: none;
 
   &:hover {
     transform: scale(1.08);

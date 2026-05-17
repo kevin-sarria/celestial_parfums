@@ -19,10 +19,17 @@ export const getPerfumeBySlug = async (req: Request, res: Response) => {
   }
 };
 
-export const selectAllPerfumes = async (_req: Request, res: Response) => {
+export const selectAllPerfumes = async (req: Request, res: Response) => {
   try {
-    const result = await perfumeService.allPerfumes();
-    res.status(200).json({ message: 'Datos Encontrados Correctamente', data: result });
+    if (req.query.page) {
+      const page  = Math.max(1, Number(req.query.page)  || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+      const result = await perfumeService.allPerfumesPaginated(page, limit);
+      res.json({ data: result.data, total: result.total, page: result.page, totalPages: result.totalPages });
+    } else {
+      const result = await perfumeService.allPerfumes();
+      res.status(200).json({ message: 'Datos Encontrados Correctamente', data: result });
+    }
   /* eslint-disable */
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -60,6 +67,15 @@ export const patchDescuentoPerfume = async (req: Request, res: Response) => {
   try {
     await perfumeService.patchDescuentoPerfume(req.params.id as string, Number(req.body.descuento));
     res.json({ message: 'Descuento actualizado' });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const patchAgotadoPerfume = async (req: Request, res: Response) => {
+  try {
+    await perfumeService.patchAgotadoPerfume(req.params.id as string, Boolean(req.body.agotado));
+    res.json({ message: 'Estado de stock actualizado' });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
@@ -141,6 +157,33 @@ export const removeCategoria = async (req: Request, res: Response) => {
   try {
     await perfumeService.deleteCategoria(req.params.id as string);
     res.status(200).json({ message: 'Categoría eliminada' });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const getPresentaciones = async (_req: Request, res: Response) => {
+  try {
+    const data = await perfumeService.getAllPresentaciones();
+    res.status(200).json({ data });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const addPresentacion = async (req: Request, res: Response) => {
+  try {
+    const id = await perfumeService.createPresentacion(req.body.nombre);
+    res.status(201).json({ message: 'Presentación creada', data: { id } });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const removePresentacion = async (req: Request, res: Response) => {
+  try {
+    await perfumeService.deletePresentacion(req.params.id as string);
+    res.status(200).json({ message: 'Presentación eliminada' });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

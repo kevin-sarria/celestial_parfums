@@ -4,23 +4,36 @@ import { Prisma } from '../generated/prisma';
 type ComboRow = Prisma.ComboGetPayload<{ include: { categoria: true } }>;
 import { CreateComboDTO } from '../types/combo.type';
 
+const mapCombo = (c: ComboRow) => ({
+  id:           c.id,
+  nombre:       c.nombre,
+  descripcion:  c.descripcion ?? null,
+  imagen_url:   c.imagen_url ?? null,
+  categoria_id: c.categoria_id ?? null,
+  categoria:    c.categoria?.nombre ?? null,
+  cantidad:     c.cantidad,
+  precio:       Number(c.precio),
+  descuento:    c.descuento,
+  activo:       c.activo,
+});
+
+const comboOrderBy = [{ cantidad: 'asc' as const }, { nombre: 'asc' as const }];
+
 export const selectAllCombos = async () => {
   const combos = await prisma.combo.findMany({
     include: { categoria: true },
-    orderBy: [{ cantidad: 'asc' }, { nombre: 'asc' }],
+    orderBy: comboOrderBy,
   });
-  return combos.map((c: ComboRow) => ({
-    id:           c.id,
-    nombre:       c.nombre,
-    descripcion:  c.descripcion ?? null,
-    imagen_url:   c.imagen_url ?? null,
-    categoria_id: c.categoria_id ?? null,
-    categoria:    c.categoria?.nombre ?? null,
-    cantidad:     c.cantidad,
-    precio:       Number(c.precio),
-    descuento:    c.descuento,
-    activo:       c.activo,
-  }));
+  return combos.map(mapCombo);
+};
+
+export const selectCombosPaginated = async (page: number, limit: number) => {
+  const skip = (page - 1) * limit;
+  const [rows, total] = await Promise.all([
+    prisma.combo.findMany({ include: { categoria: true }, orderBy: comboOrderBy, skip, take: limit }),
+    prisma.combo.count(),
+  ]);
+  return { data: rows.map(mapCombo), total, page, totalPages: Math.ceil(total / limit) };
 };
 
 export const createCombo = async (data: CreateComboDTO) => {

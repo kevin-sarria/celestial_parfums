@@ -19,10 +19,17 @@ export const getComboBySlug = async (req: Request, res: Response) => {
   }
 };
 
-export const getCombos = async (_req: Request, res: Response) => {
+export const getCombos = async (req: Request, res: Response) => {
   try {
-    const data = await comboService.getAllCombos();
-    res.json({ data });
+    if (req.query.page) {
+      const page  = Math.max(1, Number(req.query.page)  || 1);
+      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+      const result = await comboService.getCombosPaginated(page, limit);
+      res.json({ data: result.data, total: result.total, page: result.page, totalPages: result.totalPages });
+    } else {
+      const data = await comboService.getAllCombos();
+      res.json({ data });
+    }
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

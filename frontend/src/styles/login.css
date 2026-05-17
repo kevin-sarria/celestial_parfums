@@ -130,6 +130,36 @@
   color: var(--accent);
 }
 
+.input-password-wrap {
+  position: relative;
+
+  input {
+    width: 100%;
+    padding-right: 40px;
+  }
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
 .login-btn {
   padding: 11px;
   border-radius: 8px;

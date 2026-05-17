@@ -3,7 +3,7 @@ import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import VerifyPage from '../pages/VerifyPage';
 import HomePage from '../pages/HomePage';
-import DashboardPage from '../pages/DashboardPage';
+import DashboardPage from '../pages/dashboard/DashboardPage';
 import PerfumesPage from '../pages/PerfumesPage';
 import CombosPage from '../pages/CombosPage';
 import PerfumeDetailPage from '../pages/PerfumeDetailPage';

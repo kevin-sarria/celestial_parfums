@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { registerSchema } from '../domain/entities/auth.schema';
 import { BASE_URL } from '../infrastructure/api/client';
 import '../styles/login.css';
@@ -13,6 +14,8 @@ export default function RegisterPage() {
     password: '',
     confirm: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -119,28 +122,38 @@ export default function RegisterPage() {
 
             <div className="form-group">
               <label htmlFor="password">Contraseña</label>
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={form.password}
-                onChange={set('password')}
-                required
-                autoComplete="new-password"
-              />
+              <div className="input-password-wrap">
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={set('password')}
+                  required
+                  autoComplete="new-password"
+                />
+                <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)}>
+                  {showPassword ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
             </div>
 
             <div className="form-group">
               <label htmlFor="confirm">Confirmar contraseña</label>
-              <input
-                id="confirm"
-                type="password"
-                placeholder="••••••••"
-                value={form.confirm}
-                onChange={set('confirm')}
-                required
-                autoComplete="new-password"
-              />
+              <div className="input-password-wrap">
+                <input
+                  id="confirm"
+                  type={showConfirm ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={form.confirm}
+                  onChange={set('confirm')}
+                  required
+                  autoComplete="new-password"
+                />
+                <button type="button" className="password-toggle" onClick={() => setShowConfirm(v => !v)}>
+                  {showConfirm ? <FiEyeOff /> : <FiEye />}
+                </button>
+              </div>
             </div>
 
             {error && <p className="login-error">{error}</p>}
