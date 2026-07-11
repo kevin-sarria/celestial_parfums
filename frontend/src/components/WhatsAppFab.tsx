@@ -1,6 +1,5 @@
 import '../styles/cart.css';
-
-const WHATSAPP_NUMBER = '573163827701';
+import { WHATSAPP_NUMBER } from '../config/constants';
 
 export default function WhatsAppFab() {
   return (

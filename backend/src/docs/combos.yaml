@@ -1,0 +1,154 @@
+paths:
+  /api/combos:
+    get:
+      tags: [Combos]
+      summary: Listar combos paginados
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Lista paginada de combos
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Pagination'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Combo'
+    post:
+      tags: [Combos]
+      summary: Crear combo
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, cantidad, precio]
+              properties:
+                nombre:
+                  type: string
+                descripcion:
+                  type: string
+                imagen_url:
+                  type: string
+                categoria_id:
+                  type: integer
+                cantidad:
+                  type: integer
+                  minimum: 1
+                precio:
+                  type: number
+                  minimum: 0
+                descuento:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                activo:
+                  type: boolean
+      responses:
+        '201':
+          description: Combo creado
+        '400':
+          description: Datos invalidos
+
+  /api/combos/catalog:
+    get:
+      tags: [Combos]
+      summary: Catalogo publico de combos
+      responses:
+        '200':
+          description: Lista de combos activos
+
+  /api/combos/{slug}/detail:
+    get:
+      tags: [Combos]
+      summary: Detalle de combo por slug
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detalle del combo con relacionados
+        '404':
+          description: Combo no encontrado
+
+  /api/combos/{id}:
+    patch:
+      tags: [Combos]
+      summary: Actualizar combo
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Combo actualizado
+    delete:
+      tags: [Combos]
+      summary: Eliminar combo
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Combo eliminado
+
+  /api/combos/{id}/descuento:
+    patch:
+      tags: [Combos]
+      summary: Actualizar descuento de combo
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descuento]
+              properties:
+                descuento:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+      responses:
+        '200':
+          description: Descuento actualizado

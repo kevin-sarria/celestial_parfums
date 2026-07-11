@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { CreatePagoDTO } from '../types/pago.type';
+import { paginatedResponse } from '../utils/pagination';
 
 const includeEmpresa = { empresa: true } as const;
 
@@ -26,7 +27,7 @@ export const getAllPagos = async (page: number, limit: number) => {
     prisma.pagoProveedor.findMany({ skip, take: limit, orderBy: { dia: 'desc' }, include: includeEmpresa }),
     prisma.pagoProveedor.count(),
   ]);
-  return { data: rows.map(mapPago), total, page, totalPages: Math.ceil(total / limit) };
+  return paginatedResponse(rows.map(mapPago), total, page, limit);
 };
 
 export const createPago = async (data: CreatePagoDTO) => {

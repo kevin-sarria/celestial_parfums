@@ -1,15 +1,17 @@
 import { prisma } from '../config/prisma';
 import { CreateCreditoDTO } from '../types/credito.type';
+import { paginatedResponse } from '../utils/pagination';
 
-const includeCliente = { cliente: true } as const;
+const includeAll = { cliente: true, abonos: { orderBy: { created_at: 'asc' as const } } } as const;
 
 const mapCredito = (c: any) => {
-  const abonos = [
-    c.abono_1, c.abono_2, c.abono_3, c.abono_4, c.abono_5,
-    c.abono_6, c.abono_7, c.abono_8, c.abono_9, c.abono_10,
-  ].map((a) => (a !== null ? Number(a) : null));
+  const abonos = (c.abonos ?? []).map((a: any) => ({
+    id: a.id,
+    monto: Number(a.monto),
+    fecha: a.fecha,
+  }));
 
-  const totalAbonado = abonos.reduce<number>((acc, a) => acc + (a ?? 0), 0);
+  const totalAbonado = abonos.reduce((acc: number, a: any) => acc + a.monto, 0);
   const deudaInicial = Number(c.deuda_inicial);
 
   return {
@@ -23,30 +25,22 @@ const mapCredito = (c: any) => {
       correo:    c.cliente.correo ?? null,
       direccion: c.cliente.direccion ?? null,
     },
-    articulos:     c.articulos,
-    deuda_inicial: deudaInicial,
-    abono_1:       abonos[0],
-    abono_2:       abonos[1],
-    abono_3:       abonos[2],
-    abono_4:       abonos[3],
-    abono_5:       abonos[4],
-    abono_6:       abonos[5],
-    abono_7:       abonos[6],
-    abono_8:       abonos[7],
-    abono_9:       abonos[8],
-    abono_10:      abonos[9],
+    articulos:      c.articulos,
+    deuda_inicial:  deudaInicial,
+    abonos,
+    total_abonado:  totalAbonado,
     total_en_deuda: Math.max(0, deudaInicial - totalAbonado),
-    created_at:    c.created_at,
+    created_at:     c.created_at,
   };
 };
 
 export const getAllCreditos = async (page: number, limit: number) => {
   const skip = (page - 1) * limit;
   const [rows, total] = await Promise.all([
-    prisma.credito.findMany({ skip, take: limit, orderBy: { fecha: 'desc' }, include: includeCliente }),
+    prisma.credito.findMany({ skip, take: limit, orderBy: { fecha: 'desc' }, include: includeAll }),
     prisma.credito.count(),
   ]);
-  return { data: rows.map(mapCredito), total, page, totalPages: Math.ceil(total / limit) };
+  return paginatedResponse(rows.map(mapCredito), total, page, limit);
 };
 
 export const createCredito = async (data: CreateCreditoDTO) => {
@@ -57,7 +51,7 @@ export const createCredito = async (data: CreateCreditoDTO) => {
       articulos:     data.articulos,
       deuda_inicial: data.deuda_inicial,
     },
-    include: includeCliente,
+    include: includeAll,
   });
   return mapCredito(row);
 };
@@ -66,20 +60,23 @@ export const addAbono = async (id: string, monto: number) => {
   const credito = await prisma.credito.findUnique({ where: { id: Number(id) } });
   if (!credito) throw new Error('Crédito no encontrado');
 
-  const abonoFields = [
-    'abono_1','abono_2','abono_3','abono_4','abono_5',
-    'abono_6','abono_7','abono_8','abono_9','abono_10',
-  ] as const;
+  await prisma.creditoAbono.create({
+    data: {
+      credito_id: Number(id),
+      monto,
+      fecha: new Date(),
+    },
+  });
 
-  const campoLibre = abonoFields.find((f) => credito[f] === null);
-  if (!campoLibre) throw new Error('Ya se registraron los 10 abonos máximos');
-
-  const row = await prisma.credito.update({
+  const row = await prisma.credito.findUnique({
     where: { id: Number(id) },
-    data: { [campoLibre]: monto },
-    include: includeCliente,
+    include: includeAll,
   });
   return mapCredito(row);
+};
+
+export const deleteAbono = async (abonoId: string) => {
+  await prisma.creditoAbono.delete({ where: { id: Number(abonoId) } });
 };
 
 export const deleteCredito = (id: string) =>

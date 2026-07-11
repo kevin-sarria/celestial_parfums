@@ -32,16 +32,20 @@ export interface Venta {
   datos_adicionales: string | null;
 }
 
+export interface CreditoAbono {
+  id: number;
+  monto: number;
+  fecha: string;
+}
+
 export interface Credito {
   id: number;
   fecha: string;
   cliente: Cliente;
   articulos: string;
   deuda_inicial: number;
-  abono_1: number | null; abono_2: number | null; abono_3: number | null;
-  abono_4: number | null; abono_5: number | null; abono_6: number | null;
-  abono_7: number | null; abono_8: number | null; abono_9: number | null;
-  abono_10: number | null;
+  abonos: CreditoAbono[];
+  total_abonado: number;
   total_en_deuda: number;
 }
 

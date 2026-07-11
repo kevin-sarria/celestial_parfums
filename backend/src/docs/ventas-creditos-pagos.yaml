@@ -1,0 +1,381 @@
+paths:
+  /api/ventas:
+    get:
+      tags: [Ventas]
+      summary: Listar ventas paginadas
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista paginada de ventas
+    post:
+      tags: [Ventas]
+      summary: Registrar venta
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dia, persona, cantidad_perfumes, presentacion, referencia_perfume, valor_venta]
+              properties:
+                dia:
+                  type: string
+                persona:
+                  type: string
+                cantidad_perfumes:
+                  type: integer
+                  minimum: 1
+                presentacion:
+                  type: string
+                referencia_perfume:
+                  type: string
+                valor_venta:
+                  type: number
+                datos_adicionales:
+                  type: string
+      responses:
+        '201':
+          description: Venta registrada
+        '400':
+          description: Datos invalidos
+
+  /api/ventas/totales:
+    get:
+      tags: [Ventas]
+      summary: Obtener totales de ventas
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Totales calculados
+
+  /api/ventas/{id}:
+    patch:
+      tags: [Ventas]
+      summary: Actualizar venta
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Venta actualizada
+    delete:
+      tags: [Ventas]
+      summary: Eliminar venta
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Venta eliminada
+
+  /api/creditos:
+    get:
+      tags: [Creditos]
+      summary: Listar creditos paginados
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista paginada de creditos
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Pagination'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Credito'
+    post:
+      tags: [Creditos]
+      summary: Registrar credito
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fecha, cliente_id, articulos, deuda_inicial]
+              properties:
+                fecha:
+                  type: string
+                cliente_id:
+                  type: integer
+                articulos:
+                  type: string
+                deuda_inicial:
+                  type: number
+      responses:
+        '201':
+          description: Credito registrado
+        '400':
+          description: Datos invalidos
+
+  /api/creditos/{id}/abono:
+    patch:
+      tags: [Creditos]
+      summary: Registrar abono a credito
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [monto]
+              properties:
+                monto:
+                  type: number
+                  minimum: 0.01
+      responses:
+        '200':
+          description: Abono registrado
+        '400':
+          description: Error
+
+  /api/creditos/{id}/abono/{abonoId}:
+    delete:
+      tags: [Creditos]
+      summary: Eliminar un abono
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: abonoId
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Abono eliminado
+
+  /api/creditos/{id}:
+    delete:
+      tags: [Creditos]
+      summary: Eliminar credito
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Credito eliminado
+
+  /api/pagos:
+    get:
+      tags: [Pagos]
+      summary: Listar pagos a proveedores paginados
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+        - in: query
+          name: limit
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Lista paginada de pagos
+    post:
+      tags: [Pagos]
+      summary: Registrar pago a proveedor
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dia, empresa_id, valor_compra]
+              properties:
+                dia:
+                  type: string
+                empresa_id:
+                  type: integer
+                valor_compra:
+                  type: number
+                coste_envio:
+                  type: number
+                detalles_adicionales:
+                  type: string
+      responses:
+        '201':
+          description: Pago registrado
+        '400':
+          description: Datos invalidos
+
+  /api/pagos/{id}:
+    patch:
+      tags: [Pagos]
+      summary: Actualizar pago
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pago actualizado
+    delete:
+      tags: [Pagos]
+      summary: Eliminar pago
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Pago eliminado
+
+  /api/clientes:
+    get:
+      tags: [Clientes]
+      summary: Listar clientes
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de clientes
+    post:
+      tags: [Clientes]
+      summary: Crear cliente
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, apellido]
+              properties:
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+                correo:
+                  type: string
+                telefono:
+                  type: string
+                direccion:
+                  type: string
+      responses:
+        '201':
+          description: Cliente creado
+
+  /api/empresas:
+    get:
+      tags: [Empresas]
+      summary: Listar empresas
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Lista de empresas
+    post:
+      tags: [Empresas]
+      summary: Crear empresa
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre]
+              properties:
+                nombre:
+                  type: string
+                nit:
+                  type: string
+                telefono:
+                  type: string
+                correo:
+                  type: string
+                direccion:
+                  type: string
+      responses:
+        '201':
+          description: Empresa creada

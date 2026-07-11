@@ -10,22 +10,24 @@ export function useComboDetail(slug: string | undefined) {
 
   useEffect(() => {
     if (!slug) return;
+    const ac = new AbortController();
     setLoading(true);
     setError('');
 
     const encoded = encodeURIComponent(slug);
 
     Promise.all([
-      fetch(`${BASE_URL}/api/combos/by-slug/${encoded}`).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/combos/by-slug/${encoded}/related`).then((r) => r.json()),
+      fetch(`${BASE_URL}/api/combos/by-slug/${encoded}`, { signal: ac.signal }).then((r) => r.json()),
+      fetch(`${BASE_URL}/api/combos/by-slug/${encoded}/related`, { signal: ac.signal }).then((r) => r.json()),
     ])
       .then(([mainJson, relatedJson]) => {
         if (mainJson.error) { setError(mainJson.error); return; }
         setCombo(mainJson.data);
         setRelated(relatedJson.data ?? []);
       })
-      .catch(() => setError('No se pudo cargar el combo'))
-      .finally(() => setLoading(false));
+      .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar el combo'); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, [slug]);
 
   return { combo, related, loading, error };

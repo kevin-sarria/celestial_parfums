@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import * as creditoService from '../services/credito.service';
+import { parsePagination } from '../utils/pagination';
 
 export const getCreditos = async (req: Request, res: Response) => {
   try {
-    const page  = Math.max(1, Number(req.query.page)  || 1);
-    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const { page, limit } = parsePagination(req.query as any);
     const result = await creditoService.getAllCreditos(page, limit);
     res.json(result);
   } catch (error: any) {
@@ -25,6 +25,15 @@ export const addAbono = async (req: Request, res: Response) => {
   try {
     const data = await creditoService.addAbono(req.params.id as string, Number(req.body.monto));
     res.json({ message: 'Abono registrado', data });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const removeAbono = async (req: Request, res: Response) => {
+  try {
+    await creditoService.deleteAbono(req.params.abonoId as string);
+    res.json({ message: 'Abono eliminado' });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

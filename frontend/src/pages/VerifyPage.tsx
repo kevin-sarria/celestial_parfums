@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { BASE_URL } from '../infrastructure/api/client';
 import '../styles/login.css';
 
 export default function VerifyPage() {
@@ -16,7 +17,7 @@ export default function VerifyPage() {
       return;
     }
 
-    fetch(`http://localhost:4000/api/auth/verify/${token}`)
+    fetch(`${BASE_URL}/api/auth/verify/${token}`)
       .then((r) => r.json())
       .then((json) => {
         if (json.error) {

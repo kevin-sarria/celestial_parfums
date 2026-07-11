@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import type { Perfume } from '../domain/entities/perfume.schema';
 import { toSlug } from '../utils/slug';
+import { CURRENCY_OPTIONS } from '../config/constants';
 
 interface Props {
   perfume: Perfume;
@@ -16,15 +17,11 @@ const AROMA_EMOJI: Record<string, string> = {
   Floral: '🌺',
 };
 
+const formatPrice = (price: number) =>
+  new Intl.NumberFormat('es-CO', CURRENCY_OPTIONS).format(price);
+
 export default function PerfumeCard({ perfume }: Props) {
   const navigate = useNavigate();
-
-  const formatPrice = (price: number) =>
-    new Intl.NumberFormat('es-CO', {
-      style: 'currency',
-      currency: 'COP',
-      maximumFractionDigits: 0,
-    }).format(price);
 
   return (
     <article
@@ -32,6 +29,7 @@ export default function PerfumeCard({ perfume }: Props) {
       onClick={() => navigate(`/perfume/${toSlug(perfume.nombre)}`)}
       role="button"
       tabIndex={0}
+      aria-label={`Ver perfume ${perfume.nombre}${perfume.agotado ? ' (Agotado)' : ''}`}
       onKeyDown={(e) => e.key === 'Enter' && navigate(`/perfume/${toSlug(perfume.nombre)}`)}
     >
       <div className="pcard-img">

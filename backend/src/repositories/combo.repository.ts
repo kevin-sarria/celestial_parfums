@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { Prisma } from '../generated/prisma';
+import { paginatedResponse } from '../utils/pagination';
 
 type ComboRow = Prisma.ComboGetPayload<{ include: { categoria: true } }>;
 import { CreateComboDTO } from '../types/combo.type';
@@ -33,7 +34,7 @@ export const selectCombosPaginated = async (page: number, limit: number) => {
     prisma.combo.findMany({ include: { categoria: true }, orderBy: comboOrderBy, skip, take: limit }),
     prisma.combo.count(),
   ]);
-  return { data: rows.map(mapCombo), total, page, totalPages: Math.ceil(total / limit) };
+  return paginatedResponse(rows.map(mapCombo), total, page, limit);
 };
 
 export const createCombo = async (data: CreateComboDTO) => {
@@ -80,21 +81,13 @@ export const findRelatedCombos = async (currentId: number) => {
     take: 20,
   });
 
-  return candidates
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 5)
-    .map((c: ComboRow) => ({
-      id:           c.id,
-      nombre:       c.nombre,
-      descripcion:  c.descripcion ?? null,
-      imagen_url:   c.imagen_url ?? null,
-      categoria_id: c.categoria_id ?? null,
-      categoria:    c.categoria?.nombre ?? null,
-      cantidad:     c.cantidad,
-      precio:       Number(c.precio),
-      descuento:    c.descuento,
-      activo:       c.activo,
-    }));
+  // Fisher-Yates shuffle
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  return candidates.slice(0, 5).map(mapCombo);
 };
 
 export const findComboBySlug = async (slug: string) => {

@@ -1,52 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 import Paginator from '../components/Paginator';
 import ComboCard from '../components/ComboCard';
+import CardSkeleton from '../components/CardSkeleton';
 import CartFab from '../components/CartFab';
 import WhatsAppFab from '../components/WhatsAppFab';
-import { useAuthContext } from '../application/context/useAuthContext';
+import CatalogHeader from '../components/CatalogHeader';
 import { useCombos, COMBOS_PAGE_SIZE } from '../application/hooks/useCombos';
 import '../styles/catalog.css';
 
 export default function CombosPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuthContext();
   const catalog = useCombos();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   return (
     <div className="catalog-root">
-      <header className="catalog-header">
-        <div className="catalog-header-inner">
-          <span
-            className="catalog-brand"
-            style={{ cursor: 'pointer' }}
-            onClick={() => navigate('/')}
-          >
-            ✦ Celestial Parfums
-          </span>
-          <div className="catalog-header-actions">
-            {user ? (
-              <>
-                <span className="catalog-user-email">{`${user.nombre} ${user.apellido}`}</span>
-                <button className="catalog-btn-ghost" onClick={handleLogout}>
-                  Salir
-                </button>
-              </>
-            ) : (
-              <button
-                className="catalog-btn-accent"
-                onClick={() => navigate('/login')}
-              >
-                Iniciar sesión
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      <CatalogHeader />
 
       <section className="catalog-hero">
         <h1 className="catalog-hero-title">🎁 Combos disponibles</h1>
@@ -94,9 +62,13 @@ export default function CombosPage() {
           )}
 
           <div className="catalog-combos-grid">
-            {catalog.paginated.map((c) => (
-              <ComboCard key={c.id} combo={c} />
-            ))}
+            {catalog.loading ? (
+              <CardSkeleton count={6} />
+            ) : (
+              catalog.paginated.map((c) => (
+                <ComboCard key={c.id} combo={c} />
+              ))
+            )}
           </div>
 
           <Paginator

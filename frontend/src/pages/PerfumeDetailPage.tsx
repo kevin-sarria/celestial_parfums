@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PerfumeCard from '../components/PerfumeCard';
+import PerfumeSpinner from '../components/PerfumeSpinner';
 import AddToCartModal from '../components/AddToCartModal';
 import CartFab from '../components/CartFab';
-import { useAuthContext } from '../application/context/useAuthContext';
+import CatalogHeader from '../components/CatalogHeader';
 import { usePerfumeDetail } from '../application/hooks/usePerfumeDetail';
 import '../styles/detail.css';
 
@@ -27,11 +28,8 @@ const fmt = (n: number) =>
 export default function PerfumeDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
-  const { user, logout } = useAuthContext();
   const { perfume, related, loading, error } = usePerfumeDetail(slug);
   const [cartModal, setCartModal] = useState(false);
-
-  const handleLogout = () => { logout(); navigate('/login'); };
 
   const precioFinal = perfume && perfume.descuento > 0
     ? Math.round(perfume.precio * (1 - perfume.descuento / 100))
@@ -39,31 +37,13 @@ export default function PerfumeDetailPage() {
 
   return (
     <div className="detail-root">
-      <header className="catalog-header">
-        <div className="catalog-header-inner">
-          <span className="catalog-brand" style={{ cursor: 'pointer' }} onClick={() => navigate('/')}>
-            ✦ Celestial Parfums
-          </span>
-          <div className="catalog-header-actions">
-            {user ? (
-              <>
-                <span className="catalog-user-email">{`${user.nombre} ${user.apellido}`}</span>
-                <button className="catalog-btn-ghost" onClick={handleLogout}>Salir</button>
-              </>
-            ) : (
-              <button className="catalog-btn-accent" onClick={() => navigate('/login')}>
-                Iniciar sesión
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      <CatalogHeader />
 
       <div className="detail-back-bar">
         <button className="detail-back" onClick={() => navigate(-1)}>← Volver</button>
       </div>
 
-      {loading && <div className="detail-loading">Cargando...</div>}
+      {loading && <PerfumeSpinner />}
 
       {!loading && error && (
         <div className="detail-error">

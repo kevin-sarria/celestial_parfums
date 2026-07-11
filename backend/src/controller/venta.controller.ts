@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import * as ventaService from '../services/venta.service';
+import { parsePagination } from '../utils/pagination';
 
 export const getVentas = async (req: Request, res: Response) => {
   try {
-    const page  = Math.max(1, Number(req.query.page)  || 1);
-    const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+    const { page, limit } = parsePagination(req.query as any);
     const result = await ventaService.getAllVentas(page, limit);
     res.json(result);
   } catch (error: any) {

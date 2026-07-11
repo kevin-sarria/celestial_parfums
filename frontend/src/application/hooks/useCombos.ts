@@ -14,11 +14,13 @@ export function useCombos() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    fetch(`${BASE_URL}/api/combos`)
+    const ac = new AbortController();
+    fetch(`${BASE_URL}/api/combos`, { signal: ac.signal })
       .then((r) => r.json())
       .then((json) => setCombos((json.data ?? []).filter((c: Combo) => c.activo)))
-      .catch(() => setError('No se pudo cargar los combos'))
-      .finally(() => setLoading(false));
+      .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar los combos'); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, []);
 
   const comboCantidades = useMemo(

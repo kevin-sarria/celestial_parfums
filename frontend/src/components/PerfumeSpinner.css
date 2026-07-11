@@ -1,0 +1,123 @@
+/* ─── Perfume bottle spinner ─── */
+.perfume-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 48px 20px;
+  flex: 1;
+  justify-content: center;
+}
+
+.perfume-spinner-svg {
+  width: 52px;
+  height: 78px;
+  filter: drop-shadow(0 0 12px rgba(201, 163, 79, 0.3));
+  animation: spinner-glow 2.5s ease-in-out infinite;
+}
+
+/* ─── Bottle parts ─── */
+.spinner-cap {
+  fill: none;
+  stroke: #c9a34f;
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.spinner-cap-facet {
+  stroke: #c9a34f;
+  stroke-width: 0.8;
+  opacity: 0.5;
+}
+
+.spinner-neck {
+  fill: none;
+  stroke: #c9a34f;
+  stroke-width: 1.6;
+}
+
+.spinner-body {
+  fill: none;
+  stroke: #c9a34f;
+  stroke-width: 1.6;
+}
+
+.spinner-liquid {
+  fill: rgba(201, 163, 79, 0.2);
+  animation: liquid-rise 2.8s ease-in-out infinite;
+  transform-origin: bottom;
+}
+
+/* ─── Flower inside bottle ─── */
+.spinner-flower-stem {
+  stroke: #c9a34f;
+  stroke-width: 1.2;
+  opacity: 0.7;
+}
+
+.spinner-flower-leaf {
+  fill: none;
+  stroke: #c9a34f;
+  stroke-width: 1;
+  opacity: 0.6;
+}
+
+.spinner-flower-petal {
+  fill: rgba(201, 163, 79, 0.35);
+  stroke: #c9a34f;
+  stroke-width: 0.8;
+}
+
+.spinner-flower-center {
+  fill: #c9a34f;
+  opacity: 0.6;
+}
+
+/* ─── Text ─── */
+.perfume-spinner-text {
+  font-size: 14px;
+  font-weight: 500;
+  color: #c9a34f;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: var(--sans);
+}
+
+.perfume-spinner-dots {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 2px;
+}
+
+.perfume-spinner-dot {
+  animation: dot-bounce 1.4s ease-in-out infinite;
+}
+
+.perfume-spinner-dot:nth-child(2) { animation-delay: 0.2s; }
+.perfume-spinner-dot:nth-child(3) { animation-delay: 0.4s; }
+
+/* ─── Animations ─── */
+@keyframes liquid-rise {
+  0%, 100% {
+    clip-path: inset(90% 0 0 0 round 0 0 3px 3px);
+  }
+  45%, 55% {
+    clip-path: inset(10% 0 0 0 round 0 0 3px 3px);
+  }
+}
+
+@keyframes spinner-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(201, 163, 79, 0.2));
+    opacity: 0.85;
+  }
+  50% {
+    filter: drop-shadow(0 0 18px rgba(201, 163, 79, 0.45));
+    opacity: 1;
+  }
+}
+
+@keyframes dot-bounce {
+  0%, 60%, 100% { opacity: 0.3; }
+  30% { opacity: 1; }
+}

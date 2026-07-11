@@ -2,9 +2,10 @@ import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import PerfumeCard from '../components/PerfumeCard';
 import ComboCard from '../components/ComboCard';
+import CardSkeleton from '../components/CardSkeleton';
 import CartFab from '../components/CartFab';
 import WhatsAppFab from '../components/WhatsAppFab';
-import { useAuthContext } from '../application/context/useAuthContext';
+import CatalogHeader from '../components/CatalogHeader';
 import { useCatalog } from '../application/hooks/useCatalog';
 import '../styles/catalog.css';
 
@@ -15,17 +16,11 @@ interface Props {
 
 export default function HomePage({ isAdmin = false, adminPreview = false }: Props) {
   const navigate = useNavigate();
-  const { user, logout } = useAuthContext();
   const catalog = useCatalog();
 
   useEffect(() => {
     if (isAdmin) navigate('/dashboard', { replace: true });
   }, [isAdmin, navigate]);
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   return (
     <div className="catalog-root">
@@ -43,28 +38,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
         </div>
       )}
 
-      <header className="catalog-header">
-        <div className="catalog-header-inner">
-          <span className="catalog-brand">✦ Celestial Parfums</span>
-          <div className="catalog-header-actions">
-            {user ? (
-              <>
-                <span className="catalog-user-email">{`${user.nombre} ${user.apellido}`}</span>
-                <button className="catalog-btn-ghost" onClick={handleLogout}>
-                  Salir
-                </button>
-              </>
-            ) : (
-              <button
-                className="catalog-btn-accent"
-                onClick={() => navigate('/login')}
-              >
-                Iniciar sesión
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      <CatalogHeader isHome />
 
       <section className="catalog-hero">
         <h1 className="catalog-hero-title">Descubre tu fragancia</h1>
@@ -195,6 +169,12 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
 
         <main className="catalog-main">
           {catalog.error && <p className="catalog-error">{catalog.error}</p>}
+
+          {catalog.loading && (
+            <div className="catalog-grid">
+              <CardSkeleton count={8} />
+            </div>
+          )}
 
           {!catalog.loading &&
             !catalog.error &&

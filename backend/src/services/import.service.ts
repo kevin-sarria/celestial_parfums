@@ -103,6 +103,9 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
         }
 
         const ab = (n: number) => toNullNum(r[`Abono ${n}`]);
+        const abonosData = Array.from({ length: 10 }, (_, i) => ab(i + 1))
+          .filter((v): v is number => v !== null)
+          .map(monto => ({ monto, fecha: toDate(r['Fecha']) }));
 
         await prisma.credito.create({
           data: {
@@ -110,10 +113,7 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
             cliente_id:    clienteCache[key],
             articulos:     toStr(r['Articulos']),
             deuda_inicial: toNum(r['Deuda Inicial']),
-            abono_1:  ab(1),  abono_2:  ab(2),  abono_3:  ab(3),
-            abono_4:  ab(4),  abono_5:  ab(5),  abono_6:  ab(6),
-            abono_7:  ab(7),  abono_8:  ab(8),  abono_9:  ab(9),
-            abono_10: ab(10),
+            abonos:        { create: abonosData },
           },
         });
         result.creditos++;

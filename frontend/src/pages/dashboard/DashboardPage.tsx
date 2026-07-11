@@ -13,6 +13,7 @@ import { LookupTab } from './tabs/LookupTab';
 import { VentasTab } from './tabs/VentasTab';
 import { CreditosTab } from './tabs/CreditosTab';
 import { PagosTab } from './tabs/PagosTab';
+import PerfumeSpinner from '../../components/PerfumeSpinner';
 import '../../styles/dashboard.css';
 
 const TAB_LABELS: Record<Tab, string> = {
@@ -125,7 +126,7 @@ export default function DashboardPage() {
 
       <main className="dash-main">
         {loading ? (
-          <p className="dash-empty">Cargando...</p>
+          <PerfumeSpinner />
         ) : (
           <>
             {tab === 'perfumes' && (

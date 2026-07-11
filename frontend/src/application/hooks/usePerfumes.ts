@@ -24,16 +24,18 @@ export function usePerfumes() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
+    const ac = new AbortController();
     Promise.all([
-      fetch(`${BASE_URL}/api/parfums/`).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/parfums/categorias`).then((r) => r.json()),
+      fetch(`${BASE_URL}/api/parfums/`, { signal: ac.signal }).then((r) => r.json()),
+      fetch(`${BASE_URL}/api/parfums/categorias`, { signal: ac.signal }).then((r) => r.json()),
     ])
       .then(([pJson, cJson]) => {
         setPerfumes(pJson.data.data ?? []);
         setCategorias(cJson.data ?? []);
       })
-      .catch(() => setError('No se pudo cargar los perfumes'))
-      .finally(() => setLoading(false));
+      .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar los perfumes'); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, []);
 
   const allAromas = useMemo(

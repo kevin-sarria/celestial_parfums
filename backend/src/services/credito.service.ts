@@ -16,4 +16,6 @@ export const addAbono = (id: string, monto: number) => {
   return repo.addAbono(id, monto);
 };
 
+export const deleteAbono = (abonoId: string) => repo.deleteAbono(abonoId);
+
 export const deleteCredito = (id: string) => repo.deleteCredito(id);

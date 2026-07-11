@@ -1,0 +1,124 @@
+paths:
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 1
+      responses:
+        '200':
+          description: Login exitoso. Sets httpOnly cookies (access_token, refresh_token).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      token:
+                        type: string
+                      user:
+                        $ref: '#/components/schemas/AuthUser'
+        '401':
+          description: Credenciales invalidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Renovar access token usando refresh cookie
+      responses:
+        '200':
+          description: Token renovado
+        '401':
+          description: Refresh token invalido o ausente
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesion (limpia cookies)
+      responses:
+        '200':
+          description: Sesion cerrada
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Obtener usuario actual
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Datos del usuario autenticado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AuthUser'
+        '401':
+          description: No autenticado
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Registrar nuevo usuario (cliente)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, apellido, email, password]
+              properties:
+                nombre:
+                  type: string
+                apellido:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 6
+      responses:
+        '201':
+          description: Registro exitoso
+        '400':
+          description: Datos invalidos o email duplicado
+
+  /api/auth/verify/{token}:
+    get:
+      tags: [Auth]
+      summary: Verificar email con token
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cuenta activada
+        '400':
+          description: Token invalido o expirado

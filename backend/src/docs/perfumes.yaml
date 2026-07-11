@@ -1,0 +1,202 @@
+paths:
+  /api/parfums:
+    get:
+      tags: [Perfumes]
+      summary: Listar perfumes paginados
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Lista paginada de perfumes
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Pagination'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Perfume'
+    post:
+      tags: [Perfumes]
+      summary: Crear perfume
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nombre, precio, tipos_aroma, ocasiones]
+              properties:
+                nombre:
+                  type: string
+                descripcion:
+                  type: string
+                precio:
+                  type: number
+                duracion:
+                  type: string
+                proyeccion:
+                  type: string
+                imagen_url:
+                  type: string
+                genero:
+                  type: string
+                  enum: [hombre, mujer]
+                categoria_id:
+                  type: integer
+                descuento:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+                agotado:
+                  type: boolean
+                tipos_aroma:
+                  type: array
+                  items:
+                    type: integer
+                ocasiones:
+                  type: array
+                  items:
+                    type: integer
+                presentaciones:
+                  type: array
+                  items:
+                    type: integer
+      responses:
+        '201':
+          description: Perfume creado
+        '400':
+          description: Datos invalidos
+
+  /api/parfums/{id}:
+    patch:
+      tags: [Perfumes]
+      summary: Actualizar perfume
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Perfume actualizado
+    delete:
+      tags: [Perfumes]
+      summary: Eliminar perfume
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Perfume eliminado
+
+  /api/parfums/catalog:
+    get:
+      tags: [Perfumes]
+      summary: Catalogo publico de perfumes
+      responses:
+        '200':
+          description: Lista completa para catalogo
+
+  /api/parfums/{slug}/detail:
+    get:
+      tags: [Perfumes]
+      summary: Detalle de perfume por slug
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Detalle del perfume con relacionados
+        '404':
+          description: Perfume no encontrado
+
+  /api/parfums/{id}/descuento:
+    patch:
+      tags: [Perfumes]
+      summary: Actualizar descuento de perfume
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [descuento]
+              properties:
+                descuento:
+                  type: integer
+                  minimum: 0
+                  maximum: 100
+      responses:
+        '200':
+          description: Descuento actualizado
+
+  /api/parfums/{id}/agotado:
+    patch:
+      tags: [Perfumes]
+      summary: Marcar perfume como agotado/disponible
+      security:
+        - cookieAuth: []
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agotado]
+              properties:
+                agotado:
+                  type: boolean
+      responses:
+        '200':
+          description: Estado actualizado

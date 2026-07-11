@@ -55,6 +55,8 @@
 }
 
 .form-group input {
+  width: 100%;
+  box-sizing: border-box;
   padding: 10px 14px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -88,8 +90,14 @@
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 16px;
+}
+
+@media (min-width: 480px) {
+  .form-row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .login-switch {
@@ -181,4 +189,9 @@
     opacity: 0.55;
     cursor: not-allowed;
   }
+}
+
+.grecaptcha-badge {
+  transform: scale(0.7);
+  transform-origin: right bottom;
 }

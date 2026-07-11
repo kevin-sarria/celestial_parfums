@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as perfumeService from '../services/perfume.service';
+import { parsePagination } from '../utils/pagination';
 
 export const getRelatedPerfumes = async (req: Request, res: Response) => {
   try {
@@ -22,15 +23,13 @@ export const getPerfumeBySlug = async (req: Request, res: Response) => {
 export const selectAllPerfumes = async (req: Request, res: Response) => {
   try {
     if (req.query.page) {
-      const page  = Math.max(1, Number(req.query.page)  || 1);
-      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+      const { page, limit } = parsePagination(req.query as any);
       const result = await perfumeService.allPerfumesPaginated(page, limit);
-      res.json({ data: result.data, total: result.total, page: result.page, totalPages: result.totalPages });
+      res.json(result);
     } else {
       const result = await perfumeService.allPerfumes();
       res.status(200).json({ message: 'Datos Encontrados Correctamente', data: result });
     }
-  /* eslint-disable */
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

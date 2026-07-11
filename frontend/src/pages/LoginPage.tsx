@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { loginSchema } from '../domain/entities/auth.schema';
 import { BASE_URL } from '../infrastructure/api/client';
+import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
 import '../styles/login.css';
 import { useAuthContext } from '../application/context/useAuthContext';
 
@@ -14,6 +15,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    showRecaptchaBadge();
+    return () => hideRecaptchaBadge();
+  }, []);
 
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault();
@@ -27,9 +33,11 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
+      await executeRecaptcha('LOGIN');
       const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify(parsed.data),
       });
 
@@ -42,8 +50,12 @@ export default function LoginPage() {
 
       auth.login(json.data.token, json.data.user);
       navigate(json.data.user?.rol_id === 1 ? '/dashboard' : '/');
-    } catch {
-      setError('No se pudo conectar con el servidor');
+    } catch (err: any) {
+      if (err?.message === 'reCAPTCHA no cargado') {
+        setError('Verificación de seguridad no disponible. Recarga la página.');
+      } else {
+        setError('No se pudo conectar con el servidor');
+      }
     } finally {
       setLoading(false);
     }

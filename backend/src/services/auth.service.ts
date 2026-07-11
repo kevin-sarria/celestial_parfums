@@ -12,7 +12,17 @@ import type { LoginDTO, RegisterDTO } from '../types/auth.type';
 import { transporter } from '../config/mailer';
 
 const JWT_SECRET = process.env.JWT_SECRET ?? 'celestial_secret_key';
+const REFRESH_SECRET = process.env.REFRESH_SECRET ?? 'celestial_refresh_key';
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+
+export const ACCESS_TOKEN_MAX_AGE = 8 * 60 * 60 * 1000; // 8h
+export const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7d
+
+function generateTokens(payload: { id: number; email: string; rol_id: number }) {
+  const accessToken = jwt.sign(payload, JWT_SECRET, { expiresIn: '8h' });
+  const refreshToken = jwt.sign(payload, REFRESH_SECRET, { expiresIn: '7d' });
+  return { accessToken, refreshToken };
+}
 
 export const loginService = async (dto: LoginDTO) => {
   const user = await findUserByEmail(dto.email);
@@ -21,13 +31,28 @@ export const loginService = async (dto: LoginDTO) => {
   const valid = await bcrypt.compare(dto.password, user.password);
   if (!valid) throw new Error('Credenciales inválidas o cuenta no activada');
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email, rol_id: user.rol_id },
-    JWT_SECRET,
-    { expiresIn: '8h' }
-  );
+  const tokenPayload = { id: user.id, email: user.email, rol_id: user.rol_id };
+  const { accessToken, refreshToken } = generateTokens(tokenPayload);
 
-  return { token, user: { id: user.id, nombre: user.nombre, apellido: user.apellido, email: user.email, rol_id: user.rol_id } };
+  return {
+    accessToken,
+    refreshToken,
+    user: { id: user.id, nombre: user.nombre, apellido: user.apellido, email: user.email, rol_id: user.rol_id },
+  };
+};
+
+export const refreshService = (refreshToken: string) => {
+  try {
+    const payload = jwt.verify(refreshToken, REFRESH_SECRET) as { id: number; email: string; rol_id: number };
+    const { accessToken, refreshToken: newRefresh } = generateTokens({
+      id: payload.id,
+      email: payload.email,
+      rol_id: payload.rol_id,
+    });
+    return { accessToken, refreshToken: newRefresh };
+  } catch {
+    throw new Error('Refresh token inválido o expirado');
+  }
 };
 
 const doRegister = async (dto: RegisterDTO) => {

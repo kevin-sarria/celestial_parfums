@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { FiEye, FiEyeOff } from 'react-icons/fi';
 import { registerSchema } from '../domain/entities/auth.schema';
 import { BASE_URL } from '../infrastructure/api/client';
+import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
 import '../styles/login.css';
 
 export default function RegisterPage() {
@@ -20,6 +21,11 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    showRecaptchaBadge();
+    return () => hideRecaptchaBadge();
+  }, []);
+
   const set = (field: string) => (e: { target: { value: string } }) =>
     setForm((prev) => ({ ...prev, [field]: e.target.value }));
 
@@ -36,6 +42,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
+      await executeRecaptcha('REGISTER');
       const res = await fetch(`${BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -55,8 +62,12 @@ export default function RegisterPage() {
       }
 
       setSuccess('Registro exitoso. Revisa tu correo y activa tu cuenta antes de ingresar.');
-    } catch {
-      setError('No se pudo conectar con el servidor');
+    } catch (err: any) {
+      if (err?.message === 'reCAPTCHA no cargado') {
+        setError('Verificación de seguridad no disponible. Recarga la página.');
+      } else {
+        setError('No se pudo conectar con el servidor');
+      }
     } finally {
       setLoading(false);
     }

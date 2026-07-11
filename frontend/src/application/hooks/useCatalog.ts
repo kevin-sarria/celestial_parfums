@@ -26,18 +26,20 @@ export function useCatalog() {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
+    const ac = new AbortController();
     Promise.all([
-      fetch(`${BASE_URL}/api/parfums/`).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/parfums/categorias`).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/combos`).then((r) => r.json()),
+      fetch(`${BASE_URL}/api/parfums/`, { signal: ac.signal }).then((r) => r.json()),
+      fetch(`${BASE_URL}/api/parfums/categorias`, { signal: ac.signal }).then((r) => r.json()),
+      fetch(`${BASE_URL}/api/combos`, { signal: ac.signal }).then((r) => r.json()),
     ])
       .then(([pJson, cJson, combosJson]) => {
         setPerfumes(pJson.data.data ?? []);
         setCategorias(cJson.data ?? []);
         setCombos((combosJson.data ?? []).filter((c: Combo) => c.activo));
       })
-      .catch(() => setError('No se pudo cargar el catálogo'))
-      .finally(() => setLoading(false));
+      .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar el catálogo'); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, []);
 
   const allAromas = useMemo(

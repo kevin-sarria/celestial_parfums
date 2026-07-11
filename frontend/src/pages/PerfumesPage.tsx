@@ -1,52 +1,20 @@
 import { useNavigate } from 'react-router-dom';
 import PerfumeCard from '../components/PerfumeCard';
+import CardSkeleton from '../components/CardSkeleton';
 import Paginator from '../components/Paginator';
 import CartFab from '../components/CartFab';
 import WhatsAppFab from '../components/WhatsAppFab';
-import { useAuthContext } from '../application/context/useAuthContext';
+import CatalogHeader from '../components/CatalogHeader';
 import { usePerfumes, PERFUMES_PAGE_SIZE } from '../application/hooks/usePerfumes';
 import '../styles/catalog.css';
 
 export default function PerfumesPage() {
   const navigate = useNavigate();
-  const { user, logout } = useAuthContext();
   const catalog = usePerfumes();
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   return (
     <div className="catalog-root">
-      <header className="catalog-header">
-        <div className="catalog-header-inner">
-          <span
-            className="catalog-brand"
-            style={{ cursor: 'pointer' }}
-            onClick={() => navigate('/')}
-          >
-            ✦ Celestial Parfums
-          </span>
-          <div className="catalog-header-actions">
-            {user ? (
-              <>
-                <span className="catalog-user-email">{`${user.nombre} ${user.apellido}`}</span>
-                <button className="catalog-btn-ghost" onClick={handleLogout}>
-                  Salir
-                </button>
-              </>
-            ) : (
-              <button
-                className="catalog-btn-accent"
-                onClick={() => navigate('/login')}
-              >
-                Iniciar sesión
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+      <CatalogHeader />
 
       <section className="catalog-hero">
         <h1 className="catalog-hero-title">Perfumes individuales</h1>
@@ -169,9 +137,13 @@ export default function PerfumesPage() {
           )}
 
           <div className="catalog-grid">
-            {catalog.paginated.map((p) => (
-              <PerfumeCard key={p.id} perfume={p} />
-            ))}
+            {catalog.loading ? (
+              <CardSkeleton count={8} />
+            ) : (
+              catalog.paginated.map((p) => (
+                <PerfumeCard key={p.id} perfume={p} />
+              ))
+            )}
           </div>
 
           <Paginator

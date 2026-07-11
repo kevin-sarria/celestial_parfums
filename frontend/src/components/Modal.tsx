@@ -1,5 +1,6 @@
-import type { ReactNode, FormEvent } from 'react';
+import { useEffect, type ReactNode, type FormEvent } from 'react';
 import { FiX } from 'react-icons/fi';
+import '../styles/modal.css';
 
 interface ModalProps {
   open: boolean;
@@ -26,6 +27,13 @@ export default function Modal({
   loading = false,
   maxWidth,
 }: ModalProps) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const header = (
@@ -57,7 +65,7 @@ export default function Modal({
   const footerEl = footer !== undefined ? footer : defaultFooter;
 
   return (
-    <div className="dash-overlay" onClick={onClose}>
+    <div className="dash-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
       <div
         className="dash-modal"
         style={maxWidth ? { maxWidth } : undefined}

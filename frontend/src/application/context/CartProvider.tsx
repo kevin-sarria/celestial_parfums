@@ -1,5 +1,6 @@
-import { useState, useCallback, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { CartContext, type CartItem } from './CartContext';
+import { useAuthContext } from './useAuthContext';
 
 const STORAGE_KEY = 'celestial_cart';
 
@@ -15,8 +16,17 @@ function saveCart(items: CartItem[]) {
 }
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuthContext();
   const [items, setItems] = useState<CartItem[]>(loadCart);
   const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      setItems([]);
+      localStorage.removeItem(STORAGE_KEY);
+      setIsOpen(false);
+    }
+  }, [user]);
 
   const persist = (next: CartItem[]) => { setItems(next); saveCart(next); };
 

@@ -86,8 +86,6 @@
 .catalog-user-email {
   font-size: 13px;
   color: var(--text);
-
-  @media (max-width: 480px) { display: none; }
 }
 
 .catalog-btn-ghost {

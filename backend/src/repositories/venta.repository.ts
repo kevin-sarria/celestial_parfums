@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { CreateVentaDTO } from '../types/venta.type';
+import { paginatedResponse } from '../utils/pagination';
 
 const mapVenta = (v: any) => ({
   id:                 v.id,
@@ -19,7 +20,7 @@ export const getAllVentas = async (page: number, limit: number) => {
     prisma.venta.findMany({ skip, take: limit, orderBy: { dia: 'desc' } }),
     prisma.venta.count(),
   ]);
-  return { data: rows.map(mapVenta), total, page, totalPages: Math.ceil(total / limit) };
+  return paginatedResponse(rows.map(mapVenta), total, page, limit);
 };
 
 export const createVenta = async (data: CreateVentaDTO) => {

@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { AuthProvider } from './application/context/AuthProvider';
 import { CartProvider } from './application/context/CartProvider';
+import ErrorBoundary from './components/ErrorBoundary';
 import AppRouter from './router/AppRouter';
 import CartDrawer from './components/CartDrawer';
 
@@ -32,10 +33,12 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <CartProvider>
-        <AppLayout />
-      </CartProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <CartProvider>
+          <AppLayout />
+        </CartProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

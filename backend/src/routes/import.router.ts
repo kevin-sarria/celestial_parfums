@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { importExcel } from '../services/import.service';
+import { requireAdmin } from '../middleware/auth.middleware';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -16,13 +17,7 @@ const upload = multer({
 
 export const importRouter = Router();
 
-importRouter.post('/', upload.single('file'), async (req: Request, res: Response) => {
-  const key = req.headers['x-import-key'];
-  if (!process.env.IMPORT_KEY || key !== process.env.IMPORT_KEY) {
-    res.status(401).json({ error: 'Clave de importación inválida o no configurada' });
-    return;
-  }
-
+importRouter.post('/', requireAdmin, upload.single('file'), async (req: Request, res: Response) => {
   if (!req.file) {
     res.status(400).json({ error: 'Debes adjuntar el archivo Excel con el campo "file"' });
     return;

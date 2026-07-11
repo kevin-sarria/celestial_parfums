@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma';
 import { Prisma } from '../generated/prisma';
 import { CreatePerfumeDTO } from '../types/perfume.type';
+import { paginatedResponse } from '../utils/pagination';
 
 type PerfumeRow = Prisma.PerfumeGetPayload<{
   include: {
@@ -50,7 +51,7 @@ export const selectParfumsPaginated = async (page: number, limit: number) => {
     prisma.perfume.findMany({ include: perfumeInclude, orderBy: { nombre: 'asc' }, skip, take: limit }),
     prisma.perfume.count(),
   ]);
-  return { data: rows.map(mapPerfume), total, page, totalPages: Math.ceil(total / limit) };
+  return paginatedResponse(rows.map(mapPerfume), total, page, limit);
 };
 
 export const createPerfume = async (data: CreatePerfumeDTO) => {
@@ -135,10 +136,13 @@ export const findRelatedPerfumes = async (currentId: number, aromaNames: string[
     take: 20,
   });
 
-  return candidates
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 5)
-    .map(mapPerfume);
+  // Fisher-Yates shuffle
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  return candidates.slice(0, 5).map(mapPerfume);
 };
 
 export const findPerfumeBySlug = async (slug: string) => {

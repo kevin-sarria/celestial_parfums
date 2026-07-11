@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as comboService from '../services/combo.service';
+import { parsePagination } from '../utils/pagination';
 
 export const getRelatedCombos = async (req: Request, res: Response) => {
   try {
@@ -22,10 +23,9 @@ export const getComboBySlug = async (req: Request, res: Response) => {
 export const getCombos = async (req: Request, res: Response) => {
   try {
     if (req.query.page) {
-      const page  = Math.max(1, Number(req.query.page)  || 1);
-      const limit = Math.min(100, Math.max(1, Number(req.query.limit) || 20));
+      const { page, limit } = parsePagination(req.query as any);
       const result = await comboService.getCombosPaginated(page, limit);
-      res.json({ data: result.data, total: result.total, page: result.page, totalPages: result.totalPages });
+      res.json(result);
     } else {
       const data = await comboService.getAllCombos();
       res.json({ data });

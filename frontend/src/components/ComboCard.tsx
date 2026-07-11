@@ -1,17 +1,14 @@
 import { useNavigate } from 'react-router-dom';
 import type { Combo } from '../domain/entities/combo.schema';
 import { toSlug } from '../utils/slug';
+import { CURRENCY_OPTIONS } from '../config/constants';
 
 interface Props {
   combo: Combo;
 }
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(n);
+  new Intl.NumberFormat('es-CO', CURRENCY_OPTIONS).format(n);
 
 export default function ComboCard({ combo: c }: Props) {
   const navigate = useNavigate();
@@ -24,10 +21,11 @@ export default function ComboCard({ combo: c }: Props) {
       onClick={() => navigate(`/combo/${toSlug(c.nombre)}`)}
       role="button"
       tabIndex={0}
+      aria-label={`Ver combo ${c.nombre} - ${c.cantidad} perfumes`}
       onKeyDown={(e) => e.key === 'Enter' && navigate(`/combo/${toSlug(c.nombre)}`)}
     >
       {c.imagen_url && (
-        <img src={c.imagen_url} alt={c.nombre} className="combo-card-img" />
+        <img src={c.imagen_url} alt={c.nombre} className="combo-card-img" loading="lazy" />
       )}
       <div className="combo-card-header">
         <h3 className="combo-card-name">{c.nombre}</h3>

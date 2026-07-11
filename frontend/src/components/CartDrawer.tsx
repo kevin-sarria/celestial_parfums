@@ -1,11 +1,10 @@
 import { FiX, FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
 import { useCart } from '../application/context/useCart';
+import { WHATSAPP_NUMBER, CURRENCY_OPTIONS } from '../config/constants';
 import '../styles/cart.css';
 
-const WHATSAPP_NUMBER = '573163827701';
-
 const fmt = (n: number) =>
-  new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(n);
+  new Intl.NumberFormat('es-CO', CURRENCY_OPTIONS).format(n);
 
 export default function CartDrawer() {
   const { items, totalItems, isOpen, closeCart, removeItem, updateQuantity, clearCart } = useCart();

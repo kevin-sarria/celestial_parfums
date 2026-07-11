@@ -17,14 +17,24 @@ declare global {
   }
 }
 
-export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
+function extractToken(req: Request): string | null {
+  const cookie = req.cookies?.access_token;
+  if (cookie) return cookie;
+
   const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) {
+  if (auth?.startsWith('Bearer ')) return auth.slice(7);
+
+  return null;
+}
+
+export const requireAuth = (req: Request, res: Response, next: NextFunction): void => {
+  const token = extractToken(req);
+  if (!token) {
     res.status(401).json({ error: 'No autenticado' });
     return;
   }
   try {
-    req.jwtUser = jwt.verify(auth.slice(7), JWT_SECRET) as JWTPayload;
+    req.jwtUser = jwt.verify(token, JWT_SECRET) as JWTPayload;
     next();
   } catch {
     res.status(401).json({ error: 'Token inválido o expirado' });
