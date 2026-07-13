@@ -1,9 +1,17 @@
 import { useEffect, useState } from 'react';
-import { FiDollarSign, FiTrash2 } from 'react-icons/fi';
+import { CircleDollarSign, Trash2, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { NativeSelect } from '@/components/ui/native-select';
+import { DialogFooter } from '@/components/ui/dialog';
 import Modal from '../../../components/Modal';
+import ImportModal from '../../../components/ImportModal';
+import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { creditosColumns } from '../columns';
 import { API_CREDITOS, API_CLIENTES, DEFAULT_PAGE_SIZE } from '../helpers';
+import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { GuardedFetch, Credito, Cliente, CreditoForm } from '../types';
 import { emptyCreditoForm } from '../types';
 
@@ -22,13 +30,16 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   const [form, setForm] = useState<CreditoForm>(emptyCreditoForm());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
 
   const [abonoModal, setAbonoModal] = useState<{ open: boolean; creditoId: number | null }>({ open: false, creditoId: null });
   const [abonoMonto, setAbonoMonto] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const load = async (p = page, s = pageSize) => {
+  const load = async (p = page, s = pageSize, term = searchTerm) => {
+    const searchQs = term ? `&search=${encodeURIComponent(term)}` : '';
     const [cRes, clRes] = await Promise.all([
-      guardedFetch(`${API_CREDITOS}?page=${p}&limit=${s}`),
+      guardedFetch(`${API_CREDITOS}?page=${p}&limit=${s}${searchQs}`),
       guardedFetch(API_CLIENTES),
     ]);
     const [cJson, clJson] = await Promise.all([cRes.json(), clRes.json()]);
@@ -93,17 +104,25 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
 
   return (
     <>
-      <section className="dash-section">
-        <div className="dash-toolbar">
-          <h2 className="dash-section-title">Creditos <span className="dash-count">{total}</span></h2>
-          <button className="dash-btn-accent" onClick={() => { setForm(emptyCreditoForm()); setError(''); setModal(true); }}>
-            + Nuevo credito
-          </button>
-        </div>
+      <Section>
+        <Toolbar>
+          <SectionTitle count={total}>Creditos</SectionTitle>
+          <ToolbarActions>
+            <ExportButton entity="creditos" guardedFetch={guardedFetch} />
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="size-4" /> Importar
+            </Button>
+            <Button size="sm" onClick={() => { setForm(emptyCreditoForm()); setError(''); setModal(true); }}>
+              + Nuevo credito
+            </Button>
+          </ToolbarActions>
+        </Toolbar>
+
         <SmartTable
           columns={creditosColumns}
           rows={creditos}
           rowKey={c => c.id}
+          onServerSearch={t => { setSearchTerm(t); load(1, pageSize, t); }}
           pagination={{
             page, totalRows: total, pageSize,
             onPageChange: p => load(p, pageSize),
@@ -111,15 +130,28 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
           }}
           renderActions={c => (
             <>
-              <button className="dash-icon-btn" title="Registrar abono"
-                onClick={() => { setAbonoModal({ open: true, creditoId: c.id }); setAbonoMonto(''); }}>
-                <FiDollarSign />
-              </button>
-              <button className="dash-icon-btn" onClick={() => handleDelete(c.id)} title="Eliminar"><FiTrash2 /></button>
+              <Button
+                variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-primary"
+                title="Registrar abono"
+                onClick={() => { setAbonoModal({ open: true, creditoId: c.id }); setAbonoMonto(''); }}
+              >
+                <CircleDollarSign className="size-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)} title="Eliminar">
+                <Trash2 className="size-4" />
+              </Button>
             </>
           )}
         />
-      </section>
+      </Section>
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        entity="creditos"
+        guardedFetch={guardedFetch}
+        onImported={() => load(1)}
+      />
 
       <Modal
         open={modal}
@@ -129,21 +161,18 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
         submitLabel={loading ? 'Guardando...' : 'Registrar credito'}
         loading={loading}
       >
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Fecha *</label>
-            <input className="dash-input" type="date" required value={form.fecha}
+        <FieldRow>
+          <Field label="Fecha *">
+            <Input type="date" required value={form.fecha}
               onChange={e => setForm(f => ({ ...f, fecha: e.target.value }))} />
-          </div>
-          <div className="dash-form-group">
-            <label>Deuda inicial (COP) *</label>
-            <input className="dash-input" type="number" min="1" required value={form.deuda_inicial}
+          </Field>
+          <Field label="Deuda inicial (COP) *">
+            <Input type="number" min="1" required value={form.deuda_inicial}
               onChange={e => setForm(f => ({ ...f, deuda_inicial: e.target.value }))} />
-          </div>
-        </div>
-        <div className="dash-form-group">
-          <label>Cliente *</label>
-          <select className="dash-input" value={String(form.cliente_id)}
+          </Field>
+        </FieldRow>
+        <Field label="Cliente *">
+          <NativeSelect value={String(form.cliente_id)}
             onChange={e => {
               const val = e.target.value;
               setForm(f => ({ ...f, cliente_id: val === '' ? '' : val === 'nuevo' ? 'nuevo' : Number(val) }));
@@ -151,47 +180,41 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
             <option value="">— Selecciona un cliente —</option>
             <option value="nuevo">+ Crear cliente nuevo</option>
             {clientes.map(cl => <option key={cl.id} value={cl.id}>{cl.nombre} {cl.apellido}{cl.telefono ? ` · ${cl.telefono}` : ''}</option>)}
-          </select>
-        </div>
+          </NativeSelect>
+        </Field>
         {form.cliente_id === 'nuevo' && (
-          <div className="dash-inline-form">
-            <div className="dash-form-row">
-              <div className="dash-form-group">
-                <label>Nombre *</label>
-                <input className="dash-input" value={form.nuevo_nombre} maxLength={60}
+          <div className="space-y-3 rounded-xl border border-border bg-secondary/40 p-3.5">
+            <FieldRow>
+              <Field label="Nombre *">
+                <Input value={form.nuevo_nombre} maxLength={60}
                   onChange={e => setForm(f => ({ ...f, nuevo_nombre: e.target.value }))} />
-              </div>
-              <div className="dash-form-group">
-                <label>Apellido *</label>
-                <input className="dash-input" value={form.nuevo_apellido} maxLength={60}
+              </Field>
+              <Field label="Apellido *">
+                <Input value={form.nuevo_apellido} maxLength={60}
                   onChange={e => setForm(f => ({ ...f, nuevo_apellido: e.target.value }))} />
-              </div>
-            </div>
-            <div className="dash-form-row">
-              <div className="dash-form-group">
-                <label>Telefono</label>
-                <input className="dash-input" value={form.nuevo_telefono} maxLength={20}
+              </Field>
+            </FieldRow>
+            <FieldRow>
+              <Field label="Telefono">
+                <Input value={form.nuevo_telefono} maxLength={20}
                   onChange={e => setForm(f => ({ ...f, nuevo_telefono: e.target.value }))} />
-              </div>
-              <div className="dash-form-group">
-                <label>Correo</label>
-                <input className="dash-input" type="email" value={form.nuevo_correo} maxLength={100}
+              </Field>
+              <Field label="Correo">
+                <Input type="email" value={form.nuevo_correo} maxLength={100}
                   onChange={e => setForm(f => ({ ...f, nuevo_correo: e.target.value }))} />
-              </div>
-            </div>
-            <div className="dash-form-group">
-              <label>Direccion</label>
-              <input className="dash-input" value={form.nuevo_direccion} maxLength={150}
+              </Field>
+            </FieldRow>
+            <Field label="Direccion">
+              <Input value={form.nuevo_direccion} maxLength={150}
                 onChange={e => setForm(f => ({ ...f, nuevo_direccion: e.target.value }))} />
-            </div>
+            </Field>
           </div>
         )}
-        <div className="dash-form-group">
-          <label>Articulos *</label>
-          <textarea className="dash-input dash-textarea" rows={2} required value={form.articulos} maxLength={300}
+        <Field label="Articulos *">
+          <Textarea rows={2} required value={form.articulos} maxLength={300}
             onChange={e => setForm(f => ({ ...f, articulos: e.target.value }))} />
-        </div>
-        {error && <p className="dash-error">{error}</p>}
+        </Field>
+        <FormError>{error}</FormError>
       </Modal>
 
       <Modal
@@ -200,17 +223,18 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
         title="Registrar abono"
         maxWidth={360}
         footer={
-          <div className="dash-modal-footer">
-            <button className="dash-btn-ghost" onClick={() => setAbonoModal({ open: false, creditoId: null })}>Cancelar</button>
-            <button className="dash-btn-accent" onClick={handleAbono} disabled={!abonoMonto}>Guardar abono</button>
-          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setAbonoModal({ open: false, creditoId: null })}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAbono} disabled={!abonoMonto}>Guardar abono</Button>
+          </DialogFooter>
         }
       >
-        <div className="dash-form-group">
-          <label>Monto del abono (COP)</label>
-          <input className="dash-input" type="number" min="1" value={abonoMonto}
+        <Field label="Monto del abono (COP)">
+          <Input type="number" min="1" value={abonoMonto}
             onChange={e => setAbonoMonto(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAbono()} />
-        </div>
+        </Field>
       </Modal>
     </>
   );

@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { NativeSelect } from '@/components/ui/native-select';
 import type { ColumnDef, FilterValue, StringOp, NumberOp, DateOp } from './tableTypes';
 
 interface Props<T> {
@@ -78,27 +82,36 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
   if (!pos) return null;
 
   return createPortal(
-    <div ref={ref} className="col-filter-popover" role="dialog" aria-label={`Filtrar ${column.header}`}
-      style={{ top: pos.top, left: pos.left }}>
-      <div className="col-filter-popover__header">
-        <span className="col-filter-title">Filtrar: <strong>{column.header}</strong></span>
-        <button type="button" className="col-filter-close" onClick={onClose} aria-label="Cerrar">✕</button>
+    <div
+      ref={ref}
+      className="fixed z-100 w-65 rounded-xl border border-border bg-popover p-3 shadow-lg animate-fade-up"
+      role="dialog"
+      aria-label={`Filtrar ${column.header}`}
+      style={{ top: pos.top, left: pos.left }}
+    >
+      <div className="mb-2.5 flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          Filtrar: <strong className="font-semibold text-foreground">{column.header}</strong>
+        </span>
+        <button
+          type="button"
+          className="rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+          onClick={onClose}
+          aria-label="Cerrar"
+        >
+          <X className="size-3.5" />
+        </button>
       </div>
 
-      <div className="col-filter-popover__body">
+      <div className="space-y-2">
         {column.type === 'string' && (
           <>
-            <select
-              className="dash-input"
-              value={strOp}
-              onChange={e => setStrOp(e.target.value as StringOp)}
-            >
+            <NativeSelect value={strOp} onChange={e => setStrOp(e.target.value as StringOp)}>
               <option value="contains">Contiene</option>
               <option value="equals">Es igual a</option>
               <option value="starts">Empieza con</option>
-            </select>
-            <input
-              className="dash-input"
+            </NativeSelect>
+            <Input
               placeholder="Escribe la palabra a buscar..."
               value={strVal}
               onChange={e => setStrVal(e.target.value)}
@@ -111,17 +124,12 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
 
         {(column.type === 'number' || column.type === 'currency') && (
           <>
-            <select
-              className="dash-input"
-              value={numOp}
-              onChange={e => setNumOp(e.target.value as NumberOp)}
-            >
+            <NativeSelect value={numOp} onChange={e => setNumOp(e.target.value as NumberOp)}>
               <option value="eq">Igual a</option>
               <option value="gt">Mayor que</option>
               <option value="lt">Menor que</option>
-            </select>
-            <input
-              className="dash-input"
+            </NativeSelect>
+            <Input
               type="number"
               placeholder={column.type === 'currency' ? 'Valor en COP...' : 'Valor...'}
               value={numVal}
@@ -134,31 +142,25 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
 
         {column.type === 'date' && (
           <>
-            <select
-              className="dash-input"
-              value={dateOp}
-              onChange={e => setDateOp(e.target.value as DateOp)}
-            >
+            <NativeSelect value={dateOp} onChange={e => setDateOp(e.target.value as DateOp)}>
               <option value="eq">Igual a</option>
               <option value="before">Antes de</option>
               <option value="after">Después de</option>
-            </select>
-            <input
-              className="dash-input"
-              type="date"
-              value={dateVal}
-              onChange={e => setDateVal(e.target.value)}
-              autoFocus
-            />
+            </NativeSelect>
+            <Input type="date" value={dateVal} onChange={e => setDateVal(e.target.value)} autoFocus />
           </>
         )}
 
         {column.type === 'enum' && column.enumOptions && (
-          <div className="col-filter-enum">
+          <div className="max-h-44 space-y-1 overflow-y-auto">
             {column.enumOptions.map(opt => (
-              <label key={opt} className="dash-check">
+              <label
+                key={opt}
+                className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-[13px] text-foreground transition-colors hover:bg-secondary"
+              >
                 <input
                   type="checkbox"
+                  className="accent-primary"
                   checked={enumVals.includes(opt)}
                   onChange={e => toggleEnum(opt, e.target.checked)}
                 />
@@ -169,23 +171,13 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
         )}
       </div>
 
-      <div className="col-filter-popover__footer">
-        <button
-          type="button"
-          className="dash-btn-ghost"
-          style={{ fontSize: 12, padding: '4px 10px' }}
-          onClick={() => { onApply(null); onClose(); }}
-        >
+      <div className="mt-3 flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={() => { onApply(null); onClose(); }}>
           Limpiar
-        </button>
-        <button
-          type="button"
-          className="dash-btn-accent"
-          style={{ fontSize: 12, padding: '4px 10px' }}
-          onClick={handleApply}
-        >
+        </Button>
+        <Button type="button" size="sm" onClick={handleApply}>
           Aplicar
-        </button>
+        </Button>
       </div>
     </div>,
     document.body,

@@ -3,6 +3,7 @@ import { AuthProvider } from './application/context/AuthProvider';
 import { CartProvider } from './application/context/CartProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppRouter from './router/AppRouter';
+import ScrollToTop from './router/ScrollToTop';
 import CartDrawer from './components/CartDrawer';
 
 function AppLayout() {
@@ -13,19 +14,13 @@ function AppLayout() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <div style={{ flex: 1 }}>
+    <div className="flex min-h-svh flex-col">
+      <div className="flex-1">
         <AppRouter />
       </div>
       <CartDrawer />
-      <footer style={{
-        textAlign: 'center',
-        padding: '1rem',
-        fontSize: '0.85rem',
-        color: '#888',
-        borderTop: '1px solid #e5e7eb',
-      }}>
-        © {new Date().getFullYear()} Celestial Parfums. Todos los derechos reservados.
+      <footer className="border-t border-border py-5 text-center text-[13px] text-muted-foreground">
+        <span className="text-primary">✦</span> © {new Date().getFullYear()} Celestial Parfums. Todos los derechos reservados.
       </footer>
     </div>
   );
@@ -36,6 +31,7 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <CartProvider>
+          <ScrollToTop />
           <AppLayout />
         </CartProvider>
       </AuthProvider>

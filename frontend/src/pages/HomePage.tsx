@@ -1,17 +1,46 @@
 import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, ArrowRight, Eye } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import PerfumeCard from '../components/PerfumeCard';
 import ComboCard from '../components/ComboCard';
 import CardSkeleton from '../components/CardSkeleton';
 import CartFab from '../components/CartFab';
 import WhatsAppFab from '../components/WhatsAppFab';
 import CatalogHeader from '../components/CatalogHeader';
+import CatalogHero from '../components/catalog/CatalogHero';
+import EmptyState from '../components/catalog/EmptyState';
+import { Chip, FilterGroup } from '../components/catalog/FilterChips';
+import { FilterSidebar, FilterToggleBar } from '../components/catalog/FilterSidebar';
 import { useCatalog } from '../application/hooks/useCatalog';
-import '../styles/catalog.css';
+import { GENEROS, GENERO_LABELS } from '../domain/entities/perfume.schema';
 
 interface Props {
   isAdmin?: boolean;
   adminPreview?: boolean;
+}
+
+interface SectionHeaderProps {
+  title: string;
+  to?: string;
+  count?: number;
+}
+
+function SectionHeader({ title, to, count }: SectionHeaderProps) {
+  return (
+    <div className="mb-5 flex items-end justify-between gap-4">
+      <h2 className="font-display text-[26px] font-light tracking-tight text-ink">{title}</h2>
+      {to && (
+        <Link
+          to={to}
+          className="group flex shrink-0 items-center gap-1 text-[13px] font-medium text-primary transition-colors hover:text-primary/80"
+        >
+          Ver todos {count != null && `(${count})`}
+          <ArrowRight className="size-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+        </Link>
+      )}
+    </div>
+  );
 }
 
 export default function HomePage({ isAdmin = false, adminPreview = false }: Props) {
@@ -23,155 +52,118 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
   }, [isAdmin, navigate]);
 
   return (
-    <div className="catalog-root">
+    <div className="flex min-h-svh flex-col bg-background">
       {adminPreview && (
-        <div className="catalog-admin-bar">
-          <span className="catalog-admin-bar-label">
-            👁 Vista previa del catálogo — modo administrador
+        <div className="flex items-center justify-between gap-3 bg-ink px-5 py-2.5 md:px-8">
+          <span className="flex items-center gap-2 text-[13px] text-background/90">
+            <Eye className="size-4" /> Vista previa del catálogo — modo administrador
           </span>
-          <button
-            className="catalog-admin-bar-back"
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 rounded-full text-background hover:bg-background/15 hover:text-background"
             onClick={() => navigate('/dashboard')}
           >
-            ← Volver al dashboard
-          </button>
+            <ArrowLeft className="size-3.5" /> Volver al dashboard
+          </Button>
         </div>
       )}
 
       <CatalogHeader isHome />
 
-      <section className="catalog-hero">
-        <h1 className="catalog-hero-title">Descubre tu fragancia</h1>
-        <p className="catalog-hero-sub">
-          Colección exclusiva de perfumes seleccionados para cada momento
-        </p>
-        <input
-          className="catalog-search"
-          type="search"
-          placeholder="Buscar perfume..."
-          value={catalog.search}
-          onChange={(e) => catalog.onSearchChange(e.target.value)}
-        />
-      </section>
+      <CatalogHero
+        title={
+          <>
+            Descubre tu <em className="italic text-primary">fragancia</em>
+          </>
+        }
+        subtitle="Colección exclusiva de perfumes seleccionados para cada momento"
+        searchValue={catalog.search}
+        searchPlaceholder="Buscar perfume..."
+        onSearchChange={catalog.onSearchChange}
+      />
 
-      <div className="catalog-filter-bar">
-        <button
-          className={`catalog-filter-toggle ${catalog.showFilters ? 'catalog-filter-toggle--active' : ''}`}
-          onClick={() => catalog.setShowFilters((v) => !v)}
-        >
-          ⚙ Filtros {catalog.hasActiveFilters && <span className="filter-dot" />}
-        </button>
-        {catalog.hasActiveFilters && (
-          <button className="filter-clear" onClick={catalog.clearAll}>
-            Limpiar filtros
-          </button>
-        )}
-      </div>
+      <FilterToggleBar
+        open={catalog.showFilters}
+        hasActiveFilters={catalog.hasActiveFilters}
+        onToggle={() => catalog.setShowFilters((v) => !v)}
+        onClear={catalog.clearAll}
+      />
 
-      <div className="catalog-body">
-        <aside
-          className={`catalog-sidebar ${catalog.showFilters ? 'catalog-sidebar--open' : ''}`}
+      <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-5 pb-20 md:px-8 lg:flex-row">
+        <FilterSidebar
+          open={catalog.showFilters}
+          hasActiveFilters={catalog.hasActiveFilters}
+          onClear={catalog.clearAll}
         >
-          <div className="filter-section">
-            <p className="filter-label">Género</p>
-            <div className="filter-chips">
-              {(['hombre', 'mujer'] as const).map((g) => (
-                <button
-                  key={g}
-                  className={`chip ${catalog.activeGenero === g ? 'chip--active' : ''}`}
-                  onClick={() => catalog.onGeneroToggle(g)}
-                >
-                  {g === 'hombre' ? '♂ Hombre' : '♀ Mujer'}
-                </button>
-              ))}
-            </div>
-          </div>
+          <FilterGroup label="Género">
+            {GENEROS.map((g) => (
+              <Chip key={g} active={catalog.activeGenero === g} onClick={() => catalog.onGeneroToggle(g)}>
+                {GENERO_LABELS[g]}
+              </Chip>
+            ))}
+          </FilterGroup>
 
           {catalog.categorias.length > 0 && (
-            <div className="filter-section">
-              <p className="filter-label">Categoría</p>
-              <div className="filter-chips">
-                {catalog.categorias.map((c) => (
-                  <button
-                    key={c.id}
-                    className={`chip ${catalog.activeCategorias.has(c.nombre) ? 'chip--active' : ''}`}
-                    onClick={() =>
-                      catalog.toggleStringSet(c.nombre, catalog.activeCategorias, catalog.setActiveCategorias)
-                    }
-                  >
-                    {c.nombre}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <FilterGroup label="Categoría">
+              {catalog.categorias.map((c) => (
+                <Chip
+                  key={c.id}
+                  active={catalog.activeCategorias.has(c.nombre)}
+                  onClick={() =>
+                    catalog.toggleStringSet(c.nombre, catalog.activeCategorias, catalog.setActiveCategorias)
+                  }
+                >
+                  {c.nombre}
+                </Chip>
+              ))}
+            </FilterGroup>
           )}
 
-          <div className="filter-section">
-            <p className="filter-label">Notas &amp; Aromas</p>
-            <div className="filter-chips">
-              {catalog.allAromas.map((a) => (
-                <button
-                  key={a}
-                  className={`chip ${catalog.activeAromas.has(a) ? 'chip--active' : ''}`}
-                  onClick={() =>
-                    catalog.toggleStringSet(a, catalog.activeAromas, catalog.setActiveAromas)
-                  }
-                >
-                  {a}
-                </button>
-              ))}
-            </div>
-          </div>
+          <FilterGroup label="Notas & Aromas">
+            {catalog.allAromas.map((a) => (
+              <Chip
+                key={a}
+                active={catalog.activeAromas.has(a)}
+                onClick={() => catalog.toggleStringSet(a, catalog.activeAromas, catalog.setActiveAromas)}
+              >
+                {a}
+              </Chip>
+            ))}
+          </FilterGroup>
 
-          <div className="filter-section">
-            <p className="filter-label">Ocasiones</p>
-            <div className="filter-chips">
-              {catalog.allOcasiones.map((o) => (
-                <button
-                  key={o}
-                  className={`chip ${catalog.activeOcasiones.has(o) ? 'chip--active' : ''}`}
-                  onClick={() =>
-                    catalog.toggleStringSet(o, catalog.activeOcasiones, catalog.setActiveOcasiones)
-                  }
-                >
-                  {o}
-                </button>
-              ))}
-            </div>
-          </div>
+          <FilterGroup label="Ocasiones">
+            {catalog.allOcasiones.map((o) => (
+              <Chip
+                key={o}
+                active={catalog.activeOcasiones.has(o)}
+                onClick={() => catalog.toggleStringSet(o, catalog.activeOcasiones, catalog.setActiveOcasiones)}
+              >
+                {o}
+              </Chip>
+            ))}
+          </FilterGroup>
 
           {catalog.comboCantidades.length > 0 && (
-            <div className="filter-section">
-              <p className="filter-label">Combos</p>
-              <div className="filter-chips">
-                {catalog.comboCantidades.map((qty) => (
-                  <button
-                    key={qty}
-                    className={`chip ${catalog.activeComboCantidades.has(qty) ? 'chip--active' : ''}`}
-                    onClick={() => catalog.toggleComboCantidad(qty)}
-                  >
-                    {qty} perfumes
-                  </button>
-                ))}
-              </div>
-            </div>
+            <FilterGroup label="Combos">
+              {catalog.comboCantidades.map((qty) => (
+                <Chip
+                  key={qty}
+                  active={catalog.activeComboCantidades.has(qty)}
+                  onClick={() => catalog.toggleComboCantidad(qty)}
+                >
+                  {qty} perfumes
+                </Chip>
+              ))}
+            </FilterGroup>
           )}
+        </FilterSidebar>
 
-          {catalog.hasActiveFilters && (
-            <button
-              className="filter-clear filter-clear--desktop"
-              onClick={catalog.clearAll}
-            >
-              Limpiar filtros
-            </button>
-          )}
-        </aside>
-
-        <main className="catalog-main">
-          {catalog.error && <p className="catalog-error">{catalog.error}</p>}
+        <main className="min-w-0 flex-1">
+          {catalog.error && <p className="py-6 text-center text-sm text-destructive">{catalog.error}</p>}
 
           {catalog.loading && (
-            <div className="catalog-grid">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
               <CardSkeleton count={8} />
             </div>
           )}
@@ -179,49 +171,38 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
           {!catalog.loading &&
             !catalog.error &&
             catalog.filteredCombos.length === 0 &&
-            (!catalog.showPerfumes || catalog.filtered.length === 0) && (
-              <div className="catalog-empty">
-                <span>🔍</span>
-                <p>Sin resultados para los filtros aplicados</p>
-              </div>
-            )}
+            (!catalog.showPerfumes || catalog.filtered.length === 0) && <EmptyState />}
 
           {/* Perfumes individuales */}
           {!catalog.loading && catalog.showPerfumes && catalog.filtered.length > 0 && (
-            <div className="catalog-perfumes">
-              <div className="catalog-section-header">
-                <p className="catalog-perfumes-title">🧴 Perfumes individuales</p>
-                {catalog.hasMorePerfumes && (
-                  <Link to="/perfumes" className="catalog-ver-mas">
-                    Ver todos ({catalog.filtered.length}) →
-                  </Link>
-                )}
-              </div>
-              <div className="catalog-grid">
+            <section className="animate-fade-up">
+              <SectionHeader
+                title="Perfumes individuales"
+                to={catalog.hasMorePerfumes ? '/perfumes' : undefined}
+                count={catalog.filtered.length}
+              />
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {catalog.previewPerfumes.map((p) => (
                   <PerfumeCard key={p.id} perfume={p} />
                 ))}
               </div>
-            </div>
+            </section>
           )}
 
           {/* Combos */}
           {!catalog.loading && catalog.filteredCombos.length > 0 && (
-            <div className="catalog-combos">
-              <div className="catalog-section-header">
-                <p className="catalog-combos-title">🎁 Combos disponibles</p>
-                {catalog.hasMoreCombos && (
-                  <Link to="/combos" className="catalog-ver-mas">
-                    Ver todos ({catalog.filteredCombos.length}) →
-                  </Link>
-                )}
-              </div>
-              <div className="catalog-combos-grid">
+            <section className="mt-12 animate-fade-up">
+              <SectionHeader
+                title="Combos disponibles"
+                to={catalog.hasMoreCombos ? '/combos' : undefined}
+                count={catalog.filteredCombos.length}
+              />
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {catalog.previewCombos.map((c) => (
                   <ComboCard key={c.id} combo={c} />
                 ))}
               </div>
-            </div>
+            </section>
           )}
         </main>
       </div>

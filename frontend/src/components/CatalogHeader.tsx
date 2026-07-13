@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { User, LogOut } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { useAuthContext } from '../application/context/useAuthContext';
-import './CatalogHeader.css';
 
 interface Props {
   isHome?: boolean;
@@ -30,45 +32,55 @@ export default function CatalogHeader({ isHome = false }: Props) {
   }, [menuOpen]);
 
   return (
-    <header className="catalog-header">
-      <div className="catalog-header-inner">
+    <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
+      <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-5 md:px-8">
         <span
-          className="catalog-brand"
+          className="group select-none font-display text-[17px] font-medium tracking-wide text-ink"
           style={isHome ? undefined : { cursor: 'pointer' }}
           onClick={isHome ? undefined : () => navigate('/')}
         >
-          ✦ Celestial Parfums
+          <span className="inline-block text-primary transition-transform duration-500 group-hover:rotate-[45deg]">
+            ✦
+          </span>{' '}
+          Celestial Parfums
         </span>
-        <div className="catalog-header-actions">
+
+        <div className="flex items-center gap-3">
           {user ? (
             <>
-              <span className="catalog-user-email">{`${user.nombre} ${user.apellido}`}</span>
-              <button className="catalog-btn-ghost catalog-btn-logout" onClick={handleLogout}>
+              <span className="hidden text-[13px] text-muted-foreground sm:inline">
+                {`${user.nombre} ${user.apellido}`}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="hidden sm:inline-flex"
+                onClick={handleLogout}
+              >
                 Salir
-              </button>
+              </Button>
 
-              <div className="user-menu-mobile" ref={menuRef}>
+              {/* Menú de usuario en móvil */}
+              <div className="relative sm:hidden" ref={menuRef}>
                 <button
-                  className="user-menu-trigger"
+                  className="flex size-9 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
                   onClick={() => setMenuOpen((o) => !o)}
                   aria-label="Menú de usuario"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="22" height="22">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                    <circle cx="12" cy="7" r="4" />
-                  </svg>
+                  <User className="size-[18px]" />
                 </button>
 
                 {menuOpen && (
-                  <div className="user-menu-dropdown">
-                    <span className="user-menu-name">{`${user.nombre} ${user.apellido}`}</span>
-                    <hr className="user-menu-divider" />
-                    <button className="user-menu-item" onClick={handleLogout}>
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
-                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                        <polyline points="16 17 21 12 16 7" />
-                        <line x1="21" y1="12" x2="9" y2="12" />
-                      </svg>
+                  <div className="absolute right-0 top-[calc(100%+8px)] z-50 w-48 rounded-xl border border-border bg-popover p-2 shadow-[0_16px_40px_-16px_rgb(0_0_0/0.2)] animate-fade-up">
+                    <span className="block px-2.5 py-1.5 text-[13px] font-medium text-foreground">
+                      {`${user.nombre} ${user.apellido}`}
+                    </span>
+                    <Separator className="my-1.5" />
+                    <button
+                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[13px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                      onClick={handleLogout}
+                    >
+                      <LogOut className="size-4" />
                       Cerrar sesión
                     </button>
                   </div>
@@ -76,9 +88,9 @@ export default function CatalogHeader({ isHome = false }: Props) {
               </div>
             </>
           ) : (
-            <button className="catalog-btn-accent" onClick={() => navigate('/login')}>
+            <Button size="sm" className="rounded-full px-5" onClick={() => navigate('/login')}>
               Iniciar sesión
-            </button>
+            </Button>
           )}
         </div>
       </div>

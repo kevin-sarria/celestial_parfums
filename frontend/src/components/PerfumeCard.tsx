@@ -1,108 +1,150 @@
 import { useNavigate } from 'react-router-dom';
+import { Clock, Wind } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { formatPrice, finalPrice } from '@/lib/format';
 import type { Perfume } from '../domain/entities/perfume.schema';
+import { GENERO_SYMBOLS } from '../domain/entities/perfume.schema';
 import { toSlug } from '../utils/slug';
-import { CURRENCY_OPTIONS } from '../config/constants';
 
 interface Props {
   perfume: Perfume;
 }
 
-const AROMA_EMOJI: Record<string, string> = {
-  Dulce: '🍯',
-  Cítrico: '🍋',
-  Amaderado: '🌿',
-  Fresco: '💧',
-  Aromático: '🌸',
-  Oriental: '🕌',
-  Floral: '🌺',
+const GENERO_BADGE_STYLES: Record<string, string> = {
+  caballero: 'bg-sky-50 text-sky-600',
+  dama: 'bg-rose-50 text-rose-500',
+  unisex: 'bg-violet-50 text-violet-500',
 };
-
-const formatPrice = (price: number) =>
-  new Intl.NumberFormat('es-CO', CURRENCY_OPTIONS).format(price);
 
 export default function PerfumeCard({ perfume }: Props) {
   const navigate = useNavigate();
+  const goToDetail = () => navigate(`/perfume/${toSlug(perfume.nombre)}`);
+  const precioFinal = finalPrice(perfume.precio, perfume.descuento);
 
   return (
     <article
-      className={`pcard pcard--clickable${perfume.agotado ? ' pcard--agotado' : ''}`}
-      onClick={() => navigate(`/perfume/${toSlug(perfume.nombre)}`)}
+      className={cn(
+        'group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card',
+        'transition-all duration-300 ease-out hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_45px_-20px_rgb(0_0_0/0.18)]',
+        perfume.agotado && 'opacity-70',
+      )}
+      onClick={goToDetail}
       role="button"
       tabIndex={0}
       aria-label={`Ver perfume ${perfume.nombre}${perfume.agotado ? ' (Agotado)' : ''}`}
-      onKeyDown={(e) => e.key === 'Enter' && navigate(`/perfume/${toSlug(perfume.nombre)}`)}
+      onKeyDown={(e) => e.key === 'Enter' && goToDetail()}
     >
-      <div className="pcard-img">
+      <div className="relative aspect-4/5 overflow-hidden bg-secondary">
         {perfume.imagen_url ? (
-          <img src={perfume.imagen_url} alt={perfume.nombre} loading="lazy" />
+          <img
+            src={perfume.imagen_url}
+            alt={perfume.nombre}
+            loading="lazy"
+            className={cn(
+              'h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]',
+              perfume.agotado && 'grayscale',
+            )}
+          />
         ) : (
-          <div className="pcard-img-placeholder">
-            <span className="pcard-placeholder-icon">𝒫</span>
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="font-display text-5xl italic text-muted-foreground/40">𝒫</span>
           </div>
         )}
-        {perfume.agotado && (
-          <div className="pcard-agotado-badge">Agotado</div>
-        )}
-        {perfume.descuento > 0 ? (
-          <div className="pcard-price-badge pcard-price-badge--discount">
-            <span className="pcard-price-original">{formatPrice(perfume.precio)}</span>
-            {formatPrice(Math.round(perfume.precio * (1 - perfume.descuento / 100)))}
-          </div>
-        ) : (
-          <div className="pcard-price-badge">{formatPrice(perfume.precio)}</div>
-        )}
-        {perfume.descuento > 0 && (
-          <div className="pcard-discount-badge">-{perfume.descuento}%</div>
-        )}
+
         {perfume.genero && (
-          <div className={`pcard-genero-badge pcard-genero-badge--${perfume.genero}`}>
-            {perfume.genero === 'hombre' ? '♂' : '♀'}
-          </div>
+          <span
+            className={cn(
+              'absolute left-3 top-3 flex size-7 items-center justify-center rounded-full text-[13px] font-bold shadow-sm',
+              GENERO_BADGE_STYLES[perfume.genero],
+            )}
+          >
+            {GENERO_SYMBOLS[perfume.genero]}
+          </span>
+        )}
+
+        {perfume.descuento > 0 && (
+          <Badge className="absolute right-3 top-3 rounded-full bg-ink px-2.5 text-[11px] font-semibold text-background shadow-sm">
+            -{perfume.descuento}%
+          </Badge>
+        )}
+
+        {perfume.agotado && (
+          <span className="absolute bottom-3 left-3 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-background backdrop-blur-sm">
+            Agotado
+          </span>
         )}
       </div>
 
-      <div className="pcard-body">
-        <div className="pcard-title-row">
-          <h3 className="pcard-name">{perfume.nombre}</h3>
+      <div className="flex flex-1 flex-col gap-2.5 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="font-display text-[17px] font-medium leading-snug text-ink">
+            {perfume.nombre}
+          </h3>
           {perfume.categoria && (
-            <span className="tag tag--categoria">{perfume.categoria}</span>
+            <Badge variant="outline" className="shrink-0 rounded-full text-[10.5px] font-medium text-muted-foreground">
+              {perfume.categoria}
+            </Badge>
+          )}
+        </div>
+
+        <div className="flex items-baseline gap-2">
+          <span className="text-[15px] font-semibold tracking-tight text-primary">
+            {formatPrice(precioFinal)}
+          </span>
+          {perfume.descuento > 0 && (
+            <span className="text-[12.5px] text-muted-foreground line-through">
+              {formatPrice(perfume.precio)}
+            </span>
           )}
         </div>
 
         {perfume.descripcion && (
-          <p className="pcard-desc">{perfume.descripcion}</p>
+          <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+            {perfume.descripcion}
+          </p>
         )}
 
         {perfume.tipos_aroma.length > 0 && (
-          <div className="pcard-tags">
+          <div className="flex flex-wrap gap-1.5">
             {perfume.tipos_aroma.map((a) => (
-              <span key={a} className="tag tag--aroma">
-                {AROMA_EMOJI[a] ?? '✦'} {a}
+              <span
+                key={a}
+                className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-medium text-primary"
+              >
+                {a}
               </span>
             ))}
           </div>
         )}
 
         {perfume.ocasiones.length > 0 && (
-          <div className="pcard-tags">
+          <div className="flex flex-wrap gap-1.5">
             {perfume.ocasiones.map((o) => (
-              <span key={o} className="tag tag--ocasion">{o}</span>
+              <span
+                key={o}
+                className="rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground"
+              >
+                {o}
+              </span>
             ))}
           </div>
         )}
 
-        <div className="pcard-meta">
-          {perfume.duracion && (
-            <span className="pcard-meta-item">
-              <span className="pcard-meta-icon">⏱</span> {perfume.duracion}
-            </span>
-          )}
-          {perfume.proyeccion && (
-            <span className="pcard-meta-item">
-              <span className="pcard-meta-icon">📡</span> {perfume.proyeccion}
-            </span>
-          )}
-        </div>
+        {(perfume.duracion || perfume.proyeccion) && (
+          <div className="mt-auto flex items-center gap-4 border-t border-border/70 pt-2.5 text-[12px] text-muted-foreground">
+            {perfume.duracion && (
+              <span className="flex items-center gap-1.5">
+                <Clock className="size-3.5" /> {perfume.duracion}
+              </span>
+            )}
+            {perfume.proyeccion && (
+              <span className="flex items-center gap-1.5">
+                <Wind className="size-3.5" /> {perfume.proyeccion}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </article>
   );

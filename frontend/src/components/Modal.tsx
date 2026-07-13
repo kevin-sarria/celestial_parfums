@@ -1,6 +1,12 @@
-import { useEffect, type ReactNode, type FormEvent } from 'react';
-import { FiX } from 'react-icons/fi';
-import '../styles/modal.css';
+import { type ReactNode, type FormEvent } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface ModalProps {
   open: boolean;
@@ -15,6 +21,11 @@ interface ModalProps {
   maxWidth?: number;
 }
 
+/**
+ * Modal de formulario del dashboard sobre shadcn Dialog.
+ * Mantiene la API histórica (onSubmit envuelve el contenido en <form>,
+ * footer permite reemplazar las acciones por defecto).
+ */
 export default function Modal({
   open,
   onClose,
@@ -27,64 +38,43 @@ export default function Modal({
   loading = false,
   maxWidth,
 }: ModalProps) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
-  const header = (
-    <div className="dash-modal-header">
-      <h3>{title}</h3>
-      <button type="button" className="dash-modal-close" onClick={onClose}>
-        <FiX />
-      </button>
-    </div>
-  );
-
-  const body = <div className="dash-modal-body">{children}</div>;
-
   const defaultFooter = (
-    <div className="dash-modal-footer">
-      <button type="button" className="dash-btn-ghost" onClick={onClose}>
+    <DialogFooter className="gap-2">
+      <Button type="button" variant="ghost" onClick={onClose}>
         {cancelLabel}
-      </button>
-      <button
-        type={onSubmit ? 'submit' : 'button'}
-        className="dash-btn-accent"
-        disabled={loading}
-      >
+      </Button>
+      <Button type={onSubmit ? 'submit' : 'button'} disabled={loading}>
         {submitLabel}
-      </button>
-    </div>
+      </Button>
+    </DialogFooter>
   );
 
   const footerEl = footer !== undefined ? footer : defaultFooter;
 
+  const inner = (
+    <>
+      <DialogHeader>
+        <DialogTitle className="font-display text-lg font-medium">{title}</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-4">{children}</div>
+      {footerEl}
+    </>
+  );
+
   return (
-    <div className="dash-overlay" onClick={onClose} role="dialog" aria-modal="true" aria-label={title}>
-      <div
-        className="dash-modal"
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent
+        className="max-h-[88svh] overflow-y-auto sm:max-w-135"
         style={maxWidth ? { maxWidth } : undefined}
-        onClick={e => e.stopPropagation()}
       >
         {onSubmit ? (
-          <form className="dash-modal-inner" onSubmit={onSubmit}>
-            {header}
-            {body}
-            {footerEl}
+          <form className="space-y-4" onSubmit={onSubmit}>
+            {inner}
           </form>
         ) : (
-          <div className="dash-modal-inner">
-            {header}
-            {body}
-            {footerEl}
-          </div>
+          inner
         )}
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

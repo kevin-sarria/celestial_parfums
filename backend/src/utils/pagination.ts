@@ -10,6 +10,12 @@ export function parsePagination(query: { page?: string; limit?: string }): Pagin
   return { page, limit, skip: (page - 1) * limit };
 }
 
+/** Término de búsqueda global saneado (o undefined si viene vacío). */
+export function parseSearch(query: { search?: string }): string | undefined {
+  const s = typeof query.search === 'string' ? query.search.trim().slice(0, 100) : '';
+  return s || undefined;
+}
+
 export interface PaginatedResult<T> {
   data: T[];
   total: number;

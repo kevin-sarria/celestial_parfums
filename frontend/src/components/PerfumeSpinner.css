@@ -80,7 +80,7 @@
   color: #c9a34f;
   letter-spacing: 2px;
   text-transform: uppercase;
-  font-family: var(--sans);
+  font-family: var(--font-sans);
 }
 
 .perfume-spinner-dots {

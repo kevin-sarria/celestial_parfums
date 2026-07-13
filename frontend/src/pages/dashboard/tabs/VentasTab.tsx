@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
-import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { Pencil, Trash2, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { NativeSelect } from '@/components/ui/native-select';
 import Modal from '../../../components/Modal';
+import ImportModal from '../../../components/ImportModal';
+import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { ventasColumns } from '../columns';
 import { API_VENTAS, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
+import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, StatCard, StatRow } from '../ui';
 import type { GuardedFetch, Venta, VentaForm } from '../types';
 import { emptyVentaForm } from '../types';
 
@@ -22,10 +29,13 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const [form, setForm] = useState<VentaForm>(emptyVentaForm());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const load = async (p = page, s = pageSize) => {
+  const load = async (p = page, s = pageSize, term = searchTerm) => {
+    const searchQs = term ? `&search=${encodeURIComponent(term)}` : '';
     const [vRes, tRes] = await Promise.all([
-      guardedFetch(`${API_VENTAS}?page=${p}&limit=${s}`),
+      guardedFetch(`${API_VENTAS}?page=${p}&limit=${s}${searchQs}`),
       guardedFetch(`${API_VENTAS}/totales`),
     ]);
     const [v, t] = await Promise.all([vRes.json(), tRes.json()]);
@@ -77,27 +87,30 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
 
   return (
     <>
-      <section className="dash-section">
-        <div className="dash-toolbar">
-          <h2 className="dash-section-title">Ventas <span className="dash-count">{total}</span></h2>
-          <button className="dash-btn-accent" onClick={openCreate}>+ Registrar venta</button>
-        </div>
+      <Section>
+        <Toolbar>
+          <SectionTitle count={total}>Ventas</SectionTitle>
+          <ToolbarActions>
+            <ExportButton entity="ventas" guardedFetch={guardedFetch} />
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="size-4" /> Importar
+            </Button>
+            <Button size="sm" onClick={openCreate}>+ Registrar venta</Button>
+          </ToolbarActions>
+        </Toolbar>
+
         {totales && (
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <div className="dash-stat-card">
-              <span className="dash-stat-label">Total unidades vendidas</span>
-              <span className="dash-stat-value">{totales.total_unidades}</span>
-            </div>
-            <div className="dash-stat-card">
-              <span className="dash-stat-label">Total en dinero</span>
-              <span className="dash-stat-value">{formatPrice(totales.total_dinero)}</span>
-            </div>
-          </div>
+          <StatRow>
+            <StatCard label="Total unidades vendidas" value={totales.total_unidades} />
+            <StatCard label="Total en dinero" value={formatPrice(totales.total_dinero)} />
+          </StatRow>
         )}
+
         <SmartTable
           columns={ventasColumns}
           rows={ventas}
           rowKey={v => v.id}
+          onServerSearch={t => { setSearchTerm(t); load(1, pageSize, t); }}
           pagination={{
             page, totalRows: total, pageSize,
             onPageChange: p => load(p, pageSize),
@@ -105,12 +118,24 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
           }}
           renderActions={v => (
             <>
-              <button className="dash-icon-btn" onClick={() => openEdit(v)} title="Editar"><FiEdit2 /></button>
-              <button className="dash-icon-btn" onClick={() => handleDelete(v.id)} title="Eliminar"><FiTrash2 /></button>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => openEdit(v)} title="Editar">
+                <Pencil className="size-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(v.id)} title="Eliminar">
+                <Trash2 className="size-4" />
+              </Button>
             </>
           )}
         />
-      </section>
+      </Section>
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        entity="ventas"
+        guardedFetch={guardedFetch}
+        onImported={() => load(1)}
+      />
 
       <Modal
         open={modal.open}
@@ -120,48 +145,41 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
         submitLabel={loading ? 'Guardando...' : modal.editId ? 'Guardar cambios' : 'Registrar'}
         loading={loading}
       >
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Dia *</label>
-            <input className="dash-input" type="date" required value={form.dia}
+        <FieldRow>
+          <Field label="Dia *">
+            <Input type="date" required value={form.dia}
               onChange={e => setForm(f => ({ ...f, dia: e.target.value }))} />
-          </div>
-          <div className="dash-form-group">
-            <label>Persona *</label>
-            <input className="dash-input" required value={form.persona} maxLength={100}
+          </Field>
+          <Field label="Persona *">
+            <Input required value={form.persona} maxLength={100}
               onChange={e => setForm(f => ({ ...f, persona: e.target.value }))} />
-          </div>
-        </div>
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Cantidad *</label>
-            <input className="dash-input" type="number" min="1" required value={form.cantidad_perfumes}
+          </Field>
+        </FieldRow>
+        <FieldRow>
+          <Field label="Cantidad *">
+            <Input type="number" min="1" required value={form.cantidad_perfumes}
               onChange={e => setForm(f => ({ ...f, cantidad_perfumes: e.target.value }))} />
-          </div>
-          <div className="dash-form-group">
-            <label>Presentacion *</label>
-            <select className="dash-input" value={form.presentacion}
+          </Field>
+          <Field label="Presentacion *">
+            <NativeSelect value={form.presentacion}
               onChange={e => setForm(f => ({ ...f, presentacion: e.target.value }))}>
-              {['10ML','20ML','30ML','60ML','100ML','200ML'].map(p => <option key={p}>{p}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="dash-form-group">
-          <label>Referencia(s) de perfume *</label>
-          <input className="dash-input" required placeholder="Ej: Invictus, Sauvage" value={form.referencia_perfume} maxLength={200}
+              {['10ML', '20ML', '30ML', '60ML', '100ML', '200ML'].map(p => <option key={p}>{p}</option>)}
+            </NativeSelect>
+          </Field>
+        </FieldRow>
+        <Field label="Referencia(s) de perfume *">
+          <Input required placeholder="Ej: Invictus, Sauvage" value={form.referencia_perfume} maxLength={200}
             onChange={e => setForm(f => ({ ...f, referencia_perfume: e.target.value }))} />
-        </div>
-        <div className="dash-form-group">
-          <label>Valor venta (COP) *</label>
-          <input className="dash-input" type="number" min="0" required value={form.valor_venta}
+        </Field>
+        <Field label="Valor venta (COP) *">
+          <Input type="number" min="0" required value={form.valor_venta}
             onChange={e => setForm(f => ({ ...f, valor_venta: e.target.value }))} />
-        </div>
-        <div className="dash-form-group">
-          <label>Datos adicionales</label>
-          <textarea className="dash-input dash-textarea" rows={2} value={form.datos_adicionales} maxLength={300}
+        </Field>
+        <Field label="Datos adicionales">
+          <Textarea rows={2} value={form.datos_adicionales} maxLength={300}
             onChange={e => setForm(f => ({ ...f, datos_adicionales: e.target.value }))} />
-        </div>
-        {error && <p className="dash-error">{error}</p>}
+        </Field>
+        <FormError>{error}</FormError>
       </Modal>
     </>
   );

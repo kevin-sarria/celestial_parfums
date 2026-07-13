@@ -1,7 +1,7 @@
 import * as repo from '../repositories/credito.repository';
 import { CreateCreditoDTO } from '../types/credito.type';
 
-export const getAllCreditos = (page: number, limit: number) => repo.getAllCreditos(page, limit);
+export const getAllCreditos = (page: number, limit: number, search?: string) => repo.getAllCreditos(page, limit, search);
 
 export const createCredito = (data: CreateCreditoDTO) => {
   if (!data.fecha || !data.cliente_id || !data.articulos)

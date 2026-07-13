@@ -14,11 +14,21 @@ const mapVenta = (v: any) => ({
   created_at:         v.created_at,
 });
 
-export const getAllVentas = async (page: number, limit: number) => {
+export const getAllVentas = async (page: number, limit: number, search?: string) => {
   const skip = (page - 1) * limit;
+  const where = search
+    ? {
+        OR: [
+          { persona: { contains: search } },
+          { referencia_perfume: { contains: search } },
+          { presentacion: { contains: search } },
+          { datos_adicionales: { contains: search } },
+        ],
+      }
+    : undefined;
   const [rows, total] = await Promise.all([
-    prisma.venta.findMany({ skip, take: limit, orderBy: { dia: 'desc' } }),
-    prisma.venta.count(),
+    prisma.venta.findMany({ where, skip, take: limit, orderBy: { dia: 'desc' } }),
+    prisma.venta.count({ where }),
   ]);
   return paginatedResponse(rows.map(mapVenta), total, page, limit);
 };

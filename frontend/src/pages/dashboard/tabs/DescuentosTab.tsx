@@ -1,7 +1,18 @@
 import { useState } from 'react';
+import { Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import ImportModal from '../../../components/ImportModal';
+import ExportButton from '../../../components/ExportButton';
+import { finalPrice } from '@/lib/format';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { formatPrice, API, API_COMBOS } from '../helpers';
+import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import type { GuardedFetch } from '../types';
 
 interface DescuentosTabProps {
@@ -11,8 +22,79 @@ interface DescuentosTabProps {
   onMutate: () => void;
 }
 
+const headCell = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground';
+
+interface DiscountTableProps {
+  title: string;
+  rows: { id: number; nombre: string; precio: number; descuento: number }[];
+  editPrefix: string;
+  edits: Record<string, string>;
+  onEdit: (key: string, value: string) => void;
+  onSave: (id: number) => void;
+}
+
+/** Tabla editable de descuentos, compartida por perfumes y combos. */
+function DiscountTable({ title, rows, editPrefix, edits, onEdit, onSave }: DiscountTableProps) {
+  const withDiscount = rows.filter(r => r.descuento > 0).length;
+
+  return (
+    <div className="space-y-2.5">
+      <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+        {title}
+        <Badge variant="secondary" className="rounded-full font-normal">
+          {withDiscount} con descuento
+        </Badge>
+      </h3>
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <Table className="min-w-130">
+          <TableHeader className="bg-secondary/60">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className={headCell}>{title}</TableHead>
+              <TableHead className={headCell}>Precio</TableHead>
+              <TableHead className={headCell}>Descuento %</TableHead>
+              <TableHead className={headCell}>Precio final</TableHead>
+              <TableHead className="w-0" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {rows.map(r => {
+              const key = `${editPrefix}-${r.id}`;
+              const val = edits[key] ?? String(r.descuento);
+              const final_ = finalPrice(r.precio, Number(val));
+              return (
+                <TableRow key={r.id} className="text-[13px]">
+                  <TableCell className="font-medium text-foreground">{r.nombre}</TableCell>
+                  <TableCell className="whitespace-nowrap tabular-nums">{formatPrice(r.precio)}</TableCell>
+                  <TableCell>
+                    <Input
+                      type="number" min="0" max="100" value={val}
+                      className="h-8 w-20"
+                      onChange={e => onEdit(key, e.target.value)}
+                    />
+                  </TableCell>
+                  <TableCell className="whitespace-nowrap font-semibold tabular-nums text-foreground">
+                    {Number(val) > 0 ? formatPrice(final_) : '—'}
+                  </TableCell>
+                  <TableCell className="py-1.5 text-right">
+                    <Button size="sm" className="h-7 px-3 text-xs" onClick={() => onSave(r.id)}>
+                      Guardar
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  );
+}
+
 export function DescuentosTab({ perfumes, combos, guardedFetch, onMutate }: DescuentosTabProps) {
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [importOpen, setImportOpen] = useState(false);
+
+  const setEdit = (key: string, value: string) => setEdits(prev => ({ ...prev, [key]: value }));
 
   const savePerfume = async (id: number) => {
     const val = Number(edits[`p-${id}`] ?? 0);
@@ -27,73 +109,45 @@ export function DescuentosTab({ perfumes, combos, guardedFetch, onMutate }: Desc
   };
 
   return (
-    <section className="dash-section">
-      <h2 className="dash-section-title" style={{ marginBottom: 4 }}>Descuentos</h2>
-      <p style={{ fontSize: 13, color: 'var(--text)', margin: '0 0 16px' }}>
+    <Section>
+      <Toolbar>
+        <SectionTitle>Descuentos</SectionTitle>
+        <ToolbarActions>
+          <ExportButton entity="descuentos" guardedFetch={guardedFetch} />
+          <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+            <Upload className="size-4" /> Importar
+          </Button>
+        </ToolbarActions>
+      </Toolbar>
+      <p className="text-[13px] text-muted-foreground">
         Edita el % de descuento de cada perfume o combo. El precio con descuento se calcula automaticamente.
       </p>
 
-      <h3 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 8px' }}>
-        Perfumes <span className="dash-count">{perfumes.filter(p => p.descuento > 0).length} con descuento</span>
-      </h3>
-      <div className="dash-table-wrap" style={{ marginBottom: 24 }}>
-        <table className="dash-table">
-          <thead><tr><th>Perfume</th><th>Precio</th><th>Descuento %</th><th>Precio final</th><th /></tr></thead>
-          <tbody>
-            {perfumes.map(p => {
-              const key = `p-${p.id}`;
-              const val = edits[key] ?? String(p.descuento);
-              const final_ = Number(val) > 0 ? Math.round(p.precio * (1 - Number(val) / 100)) : p.precio;
-              return (
-                <tr key={p.id}>
-                  <td className="dash-td-name">{p.nombre}</td>
-                  <td className="dash-td-price">{formatPrice(p.precio)}</td>
-                  <td style={{ width: 110 }}>
-                    <input className="dash-input" type="number" min="0" max="100" value={val}
-                      onChange={e => setEdits(prev => ({ ...prev, [key]: e.target.value }))}
-                      style={{ width: 80 }} />
-                  </td>
-                  <td className="dash-td-price">{Number(val) > 0 ? formatPrice(final_) : '—'}</td>
-                  <td className="dash-td-actions">
-                    <button className="dash-btn-accent" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => savePerfume(p.id)}>Guardar</button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      <DiscountTable
+        title="Perfumes"
+        rows={perfumes}
+        editPrefix="p"
+        edits={edits}
+        onEdit={setEdit}
+        onSave={savePerfume}
+      />
 
-      <h3 style={{ fontSize: 14, fontWeight: 600, margin: '0 0 8px' }}>
-        Combos <span className="dash-count">{combos.filter(c => c.descuento > 0).length} con descuento</span>
-      </h3>
-      <div className="dash-table-wrap">
-        <table className="dash-table">
-          <thead><tr><th>Combo</th><th>Precio</th><th>Descuento %</th><th>Precio final</th><th /></tr></thead>
-          <tbody>
-            {combos.map(c => {
-              const key = `c-${c.id}`;
-              const val = edits[key] ?? String(c.descuento);
-              const final_ = Number(val) > 0 ? Math.round(c.precio * (1 - Number(val) / 100)) : c.precio;
-              return (
-                <tr key={c.id}>
-                  <td className="dash-td-name">{c.nombre}</td>
-                  <td className="dash-td-price">{formatPrice(c.precio)}</td>
-                  <td style={{ width: 110 }}>
-                    <input className="dash-input" type="number" min="0" max="100" value={val}
-                      onChange={e => setEdits(prev => ({ ...prev, [key]: e.target.value }))}
-                      style={{ width: 80 }} />
-                  </td>
-                  <td className="dash-td-price">{Number(val) > 0 ? formatPrice(final_) : '—'}</td>
-                  <td className="dash-td-actions">
-                    <button className="dash-btn-accent" style={{ fontSize: 12, padding: '4px 10px' }} onClick={() => saveCombo(c.id)}>Guardar</button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </section>
+      <DiscountTable
+        title="Combos"
+        rows={combos}
+        editPrefix="c"
+        edits={edits}
+        onEdit={setEdit}
+        onSave={saveCombo}
+      />
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        entity="descuentos"
+        guardedFetch={guardedFetch}
+        onImported={onMutate}
+      />
+    </Section>
   );
 }

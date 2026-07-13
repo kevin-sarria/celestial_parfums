@@ -49,7 +49,7 @@ const options: swaggerJsdoc.Options = {
             duracion: { type: 'string', nullable: true },
             proyeccion: { type: 'string', nullable: true },
             imagen_url: { type: 'string', nullable: true },
-            genero: { type: 'string', enum: ['hombre', 'mujer'], nullable: true },
+            genero: { type: 'string', enum: ['dama', 'caballero', 'unisex'], nullable: true },
             categoria: { type: 'string', nullable: true },
             descuento: { type: 'integer' },
             agotado: { type: 'boolean' },

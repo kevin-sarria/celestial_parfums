@@ -60,7 +60,7 @@ export interface Pago {
 
 export interface PerfumeForm {
   nombre: string; descripcion: string; precio: string; duracion: string;
-  proyeccion: string; imagen_url: string; genero: 'hombre' | 'mujer' | '';
+  proyeccion: string; imagen_url: string; genero: 'dama' | 'caballero' | 'unisex' | '';
   categoria_id: number | ''; tipos_aroma: number[]; ocasiones: number[]; presentaciones: number[];
 }
 

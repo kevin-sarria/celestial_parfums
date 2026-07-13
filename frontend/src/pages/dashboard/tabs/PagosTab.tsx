@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
-import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { Pencil, Trash2, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { NativeSelect } from '@/components/ui/native-select';
 import Modal from '../../../components/Modal';
+import ImportModal from '../../../components/ImportModal';
+import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { pagosColumns } from '../columns';
 import { API_PAGOS, API_EMPRESAS, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
+import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, StatCard, StatRow } from '../ui';
 import type { GuardedFetch, Pago, Empresa, PagoForm } from '../types';
 import { emptyPagoForm } from '../types';
 
@@ -23,10 +30,13 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
   const [form, setForm] = useState<PagoForm>(emptyPagoForm());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [importOpen, setImportOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const load = async (p = page, s = pageSize) => {
+  const load = async (p = page, s = pageSize, term = searchTerm) => {
+    const searchQs = term ? `&search=${encodeURIComponent(term)}` : '';
     const [pRes, tRes, eRes] = await Promise.all([
-      guardedFetch(`${API_PAGOS}?page=${p}&limit=${s}`),
+      guardedFetch(`${API_PAGOS}?page=${p}&limit=${s}${searchQs}`),
       guardedFetch(`${API_PAGOS}/totales`),
       guardedFetch(API_EMPRESAS),
     ]);
@@ -98,31 +108,31 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
 
   return (
     <>
-      <section className="dash-section">
-        <div className="dash-toolbar">
-          <h2 className="dash-section-title">Pagos a Proveedores <span className="dash-count">{total}</span></h2>
-          <button className="dash-btn-accent" onClick={openCreate}>+ Registrar pago</button>
-        </div>
+      <Section>
+        <Toolbar>
+          <SectionTitle count={total}>Pagos a Proveedores</SectionTitle>
+          <ToolbarActions>
+            <ExportButton entity="proveedores" guardedFetch={guardedFetch} />
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="size-4" /> Importar
+            </Button>
+            <Button size="sm" onClick={openCreate}>+ Registrar pago</Button>
+          </ToolbarActions>
+        </Toolbar>
+
         {totales && (
-          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-            <div className="dash-stat-card">
-              <span className="dash-stat-label">Total en compras</span>
-              <span className="dash-stat-value">{formatPrice(totales.total_compras)}</span>
-            </div>
-            <div className="dash-stat-card">
-              <span className="dash-stat-label">Total en envios</span>
-              <span className="dash-stat-value">{formatPrice(totales.total_envios)}</span>
-            </div>
-            <div className="dash-stat-card">
-              <span className="dash-stat-label">Total general</span>
-              <span className="dash-stat-value">{formatPrice(totales.total_compras + totales.total_envios)}</span>
-            </div>
-          </div>
+          <StatRow>
+            <StatCard label="Total en compras" value={formatPrice(totales.total_compras)} />
+            <StatCard label="Total en envios" value={formatPrice(totales.total_envios)} />
+            <StatCard label="Total general" value={formatPrice(totales.total_compras + totales.total_envios)} />
+          </StatRow>
         )}
+
         <SmartTable
           columns={pagosColumns}
           rows={pagos}
           rowKey={p => p.id}
+          onServerSearch={t => { setSearchTerm(t); load(1, pageSize, t); }}
           pagination={{
             page, totalRows: total, pageSize,
             onPageChange: p => load(p, pageSize),
@@ -130,12 +140,24 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
           }}
           renderActions={p => (
             <>
-              <button className="dash-icon-btn" onClick={() => openEdit(p)} title="Editar"><FiEdit2 /></button>
-              <button className="dash-icon-btn" onClick={() => handleDelete(p.id)} title="Eliminar"><FiTrash2 /></button>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => openEdit(p)} title="Editar">
+                <Pencil className="size-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(p.id)} title="Eliminar">
+                <Trash2 className="size-4" />
+              </Button>
             </>
           )}
         />
-      </section>
+      </Section>
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        entity="proveedores"
+        guardedFetch={guardedFetch}
+        onImported={() => load(1)}
+      />
 
       <Modal
         open={modal.open}
@@ -145,21 +167,18 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
         submitLabel={loading ? 'Guardando...' : modal.editId ? 'Guardar cambios' : 'Registrar'}
         loading={loading}
       >
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Dia *</label>
-            <input className="dash-input" type="date" required value={form.dia}
+        <FieldRow>
+          <Field label="Dia *">
+            <Input type="date" required value={form.dia}
               onChange={e => setForm(f => ({ ...f, dia: e.target.value }))} />
-          </div>
-          <div className="dash-form-group">
-            <label>Valor compra (COP) *</label>
-            <input className="dash-input" type="number" min="0" required value={form.valor_compra}
+          </Field>
+          <Field label="Valor compra (COP) *">
+            <Input type="number" min="0" required value={form.valor_compra}
               onChange={e => setForm(f => ({ ...f, valor_compra: e.target.value }))} />
-          </div>
-        </div>
-        <div className="dash-form-group">
-          <label>Empresa *</label>
-          <select className="dash-input" value={String(form.empresa_id)}
+          </Field>
+        </FieldRow>
+        <Field label="Empresa *">
+          <NativeSelect value={String(form.empresa_id)}
             onChange={e => {
               const val = e.target.value;
               setForm(f => ({ ...f, empresa_id: val === '' ? '' : val === 'nuevo' ? 'nuevo' : Number(val) }));
@@ -167,54 +186,47 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
             <option value="">— Selecciona una empresa —</option>
             {!modal.editId && <option value="nuevo">+ Registrar empresa nueva</option>}
             {empresas.map(em => <option key={em.id} value={em.id}>{em.nombre}{em.nit ? ` · NIT: ${em.nit}` : ''}</option>)}
-          </select>
-        </div>
+          </NativeSelect>
+        </Field>
         {form.empresa_id === 'nuevo' && (
-          <div className="dash-inline-form">
-            <div className="dash-form-row">
-              <div className="dash-form-group">
-                <label>Nombre empresa *</label>
-                <input className="dash-input" value={form.nueva_nombre} maxLength={100}
+          <div className="space-y-3 rounded-xl border border-border bg-secondary/40 p-3.5">
+            <FieldRow>
+              <Field label="Nombre empresa *">
+                <Input value={form.nueva_nombre} maxLength={100}
                   onChange={e => setForm(f => ({ ...f, nueva_nombre: e.target.value }))} />
-              </div>
-              <div className="dash-form-group">
-                <label>NIT</label>
-                <input className="dash-input" value={form.nueva_nit} maxLength={20}
+              </Field>
+              <Field label="NIT">
+                <Input value={form.nueva_nit} maxLength={20}
                   onChange={e => setForm(f => ({ ...f, nueva_nit: e.target.value }))} />
-              </div>
-            </div>
-            <div className="dash-form-row">
-              <div className="dash-form-group">
-                <label>Telefono</label>
-                <input className="dash-input" value={form.nueva_telefono} maxLength={20}
+              </Field>
+            </FieldRow>
+            <FieldRow>
+              <Field label="Telefono">
+                <Input value={form.nueva_telefono} maxLength={20}
                   onChange={e => setForm(f => ({ ...f, nueva_telefono: e.target.value }))} />
-              </div>
-              <div className="dash-form-group">
-                <label>Correo</label>
-                <input className="dash-input" type="email" value={form.nueva_correo} maxLength={100}
+              </Field>
+              <Field label="Correo">
+                <Input type="email" value={form.nueva_correo} maxLength={100}
                   onChange={e => setForm(f => ({ ...f, nueva_correo: e.target.value }))} />
-              </div>
-            </div>
-            <div className="dash-form-group">
-              <label>Direccion</label>
-              <input className="dash-input" value={form.nueva_direccion} maxLength={150}
+              </Field>
+            </FieldRow>
+            <Field label="Direccion">
+              <Input value={form.nueva_direccion} maxLength={150}
                 onChange={e => setForm(f => ({ ...f, nueva_direccion: e.target.value }))} />
-            </div>
+            </Field>
           </div>
         )}
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Costo de envio (COP)</label>
-            <input className="dash-input" type="number" min="0" value={form.coste_envio}
+        <FieldRow>
+          <Field label="Costo de envio (COP)">
+            <Input type="number" min="0" value={form.coste_envio}
               onChange={e => setForm(f => ({ ...f, coste_envio: e.target.value }))} />
-          </div>
-        </div>
-        <div className="dash-form-group">
-          <label>Detalles adicionales</label>
-          <textarea className="dash-input dash-textarea" rows={2} value={form.detalles_adicionales} maxLength={300}
+          </Field>
+        </FieldRow>
+        <Field label="Detalles adicionales">
+          <Textarea rows={2} value={form.detalles_adicionales} maxLength={300}
             onChange={e => setForm(f => ({ ...f, detalles_adicionales: e.target.value }))} />
-        </div>
-        {error && <p className="dash-error">{error}</p>}
+        </Field>
+        <FormError>{error}</FormError>
       </Modal>
     </>
   );

@@ -1,4 +1,13 @@
 import { type ReactNode, useState, useRef, useCallback } from 'react';
+import { Search, X, Filter, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { NativeSelect } from '@/components/ui/native-select';
+import { cn } from '@/lib/utils';
 import type { ColumnDef, FilterValue } from './tableTypes';
 import { useTableControls } from './useTableControls';
 import { ColumnFilterPopover } from './ColumnFilterPopover';
@@ -20,7 +29,15 @@ interface SmartTableProps<T> {
   renderActions?: (row: T) => ReactNode;
   emptyText?: string;
   pagination?: PaginationProps;
+  /**
+   * Si se define, la búsqueda global se delega al servidor (busca en TODA la data,
+   * no solo en la página cargada). Se dispara con debounce de 2s tras dejar de escribir;
+   * al vaciar el campo se restaura la lista original de inmediato.
+   */
+  onServerSearch?: (term: string) => void;
 }
+
+const SERVER_SEARCH_DEBOUNCE_MS = 2000;
 
 function getPages(page: number, totalPages: number): (number | '...')[] {
   if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -36,15 +53,50 @@ export function SmartTable<T>({
   renderActions,
   emptyText = 'Sin resultados',
   pagination,
+  onServerSearch,
 }: SmartTableProps<T>) {
   const { processed, sort, toggleSort, filters, setFilter, clearAll, search, setSearch, activeFiltersCount } =
     useTableControls(rows, columns);
+
+  // ── Búsqueda en servidor (opcional) ──
+  const isServerSearch = !!onServerSearch;
+  const [serverTerm, setServerTerm] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const searchValue = isServerSearch ? serverTerm : search;
+
+  const handleSearchChange = (value: string) => {
+    if (!isServerSearch) { setSearch(value); return; }
+    setServerTerm(value);
+    clearTimeout(debounceRef.current);
+    if (value.trim() === '') {
+      // Al borrar, restaura la lista original de inmediato
+      onServerSearch!('');
+    } else {
+      debounceRef.current = setTimeout(() => onServerSearch!(value.trim()), SERVER_SEARCH_DEBOUNCE_MS);
+    }
+  };
+
+  const handleSearchClear = () => {
+    if (isServerSearch) {
+      clearTimeout(debounceRef.current);
+      setServerTerm('');
+      onServerSearch!('');
+    } else {
+      setSearch('');
+    }
+  };
+
+  const handleClearAll = () => {
+    clearAll();
+    if (isServerSearch && serverTerm) handleSearchClear();
+  };
 
   const [openFilter, setOpenFilter] = useState<string | null>(null);
   const [filterAnchor, setFilterAnchor] = useState<HTMLElement | null>(null);
 
   const [tooltip, setTooltip] = useState<{ text: string; x: number; y: number } | null>(null);
-  const tooltipTimer = useRef<ReturnType<typeof setTimeout>>();
+  const tooltipTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const showTooltip = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const el = e.currentTarget;
@@ -63,41 +115,49 @@ export function SmartTable<T>({
     setTooltip(null);
   }, []);
 
-  const hasActiveControls = activeFiltersCount > 0 || search.trim().length > 0 || sort !== null;
+  const hasActiveControls = activeFiltersCount > 0 || searchValue.trim().length > 0 || sort !== null;
   const totalPages = pagination ? Math.ceil(pagination.totalRows / pagination.pageSize) : 0;
 
+  const SortIcon = ({ dir }: { dir: 'asc' | 'desc' | null }) =>
+    dir === 'asc' ? <ArrowUp className="size-3.5" /> : dir === 'desc' ? <ArrowDown className="size-3.5" /> : <ArrowUpDown className="size-3.5 opacity-40" />;
+
   return (
-    <div className="st-root">
-      {/* Toolbar: search + filter summary */}
-      <div className="st-toolbar">
-        <div className="st-search-wrap">
-          <span className="st-search-icon">⊘</span>
-          <input
-            className="st-search"
-            placeholder="Buscar en todos los campos..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+    <div className="space-y-3">
+      {/* ── Toolbar: búsqueda global + resumen de filtros ── */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative w-full max-w-72">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="h-9 pl-8 pr-8"
+            placeholder={isServerSearch ? 'Buscar en todos los registros...' : 'Buscar en todos los campos...'}
+            value={searchValue}
+            onChange={e => handleSearchChange(e.target.value)}
             aria-label="Búsqueda global"
-            maxLength={200}
+            maxLength={100}
           />
-          {search && (
-            <button type="button" className="st-search-clear" onClick={() => setSearch('')} aria-label="Limpiar búsqueda">
-              ✕
+          {searchValue && (
+            <button
+              type="button"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-muted-foreground transition-colors hover:text-foreground"
+              onClick={handleSearchClear}
+              aria-label="Limpiar búsqueda"
+            >
+              <X className="size-4" />
             </button>
           )}
         </div>
-        <div className="st-toolbar-right">
+        <div className="flex items-center gap-2.5">
           {activeFiltersCount > 0 && (
-            <span className="st-filter-badge">
+            <Badge variant="secondary" className="rounded-full">
               {activeFiltersCount} filtro{activeFiltersCount !== 1 ? 's' : ''} activo{activeFiltersCount !== 1 ? 's' : ''}
-            </span>
+            </Badge>
           )}
           {hasActiveControls && (
-            <button type="button" className="st-clear-btn" onClick={clearAll}>
+            <Button type="button" variant="ghost" size="sm" onClick={handleClearAll}>
               Limpiar todo
-            </button>
+            </Button>
           )}
-          <span className="st-count">
+          <span className="text-xs text-muted-foreground">
             {processed.length !== rows.length
               ? `${processed.length} de ${rows.length}`
               : pagination
@@ -107,11 +167,11 @@ export function SmartTable<T>({
         </div>
       </div>
 
-      {/* Table */}
-      <div className="dash-table-wrap">
-        <table className="dash-table">
-          <thead>
-            <tr>
+      {/* ── Tabla ── */}
+      <div className="overflow-x-auto rounded-xl border border-border">
+        <Table className="min-w-150">
+          <TableHeader className="bg-secondary/60">
+            <TableRow className="hover:bg-transparent">
               {columns.map(col => {
                 const isFilterActive = !!filters[col.key];
                 const sortDir = sort?.key === col.key ? sort.dir : null;
@@ -119,29 +179,37 @@ export function SmartTable<T>({
                 const isFilterable = col.filterable !== false;
 
                 return (
-                  <th key={col.key} className={col.className}>
-                    <div className="st-th-inner">
+                  <TableHead key={col.key} className={cn('h-10', col.className)}>
+                    <div className="flex items-center gap-0.5">
                       {isSortable ? (
                         <button
                           type="button"
-                          className={`st-sort-btn${sortDir ? ' st-sort-btn--active' : ''}`}
+                          className={cn(
+                            'flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors',
+                            sortDir ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+                          )}
                           onClick={() => toggleSort(col.key)}
                           title={`Ordenar por ${col.header}`}
                         >
                           {col.header}
-                          <span className="st-sort-icon" aria-hidden="true">
-                            {sortDir === 'asc' ? '↑' : sortDir === 'desc' ? '↓' : '↕'}
-                          </span>
+                          <SortIcon dir={sortDir} />
                         </button>
                       ) : (
-                        <span className="st-th-label">{col.header}</span>
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                          {col.header}
+                        </span>
                       )}
 
                       {isFilterable && (
-                        <div className="st-filter-wrap">
+                        <div className="relative">
                           <button
                             type="button"
-                            className={`st-filter-btn${isFilterActive ? ' st-filter-btn--active' : ''}`}
+                            className={cn(
+                              'ml-0.5 rounded p-1 transition-colors',
+                              isFilterActive
+                                ? 'text-primary'
+                                : 'text-muted-foreground/50 hover:text-foreground',
+                            )}
                             onClick={e => {
                               if (openFilter === col.key) {
                                 setOpenFilter(null);
@@ -154,7 +222,7 @@ export function SmartTable<T>({
                             title={isFilterActive ? 'Filtro activo — clic para editar' : `Filtrar por ${col.header}`}
                             aria-pressed={isFilterActive}
                           >
-                            {isFilterActive ? '⬛' : '⬜'}
+                            <Filter className={cn('size-3.5', isFilterActive && 'fill-current')} />
                           </button>
                           {openFilter === col.key && (
                             <ColumnFilterPopover
@@ -168,103 +236,119 @@ export function SmartTable<T>({
                         </div>
                       )}
                     </div>
-                  </th>
+                  </TableHead>
                 );
               })}
-              {renderActions && <th className="dash-td-actions" />}
-            </tr>
-          </thead>
-          <tbody>
+              {renderActions && <TableHead className="w-0" />}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {processed.length === 0 ? (
-              <tr>
-                <td
+              <TableRow>
+                <TableCell
                   colSpan={columns.length + (renderActions ? 1 : 0)}
-                  style={{ textAlign: 'center', padding: '32px 12px', color: 'var(--text)' }}
+                  className="py-10 text-center text-muted-foreground"
                 >
                   {emptyText}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               processed.map((row, i) => (
-                <tr key={rowKey ? rowKey(row) : i}>
+                <TableRow key={rowKey ? rowKey(row) : i} className="text-[13px]">
                   {columns.map(col => {
                     const raw = String(col.getValue(row) ?? '') || '—';
                     const content = col.render ? col.render(row) : raw;
                     return (
-                      <td key={col.key} className={col.className}>
+                      <TableCell key={col.key} className={cn('py-2.5', col.className)}>
                         {col.noTruncate ? content : (
-                          <div className="dash-cell" data-tip={raw} onMouseEnter={showTooltip} onMouseLeave={hideTooltip}>
+                          <div
+                            className="max-w-60 truncate"
+                            data-tip={raw}
+                            onMouseEnter={showTooltip}
+                            onMouseLeave={hideTooltip}
+                          >
                             {content}
                           </div>
                         )}
-                      </td>
+                      </TableCell>
                     );
                   })}
                   {renderActions && (
-                    <td className="dash-td-actions">{renderActions(row)}</td>
+                    <TableCell className="whitespace-nowrap py-2 text-right">
+                      <div className="flex items-center justify-end gap-1">{renderActions(row)}</div>
+                    </TableCell>
                   )}
-                </tr>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
 
-      {/* Footer: page size selector + paginator */}
+      {/* ── Footer: tamaño de página + paginador ── */}
       {pagination && totalPages >= 1 && (
-        <div className="st-footer">
-          <div className="st-page-size">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <label htmlFor="st-ps">Filas:</label>
-            <select
+            <NativeSelect
               id="st-ps"
-              className="st-page-size-select"
+              className="w-18"
               value={pagination.pageSize}
               onChange={e => pagination.onPageSizeChange(Number(e.target.value))}
             >
               {PAGE_SIZE_OPTIONS.map(n => (
                 <option key={n} value={n}>{n}</option>
               ))}
-            </select>
+            </NativeSelect>
           </div>
 
           {totalPages > 1 && (
-            <div className="st-paginator">
-              <button
-                className="st-pg-btn"
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-8"
                 disabled={pagination.page === 1}
                 onClick={() => pagination.onPageChange(pagination.page - 1)}
                 aria-label="Página anterior"
               >
                 ‹
-              </button>
+              </Button>
               {getPages(pagination.page, totalPages).map((p, i) =>
                 p === '...' ? (
-                  <span key={`e${i}`} className="st-pg-ellipsis">…</span>
+                  <span key={`e${i}`} className="px-1 text-muted-foreground">…</span>
                 ) : (
-                  <button
+                  <Button
                     key={p}
-                    className={`st-pg-btn${p === pagination.page ? ' st-pg-btn--active' : ''}`}
+                    variant={p === pagination.page ? 'default' : 'outline'}
+                    size="icon"
+                    className="size-8 text-xs"
                     onClick={() => pagination.onPageChange(p as number)}
                   >
                     {p}
-                  </button>
+                  </Button>
                 )
               )}
-              <button
-                className="st-pg-btn"
+              <Button
+                variant="outline"
+                size="icon"
+                className="size-8"
                 disabled={pagination.page === totalPages}
                 onClick={() => pagination.onPageChange(pagination.page + 1)}
                 aria-label="Página siguiente"
               >
                 ›
-              </button>
+              </Button>
             </div>
           )}
         </div>
       )}
 
       {tooltip && (
-        <div className="dash-cell-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+        <div
+          className="fixed z-100 max-w-95 rounded-lg border border-border bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-md"
+          style={{ left: tooltip.x, top: tooltip.y }}
+        >
           {tooltip.text}
         </div>
       )}

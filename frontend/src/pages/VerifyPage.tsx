@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { AuthCard } from '@/components/auth/AuthCard';
 import { BASE_URL } from '../infrastructure/api/client';
-import '../styles/login.css';
 
 export default function VerifyPage() {
   const [params] = useSearchParams();
@@ -35,39 +36,29 @@ export default function VerifyPage() {
   }, [params]);
 
   return (
-    <div className="login-wrapper">
-      <div className="login-card">
-        <div className="login-header">
-          <h1 className="login-brand">Celestial Parfums</h1>
+    <AuthCard>
+      {status === 'loading' && (
+        <p className="text-center text-sm text-muted-foreground">Verificando tu cuenta...</p>
+      )}
+
+      {status === 'success' && (
+        <div className="space-y-4 text-center">
+          <span className="block font-display text-3xl text-primary">✦</span>
+          <p className="text-sm text-muted-foreground">{message}</p>
+          <Button className="w-full" onClick={() => navigate('/login')}>
+            Iniciar sesión
+          </Button>
         </div>
+      )}
 
-        {status === 'loading' && (
-          <p className="login-subtitle" style={{ textAlign: 'center' }}>
-            Verificando tu cuenta...
-          </p>
-        )}
-
-        {status === 'success' && (
-          <div className="register-success">
-            <span className="register-success-icon">✦</span>
-            <p>{message}</p>
-            <button className="login-btn" onClick={() => navigate('/login')}>
-              Iniciar sesión
-            </button>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div style={{ textAlign: 'center' }}>
-            <p className="login-error" style={{ marginBottom: '20px' }}>
-              {message}
-            </p>
-            <button className="login-btn" onClick={() => navigate('/register')}>
-              Volver al registro
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+      {status === 'error' && (
+        <div className="space-y-4 text-center">
+          <p className="text-[13px] font-medium text-destructive">{message}</p>
+          <Button className="w-full" onClick={() => navigate('/register')}>
+            Volver al registro
+          </Button>
+        </div>
+      )}
+    </AuthCard>
   );
 }

@@ -1,11 +1,19 @@
 import { useRef, useState } from 'react';
-import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { Pencil, Trash2, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { NativeSelect } from '@/components/ui/native-select';
+import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
+import ImportModal from '../../../components/ImportModal';
+import ExportButton from '../../../components/ExportButton';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { combosColumns } from '../columns';
 import { API_COMBOS } from '../helpers';
 import { BASE_URL } from '../../../infrastructure/api/client';
+import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { GuardedFetch, Lookup, ComboForm } from '../types';
 import { emptyComboForm } from '../types';
 
@@ -18,12 +26,14 @@ interface CombosTabProps {
   guardedFetch: GuardedFetch;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  /** Búsqueda global contra el backend (toda la data, no solo la página cargada). */
+  onSearch: (term: string) => void;
   onMutate: () => void;
 }
 
 export function CombosTab({
   combos, page, total, pageSize, categorias,
-  guardedFetch, onPageChange, onPageSizeChange, onMutate,
+  guardedFetch, onPageChange, onPageSizeChange, onSearch, onMutate,
 }: CombosTabProps) {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<ComboForm>(emptyComboForm());
@@ -31,6 +41,7 @@ export function CombosTab({
   const [formError, setFormError] = useState('');
   const [imgMode, setImgMode] = useState<'url' | 'file'>('url');
   const [uploading, setUploading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openCreate = () => { setForm(emptyComboForm()); setFormError(''); setImgMode('url'); setModal({ open: true, editId: null }); };
@@ -86,25 +97,47 @@ export function CombosTab({
 
   return (
     <>
-      <section className="dash-section">
-        <div className="dash-toolbar">
-          <h2 className="dash-section-title">Combos <span className="dash-count">{combos.length}</span></h2>
-          <button className="dash-btn-accent" onClick={openCreate}>+ Nuevo combo</button>
-        </div>
+      <Section>
+        <Toolbar>
+          <SectionTitle count={combos.length}>Combos</SectionTitle>
+          <ToolbarActions>
+            <ExportButton entity="combos" guardedFetch={guardedFetch} />
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="size-4" /> Importar
+            </Button>
+            <Button size="sm" onClick={openCreate}>+ Nuevo combo</Button>
+          </ToolbarActions>
+        </Toolbar>
+
         <SmartTable
           columns={combosColumns}
           rows={combos}
           rowKey={c => c.id}
+          onServerSearch={onSearch}
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
           renderActions={c => (
             <>
-              {c.imagen_url && <img src={c.imagen_url} alt={c.nombre} className="dash-thumb" style={{ marginRight: 4 }} />}
-              <button className="dash-icon-btn" onClick={() => openEdit(c)} title="Editar"><FiEdit2 /></button>
-              <button className="dash-icon-btn" onClick={() => handleDelete(c.id)} title="Eliminar"><FiTrash2 /></button>
+              {c.imagen_url && (
+                <img src={c.imagen_url} alt={c.nombre} className="size-8 rounded-md border border-border object-cover" />
+              )}
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => openEdit(c)} title="Editar">
+                <Pencil className="size-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)} title="Eliminar">
+                <Trash2 className="size-4" />
+              </Button>
             </>
           )}
         />
-      </section>
+      </Section>
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        entity="combos"
+        guardedFetch={guardedFetch}
+        onImported={onMutate}
+      />
 
       <Modal
         open={modal.open}
@@ -114,71 +147,80 @@ export function CombosTab({
         submitLabel={formLoading ? 'Guardando...' : modal.editId ? 'Guardar cambios' : 'Crear combo'}
         loading={formLoading}
       >
-        <div className="dash-form-group">
-          <label>Nombre *</label>
-          <input className="dash-input" value={form.nombre} required maxLength={100}
+        <Field label="Nombre *">
+          <Input value={form.nombre} required maxLength={100}
             onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
-        </div>
-        <div className="dash-form-group">
-          <label>Descripcion</label>
-          <textarea className="dash-input dash-textarea" rows={2} value={form.descripcion} maxLength={300}
+        </Field>
+        <Field label="Descripcion">
+          <Textarea rows={2} value={form.descripcion} maxLength={300}
             onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} />
-        </div>
-        <div className="dash-form-group">
-          <label>Imagen</label>
-          <div className="dash-img-toggle">
-            <button type="button" className={`dash-img-tab${imgMode === 'url' ? ' dash-img-tab--active' : ''}`} onClick={() => setImgMode('url')}>URL</button>
-            <button type="button" className={`dash-img-tab${imgMode === 'file' ? ' dash-img-tab--active' : ''}`} onClick={() => { setImgMode('file'); fileInputRef.current?.click(); }}>Subir archivo</button>
+        </Field>
+        <Field label="Imagen">
+          <div className="mb-2 inline-flex rounded-lg border border-border p-0.5">
+            <button
+              type="button"
+              className={cn('rounded-md px-3 py-1 text-xs font-medium transition-colors', imgMode === 'url' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              onClick={() => setImgMode('url')}
+            >
+              URL
+            </button>
+            <button
+              type="button"
+              className={cn('rounded-md px-3 py-1 text-xs font-medium transition-colors', imgMode === 'file' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              onClick={() => { setImgMode('file'); fileInputRef.current?.click(); }}
+            >
+              Subir archivo
+            </button>
           </div>
           {imgMode === 'url' ? (
-            <input className="dash-input" placeholder="https://..." value={form.imagen_url} maxLength={500}
+            <Input placeholder="https://..." value={form.imagen_url} maxLength={500}
               onChange={e => setForm(f => ({ ...f, imagen_url: e.target.value }))} />
           ) : (
-            <div className="dash-file-area" onClick={() => fileInputRef.current?.click()}>
+            <div
+              className="flex min-h-20 cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              onClick={() => fileInputRef.current?.click()}
+            >
               {uploading ? 'Subiendo...' : form.imagen_url
-                ? <><img src={form.imagen_url} alt="preview" className="dash-img-preview" /> <span>Cambiar</span></>
+                ? <><img src={form.imagen_url} alt="preview" className="h-16 rounded-lg object-cover" /> <span>Cambiar</span></>
                 : '📁 Haz clic para seleccionar una imagen'}
             </div>
           )}
-          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileUpload} />
-          {form.imagen_url && imgMode === 'url' && <img src={form.imagen_url} alt="preview" className="dash-img-preview" />}
-        </div>
-        <div className="dash-form-group">
-          <label>Categoria</label>
-          <select className="dash-input" value={form.categoria_id}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+          {form.imagen_url && imgMode === 'url' && (
+            <img src={form.imagen_url} alt="preview" className="mt-2 h-20 rounded-lg border border-border object-cover" />
+          )}
+        </Field>
+        <Field label="Categoria">
+          <NativeSelect value={form.categoria_id}
             onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value !== '' ? Number(e.target.value) : '' }))}>
             <option value="">Sin categoria</option>
             {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-          </select>
-        </div>
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Cantidad de perfumes *</label>
-            <input className="dash-input" type="number" min="1" required value={form.cantidad}
+          </NativeSelect>
+        </Field>
+        <FieldRow>
+          <Field label="Cantidad de perfumes *">
+            <Input type="number" min="1" required value={form.cantidad}
               onChange={e => setForm(f => ({ ...f, cantidad: e.target.value }))} />
-          </div>
-          <div className="dash-form-group">
-            <label>Precio (COP) *</label>
-            <input className="dash-input" type="number" min="0" required value={form.precio}
+          </Field>
+          <Field label="Precio (COP) *">
+            <Input type="number" min="0" required value={form.precio}
               onChange={e => setForm(f => ({ ...f, precio: e.target.value }))} />
-          </div>
-        </div>
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Descuento (%)</label>
-            <input className="dash-input" type="number" min="0" max="100" value={form.descuento}
+          </Field>
+        </FieldRow>
+        <FieldRow>
+          <Field label="Descuento (%)">
+            <Input type="number" min="0" max="100" value={form.descuento}
               onChange={e => setForm(f => ({ ...f, descuento: e.target.value }))} />
-          </div>
-          <div className="dash-form-group">
-            <label>Estado</label>
-            <select className="dash-input" value={form.activo ? 'true' : 'false'}
+          </Field>
+          <Field label="Estado">
+            <NativeSelect value={form.activo ? 'true' : 'false'}
               onChange={e => setForm(f => ({ ...f, activo: e.target.value === 'true' }))}>
               <option value="true">Activo</option>
               <option value="false">Inactivo</option>
-            </select>
-          </div>
-        </div>
-        {formError && <p className="dash-error">{formError}</p>}
+            </NativeSelect>
+          </Field>
+        </FieldRow>
+        <FormError>{formError}</FormError>
       </Modal>
     </>
   );

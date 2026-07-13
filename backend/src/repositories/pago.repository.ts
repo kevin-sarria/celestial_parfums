@@ -21,11 +21,20 @@ const mapPago = (p: any) => ({
   created_at:           p.created_at,
 });
 
-export const getAllPagos = async (page: number, limit: number) => {
+export const getAllPagos = async (page: number, limit: number, search?: string) => {
   const skip = (page - 1) * limit;
+  const where = search
+    ? {
+        OR: [
+          { detalles_adicionales: { contains: search } },
+          { empresa: { nombre: { contains: search } } },
+          { empresa: { nit: { contains: search } } },
+        ],
+      }
+    : undefined;
   const [rows, total] = await Promise.all([
-    prisma.pagoProveedor.findMany({ skip, take: limit, orderBy: { dia: 'desc' }, include: includeEmpresa }),
-    prisma.pagoProveedor.count(),
+    prisma.pagoProveedor.findMany({ where, skip, take: limit, orderBy: { dia: 'desc' }, include: includeEmpresa }),
+    prisma.pagoProveedor.count({ where }),
   ]);
   return paginatedResponse(rows.map(mapPago), total, page, limit);
 };

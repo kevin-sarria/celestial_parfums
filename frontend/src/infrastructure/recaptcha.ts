@@ -3,7 +3,8 @@ const SCRIPT_ID = 'recaptcha-script';
 
 declare global {
   interface Window {
-    grecaptcha: {
+    /** Opcional: el script de reCAPTCHA se carga de forma diferida. */
+    grecaptcha?: {
       ready: (cb: () => void) => void;
       execute: (siteKey: string, options: { action: string }) => Promise<string>;
     };
@@ -53,9 +54,10 @@ export async function executeRecaptcha(action: string): Promise<string> {
   loadScript();
   await waitForRecaptcha();
   return new Promise((resolve, reject) => {
-    window.grecaptcha.ready(async () => {
+    // Tras waitForRecaptcha, grecaptcha está garantizado
+    window.grecaptcha!.ready(async () => {
       try {
-        const token = await window.grecaptcha.execute(SITE_KEY, { action });
+        const token = await window.grecaptcha!.execute(SITE_KEY, { action });
         resolve(token);
       } catch (err) {
         reject(err);

@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
-import Modal from './Modal';
+import { Minus, Plus, ShoppingCart } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Chip } from './catalog/FilterChips';
 import { useCart } from '../application/context/useCart';
-import '../styles/cart.css';
 
 interface Props {
   open: boolean;
@@ -31,10 +39,10 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
       setCantidad(1);
       setPresentacion(presentaciones[0] ?? '');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const handleSubmit = (e: { preventDefault(): void }) => {
-    e.preventDefault();
+  const handleAdd = () => {
     addItem({
       productoId: producto.id,
       nombre: producto.nombre,
@@ -51,48 +59,79 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title="Agregar al carrito"
-      onSubmit={handleSubmit}
-      submitLabel="Agregar al carrito"
-      maxWidth={420}
-    >
-      <div className="atc-product">
-        {producto.imagen_url && <img src={producto.imagen_url} alt={producto.nombre} className="atc-product-img" />}
-        <div className="atc-product-info">
-          <span className="atc-product-name">{producto.nombre}</span>
-          {tipo && <span className="atc-product-tipo">{tipo}</span>}
-        </div>
-      </div>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="font-display text-xl font-medium text-ink">
+            Agregar al carrito
+          </DialogTitle>
+        </DialogHeader>
 
-      {presentaciones.length > 0 && (
-        <div className="dash-form-group">
-          <label>Presentacion</label>
-          <div className="atc-chips">
-            {presentaciones.map(p => (
-              <button
-                key={p}
-                type="button"
-                className={`atc-chip${presentacion === p ? ' atc-chip--active' : ''}`}
-                onClick={() => setPresentacion(p)}
-              >
-                {p}
-              </button>
-            ))}
+        <div className="flex items-center gap-3">
+          {producto.imagen_url && (
+            <img
+              src={producto.imagen_url}
+              alt={producto.nombre}
+              className="size-16 rounded-xl border border-border object-cover"
+            />
+          )}
+          <div className="min-w-0">
+            <p className="truncate text-[14.5px] font-medium text-foreground">{producto.nombre}</p>
+            {tipo && <p className="text-[12.5px] text-muted-foreground">{tipo}</p>}
           </div>
         </div>
-      )}
 
-      <div className="dash-form-group">
-        <label>Cantidad</label>
-        <div className="atc-qty">
-          <button type="button" onClick={() => setCantidad(q => Math.max(1, q - 1))}>-</button>
-          <span>{cantidad}</span>
-          <button type="button" onClick={() => setCantidad(q => q + 1)}>+</button>
+        {presentaciones.length > 0 && (
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              Presentación
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {presentaciones.map((p) => (
+                <Chip key={p} active={presentacion === p} onClick={() => setPresentacion(p)}>
+                  {p}
+                </Chip>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+            Cantidad
+          </p>
+          <div className="flex w-fit items-center rounded-full border border-border">
+            <button
+              type="button"
+              className="flex size-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+              onClick={() => setCantidad((q) => Math.max(1, q - 1))}
+              disabled={cantidad <= 1}
+              aria-label="Disminuir cantidad"
+            >
+              <Minus className="size-4" />
+            </button>
+            <span className="w-8 text-center text-[14px] font-medium">{cantidad}</span>
+            <button
+              type="button"
+              className="flex size-9 items-center justify-center text-muted-foreground transition-colors hover:text-foreground"
+              onClick={() => setCantidad((q) => q + 1)}
+              aria-label="Aumentar cantidad"
+            >
+              <Plus className="size-4" />
+            </button>
+          </div>
         </div>
-      </div>
-    </Modal>
+
+        <DialogFooter className="gap-2">
+          <Button variant="ghost" className="rounded-full" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button className="rounded-full" onClick={handleAdd}>
+            <ShoppingCart className="size-4" />
+            Agregar al carrito
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

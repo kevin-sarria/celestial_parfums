@@ -1,7 +1,7 @@
 import * as repo from '../repositories/pago.repository';
 import { CreatePagoDTO } from '../types/pago.type';
 
-export const getAllPagos = (page: number, limit: number) => repo.getAllPagos(page, limit);
+export const getAllPagos = (page: number, limit: number, search?: string) => repo.getAllPagos(page, limit, search);
 
 export const createPago = (data: CreatePagoDTO) => {
   if (!data.dia || !data.empresa_id || !data.valor_compra)

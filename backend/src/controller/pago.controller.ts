@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import * as pagoService from '../services/pago.service';
-import { parsePagination } from '../utils/pagination';
+import { parsePagination, parseSearch } from '../utils/pagination';
 
 export const getPagos = async (req: Request, res: Response) => {
   try {
     const { page, limit } = parsePagination(req.query as any);
-    const result = await pagoService.getAllPagos(page, limit);
+    const result = await pagoService.getAllPagos(page, limit, parseSearch(req.query as any));
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message });

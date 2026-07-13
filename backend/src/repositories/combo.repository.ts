@@ -28,11 +28,20 @@ export const selectAllCombos = async () => {
   return combos.map(mapCombo);
 };
 
-export const selectCombosPaginated = async (page: number, limit: number) => {
+export const selectCombosPaginated = async (page: number, limit: number, search?: string) => {
   const skip = (page - 1) * limit;
+  const where: Prisma.ComboWhereInput | undefined = search
+    ? {
+        OR: [
+          { nombre: { contains: search } },
+          { descripcion: { contains: search } },
+          { categoria: { nombre: { contains: search } } },
+        ],
+      }
+    : undefined;
   const [rows, total] = await Promise.all([
-    prisma.combo.findMany({ include: { categoria: true }, orderBy: comboOrderBy, skip, take: limit }),
-    prisma.combo.count(),
+    prisma.combo.findMany({ where, include: { categoria: true }, orderBy: comboOrderBy, skip, take: limit }),
+    prisma.combo.count({ where }),
   ]);
   return paginatedResponse(rows.map(mapCombo), total, page, limit);
 };

@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AuthCard } from '@/components/auth/AuthCard';
+import { PasswordInput } from '@/components/auth/PasswordInput';
 import { loginSchema } from '../domain/entities/auth.schema';
 import { BASE_URL } from '../infrastructure/api/client';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
-import '../styles/login.css';
 import { useAuthContext } from '../application/context/useAuthContext';
 
 export default function LoginPage() {
@@ -12,7 +15,6 @@ export default function LoginPage() {
   const auth = useAuthContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -62,57 +64,46 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-wrapper">
-      <div className="login-card">
-        <div className="login-header">
-          <h1 className="login-brand">Celestial Parfums</h1>
-          <p className="login-subtitle">Inicia sesión en tu cuenta</p>
+    <AuthCard subtitle="Inicia sesión en tu cuenta">
+      <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+        <div className="space-y-1.5">
+          <Label htmlFor="email">Correo electrónico</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="correo@ejemplo.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoComplete="email"
+          />
         </div>
 
-        <form className="login-form" onSubmit={handleSubmit} noValidate>
-          <div className="form-group">
-            <label htmlFor="email">Correo electrónico</label>
-            <input
-              id="email"
-              type="email"
-              placeholder="correo@ejemplo.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoComplete="email"
-            />
-          </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Contraseña</Label>
+          <PasswordInput
+            id="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            autoComplete="current-password"
+          />
+        </div>
 
-          <div className="form-group">
-            <label htmlFor="password">Contraseña</label>
-            <div className="input-password-wrap">
-              <input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-              />
-              <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)}>
-                {showPassword ? <FiEyeOff /> : <FiEye />}
-              </button>
-            </div>
-          </div>
+        {error && <p className="text-[13px] font-medium text-destructive">{error}</p>}
 
-          {error && <p className="login-error">{error}</p>}
+        <Button className="w-full" type="submit" disabled={loading}>
+          {loading ? 'Ingresando...' : 'Ingresar'}
+        </Button>
 
-          <button className="login-btn" type="submit" disabled={loading}>
-            {loading ? 'Ingresando...' : 'Ingresar'}
-          </button>
-
-          <p className="login-switch">
-            ¿No tienes cuenta?{' '}
-            <Link to="/register">Crear cuenta</Link>
-          </p>
-        </form>
-      </div>
-    </div>
+        <p className="text-center text-[13px] text-muted-foreground">
+          ¿No tienes cuenta?{' '}
+          <Link to="/register" className="font-semibold text-primary underline-offset-4 hover:underline">
+            Crear cuenta
+          </Link>
+        </p>
+      </form>
+    </AuthCard>
   );
 }

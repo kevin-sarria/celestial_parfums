@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { FiEye, FiEyeOff } from 'react-icons/fi';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AuthCard } from '@/components/auth/AuthCard';
+import { PasswordInput } from '@/components/auth/PasswordInput';
 import { registerSchema } from '../domain/entities/auth.schema';
 import { BASE_URL } from '../infrastructure/api/client';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
-import '../styles/login.css';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -15,8 +18,6 @@ export default function RegisterPage() {
     password: '',
     confirm: '',
   });
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -74,112 +75,95 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="login-wrapper">
-      <div className="login-card">
-        <div className="login-header">
-          <h1 className="login-brand">Celestial Parfums</h1>
-          <p className="login-subtitle">Crea tu cuenta</p>
+    <AuthCard subtitle={success ? undefined : 'Crea tu cuenta'}>
+      {success ? (
+        <div className="space-y-4 text-center">
+          <span className="block font-display text-3xl text-primary">✦</span>
+          <p className="text-sm text-muted-foreground">{success}</p>
+          <Button className="w-full" onClick={() => navigate('/login')}>
+            Ir al login
+          </Button>
         </div>
-
-        {success ? (
-          <div className="register-success">
-            <span className="register-success-icon">✦</span>
-            <p>{success}</p>
-            <button className="login-btn" onClick={() => navigate('/login')}>
-              Ir al login
-            </button>
-          </div>
-        ) : (
-          <form className="login-form" onSubmit={handleSubmit} noValidate>
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="nombre">Nombre</label>
-                <input
-                  id="nombre"
-                  type="text"
-                  placeholder="Juan"
-                  value={form.nombre}
-                  onChange={set('nombre')}
-                  required
-                  autoComplete="given-name"
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="apellido">Apellido</label>
-                <input
-                  id="apellido"
-                  type="text"
-                  placeholder="Pérez"
-                  value={form.apellido}
-                  onChange={set('apellido')}
-                  required
-                  autoComplete="family-name"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="email">Correo electrónico</label>
-              <input
-                id="email"
-                type="email"
-                placeholder="correo@ejemplo.com"
-                value={form.email}
-                onChange={set('email')}
+      ) : (
+        <form className="space-y-4" onSubmit={handleSubmit} noValidate>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="nombre">Nombre</Label>
+              <Input
+                id="nombre"
+                type="text"
+                placeholder="Juan"
+                value={form.nombre}
+                onChange={set('nombre')}
                 required
-                autoComplete="email"
+                autoComplete="given-name"
               />
             </div>
-
-            <div className="form-group">
-              <label htmlFor="password">Contraseña</label>
-              <div className="input-password-wrap">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={form.password}
-                  onChange={set('password')}
-                  required
-                  autoComplete="new-password"
-                />
-                <button type="button" className="password-toggle" onClick={() => setShowPassword(v => !v)}>
-                  {showPassword ? <FiEyeOff /> : <FiEye />}
-                </button>
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="apellido">Apellido</Label>
+              <Input
+                id="apellido"
+                type="text"
+                placeholder="Pérez"
+                value={form.apellido}
+                onChange={set('apellido')}
+                required
+                autoComplete="family-name"
+              />
             </div>
+          </div>
 
-            <div className="form-group">
-              <label htmlFor="confirm">Confirmar contraseña</label>
-              <div className="input-password-wrap">
-                <input
-                  id="confirm"
-                  type={showConfirm ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={form.confirm}
-                  onChange={set('confirm')}
-                  required
-                  autoComplete="new-password"
-                />
-                <button type="button" className="password-toggle" onClick={() => setShowConfirm(v => !v)}>
-                  {showConfirm ? <FiEyeOff /> : <FiEye />}
-                </button>
-              </div>
-            </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="email">Correo electrónico</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="correo@ejemplo.com"
+              value={form.email}
+              onChange={set('email')}
+              required
+              autoComplete="email"
+            />
+          </div>
 
-            {error && <p className="login-error">{error}</p>}
+          <div className="space-y-1.5">
+            <Label htmlFor="password">Contraseña</Label>
+            <PasswordInput
+              id="password"
+              placeholder="••••••••"
+              value={form.password}
+              onChange={set('password')}
+              required
+              autoComplete="new-password"
+            />
+          </div>
 
-            <button className="login-btn" type="submit" disabled={loading}>
-              {loading ? 'Registrando...' : 'Crear cuenta'}
-            </button>
+          <div className="space-y-1.5">
+            <Label htmlFor="confirm">Confirmar contraseña</Label>
+            <PasswordInput
+              id="confirm"
+              placeholder="••••••••"
+              value={form.confirm}
+              onChange={set('confirm')}
+              required
+              autoComplete="new-password"
+            />
+          </div>
 
-            <p className="login-switch">
-              ¿Ya tienes cuenta?{' '}
-              <Link to="/login">Iniciar sesión</Link>
-            </p>
-          </form>
-        )}
-      </div>
-    </div>
+          {error && <p className="text-[13px] font-medium text-destructive">{error}</p>}
+
+          <Button className="w-full" type="submit" disabled={loading}>
+            {loading ? 'Registrando...' : 'Crear cuenta'}
+          </Button>
+
+          <p className="text-center text-[13px] text-muted-foreground">
+            ¿Ya tienes cuenta?{' '}
+            <Link to="/login" className="font-semibold text-primary underline-offset-4 hover:underline">
+              Iniciar sesión
+            </Link>
+          </p>
+        </form>
+      )}
+    </AuthCard>
   );
 }

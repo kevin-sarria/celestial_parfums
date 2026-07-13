@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import * as ventaService from '../services/venta.service';
-import { parsePagination } from '../utils/pagination';
+import { parsePagination, parseSearch } from '../utils/pagination';
 
 export const getVentas = async (req: Request, res: Response) => {
   try {
     const { page, limit } = parsePagination(req.query as any);
-    const result = await ventaService.getAllVentas(page, limit);
+    const result = await ventaService.getAllVentas(page, limit, parseSearch(req.query as any));
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message });

@@ -1,29 +1,23 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Clock, ShoppingCart, Wind } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import { formatPrice, finalPrice } from '@/lib/format';
 import PerfumeCard from '../components/PerfumeCard';
 import PerfumeSpinner from '../components/PerfumeSpinner';
 import AddToCartModal from '../components/AddToCartModal';
 import CartFab from '../components/CartFab';
 import CatalogHeader from '../components/CatalogHeader';
 import { usePerfumeDetail } from '../application/hooks/usePerfumeDetail';
-import '../styles/detail.css';
+import { GENERO_LABELS } from '../domain/entities/perfume.schema';
 
-const AROMA_EMOJI: Record<string, string> = {
-  Dulce: '🍯',
-  Cítrico: '🍋',
-  Amaderado: '🌿',
-  Fresco: '💧',
-  Aromático: '🌸',
-  Oriental: '🕌',
-  Floral: '🌺',
+const GENERO_PILL_STYLES: Record<string, string> = {
+  caballero: 'border-sky-200 bg-sky-50 text-sky-600',
+  dama: 'border-rose-200 bg-rose-50 text-rose-500',
+  unisex: 'border-violet-200 bg-violet-50 text-violet-500',
 };
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(n);
 
 export default function PerfumeDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -31,81 +25,100 @@ export default function PerfumeDetailPage() {
   const { perfume, related, loading, error } = usePerfumeDetail(slug);
   const [cartModal, setCartModal] = useState(false);
 
-  const precioFinal = perfume && perfume.descuento > 0
-    ? Math.round(perfume.precio * (1 - perfume.descuento / 100))
-    : perfume?.precio ?? 0;
+  const precioFinal = perfume ? finalPrice(perfume.precio, perfume.descuento) : 0;
 
   return (
-    <div className="detail-root">
+    <div className="flex min-h-svh flex-col bg-background">
       <CatalogHeader />
 
-      <div className="detail-back-bar">
-        <button className="detail-back" onClick={() => navigate(-1)}>← Volver</button>
+      <div className="mx-auto w-full max-w-6xl px-5 pt-6 md:px-8">
+        <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground" onClick={() => navigate(-1)}>
+          <ArrowLeft className="size-4" /> Volver
+        </Button>
       </div>
 
       {loading && <PerfumeSpinner />}
 
       {!loading && error && (
-        <div className="detail-error">
-          <p>{error}</p>
-          <button className="detail-back" onClick={() => navigate('/perfumes')}>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-5 py-20 text-center">
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <Button variant="outline" className="rounded-full" onClick={() => navigate('/perfumes')}>
             Ver todos los perfumes
-          </button>
+          </Button>
         </div>
       )}
 
       {!loading && perfume && (
         <>
-          <main className="detail-main">
-            <div className="detail-img-col">
-              <div className="detail-img-wrap">
-                {perfume.imagen_url ? (
-                  <img src={perfume.imagen_url} alt={perfume.nombre} className="detail-img" />
-                ) : (
-                  <div className="detail-img-placeholder"><span>𝒫</span></div>
-                )}
-                {perfume.descuento > 0 && (
-                  <span className="detail-discount-badge">-{perfume.descuento}%</span>
-                )}
-              </div>
+          <main className="mx-auto grid w-full max-w-6xl gap-10 px-5 pb-16 pt-6 md:px-8 lg:grid-cols-2 lg:gap-14 animate-fade-up">
+            <div className="relative overflow-hidden rounded-3xl border border-border bg-secondary">
+              {perfume.imagen_url ? (
+                <img
+                  src={perfume.imagen_url}
+                  alt={perfume.nombre}
+                  className="aspect-4/5 h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex aspect-4/5 items-center justify-center">
+                  <span className="font-display text-7xl italic text-muted-foreground/40">𝒫</span>
+                </div>
+              )}
+              {perfume.descuento > 0 && (
+                <Badge className="absolute right-4 top-4 rounded-full bg-ink px-3 py-1 text-xs font-semibold text-background shadow-sm">
+                  -{perfume.descuento}%
+                </Badge>
+              )}
             </div>
 
-            <div className="detail-info-col">
-              <div className="detail-title-row">
-                <h1 className="detail-name">{perfume.nombre}</h1>
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-wrap items-center gap-2">
                 {perfume.genero && (
-                  <span className={`detail-genero detail-genero--${perfume.genero}`}>
-                    {perfume.genero === 'hombre' ? '♂ Hombre' : '♀ Mujer'}
+                  <span
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-[12px] font-semibold',
+                      GENERO_PILL_STYLES[perfume.genero],
+                    )}
+                  >
+                    {GENERO_LABELS[perfume.genero]}
+                  </span>
+                )}
+                {perfume.categoria && (
+                  <Badge variant="outline" className="rounded-full text-[11px] text-muted-foreground">
+                    {perfume.categoria}
+                  </Badge>
+                )}
+              </div>
+
+              <h1 className="font-display text-4xl font-light tracking-tight text-ink md:text-5xl">
+                {perfume.nombre}
+              </h1>
+
+              <div className="flex items-baseline gap-3">
+                <span className="font-display text-3xl font-medium text-primary">
+                  {formatPrice(precioFinal)}
+                </span>
+                {perfume.descuento > 0 && (
+                  <span className="text-base text-muted-foreground line-through">
+                    {formatPrice(perfume.precio)}
                   </span>
                 )}
               </div>
 
-              {perfume.categoria && (
-                <span className="tag tag--categoria">{perfume.categoria}</span>
-              )}
-
-              <div className="detail-price-block">
-                {perfume.descuento > 0 ? (
-                  <>
-                    <span className="detail-price-original">{fmt(perfume.precio)}</span>
-                    <span className="detail-price">{fmt(precioFinal)}</span>
-                  </>
-                ) : (
-                  <span className="detail-price">{fmt(perfume.precio)}</span>
-                )}
-              </div>
-
               {perfume.descripcion && (
-                <p className="detail-description">{perfume.descripcion}</p>
+                <p className="max-w-prose text-[15px] leading-relaxed text-muted-foreground">
+                  {perfume.descripcion}
+                </p>
               )}
 
               {perfume.tipos_aroma.length > 0 && (
-                <div className="detail-section">
-                  <p className="detail-section-label">Notas &amp; Aromas</p>
-                  <div className="pcard-tags">
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Notas & Aromas
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
                     {perfume.tipos_aroma.map((a) => (
-                      <span key={a} className="tag tag--aroma">
-                        {AROMA_EMOJI[a] ?? '✦'} {a}
+                      <span key={a} className="rounded-full bg-brand-soft px-3 py-1 text-[12px] font-medium text-primary">
+                        {a}
                       </span>
                     ))}
                   </div>
@@ -113,45 +126,55 @@ export default function PerfumeDetailPage() {
               )}
 
               {perfume.ocasiones.length > 0 && (
-                <div className="detail-section">
-                  <p className="detail-section-label">Ocasiones</p>
-                  <div className="pcard-tags">
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    Ocasiones
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
                     {perfume.ocasiones.map((o) => (
-                      <span key={o} className="tag tag--ocasion">{o}</span>
+                      <span key={o} className="rounded-full border border-border px-3 py-1 text-[12px] text-muted-foreground">
+                        {o}
+                      </span>
                     ))}
                   </div>
                 </div>
               )}
 
               {(perfume.duracion || perfume.proyeccion) && (
-                <div className="detail-meta">
+                <div className="flex items-center gap-6 border-t border-border/70 pt-4 text-[13px] text-muted-foreground">
                   {perfume.duracion && (
-                    <span className="pcard-meta-item">
-                      <span className="pcard-meta-icon">⏱</span> {perfume.duracion}
+                    <span className="flex items-center gap-2">
+                      <Clock className="size-4" /> {perfume.duracion}
                     </span>
                   )}
                   {perfume.proyeccion && (
-                    <span className="pcard-meta-item">
-                      <span className="pcard-meta-icon">📡</span> {perfume.proyeccion}
+                    <span className="flex items-center gap-2">
+                      <Wind className="size-4" /> {perfume.proyeccion}
                     </span>
                   )}
                 </div>
               )}
 
               {!perfume.agotado && (
-                <button className="detail-add-cart-btn" onClick={() => setCartModal(true)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                <Button
+                  size="lg"
+                  className="mt-2 h-12 w-fit rounded-full px-8 text-[14px] shadow-[0_12px_30px_-12px] shadow-primary/50 transition-all duration-300 hover:shadow-[0_16px_36px_-12px] hover:shadow-primary/60"
+                  onClick={() => setCartModal(true)}
+                >
+                  <ShoppingCart className="size-4" />
                   Agregar al carrito
-                </button>
+                </Button>
               )}
             </div>
           </main>
 
           {related.length > 0 && (
-            <section className="detail-related">
-              <div className="detail-related-inner">
-                <h2 className="detail-related-title">También te puede interesar</h2>
-                <div className="detail-related-grid">
+            <section className="border-t border-border/70 bg-secondary/40 py-14">
+              <div className="mx-auto w-full max-w-6xl px-5 md:px-8">
+                <h2 className="mb-6 font-display text-[26px] font-light tracking-tight text-ink">
+                  También te puede interesar
+                </h2>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {related.map((p) => (
                     <PerfumeCard key={p.id} perfume={p} />
                   ))}

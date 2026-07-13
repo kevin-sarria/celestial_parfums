@@ -5,7 +5,7 @@ export interface CreatePerfumeDTO {
   duracion?: string;
   proyeccion?: string;
   imagen_url?: string;
-  genero?: 'hombre' | 'mujer' | null;
+  genero?: 'dama' | 'caballero' | 'unisex' | null;
   categoria_id?: number | null;
   descuento?: number;
   agotado?: boolean;

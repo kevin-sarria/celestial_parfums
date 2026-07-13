@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { Perfume } from '../../domain/entities/perfume.schema';
+import type { Genero, Perfume } from '../../domain/entities/perfume.schema';
 import type { Combo } from '../../domain/entities/combo.schema';
 import { BASE_URL } from '../../infrastructure/api/client';
 
@@ -20,7 +20,7 @@ export function useCatalog() {
   const [search, setSearch] = useState('');
   const [activeAromas, setActiveAromas] = useState<Set<string>>(new Set());
   const [activeOcasiones, setActiveOcasiones] = useState<Set<string>>(new Set());
-  const [activeGenero, setActiveGenero] = useState<'hombre' | 'mujer' | ''>('');
+  const [activeGenero, setActiveGenero] = useState<Genero | ''>('');
   const [activeCategorias, setActiveCategorias] = useState<Set<string>>(new Set());
   const [activeComboCantidades, setActiveComboCantidades] = useState<Set<number>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
@@ -104,7 +104,7 @@ export function useCatalog() {
 
   const onSearchChange = (value: string) => setSearch(value);
 
-  const onGeneroToggle = (g: 'hombre' | 'mujer') =>
+  const onGeneroToggle = (g: Genero) =>
     setActiveGenero((prev) => (prev === g ? '' : g));
 
   const toggleStringSet = (

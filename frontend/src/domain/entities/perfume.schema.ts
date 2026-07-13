@@ -1,5 +1,20 @@
 import { z } from 'zod';
 
+export const GENEROS = ['dama', 'caballero', 'unisex'] as const;
+export type Genero = (typeof GENEROS)[number];
+
+export const GENERO_LABELS: Record<Genero, string> = {
+  dama: '♀ Dama',
+  caballero: '♂ Caballero',
+  unisex: '⚥ Unisex',
+};
+
+export const GENERO_SYMBOLS: Record<Genero, string> = {
+  dama: '♀',
+  caballero: '♂',
+  unisex: '⚥',
+};
+
 export const perfumeSchema = z.object({
   id: z.number(),
   nombre: z.string(),
@@ -8,7 +23,7 @@ export const perfumeSchema = z.object({
   duracion: z.string().nullable(),
   proyeccion: z.string().nullable(),
   imagen_url: z.string().nullable(),
-  genero: z.enum(['hombre', 'mujer']).nullable(),
+  genero: z.enum(GENEROS).nullable(),
   categoria: z.string().nullable(),
   categoria_id: z.number().nullable(),
   descuento: z.number(),

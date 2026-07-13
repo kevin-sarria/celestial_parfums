@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as perfumeService from '../services/perfume.service';
-import { parsePagination } from '../utils/pagination';
+import { parsePagination, parseSearch } from '../utils/pagination';
 
 export const getRelatedPerfumes = async (req: Request, res: Response) => {
   try {
@@ -24,7 +24,7 @@ export const selectAllPerfumes = async (req: Request, res: Response) => {
   try {
     if (req.query.page) {
       const { page, limit } = parsePagination(req.query as any);
-      const result = await perfumeService.allPerfumesPaginated(page, limit);
+      const result = await perfumeService.allPerfumesPaginated(page, limit, parseSearch(req.query as any));
       res.json(result);
     } else {
       const result = await perfumeService.allPerfumes();
@@ -107,6 +107,15 @@ export const removeAroma = async (req: Request, res: Response) => {
   }
 };
 
+export const editAroma = async (req: Request, res: Response) => {
+  try {
+    await perfumeService.updateAroma(req.params.id as string, req.body.nombre);
+    res.status(200).json({ message: 'Aroma actualizado' });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const getOcasiones = async (_req: Request, res: Response) => {
   try {
     const data = await perfumeService.getAllOcasiones();
@@ -129,6 +138,15 @@ export const removeOcasion = async (req: Request, res: Response) => {
   try {
     await perfumeService.deleteOcasion(req.params.id as string);
     res.status(200).json({ message: 'Ocasión eliminada' });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const editOcasion = async (req: Request, res: Response) => {
+  try {
+    await perfumeService.updateOcasion(req.params.id as string, req.body.nombre);
+    res.status(200).json({ message: 'Ocasión actualizada' });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
@@ -161,6 +179,15 @@ export const removeCategoria = async (req: Request, res: Response) => {
   }
 };
 
+export const editCategoria = async (req: Request, res: Response) => {
+  try {
+    await perfumeService.updateCategoria(req.params.id as string, req.body.nombre);
+    res.status(200).json({ message: 'Categoría actualizada' });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const getPresentaciones = async (_req: Request, res: Response) => {
   try {
     const data = await perfumeService.getAllPresentaciones();
@@ -183,6 +210,15 @@ export const removePresentacion = async (req: Request, res: Response) => {
   try {
     await perfumeService.deletePresentacion(req.params.id as string);
     res.status(200).json({ message: 'Presentación eliminada' });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const editPresentacion = async (req: Request, res: Response) => {
+  try {
+    await perfumeService.updatePresentacion(req.params.id as string, req.body.nombre);
+    res.status(200).json({ message: 'Presentación actualizada' });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }

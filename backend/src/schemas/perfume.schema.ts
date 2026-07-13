@@ -7,7 +7,7 @@ export const createPerfumeSchema = z.object({
   duracion: z.string().max(50).optional(),
   proyeccion: z.string().max(50).optional(),
   imagen_url: z.string().url().optional().or(z.literal('')),
-  genero: z.enum(['hombre', 'mujer']).nullable().optional(),
+  genero: z.enum(['dama', 'caballero', 'unisex']).nullable().optional(),
   categoria_id: z.number().int().positive().nullable().optional(),
   descuento: z.number().int().min(0).max(100).optional(),
   agotado: z.boolean().optional(),

@@ -11,15 +11,19 @@ import {
   getAromas,
   addAroma,
   removeAroma,
+  editAroma,
   getOcasiones,
   addOcasion,
   removeOcasion,
+  editOcasion,
   getCategorias,
   addCategoria,
   removeCategoria,
+  editCategoria,
   getPresentaciones,
   addPresentacion,
   removePresentacion,
+  editPresentacion,
 } from '../controller/perfume.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
@@ -44,13 +48,17 @@ perfumeRouter.patch('/:id/agotado', requireAdmin, validate(patchAgotadoSchema), 
 
 perfumeRouter.post('/tipos-aroma', requireAdmin, validate(nombreSchema), addAroma);
 perfumeRouter.delete('/tipos-aroma/:id', requireAdmin, removeAroma);
+perfumeRouter.patch('/tipos-aroma/:id', requireAdmin, validate(nombreSchema), editAroma);
 
 perfumeRouter.post('/ocasiones', requireAdmin, validate(nombreSchema), addOcasion);
 perfumeRouter.delete('/ocasiones/:id', requireAdmin, removeOcasion);
+perfumeRouter.patch('/ocasiones/:id', requireAdmin, validate(nombreSchema), editOcasion);
 
 perfumeRouter.post('/categorias', requireAdmin, validate(nombreSchema), addCategoria);
 perfumeRouter.delete('/categorias/:id', requireAdmin, removeCategoria);
+perfumeRouter.patch('/categorias/:id', requireAdmin, validate(nombreSchema), editCategoria);
 
 perfumeRouter.get('/presentaciones', getPresentaciones);
 perfumeRouter.post('/presentaciones', requireAdmin, validate(nombreSchema), addPresentacion);
 perfumeRouter.delete('/presentaciones/:id', requireAdmin, removePresentacion);
+perfumeRouter.patch('/presentaciones/:id', requireAdmin, validate(nombreSchema), editPresentacion);

@@ -1,7 +1,7 @@
 import * as repo from '../repositories/venta.repository';
 import { CreateVentaDTO } from '../types/venta.type';
 
-export const getAllVentas = (page: number, limit: number) => repo.getAllVentas(page, limit);
+export const getAllVentas = (page: number, limit: number, search?: string) => repo.getAllVentas(page, limit, search);
 
 export const createVenta = (data: CreateVentaDTO) => {
   if (!data.dia || !data.persona || !data.referencia_perfume || !data.valor_venta)

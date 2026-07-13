@@ -3,8 +3,8 @@ import { CreatePerfumeDTO } from '../types/perfume.type';
 
 export const allPerfumes = () => perfumeRepository.selectAllParfums();
 
-export const allPerfumesPaginated = (page: number, limit: number) =>
-  perfumeRepository.selectParfumsPaginated(page, limit);
+export const allPerfumesPaginated = (page: number, limit: number, search?: string) =>
+  perfumeRepository.selectParfumsPaginated(page, limit, search);
 
 export const createPerfume = async (data: CreatePerfumeDTO) => {
   if (!data?.nombre || !data?.precio) throw new Error('Nombre y precio son obligatorios');
@@ -57,6 +57,11 @@ export const deleteAroma = async (id: string) => {
   return await perfumeRepository.deleteAroma(id);
 };
 
+export const updateAroma = async (id: string, nombre: string) => {
+  if (!nombre?.trim()) throw new Error('El nombre del aroma es obligatorio');
+  return await perfumeRepository.updateAroma(id, nombre.trim());
+};
+
 export const getAllOcasiones = async () => {
   return await perfumeRepository.getAllOcasiones();
 };
@@ -68,6 +73,11 @@ export const createOcasion = async (nombre: string) => {
 
 export const deleteOcasion = async (id: string) => {
   return await perfumeRepository.deleteOcasion(id);
+};
+
+export const updateOcasion = async (id: string, nombre: string) => {
+  if (!nombre?.trim()) throw new Error('El nombre de la ocasión es obligatorio');
+  return await perfumeRepository.updateOcasion(id, nombre.trim());
 };
 
 export const getAllCategorias = async () => {
@@ -83,6 +93,11 @@ export const deleteCategoria = async (id: string) => {
   return await perfumeRepository.deleteCategoria(id);
 };
 
+export const updateCategoria = async (id: string, nombre: string) => {
+  if (!nombre?.trim()) throw new Error('El nombre de la categoría es obligatorio');
+  return await perfumeRepository.updateCategoria(id, nombre.trim());
+};
+
 export const getAllPresentaciones = async () => {
   return await perfumeRepository.getAllPresentaciones();
 };
@@ -94,4 +109,9 @@ export const createPresentacion = async (nombre: string) => {
 
 export const deletePresentacion = async (id: string) => {
   return await perfumeRepository.deletePresentacion(id);
+};
+
+export const updatePresentacion = async (id: string, nombre: string) => {
+  if (!nombre?.trim()) throw new Error('El nombre de la presentación es obligatorio');
+  return await perfumeRepository.updatePresentacion(id, nombre.trim());
 };

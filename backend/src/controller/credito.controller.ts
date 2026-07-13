@@ -1,11 +1,11 @@
 import { Request, Response } from 'express';
 import * as creditoService from '../services/credito.service';
-import { parsePagination } from '../utils/pagination';
+import { parsePagination, parseSearch } from '../utils/pagination';
 
 export const getCreditos = async (req: Request, res: Response) => {
   try {
     const { page, limit } = parsePagination(req.query as any);
-    const result = await creditoService.getAllCreditos(page, limit);
+    const result = await creditoService.getAllCreditos(page, limit, parseSearch(req.query as any));
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: error.message });

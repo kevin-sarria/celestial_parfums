@@ -45,11 +45,20 @@ export const selectAllParfums = async () => {
   return { data: perfumes.map(mapPerfume) };
 };
 
-export const selectParfumsPaginated = async (page: number, limit: number) => {
+export const selectParfumsPaginated = async (page: number, limit: number, search?: string) => {
   const skip = (page - 1) * limit;
+  const where: Prisma.PerfumeWhereInput | undefined = search
+    ? {
+        OR: [
+          { nombre: { contains: search } },
+          { descripcion: { contains: search } },
+          { categoria: { nombre: { contains: search } } },
+        ],
+      }
+    : undefined;
   const [rows, total] = await Promise.all([
-    prisma.perfume.findMany({ include: perfumeInclude, orderBy: { nombre: 'asc' }, skip, take: limit }),
-    prisma.perfume.count(),
+    prisma.perfume.findMany({ where, include: perfumeInclude, orderBy: { nombre: 'asc' }, skip, take: limit }),
+    prisma.perfume.count({ where }),
   ]);
   return paginatedResponse(rows.map(mapPerfume), total, page, limit);
 };
@@ -168,6 +177,9 @@ export const createAroma = async (nombre: string) => {
 export const deleteAroma = (id: string) =>
   prisma.tipoAroma.delete({ where: { id: Number(id) } });
 
+export const updateAroma = (id: string, nombre: string) =>
+  prisma.tipoAroma.update({ where: { id: Number(id) }, data: { nombre } });
+
 // ── Ocasiones ───────────────────────────────────────────────────────────────
 
 export const getAllOcasiones = () =>
@@ -180,6 +192,9 @@ export const createOcasion = async (nombre: string) => {
 
 export const deleteOcasion = (id: string) =>
   prisma.ocasion.delete({ where: { id: Number(id) } });
+
+export const updateOcasion = (id: string, nombre: string) =>
+  prisma.ocasion.update({ where: { id: Number(id) }, data: { nombre } });
 
 // ── Categorías ──────────────────────────────────────────────────────────────
 
@@ -194,6 +209,9 @@ export const createCategoria = async (nombre: string) => {
 export const deleteCategoria = (id: string) =>
   prisma.categoria.delete({ where: { id: Number(id) } });
 
+export const updateCategoria = (id: string, nombre: string) =>
+  prisma.categoria.update({ where: { id: Number(id) }, data: { nombre } });
+
 // ── Presentaciones ─────────────────────────────────────────────────────────
 
 export const getAllPresentaciones = () =>
@@ -206,3 +224,6 @@ export const createPresentacion = async (nombre: string) => {
 
 export const deletePresentacion = (id: string) =>
   prisma.presentacion.delete({ where: { id: Number(id) } });
+
+export const updatePresentacion = (id: string, nombre: string) =>
+  prisma.presentacion.update({ where: { id: Number(id) }, data: { nombre } });

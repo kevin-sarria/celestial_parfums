@@ -34,11 +34,22 @@ const mapCredito = (c: any) => {
   };
 };
 
-export const getAllCreditos = async (page: number, limit: number) => {
+export const getAllCreditos = async (page: number, limit: number, search?: string) => {
   const skip = (page - 1) * limit;
+  const where = search
+    ? {
+        OR: [
+          { articulos: { contains: search } },
+          { cliente: { nombre: { contains: search } } },
+          { cliente: { apellido: { contains: search } } },
+          { cliente: { telefono: { contains: search } } },
+          { cliente: { correo: { contains: search } } },
+        ],
+      }
+    : undefined;
   const [rows, total] = await Promise.all([
-    prisma.credito.findMany({ skip, take: limit, orderBy: { fecha: 'desc' }, include: includeAll }),
-    prisma.credito.count(),
+    prisma.credito.findMany({ where, skip, take: limit, orderBy: { fecha: 'desc' }, include: includeAll }),
+    prisma.credito.count({ where }),
   ]);
   return paginatedResponse(rows.map(mapCredito), total, page, limit);
 };

@@ -1,11 +1,20 @@
 import { useRef, useState } from 'react';
-import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { Pencil, Trash2, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { NativeSelect } from '@/components/ui/native-select';
+import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
+import ImportModal from '../../../components/ImportModal';
+import ExportButton from '../../../components/ExportButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { perfumesColumns } from '../columns';
 import { API } from '../helpers';
 import { BASE_URL } from '../../../infrastructure/api/client';
+import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { GuardedFetch, Lookup, PerfumeForm } from '../types';
 import { emptyPerfumeForm } from '../types';
 
@@ -21,12 +30,42 @@ interface PerfumesTabProps {
   guardedFetch: GuardedFetch;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
+  /** Búsqueda global contra el backend (toda la data, no solo la página cargada). */
+  onSearch: (term: string) => void;
   onMutate: () => void;
+}
+
+interface CheckGroupProps {
+  items: Lookup[];
+  selected: number[];
+  onToggle: (id: number) => void;
+}
+
+/** Grupo de checkboxes para relaciones (aromas, ocasiones, presentaciones). */
+function CheckGroup({ items, selected, onToggle }: CheckGroupProps) {
+  return (
+    <div className="grid max-h-36 grid-cols-2 gap-x-3 gap-y-1 overflow-y-auto rounded-lg border border-border bg-secondary/30 p-2.5">
+      {items.map(item => (
+        <label
+          key={item.id}
+          className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-[13px] text-foreground transition-colors hover:bg-secondary"
+        >
+          <input
+            type="checkbox"
+            className="accent-primary"
+            checked={selected.includes(item.id)}
+            onChange={() => onToggle(item.id)}
+          />
+          {item.nombre}
+        </label>
+      ))}
+    </div>
+  );
 }
 
 export function PerfumesTab({
   perfumes, page, total, pageSize, aromas, ocasiones, categorias, presentaciones,
-  guardedFetch, onPageChange, onPageSizeChange, onMutate,
+  guardedFetch, onPageChange, onPageSizeChange, onSearch, onMutate,
 }: PerfumesTabProps) {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<PerfumeForm>(emptyPerfumeForm());
@@ -34,6 +73,7 @@ export function PerfumesTab({
   const [formError, setFormError] = useState('');
   const [imgMode, setImgMode] = useState<'url' | 'file'>('url');
   const [uploading, setUploading] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openCreate = () => { setForm(emptyPerfumeForm()); setFormError(''); setImgMode('url'); setModal({ open: true, editId: null }); };
@@ -105,33 +145,54 @@ export function PerfumesTab({
 
   return (
     <>
-      <section className="dash-section">
-        <div className="dash-toolbar">
-          <h2 className="dash-section-title">Perfumes <span className="dash-count">{perfumes.length}</span></h2>
-          <button className="dash-btn-accent" onClick={openCreate}>+ Nuevo perfume</button>
-        </div>
+      <Section>
+        <Toolbar>
+          <SectionTitle count={perfumes.length}>Perfumes</SectionTitle>
+          <ToolbarActions>
+            <ExportButton entity="perfumes" guardedFetch={guardedFetch} />
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="size-4" /> Importar
+            </Button>
+            <Button size="sm" onClick={openCreate}>+ Nuevo perfume</Button>
+          </ToolbarActions>
+        </Toolbar>
+
         <SmartTable
           columns={perfumesColumns}
           rows={perfumes}
           rowKey={p => p.id}
+          onServerSearch={onSearch}
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
           renderActions={p => (
             <>
-              <button
-                className={`dash-tag${p.agotado ? '' : ' dash-tag--oc'}`}
-                style={{ cursor: 'pointer', border: 'none', fontWeight: 600, marginRight: 4 }}
-                onClick={() => handleToggleAgotado(p)}
-                title="Cambiar stock"
-              >
-                {p.agotado ? 'Agotado' : 'En stock'}
+              <button onClick={() => handleToggleAgotado(p)} title="Cambiar stock" className="cursor-pointer">
+                {p.agotado ? (
+                  <Badge variant="secondary" className="text-muted-foreground">Agotado</Badge>
+                ) : (
+                  <Badge variant="outline" className="border-primary/30 bg-brand-soft text-primary">En stock</Badge>
+                )}
               </button>
-              {p.imagen_url && <img src={p.imagen_url} alt={p.nombre} className="dash-thumb" style={{ marginRight: 4 }} />}
-              <button className="dash-icon-btn" onClick={() => openEdit(p)} title="Editar"><FiEdit2 /></button>
-              <button className="dash-icon-btn" onClick={() => handleDelete(p.id)} title="Eliminar"><FiTrash2 /></button>
+              {p.imagen_url && (
+                <img src={p.imagen_url} alt={p.nombre} className="size-8 rounded-md border border-border object-cover" />
+              )}
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => openEdit(p)} title="Editar">
+                <Pencil className="size-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(p.id)} title="Eliminar">
+                <Trash2 className="size-4" />
+              </Button>
             </>
           )}
         />
-      </section>
+      </Section>
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        entity="perfumes"
+        guardedFetch={guardedFetch}
+        onImported={onMutate}
+      />
 
       <Modal
         open={modal.open}
@@ -140,103 +201,95 @@ export function PerfumesTab({
         onSubmit={handleSubmit}
         submitLabel={formLoading ? 'Guardando...' : modal.editId ? 'Guardar cambios' : 'Crear perfume'}
         loading={formLoading}
+        maxWidth={620}
       >
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Nombre *</label>
-            <input className="dash-input" value={form.nombre} onChange={setF('nombre')} required maxLength={100} />
-          </div>
-          <div className="dash-form-group">
-            <label>Precio (COP) *</label>
-            <input className="dash-input" type="number" min="0" value={form.precio} onChange={setF('precio')} required />
-          </div>
-        </div>
-        <div className="dash-form-group">
-          <label>Descripcion</label>
-          <textarea className="dash-input dash-textarea" value={form.descripcion} onChange={setF('descripcion')} rows={2} maxLength={500} />
-        </div>
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Duracion</label>
-            <input className="dash-input" placeholder="ej: 6-8 horas" value={form.duracion} onChange={setF('duracion')} maxLength={50} />
-          </div>
-          <div className="dash-form-group">
-            <label>Proyeccion</label>
-            <input className="dash-input" placeholder="ej: Moderada" value={form.proyeccion} onChange={setF('proyeccion')} maxLength={50} />
-          </div>
-        </div>
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Genero</label>
-            <select className="dash-input" value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value as PerfumeForm['genero'] }))}>
+        <FieldRow>
+          <Field label="Nombre *">
+            <Input value={form.nombre} onChange={setF('nombre')} required maxLength={100} />
+          </Field>
+          <Field label="Precio (COP) *">
+            <Input type="number" min="0" value={form.precio} onChange={setF('precio')} required />
+          </Field>
+        </FieldRow>
+        <Field label="Descripcion">
+          <Textarea value={form.descripcion} onChange={setF('descripcion')} rows={2} maxLength={500} />
+        </Field>
+        <FieldRow>
+          <Field label="Duracion">
+            <Input placeholder="ej: 6-8 horas" value={form.duracion} onChange={setF('duracion')} maxLength={50} />
+          </Field>
+          <Field label="Proyeccion">
+            <Input placeholder="ej: Moderada" value={form.proyeccion} onChange={setF('proyeccion')} maxLength={50} />
+          </Field>
+        </FieldRow>
+        <FieldRow>
+          <Field label="Genero">
+            <NativeSelect value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value as PerfumeForm['genero'] }))}>
               <option value="">— Sin especificar —</option>
-              <option value="hombre">Hombre</option>
-              <option value="mujer">Mujer</option>
-            </select>
-          </div>
-          <div className="dash-form-group">
-            <label>Categoria</label>
-            <select className="dash-input" value={form.categoria_id}
+              <option value="dama">Dama</option>
+              <option value="caballero">Caballero</option>
+              <option value="unisex">Unisex</option>
+            </NativeSelect>
+          </Field>
+          <Field label="Categoria">
+            <NativeSelect value={form.categoria_id}
               onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value === '' ? '' : Number(e.target.value) }))}>
               <option value="">— Sin especificar —</option>
               {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </select>
-          </div>
-        </div>
-        <div className="dash-form-group">
-          <label>Imagen</label>
-          <div className="dash-img-toggle">
-            <button type="button" className={`dash-img-tab${imgMode === 'url' ? ' dash-img-tab--active' : ''}`} onClick={() => setImgMode('url')}>URL</button>
-            <button type="button" className={`dash-img-tab${imgMode === 'file' ? ' dash-img-tab--active' : ''}`} onClick={() => { setImgMode('file'); fileInputRef.current?.click(); }}>Subir archivo</button>
+            </NativeSelect>
+          </Field>
+        </FieldRow>
+
+        <Field label="Imagen">
+          <div className="mb-2 inline-flex rounded-lg border border-border p-0.5">
+            <button
+              type="button"
+              className={cn('rounded-md px-3 py-1 text-xs font-medium transition-colors', imgMode === 'url' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              onClick={() => setImgMode('url')}
+            >
+              URL
+            </button>
+            <button
+              type="button"
+              className={cn('rounded-md px-3 py-1 text-xs font-medium transition-colors', imgMode === 'file' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              onClick={() => { setImgMode('file'); fileInputRef.current?.click(); }}
+            >
+              Subir archivo
+            </button>
           </div>
           {imgMode === 'url' ? (
-            <input className="dash-input" placeholder="https://..." value={form.imagen_url} onChange={setF('imagen_url')} maxLength={500} />
+            <Input placeholder="https://..." value={form.imagen_url} onChange={setF('imagen_url')} maxLength={500} />
           ) : (
-            <div className="dash-file-area" onClick={() => fileInputRef.current?.click()}>
+            <div
+              className="flex min-h-20 cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+              onClick={() => fileInputRef.current?.click()}
+            >
               {uploading ? 'Subiendo...' : form.imagen_url
-                ? <><img src={form.imagen_url} alt="preview" className="dash-img-preview" /> <span>Cambiar</span></>
+                ? <><img src={form.imagen_url} alt="preview" className="h-16 rounded-lg object-cover" /> <span>Cambiar</span></>
                 : '📁 Haz clic para seleccionar una imagen'}
             </div>
           )}
-          <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFileUpload} />
-          {form.imagen_url && imgMode === 'url' && <img src={form.imagen_url} alt="preview" className="dash-img-preview" />}
-        </div>
-        <div className="dash-form-row">
-          <div className="dash-form-group">
-            <label>Tipos de aroma</label>
-            <div className="dash-checks">
-              {aromas.map(a => (
-                <label key={a.id} className="dash-check">
-                  <input type="checkbox" checked={form.tipos_aroma.includes(a.id)} onChange={() => setForm(f => ({ ...f, tipos_aroma: toggleId(f.tipos_aroma, a.id) }))} />
-                  {a.nombre}
-                </label>
-              ))}
-            </div>
-          </div>
-          <div className="dash-form-group">
-            <label>Ocasiones</label>
-            <div className="dash-checks">
-              {ocasiones.map(o => (
-                <label key={o.id} className="dash-check">
-                  <input type="checkbox" checked={form.ocasiones.includes(o.id)} onChange={() => setForm(f => ({ ...f, ocasiones: toggleId(f.ocasiones, o.id) }))} />
-                  {o.nombre}
-                </label>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="dash-form-group">
-          <label>Presentaciones disponibles</label>
-          <div className="dash-checks">
-            {presentaciones.map(p => (
-              <label key={p.id} className="dash-check">
-                <input type="checkbox" checked={form.presentaciones.includes(p.id)} onChange={() => setForm(f => ({ ...f, presentaciones: toggleId(f.presentaciones, p.id) }))} />
-                {p.nombre}
-              </label>
-            ))}
-          </div>
-        </div>
-        {formError && <p className="dash-error">{formError}</p>}
+          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+          {form.imagen_url && imgMode === 'url' && (
+            <img src={form.imagen_url} alt="preview" className="mt-2 h-20 rounded-lg border border-border object-cover" />
+          )}
+        </Field>
+
+        <FieldRow>
+          <Field label="Tipos de aroma">
+            <CheckGroup items={aromas} selected={form.tipos_aroma}
+              onToggle={id => setForm(f => ({ ...f, tipos_aroma: toggleId(f.tipos_aroma, id) }))} />
+          </Field>
+          <Field label="Ocasiones">
+            <CheckGroup items={ocasiones} selected={form.ocasiones}
+              onToggle={id => setForm(f => ({ ...f, ocasiones: toggleId(f.ocasiones, id) }))} />
+          </Field>
+        </FieldRow>
+        <Field label="Presentaciones disponibles">
+          <CheckGroup items={presentaciones} selected={form.presentaciones}
+            onToggle={id => setForm(f => ({ ...f, presentaciones: toggleId(f.presentaciones, id) }))} />
+        </Field>
+        <FormError>{formError}</FormError>
       </Modal>
     </>
   );

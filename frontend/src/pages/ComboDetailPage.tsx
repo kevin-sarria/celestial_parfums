@@ -1,19 +1,15 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeft, ShoppingCart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { formatPrice, finalPrice } from '@/lib/format';
 import ComboCard from '../components/ComboCard';
 import PerfumeSpinner from '../components/PerfumeSpinner';
 import AddToCartModal from '../components/AddToCartModal';
 import CartFab from '../components/CartFab';
 import CatalogHeader from '../components/CatalogHeader';
 import { useComboDetail } from '../application/hooks/useComboDetail';
-import '../styles/detail.css';
-
-const fmt = (n: number) =>
-  new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(n);
 
 export default function ComboDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -21,82 +17,92 @@ export default function ComboDetailPage() {
   const { combo, related, loading, error } = useComboDetail(slug);
   const [cartModal, setCartModal] = useState(false);
 
-  const precioFinal = combo && combo.descuento > 0
-    ? Math.round(combo.precio * (1 - combo.descuento / 100))
-    : combo?.precio ?? 0;
+  const precioFinal = combo ? finalPrice(combo.precio, combo.descuento) : 0;
 
   return (
-    <div className="detail-root">
+    <div className="flex min-h-svh flex-col bg-background">
       <CatalogHeader />
 
-      <div className="detail-back-bar">
-        <button className="detail-back" onClick={() => navigate(-1)}>← Volver</button>
+      <div className="mx-auto w-full max-w-6xl px-5 pt-6 md:px-8">
+        <Button variant="ghost" size="sm" className="rounded-full text-muted-foreground" onClick={() => navigate(-1)}>
+          <ArrowLeft className="size-4" /> Volver
+        </Button>
       </div>
 
       {loading && <PerfumeSpinner />}
 
       {!loading && error && (
-        <div className="detail-error">
-          <p>{error}</p>
-          <button className="detail-back" onClick={() => navigate('/combos')}>
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-5 py-20 text-center">
+          <p className="text-sm text-muted-foreground">{error}</p>
+          <Button variant="outline" className="rounded-full" onClick={() => navigate('/combos')}>
             Ver todos los combos
-          </button>
+          </Button>
         </div>
       )}
 
       {!loading && combo && (
         <>
-          <main className="detail-main">
-            <div className="detail-img-col">
-              <div className="detail-img-wrap">
-                {combo.imagen_url ? (
-                  <img src={combo.imagen_url} alt={combo.nombre} className="detail-img" />
-                ) : (
-                  <div className="detail-img-placeholder"><span>🎁</span></div>
-                )}
-                {combo.descuento > 0 && (
-                  <span className="detail-discount-badge">-{combo.descuento}%</span>
-                )}
-              </div>
+          <main className="mx-auto grid w-full max-w-6xl gap-10 px-5 pb-16 pt-6 md:px-8 lg:grid-cols-2 lg:gap-14 animate-fade-up">
+            <div className="relative overflow-hidden rounded-3xl border border-border bg-secondary">
+              {combo.imagen_url ? (
+                <img src={combo.imagen_url} alt={combo.nombre} className="aspect-4/5 h-full w-full object-cover" />
+              ) : (
+                <div className="flex aspect-4/5 items-center justify-center">
+                  <span className="text-7xl">🎁</span>
+                </div>
+              )}
+              {combo.descuento > 0 && (
+                <Badge className="absolute right-4 top-4 rounded-full bg-ink px-3 py-1 text-xs font-semibold text-background shadow-sm">
+                  -{combo.descuento}%
+                </Badge>
+              )}
             </div>
 
-            <div className="detail-info-col">
-              <div className="detail-title-row">
-                <h1 className="detail-name">{combo.nombre}</h1>
-                <span className="detail-genero">{combo.cantidad} perfumes</span>
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="rounded-full text-[12px] font-semibold text-primary">
+                  {combo.cantidad} perfumes
+                </Badge>
+                {combo.categoria && (
+                  <Badge variant="outline" className="rounded-full text-[11px] text-muted-foreground">
+                    {combo.categoria}
+                  </Badge>
+                )}
               </div>
 
-              {combo.categoria && (
-                <span className="tag tag--categoria">{combo.categoria}</span>
-              )}
+              <h1 className="font-display text-4xl font-light tracking-tight text-ink md:text-5xl">
+                {combo.nombre}
+              </h1>
 
-              <div className="detail-price-block">
-                {combo.descuento > 0 ? (
-                  <>
-                    <span className="detail-price-original">{fmt(combo.precio)}</span>
-                    <span className="detail-price">{fmt(precioFinal)}</span>
-                  </>
-                ) : (
-                  <span className="detail-price">{fmt(combo.precio)}</span>
+              <div className="flex items-baseline gap-3">
+                <span className="font-display text-3xl font-medium text-primary">{formatPrice(precioFinal)}</span>
+                {combo.descuento > 0 && (
+                  <span className="text-base text-muted-foreground line-through">{formatPrice(combo.precio)}</span>
                 )}
               </div>
 
               {combo.descripcion && (
-                <p className="detail-description">{combo.descripcion}</p>
+                <p className="max-w-prose text-[15px] leading-relaxed text-muted-foreground">{combo.descripcion}</p>
               )}
 
-              <button className="detail-add-cart-btn" onClick={() => setCartModal(true)}>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="18" height="18"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+              <Button
+                size="lg"
+                className="mt-2 h-12 w-fit rounded-full px-8 text-[14px] shadow-[0_12px_30px_-12px] shadow-primary/50 transition-all duration-300 hover:shadow-[0_16px_36px_-12px] hover:shadow-primary/60"
+                onClick={() => setCartModal(true)}
+              >
+                <ShoppingCart className="size-4" />
                 Agregar al carrito
-              </button>
+              </Button>
             </div>
           </main>
 
           {related.length > 0 && (
-            <section className="detail-related">
-              <div className="detail-related-inner">
-                <h2 className="detail-related-title">Otros combos disponibles</h2>
-                <div className="detail-related-combos-grid">
+            <section className="border-t border-border/70 bg-secondary/40 py-14">
+              <div className="mx-auto w-full max-w-6xl px-5 md:px-8">
+                <h2 className="mb-6 font-display text-[26px] font-light tracking-tight text-ink">
+                  Otros combos disponibles
+                </h2>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {related.map((c) => (
                     <ComboCard key={c.id} combo={c} />
                   ))}
