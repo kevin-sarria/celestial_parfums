@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./backend/package.json'\\).scripts, null, 2\\)\\)\")",
+      "Bash(git check-ignore *)",
+      "Bash(node -e \"const p=require\\('./backend/package.json'\\); console.log\\('deps:', JSON.stringify\\(p.dependencies\\)\\)\")",
+      "Bash(sed 's/=.*/=/' frontend/.env)"
+    ]
+  }
+}
