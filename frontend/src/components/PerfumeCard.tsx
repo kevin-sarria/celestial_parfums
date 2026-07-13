@@ -25,7 +25,8 @@ export default function PerfumeCard({ perfume }: Props) {
   return (
     <article
       className={cn(
-        'group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card',
+        // h-full: todas las cards de una fila comparten la misma altura
+        'group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card',
         'transition-all duration-300 ease-out hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_45px_-20px_rgb(0_0_0/0.18)]',
         perfume.agotado && 'opacity-70',
       )}
@@ -35,14 +36,15 @@ export default function PerfumeCard({ perfume }: Props) {
       aria-label={`Ver perfume ${perfume.nombre}${perfume.agotado ? ' (Agotado)' : ''}`}
       onKeyDown={(e) => e.key === 'Enter' && goToDetail()}
     >
-      <div className="relative aspect-4/5 overflow-hidden bg-secondary">
+      {/* object-contain sobre fondo blanco: muestra el frasco completo sin recortes */}
+      <div className="relative h-44 shrink-0 overflow-hidden bg-white p-3">
         {perfume.imagen_url ? (
           <img
             src={perfume.imagen_url}
             alt={perfume.nombre}
             loading="lazy"
             className={cn(
-              'h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]',
+              'h-full w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.04]',
               perfume.agotado && 'grayscale',
             )}
           />
@@ -77,13 +79,14 @@ export default function PerfumeCard({ perfume }: Props) {
       </div>
 
       <div className="flex flex-1 flex-col gap-2.5 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display text-[17px] font-medium leading-snug text-ink">
+        {/* Zonas con altura reservada para que todas las cards queden alineadas */}
+        <div className="flex min-h-11 items-start justify-between gap-2">
+          <h3 className="line-clamp-2 font-display text-[17px] font-medium leading-snug text-ink">
             {perfume.nombre}
           </h3>
           {perfume.categoria && (
-            <Badge variant="outline" className="shrink-0 rounded-full text-[10.5px] font-medium text-muted-foreground">
-              {perfume.categoria}
+            <Badge variant="outline" className="max-w-24 shrink-0 rounded-full text-[10.5px] font-medium text-muted-foreground">
+              <span className="truncate">{perfume.categoria}</span>
             </Badge>
           )}
         </div>
@@ -99,52 +102,54 @@ export default function PerfumeCard({ perfume }: Props) {
           )}
         </div>
 
-        {perfume.descripcion && (
-          <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
-            {perfume.descripcion}
-          </p>
-        )}
+        <p className="line-clamp-2 min-h-9.75 text-[13px] leading-relaxed text-muted-foreground">
+          {perfume.descripcion}
+        </p>
 
-        {perfume.tipos_aroma.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {perfume.tipos_aroma.map((a) => (
-              <span
-                key={a}
-                className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-medium text-primary"
-              >
-                {a}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="flex h-5.75 gap-1.5 overflow-hidden">
+          {perfume.tipos_aroma.slice(0, 3).map((a) => (
+            <span
+              key={a}
+              className="whitespace-nowrap rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-medium text-primary"
+            >
+              {a}
+            </span>
+          ))}
+          {perfume.tipos_aroma.length > 3 && (
+            <span className="whitespace-nowrap rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-primary">
+              +{perfume.tipos_aroma.length - 3}
+            </span>
+          )}
+        </div>
 
-        {perfume.ocasiones.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {perfume.ocasiones.map((o) => (
-              <span
-                key={o}
-                className="rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground"
-              >
-                {o}
-              </span>
-            ))}
-          </div>
-        )}
+        <div className="flex h-5.75 gap-1.5 overflow-hidden">
+          {perfume.ocasiones.slice(0, 3).map((o) => (
+            <span
+              key={o}
+              className="whitespace-nowrap rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground"
+            >
+              {o}
+            </span>
+          ))}
+          {perfume.ocasiones.length > 3 && (
+            <span className="whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+              +{perfume.ocasiones.length - 3}
+            </span>
+          )}
+        </div>
 
-        {(perfume.duracion || perfume.proyeccion) && (
-          <div className="mt-auto flex items-center gap-4 border-t border-border/70 pt-2.5 text-[12px] text-muted-foreground">
-            {perfume.duracion && (
-              <span className="flex items-center gap-1.5">
-                <Clock className="size-3.5" /> {perfume.duracion}
-              </span>
-            )}
-            {perfume.proyeccion && (
-              <span className="flex items-center gap-1.5">
-                <Wind className="size-3.5" /> {perfume.proyeccion}
-              </span>
-            )}
-          </div>
-        )}
+        <div className="mt-auto flex min-h-8.25 items-center gap-4 border-t border-border/70 pt-2.5 text-[12px] text-muted-foreground">
+          {perfume.duracion && (
+            <span className="flex items-center gap-1.5">
+              <Clock className="size-3.5" /> {perfume.duracion}
+            </span>
+          )}
+          {perfume.proyeccion && (
+            <span className="flex items-center gap-1.5">
+              <Wind className="size-3.5" /> {perfume.proyeccion}
+            </span>
+          )}
+        </div>
       </div>
     </article>
   );

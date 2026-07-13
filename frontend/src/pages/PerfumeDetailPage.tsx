@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatPrice, finalPrice } from '@/lib/format';
 import PerfumeCard from '../components/PerfumeCard';
+import { CardCarousel, CarouselItem } from '../components/catalog/CardCarousel';
 import PerfumeSpinner from '../components/PerfumeSpinner';
 import AddToCartModal from '../components/AddToCartModal';
 import CartFab from '../components/CartFab';
@@ -174,11 +175,13 @@ export default function PerfumeDetailPage() {
                 <h2 className="mb-6 font-display text-[26px] font-light tracking-tight text-ink">
                   También te puede interesar
                 </h2>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <CardCarousel>
                   {related.map((p) => (
-                    <PerfumeCard key={p.id} perfume={p} />
+                    <CarouselItem key={p.id}>
+                      <PerfumeCard perfume={p} />
+                    </CarouselItem>
                   ))}
-                </div>
+                </CardCarousel>
               </div>
             </section>
           )}

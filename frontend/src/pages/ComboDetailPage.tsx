@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice, finalPrice } from '@/lib/format';
 import ComboCard from '../components/ComboCard';
+import { CardCarousel, CarouselItem } from '../components/catalog/CardCarousel';
 import PerfumeSpinner from '../components/PerfumeSpinner';
 import AddToCartModal from '../components/AddToCartModal';
 import CartFab from '../components/CartFab';
@@ -102,11 +103,13 @@ export default function ComboDetailPage() {
                 <h2 className="mb-6 font-display text-[26px] font-light tracking-tight text-ink">
                   Otros combos disponibles
                 </h2>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                <CardCarousel>
                   {related.map((c) => (
-                    <ComboCard key={c.id} combo={c} />
+                    <CarouselItem key={c.id} className="w-72 sm:w-80">
+                      <ComboCard combo={c} />
+                    </CarouselItem>
                   ))}
-                </div>
+                </CardCarousel>
               </div>
             </section>
           )}

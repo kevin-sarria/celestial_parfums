@@ -180,7 +180,28 @@ export default function ImportModal({ open, onClose, entity, guardedFetch, onImp
 
           {spec ? (
             <>
-              <div className="max-h-64 overflow-auto rounded-xl border border-border">
+              {/* Móvil: tarjetas apiladas (la tabla no cabe en pantallas pequeñas) */}
+              <div className="max-h-64 space-y-2 overflow-y-auto sm:hidden">
+                {spec.columnas.map(c => (
+                  <div key={c.key} className="rounded-lg border border-border bg-secondary/30 p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-[12.5px] font-semibold text-foreground">{c.key}</span>
+                      {c.required ? (
+                        <Badge variant="outline" className="border-primary/30 bg-brand-soft text-primary">
+                          Obligatoria
+                        </Badge>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">Opcional</span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-muted-foreground">{c.descripcion}</p>
+                    <p className="mt-0.5 text-[11px] text-muted-foreground/70">Ej: {String(c.ejemplo)}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Escritorio: tabla */}
+              <div className="hidden max-h-64 overflow-auto rounded-xl border border-border sm:block">
                 <Table>
                   <TableHeader className="sticky top-0 bg-secondary">
                     <TableRow className="hover:bg-transparent">
@@ -199,8 +220,8 @@ export default function ImportModal({ open, onClose, entity, guardedFetch, onImp
                             ? <Badge variant="outline" className="border-primary/30 bg-brand-soft text-primary">Si *</Badge>
                             : <span className="text-muted-foreground">No</span>}
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{c.descripcion}</TableCell>
-                        <TableCell className="text-muted-foreground/80">{String(c.ejemplo)}</TableCell>
+                        <TableCell className="min-w-40 whitespace-normal text-muted-foreground">{c.descripcion}</TableCell>
+                        <TableCell className="max-w-40 whitespace-normal wrap-break-word text-muted-foreground/80">{String(c.ejemplo)}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

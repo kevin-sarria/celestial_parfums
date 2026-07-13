@@ -4,7 +4,11 @@
       "Bash(node -e \"console.log\\(JSON.stringify\\(require\\('./backend/package.json'\\).scripts, null, 2\\)\\)\")",
       "Bash(git check-ignore *)",
       "Bash(node -e \"const p=require\\('./backend/package.json'\\); console.log\\('deps:', JSON.stringify\\(p.dependencies\\)\\)\")",
-      "Bash(sed 's/=.*/=/' frontend/.env)"
+      "Bash(sed 's/=.*/=/' frontend/.env)",
+      "Bash(curl -s -o /dev/null -w \"backend:%{http_code} \" http://localhost:4000/)",
+      "Bash(node shots-import.mjs)",
+      "Bash(node shots-mobile.mjs)",
+      "Bash(node shots-carousel.mjs)"
     ]
   }
 }

@@ -56,7 +56,7 @@ export default function Modal({
       <DialogHeader>
         <DialogTitle className="font-display text-lg font-medium">{title}</DialogTitle>
       </DialogHeader>
-      <div className="space-y-4">{children}</div>
+      <div className="min-w-0 space-y-4">{children}</div>
       {footerEl}
     </>
   );
@@ -64,11 +64,14 @@ export default function Modal({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
-        className="max-h-[88svh] overflow-y-auto sm:max-w-135"
-        style={maxWidth ? { maxWidth } : undefined}
+        // min-w-0 en los hijos permite que el contenido (tablas, etc.) se encoja
+        // en pantallas pequeñas en vez de desbordar el modal
+        className="max-h-[88svh] overflow-y-auto overflow-x-hidden p-4 sm:max-w-135 sm:p-6"
+        // min() evita que un maxWidth grande desborde la pantalla en ventanas angostas
+        style={maxWidth ? { maxWidth: `min(${maxWidth}px, calc(100vw - 2rem))` } : undefined}
       >
         {onSubmit ? (
-          <form className="space-y-4" onSubmit={onSubmit}>
+          <form className="min-w-0 space-y-4" onSubmit={onSubmit}>
             {inner}
           </form>
         ) : (

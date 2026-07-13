@@ -17,7 +17,8 @@ export default function ComboCard({ combo: c }: Props) {
   return (
     <article
       className={cn(
-        'group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card',
+        // h-full: todas las cards de una fila comparten la misma altura
+        'group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-2xl border border-border bg-card',
         'transition-all duration-300 ease-out hover:-translate-y-1 hover:border-primary/25 hover:shadow-[0_20px_45px_-20px_rgb(0_0_0/0.18)]',
       )}
       onClick={goToDetail}
@@ -26,39 +27,44 @@ export default function ComboCard({ combo: c }: Props) {
       aria-label={`Ver combo ${c.nombre} - ${c.cantidad} perfumes`}
       onKeyDown={(e) => e.key === 'Enter' && goToDetail()}
     >
-      {c.imagen_url && (
-        <div className="relative aspect-16/10 overflow-hidden bg-secondary">
+      {/* Imagen siempre presente (con placeholder) para que las cards no varíen de altura */}
+      <div className="relative h-40 shrink-0 overflow-hidden bg-white p-3">
+        {c.imagen_url ? (
           <img
             src={c.imagen_url}
             alt={c.nombre}
             loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
+            className="h-full w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.04]"
           />
-          {c.descuento > 0 && (
-            <Badge className="absolute right-3 top-3 rounded-full bg-ink px-2.5 text-[11px] font-semibold text-background shadow-sm">
-              -{c.descuento}%
-            </Badge>
-          )}
-        </div>
-      )}
+        ) : (
+          <div className="flex h-full w-full items-center justify-center">
+            <span className="text-4xl opacity-40">🎁</span>
+          </div>
+        )}
+        {c.descuento > 0 && (
+          <Badge className="absolute right-3 top-3 rounded-full bg-ink px-2.5 text-[11px] font-semibold text-background shadow-sm">
+            -{c.descuento}%
+          </Badge>
+        )}
+      </div>
 
       <div className="flex flex-1 flex-col gap-2.5 p-4">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display text-[17px] font-medium leading-snug text-ink">{c.nombre}</h3>
+        <div className="flex min-h-11 items-start justify-between gap-2">
+          <h3 className="line-clamp-2 font-display text-[17px] font-medium leading-snug text-ink">{c.nombre}</h3>
           <Badge variant="secondary" className="shrink-0 rounded-full text-[11px] font-semibold text-primary">
             {c.cantidad} perfumes
           </Badge>
         </div>
 
         {c.categoria && (
-          <Badge variant="outline" className="w-fit rounded-full text-[10.5px] font-medium text-muted-foreground">
-            {c.categoria}
+          <Badge variant="outline" className="w-fit max-w-full rounded-full text-[10.5px] font-medium text-muted-foreground">
+            <span className="truncate">{c.categoria}</span>
           </Badge>
         )}
 
-        {c.descripcion && (
-          <p className="line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">{c.descripcion}</p>
-        )}
+        <p className="line-clamp-2 min-h-9.75 text-[13px] leading-relaxed text-muted-foreground">
+          {c.descripcion}
+        </p>
 
         <div className="mt-auto flex items-baseline gap-2 border-t border-border/70 pt-3">
           <span className="text-[16px] font-semibold tracking-tight text-primary">
