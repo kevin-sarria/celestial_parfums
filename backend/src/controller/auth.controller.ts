@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import {
   loginService,
+  googleAuthService,
   refreshService,
   registerAdminService,
   registerClientService,
@@ -28,6 +29,16 @@ export const login = async (req: Request, res: Response) => {
     const { accessToken, refreshToken, user } = await loginService(req.body);
     setAuthCookies(res, accessToken, refreshToken);
     res.status(200).json({ message: 'Login exitoso', data: { token: accessToken, user } });
+  } catch (err: any) {
+    res.status(401).json({ error: err.message });
+  }
+};
+
+export const googleAuth = async (req: Request, res: Response) => {
+  try {
+    const { accessToken, refreshToken, user } = await googleAuthService(req.body?.credential);
+    setAuthCookies(res, accessToken, refreshToken);
+    res.status(200).json({ message: 'Login con Google exitoso', data: { token: accessToken, user } });
   } catch (err: any) {
     res.status(401).json({ error: err.message });
   }

@@ -1,3 +1,4 @@
+import { Link2 as LinkIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { Perfume } from '../../domain/entities/perfume.schema';
 import type { Combo } from '../../domain/entities/combo.schema';
@@ -17,7 +18,20 @@ const SubText = ({ children }: { children: React.ReactNode }) => (
 
 export const ventasColumns: ColumnDef<Venta>[] = [
   { key: 'dia', header: 'Dia', type: 'date', getValue: v => v.dia.slice(0, 10), render: v => fmtDate(v.dia), className: cellMeta, noTruncate: true },
-  { key: 'persona', header: 'Persona', type: 'string', getValue: v => v.persona, className: cellName },
+  { key: 'persona', header: 'Persona', type: 'string', getValue: v => v.persona,
+    render: v => (
+      <span>
+        {v.persona}
+        {v.cliente && (
+          <SubText>
+            <span className="inline-flex items-center gap-1 text-primary">
+              <LinkIcon className="size-3" /> {v.cliente.nombre} {v.cliente.apellido}
+            </span>
+          </SubText>
+        )}
+      </span>
+    ),
+    className: cellName },
   { key: 'cantidad_perfumes', header: 'Cant.', type: 'number', getValue: v => v.cantidad_perfumes, className: cellMeta, noTruncate: true },
   { key: 'presentacion', header: 'Presentacion', type: 'enum', enumOptions: ['10ML', '20ML', '30ML', '60ML', '100ML', '200ML'],
     getValue: v => v.presentacion,
@@ -86,9 +100,7 @@ export const perfumesColumns: ColumnDef<Perfume>[] = [
     ),
     sortable: false, noTruncate: true },
   { key: 'duracion', header: 'Duracion', type: 'string', getValue: p => p.duracion ?? '', render: p => p.duracion ?? '—', className: cellMeta, noTruncate: true },
-  { key: 'agotado', header: 'Stock', type: 'enum', enumOptions: ['En stock', 'Agotado'],
-    getValue: p => p.agotado ? 'Agotado' : 'En stock',
-    filterable: false, sortable: false, noTruncate: true },
+  // El estado de stock se muestra (y se cambia) con el badge interactivo de las acciones de la fila.
 ];
 
 export const combosColumns: ColumnDef<Combo>[] = [

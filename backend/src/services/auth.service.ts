@@ -1,19 +1,43 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import {
   findUserByEmail,
   findUserByEmailAny,
   findUserByToken,
   createUser,
+  createGoogleUser,
   activateUser,
 } from '../repositories/auth.repository';
 import type { LoginDTO, RegisterDTO } from '../types/auth.type';
 import { transporter } from '../config/mailer';
+import logger from '../config/logger';
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'celestial_secret_key';
-const REFRESH_SECRET = process.env.REFRESH_SECRET ?? 'celestial_refresh_key';
+/**
+ * Obtiene un secreto obligatorio de firma de tokens.
+ * En producción falla en el arranque si no está configurado (evita usar
+ * claves débiles por defecto de forma silenciosa). En desarrollo avisa y usa
+ * un valor solo-dev para no bloquear a quien clona el repo sin .env.
+ */
+function requireSecret(name: 'JWT_SECRET' | 'REFRESH_SECRET'): string {
+  const value = process.env[name];
+  if (value && value.trim()) return value;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(`${name} no está configurada: es obligatoria en producción`);
+  }
+  logger.warn(`${name} no configurada; usando un valor SOLO para desarrollo (inseguro)`);
+  return `dev_only_${name.toLowerCase()}`;
+}
+
+const JWT_SECRET = requireSecret('JWT_SECRET');
+const REFRESH_SECRET = requireSecret('REFRESH_SECRET');
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? '';
+
+// Cliente reutilizable que valida los ID tokens contra el Client ID de la app.
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
+const CLIENTE_ROL_ID = 2;
 
 export const ACCESS_TOKEN_MAX_AGE = 8 * 60 * 60 * 1000; // 8h
 export const REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 7d
@@ -33,6 +57,65 @@ export const loginService = async (dto: LoginDTO) => {
 
   const tokenPayload = { id: user.id, email: user.email, rol_id: user.rol_id };
   const { accessToken, refreshToken } = generateTokens(tokenPayload);
+
+  return {
+    accessToken,
+    refreshToken,
+    user: { id: user.id, nombre: user.nombre, apellido: user.apellido, email: user.email, rol_id: user.rol_id },
+  };
+};
+
+/**
+ * Inicia sesión (o registra) con una cuenta de Google.
+ * Verifica criptográficamente el ID token contra Google y el Client ID de la app,
+ * luego reutiliza el usuario existente o crea una cuenta ya activada.
+ */
+export const googleAuthService = async (credential: string) => {
+  if (!GOOGLE_CLIENT_ID) {
+    throw new Error('El inicio de sesión con Google no está configurado');
+  }
+  if (!credential || typeof credential !== 'string') {
+    throw new Error('Token de Google no recibido');
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch {
+    throw new Error('No se pudo verificar la cuenta de Google');
+  }
+
+  if (!payload?.email || !payload.email_verified) {
+    throw new Error('La cuenta de Google no tiene un correo verificado');
+  }
+
+  const email = payload.email.toLowerCase();
+  let user = await findUserByEmailAny(email);
+
+  if (user) {
+    // Cuenta creada por registro normal pero aún sin activar: Google la valida.
+    if (!user.activo) {
+      await activateUser(user.id);
+      user = { ...user, activo: true };
+    }
+  } else {
+    // Contraseña aleatoria: la cuenta solo se usa vía Google, no por contraseña.
+    const randomPassword = crypto.randomBytes(32).toString('hex');
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+    const nombre = (payload.given_name ?? payload.name ?? 'Usuario').slice(0, 100);
+    const apellido = (payload.family_name ?? '').slice(0, 100);
+    user = await createGoogleUser({ nombre, apellido, email, hashedPassword, rol_id: CLIENTE_ROL_ID });
+  }
+
+  const { accessToken, refreshToken } = generateTokens({
+    id: user.id,
+    email: user.email,
+    rol_id: user.rol_id,
+  });
 
   return {
     accessToken,

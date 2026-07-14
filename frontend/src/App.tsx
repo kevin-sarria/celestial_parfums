@@ -5,11 +5,14 @@ import ErrorBoundary from './components/ErrorBoundary';
 import AppRouter from './router/AppRouter';
 import ScrollToTop from './router/ScrollToTop';
 import CartDrawer from './components/CartDrawer';
+import { BrandMark } from './components/BrandMark';
 
 function AppLayout() {
-  const isDashboard = useLocation().pathname === '/dashboard';
+  const { pathname } = useLocation();
+  // Rutas a pantalla completa: sin footer ni chrome del catálogo
+  const isFullBleed = pathname === '/dashboard' || pathname === '/contactame';
 
-  if (isDashboard) {
+  if (isFullBleed) {
     return <AppRouter />;
   }
 
@@ -19,8 +22,8 @@ function AppLayout() {
         <AppRouter />
       </div>
       <CartDrawer />
-      <footer className="border-t border-border py-5 text-center text-[13px] text-muted-foreground">
-        <span className="text-primary">✦</span> © {new Date().getFullYear()} Celestial Parfums. Todos los derechos reservados.
+      <footer className="flex items-center justify-center gap-1.5 border-t border-border py-5 text-center text-[13px] text-muted-foreground">
+        <BrandMark className="size-5" /> © {new Date().getFullYear()} Celestial Parfums. Todos los derechos reservados.
       </footer>
     </div>
   );

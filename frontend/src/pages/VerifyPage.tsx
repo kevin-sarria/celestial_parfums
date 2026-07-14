@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { AuthCard } from '@/components/auth/AuthCard';
+import { BrandMark } from '@/components/BrandMark';
 import { BASE_URL } from '../infrastructure/api/client';
 
 export default function VerifyPage() {
@@ -43,7 +44,7 @@ export default function VerifyPage() {
 
       {status === 'success' && (
         <div className="space-y-4 text-center">
-          <span className="block font-display text-3xl text-primary">✦</span>
+          <BrandMark className="mx-auto size-14" />
           <p className="text-sm text-muted-foreground">{message}</p>
           <Button className="w-full" onClick={() => navigate('/login')}>
             Iniciar sesión

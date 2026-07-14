@@ -10,6 +10,7 @@ export const API_PAGOS    = `${BASE_URL}/api/pagos`;
 export const API_CLIENTES = `${BASE_URL}/api/clientes`;
 export const API_EMPRESAS = `${BASE_URL}/api/empresas`;
 export const API_IMPORT   = `${BASE_URL}/api/import`;
+export const API_CONTACTO = `${BASE_URL}/api/contacto`;
 
 export const DEFAULT_PAGE_SIZE = 10;
 

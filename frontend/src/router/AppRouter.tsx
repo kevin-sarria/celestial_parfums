@@ -8,6 +8,7 @@ const PerfumesPage = lazy(() => import('../pages/PerfumesPage'));
 const PerfumeDetailPage = lazy(() => import('../pages/PerfumeDetailPage'));
 const CombosPage = lazy(() => import('../pages/CombosPage'));
 const ComboDetailPage = lazy(() => import('../pages/ComboDetailPage'));
+const ContactPage = lazy(() => import('../pages/ContactPage'));
 const LoginPage = lazy(() => import('../pages/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/RegisterPage'));
 const VerifyPage = lazy(() => import('../pages/VerifyPage'));
@@ -24,6 +25,7 @@ export default function AppRouter() {
         <Route path="/perfume/:slug" element={<PerfumeDetailPage />} />
         <Route path="/combos" element={<CombosPage />} />
         <Route path="/combo/:slug" element={<ComboDetailPage />} />
+        <Route path="/contactame" element={<ContactPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify" element={<VerifyPage />} />

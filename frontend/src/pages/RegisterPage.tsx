@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { PasswordInput } from '@/components/auth/PasswordInput';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { BrandMark } from '@/components/BrandMark';
 import { registerSchema } from '../domain/entities/auth.schema';
 import { BASE_URL } from '../infrastructure/api/client';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
@@ -43,7 +45,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      await executeRecaptcha('REGISTER');
+      const captcha = await executeRecaptcha('REGISTER');
       const res = await fetch(`${BASE_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -52,6 +54,7 @@ export default function RegisterPage() {
           apellido: parsed.data.apellido,
           email: parsed.data.email,
           password: parsed.data.password,
+          captcha,
         }),
       });
 
@@ -78,7 +81,7 @@ export default function RegisterPage() {
     <AuthCard subtitle={success ? undefined : 'Crea tu cuenta'}>
       {success ? (
         <div className="space-y-4 text-center">
-          <span className="block font-display text-3xl text-primary">✦</span>
+          <BrandMark className="mx-auto size-14" />
           <p className="text-sm text-muted-foreground">{success}</p>
           <Button className="w-full" onClick={() => navigate('/login')}>
             Ir al login
@@ -155,6 +158,14 @@ export default function RegisterPage() {
           <Button className="w-full" type="submit" disabled={loading}>
             {loading ? 'Registrando...' : 'Crear cuenta'}
           </Button>
+
+          <div className="flex items-center gap-3 py-0.5">
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[12px] text-muted-foreground">o</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <GoogleAuthButton text="signup_with" onError={setError} />
 
           <p className="text-center text-[13px] text-muted-foreground">
             ¿Ya tienes cuenta?{' '}

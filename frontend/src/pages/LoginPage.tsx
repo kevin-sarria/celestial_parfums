@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { PasswordInput } from '@/components/auth/PasswordInput';
+import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { loginSchema } from '../domain/entities/auth.schema';
 import { BASE_URL } from '../infrastructure/api/client';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
@@ -35,12 +36,12 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await executeRecaptcha('LOGIN');
+      const captcha = await executeRecaptcha('LOGIN');
       const res = await fetch(`${BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(parsed.data),
+        body: JSON.stringify({ ...parsed.data, captcha }),
       });
 
       const json = await res.json();
@@ -96,6 +97,14 @@ export default function LoginPage() {
         <Button className="w-full" type="submit" disabled={loading}>
           {loading ? 'Ingresando...' : 'Ingresar'}
         </Button>
+
+        <div className="flex items-center gap-3 py-0.5">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-[12px] text-muted-foreground">o</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
+
+        <GoogleAuthButton text="signin_with" onError={setError} />
 
         <p className="text-center text-[13px] text-muted-foreground">
           ¿No tienes cuenta?{' '}

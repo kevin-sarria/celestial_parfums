@@ -9,9 +9,9 @@ import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { ventasColumns } from '../columns';
-import { API_VENTAS, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
+import { API_VENTAS, API_CLIENTES, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, StatCard, StatRow } from '../ui';
-import type { GuardedFetch, Venta, VentaForm } from '../types';
+import type { GuardedFetch, Venta, VentaForm, Cliente } from '../types';
 import { emptyVentaForm } from '../types';
 
 interface VentasTabProps {
@@ -24,6 +24,7 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totales, setTotales] = useState<{ total_unidades: number; total_dinero: number } | null>(null);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
 
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<VentaForm>(emptyVentaForm());
@@ -34,15 +35,17 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
 
   const load = async (p = page, s = pageSize, term = searchTerm) => {
     const searchQs = term ? `&search=${encodeURIComponent(term)}` : '';
-    const [vRes, tRes] = await Promise.all([
+    const [vRes, tRes, clRes] = await Promise.all([
       guardedFetch(`${API_VENTAS}?page=${p}&limit=${s}${searchQs}`),
       guardedFetch(`${API_VENTAS}/totales`),
+      guardedFetch(API_CLIENTES),
     ]);
-    const [v, t] = await Promise.all([vRes.json(), tRes.json()]);
+    const [v, t, cl] = await Promise.all([vRes.json(), tRes.json(), clRes.json()]);
     setVentas(v.data ?? []);
     setTotal(v.total ?? 0);
     setPage(p);
     setTotales(t.data ?? null);
+    setClientes(cl.data ?? []);
   };
 
   useEffect(() => { load(1); }, []);
@@ -50,7 +53,9 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const openCreate = () => { setForm(emptyVentaForm()); setError(''); setModal({ open: true, editId: null }); };
   const openEdit = (v: Venta) => {
     setForm({
+      ...emptyVentaForm(),
       dia: v.dia.slice(0, 10), persona: v.persona,
+      cliente_id: v.cliente_id ?? '',
       cantidad_perfumes: String(v.cantidad_perfumes), presentacion: v.presentacion,
       referencia_perfume: v.referencia_perfume, valor_venta: String(v.valor_venta),
       datos_adicionales: v.datos_adicionales ?? '',
@@ -61,8 +66,33 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
 
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault(); setLoading(true); setError('');
+
+    // Enlace de cliente opcional: '' = sin enlace, 'nuevo' = crear, número = existente.
+    let clienteId: number | null = typeof form.cliente_id === 'number' ? form.cliente_id : null;
+
+    if (form.cliente_id === 'nuevo') {
+      if (!form.nuevo_nombre.trim() || !form.nuevo_apellido.trim()) {
+        setError('Nombre y apellido del cliente son obligatorios'); setLoading(false); return;
+      }
+      try {
+        const res = await guardedFetch(API_CLIENTES, {
+          method: 'POST',
+          body: JSON.stringify({
+            nombre: form.nuevo_nombre.trim(), apellido: form.nuevo_apellido.trim(),
+            correo: form.nuevo_correo.trim() || null,
+            telefono: form.nuevo_telefono.trim() || null,
+            direccion: form.nuevo_direccion.trim() || null,
+          }),
+        });
+        const json = await res.json();
+        if (!res.ok) { setError(json.error ?? 'Error al crear cliente'); setLoading(false); return; }
+        clienteId = json.data.id;
+      } catch { setError('No se pudo crear el cliente'); setLoading(false); return; }
+    }
+
     const body = {
       dia: form.dia, persona: form.persona.trim(),
+      cliente_id: clienteId,
       cantidad_perfumes: Number(form.cantidad_perfumes),
       presentacion: form.presentacion,
       referencia_perfume: form.referencia_perfume.trim(),
@@ -155,6 +185,49 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
               onChange={e => setForm(f => ({ ...f, persona: e.target.value }))} />
           </Field>
         </FieldRow>
+        <Field label="Cliente enlazado (opcional)">
+          <NativeSelect value={String(form.cliente_id)}
+            onChange={e => {
+              const val = e.target.value;
+              setForm(f => ({ ...f, cliente_id: val === '' ? '' : val === 'nuevo' ? 'nuevo' : Number(val) }));
+            }}>
+            <option value="">— Sin cliente —</option>
+            <option value="nuevo">+ Crear cliente nuevo</option>
+            {clientes.map(cl => (
+              <option key={cl.id} value={cl.id}>
+                {cl.nombre} {cl.apellido}{cl.telefono ? ` · ${cl.telefono}` : ''}
+              </option>
+            ))}
+          </NativeSelect>
+        </Field>
+        {form.cliente_id === 'nuevo' && (
+          <div className="space-y-3 rounded-xl border border-border bg-secondary/40 p-3.5">
+            <FieldRow>
+              <Field label="Nombre *">
+                <Input value={form.nuevo_nombre} maxLength={60}
+                  onChange={e => setForm(f => ({ ...f, nuevo_nombre: e.target.value }))} />
+              </Field>
+              <Field label="Apellido *">
+                <Input value={form.nuevo_apellido} maxLength={60}
+                  onChange={e => setForm(f => ({ ...f, nuevo_apellido: e.target.value }))} />
+              </Field>
+            </FieldRow>
+            <FieldRow>
+              <Field label="Telefono">
+                <Input value={form.nuevo_telefono} maxLength={20}
+                  onChange={e => setForm(f => ({ ...f, nuevo_telefono: e.target.value }))} />
+              </Field>
+              <Field label="Correo">
+                <Input type="email" value={form.nuevo_correo} maxLength={100}
+                  onChange={e => setForm(f => ({ ...f, nuevo_correo: e.target.value }))} />
+              </Field>
+            </FieldRow>
+            <Field label="Direccion">
+              <Input value={form.nuevo_direccion} maxLength={150}
+                onChange={e => setForm(f => ({ ...f, nuevo_direccion: e.target.value }))} />
+            </Field>
+          </div>
+        )}
         <FieldRow>
           <Field label="Cantidad *">
             <Input type="number" min="1" required value={form.cantidad_perfumes}

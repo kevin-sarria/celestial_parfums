@@ -25,6 +25,8 @@ export interface Venta {
   id: number;
   dia: string;
   persona: string;
+  cliente_id: number | null;
+  cliente: { id: number; nombre: string; apellido: string; telefono: string | null } | null;
   cantidad_perfumes: number;
   presentacion: string;
   referencia_perfume: string;
@@ -74,12 +76,19 @@ export interface VentaForm {
   dia: string; persona: string; cantidad_perfumes: string;
   presentacion: string; referencia_perfume: string; valor_venta: string;
   datos_adicionales: string;
+  // Enlace opcional con un cliente: id existente, 'nuevo', o '' (sin enlace).
+  cliente_id: number | 'nuevo' | '';
+  nuevo_nombre: string; nuevo_apellido: string; nuevo_correo: string;
+  nuevo_telefono: string; nuevo_direccion: string;
 }
 
 export const emptyVentaForm = (): VentaForm => ({
   dia: new Date().toISOString().slice(0, 10),
   persona: '', cantidad_perfumes: '1', presentacion: '30ML',
   referencia_perfume: '', valor_venta: '', datos_adicionales: '',
+  cliente_id: '',
+  nuevo_nombre: '', nuevo_apellido: '', nuevo_correo: '',
+  nuevo_telefono: '', nuevo_direccion: '',
 });
 
 export interface CreditoForm {
@@ -122,6 +131,6 @@ export const emptyComboForm = (): ComboForm => ({
   cantidad: '2', precio: '', descuento: '0', activo: true,
 });
 
-export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'descuentos' | 'ventas' | 'creditos' | 'pagos';
+export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'redes';
 
 export type GuardedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

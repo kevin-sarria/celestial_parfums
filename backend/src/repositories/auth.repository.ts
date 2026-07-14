@@ -31,3 +31,22 @@ export const activateUser = (id: number) =>
     where: { id },
     data: { activo: true, verification_token: null, token_expiry: null },
   });
+
+/** Crea una cuenta ya activa a partir de un inicio de sesión con Google. */
+export const createGoogleUser = (data: {
+  nombre: string;
+  apellido: string;
+  email: string;
+  hashedPassword: string;
+  rol_id: number;
+}) =>
+  prisma.user.create({
+    data: {
+      nombre:   data.nombre,
+      apellido: data.apellido,
+      email:    data.email,
+      password: data.hashedPassword,
+      rol_id:   data.rol_id,
+      activo:   true,
+    },
+  });

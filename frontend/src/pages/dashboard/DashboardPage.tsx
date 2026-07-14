@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Menu, SprayCan, Flower2, CalendarDays, Tags, Ruler, Gift,
-  BadgePercent, CircleDollarSign, ClipboardList, Factory, type LucideIcon,
+  BadgePercent, CircleDollarSign, ClipboardList, Factory, Share2, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +25,9 @@ import { LookupTab } from './tabs/LookupTab';
 import { VentasTab } from './tabs/VentasTab';
 import { CreditosTab } from './tabs/CreditosTab';
 import { PagosTab } from './tabs/PagosTab';
+import { RedesTab } from './tabs/RedesTab';
 import PerfumeSpinner from '../../components/PerfumeSpinner';
+import { BrandMark } from '../../components/BrandMark';
 
 const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   perfumes: { label: 'Perfumes', icon: SprayCan },
@@ -38,6 +40,7 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   ventas: { label: 'Ventas', icon: CircleDollarSign },
   creditos: { label: 'Creditos', icon: ClipboardList },
   pagos: { label: 'Proveedores', icon: Factory },
+  redes: { label: 'Redes sociales', icon: Share2 },
 };
 
 const TABS = Object.keys(TAB_META) as Tab[];
@@ -141,8 +144,8 @@ export default function DashboardPage() {
     <div className="dash-root flex h-svh flex-col bg-background">
       {/* ── Header ── */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 md:px-6">
-        <span className="select-none font-display text-[15.5px] font-medium tracking-wide text-foreground">
-          <span className="text-primary">✦</span> Celestial Parfums
+        <span className="flex select-none items-center font-display text-[15.5px] font-medium tracking-wide text-foreground">
+          <BrandMark className="mr-2 size-6" /> Celestial Parfums
           <span className="ml-2 hidden text-[11px] font-sans font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:inline">
             Admin
           </span>
@@ -263,6 +266,7 @@ export default function DashboardPage() {
             {tab === 'ventas' && <VentasTab guardedFetch={guardedFetch} />}
             {tab === 'creditos' && <CreditosTab guardedFetch={guardedFetch} />}
             {tab === 'pagos' && <PagosTab guardedFetch={guardedFetch} />}
+            {tab === 'redes' && <RedesTab guardedFetch={guardedFetch} />}
           </>
         )}
       </main>

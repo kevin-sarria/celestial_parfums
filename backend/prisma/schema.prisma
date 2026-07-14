@@ -17,6 +17,33 @@ enum Genero {
   unisex
 }
 
+enum ContactoFondoTipo {
+  color
+  imagen
+}
+
+enum ContactoForma {
+  redondo
+  cuadrado
+}
+
+enum ContactoLinkTipo {
+  boton
+  red
+}
+
+// Alineación vertical de la sección superior (perfil+botones) dentro de su mitad.
+enum ContactoPosicion {
+  arriba
+  centro
+}
+
+// Alineación vertical de la sección inferior (redes) dentro de su mitad.
+enum ContactoRedesPosicion {
+  centro
+  abajo
+}
+
 // ── Models ──────────────────────────────────────────────────────────────────
 
 model Role {
@@ -40,6 +67,7 @@ model User {
   created_at         DateTime  @default(now())
   updated_at         DateTime  @updatedAt
   rol                Role      @relation(fields: [rol_id], references: [id])
+  cliente            Cliente?
 
   @@map("users")
 }
@@ -143,7 +171,9 @@ model PerfumePresentacion {
 model Venta {
   id                 Int      @id @default(autoincrement())
   dia                DateTime @db.Date
+  // Nombre libre mostrado (ej: "hermano de Pepe"); el enlace al cliente es opcional.
   persona            String   @db.VarChar(150)
+  cliente_id         Int?
   cantidad_perfumes  Int
   presentacion       String   @db.VarChar(20)
   referencia_perfume String   @db.Text
@@ -151,8 +181,10 @@ model Venta {
   datos_adicionales  String?  @db.Text
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
+  cliente            Cliente? @relation(fields: [cliente_id], references: [id], onDelete: SetNull)
 
   @@index([dia])
+  @@index([cliente_id])
   @@map("ventas")
 }
 
@@ -163,9 +195,13 @@ model Cliente {
   correo     String?   @db.VarChar(150)
   telefono   String?   @db.VarChar(20)
   direccion  String?   @db.VarChar(255)
+  // Enlace opcional con la cuenta registrada en la web (para futuros portales de cliente).
+  user_id    Int?      @unique
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
+  user       User?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
   creditos   Credito[]
+  ventas     Venta[]
 
   @@map("clientes")
 }
@@ -226,6 +262,50 @@ model PagoProveedor {
   @@index([empresa_id])
   @@index([dia])
   @@map("pagos_proveedor")
+}
+
+// Configuración única (fila id=1) de la página pública "Contáctame" estilo linktree.
+model ContactoConfig {
+  id                Int               @id @default(autoincrement())
+  avatar_url        String?           @db.Text
+  nombre            String            @default("Celestial Parfums") @db.VarChar(100)
+  descripcion       String?           @db.Text
+  fondo_tipo        ContactoFondoTipo @default(color)
+  // Color hex (#faf8f4) o URL de imagen según fondo_tipo.
+  fondo_valor       String?           @db.VarChar(500)
+  boton_forma       ContactoForma     @default(redondo)
+  boton_color_fondo String            @default("#ffffff") @db.VarChar(20)
+  boton_color_texto String            @default("#2f2a3d") @db.VarChar(20)
+  // Alineación de cada sección (superior: perfil+botones / inferior: redes) en su mitad.
+  contenido_posicion ContactoPosicion      @default(centro)
+  redes_posicion     ContactoRedesPosicion @default(centro)
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+
+  @@map("contacto_config")
+}
+
+// Links de la página Contáctame: botones grandes (tipo boton) o iconos de la
+// fila inferior de redes (tipo red, donde `nombre` guarda la plataforma).
+model ContactoLink {
+  id          Int              @id @default(autoincrement())
+  tipo        ContactoLinkTipo @default(boton)
+  nombre      String           @db.VarChar(100)
+  url         String           @db.Text
+  emoji       String?          @db.VarChar(20)
+  // Plataforma cuyo icono se muestra en el botón (ej: tiktok); null = usa emoji.
+  icono       String?          @db.VarChar(30)
+  // Overrides opcionales del estilo global (null = usa el de ContactoConfig).
+  forma       ContactoForma?
+  color_fondo String?          @db.VarChar(20)
+  color_texto String?          @db.VarChar(20)
+  orden       Int              @default(0)
+  activo      Boolean          @default(true)
+  created_at  DateTime         @default(now())
+  updated_at  DateTime         @updatedAt
+
+  @@index([tipo, activo])
+  @@map("contacto_links")
 }
 
 model Combo {

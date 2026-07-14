@@ -19,14 +19,38 @@ import { pagoRouter } from './routes/pago.router';
 import { clienteRouter } from './routes/cliente.router';
 import { empresaRouter } from './routes/empresa.router';
 import { importRouter } from './routes/import.router';
+import { contactoRouter } from './routes/contacto.router';
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
-const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Orígenes permitidos: FRONTEND_URL admite varios separados por coma
+// (ej: https://www.celestialparfums.com,https://celestialparfums.com).
+const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+// En desarrollo se acepta cualquier puerto de localhost/127.0.0.1, porque
+// Vite salta de puerto (5173 → 5174…) cuando el habitual está ocupado.
+const isLocalhostOrigin = (origin: string) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
+const corsOrigin = (
+  origin: string | undefined,
+  cb: (err: Error | null, allow?: boolean) => void,
+) => {
+  // Sin header Origin (curl, apps móviles, health checks) se permite.
+  if (!origin) return cb(null, true);
+  if (allowedOrigins.includes(origin)) return cb(null, true);
+  if (!isProduction && isLocalhostOrigin(origin)) return cb(null, true);
+  cb(new Error(`Origen no permitido por CORS: ${origin}`));
+};
 
 app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
 app.use(cors({
-  origin: FRONTEND_URL,
+  origin: corsOrigin,
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-import-key'],
@@ -49,6 +73,7 @@ app.get('/', (_req, res) => {
 
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/google', authLimiter);
 app.use('/api/parfums', perfumeRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/upload', uploadRouter);
@@ -59,6 +84,7 @@ app.use('/api/pagos', pagoRouter);
 app.use('/api/clientes', clienteRouter);
 app.use('/api/empresas', empresaRouter);
 app.use('/api/import', importRouter);
+app.use('/api/contacto', contactoRouter);
 
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   logger.error(err.message, { stack: err.stack });
