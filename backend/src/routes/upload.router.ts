@@ -10,5 +10,5 @@ uploadRouter.post('/', requireAdmin, upload.single('image'), (req: Request, res:
     res.status(400).json({ error: 'No se recibió archivo' });
     return;
   }
-  res.json({ url: `${getPublicBaseUrl(req)}/uploads/${req.file.filename}` });
+  res.json({ url: `${getPublicBaseUrl(req)}/api/uploads/${req.file.filename}` });
 });

@@ -48,7 +48,7 @@ export const saveConfig = async (data: ContactoConfigInput) => {
  * enlace guardado sea válido tanto en local como en producción.
  */
 export const updateAvatar = async (filename: string, baseUrl: string) => {
-  const url = `${baseUrl}/uploads/${filename}`;
+  const url = `${baseUrl}/api/uploads/${filename}`;
   const previous = await contactoRepo.selectConfig();
   await contactoRepo.updateAvatarUrl(url);
   if (previous.avatar_url && previous.avatar_url !== url) {

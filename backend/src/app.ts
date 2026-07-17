@@ -66,7 +66,12 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { er
 app.use(globalLimiter);
 app.use(cookieParser());
 app.use(express.json({ limit: '2mb' }));
-app.use('/uploads', express.static(path.join(__dirname, '../public/uploads')));
+// Las imágenes se sirven bajo /api/uploads para que en producción pasen por el
+// mismo proxy que el resto de la API (nginx solo redirige /api al backend).
+// Se mantiene /uploads por compatibilidad con URLs antiguas ya guardadas en BD.
+const uploadsStatic = express.static(path.join(__dirname, '../public/uploads'));
+app.use('/api/uploads', uploadsStatic);
+app.use('/uploads', uploadsStatic);
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/api/docs.json', (_req, res) => { res.json(swaggerSpec); });
