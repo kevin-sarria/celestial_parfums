@@ -25,6 +25,10 @@ const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Detrás de un proxy inverso (nginx, etc.): confía en X-Forwarded-* para que
+// req.protocol sea 'https' y las URLs de /uploads se construyan correctamente.
+if (isProduction) app.set('trust proxy', true);
+
 // Orígenes permitidos: FRONTEND_URL admite varios separados por coma
 // (ej: https://www.celestialparfums.com,https://celestialparfums.com).
 const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173')

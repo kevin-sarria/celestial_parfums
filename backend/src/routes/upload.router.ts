@@ -1,8 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { upload } from '../config/upload';
 import { requireAdmin } from '../middleware/auth.middleware';
-
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:4000';
+import { getPublicBaseUrl } from '../utils/publicUrl';
 
 export const uploadRouter = Router();
 
@@ -11,5 +10,5 @@ uploadRouter.post('/', requireAdmin, upload.single('image'), (req: Request, res:
     res.status(400).json({ error: 'No se recibió archivo' });
     return;
   }
-  res.json({ url: `${BACKEND_URL}/uploads/${req.file.filename}` });
+  res.json({ url: `${getPublicBaseUrl(req)}/uploads/${req.file.filename}` });
 });

@@ -4,8 +4,6 @@ import * as contactoRepo from '../repositories/contacto.repository';
 import { uploadsDir } from '../config/upload';
 import { ContactoConfigInput, ContactoImportInput, ContactoLinkInput } from '../schemas/contacto.schema';
 
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:4000';
-
 /**
  * Borra del disco un archivo de /uploads referenciado por la URL dada.
  * Ignora URLs externas y errores de disco (el archivo pudo borrarse antes).
@@ -44,9 +42,13 @@ export const saveConfig = async (data: ContactoConfigInput) => {
   }
 };
 
-/** Sube un nuevo avatar: persiste la URL y borra el archivo anterior del disco. */
-export const updateAvatar = async (filename: string) => {
-  const url = `${BACKEND_URL}/uploads/${filename}`;
+/**
+ * Sube un nuevo avatar: persiste la URL y borra el archivo anterior del disco.
+ * `baseUrl` es la URL pública del backend (derivada del request), para que el
+ * enlace guardado sea válido tanto en local como en producción.
+ */
+export const updateAvatar = async (filename: string, baseUrl: string) => {
+  const url = `${baseUrl}/uploads/${filename}`;
   const previous = await contactoRepo.selectConfig();
   await contactoRepo.updateAvatarUrl(url);
   if (previous.avatar_url && previous.avatar_url !== url) {

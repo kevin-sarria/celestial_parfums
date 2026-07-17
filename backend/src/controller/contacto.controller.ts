@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import * as contactoService from '../services/contacto.service';
+import { getPublicBaseUrl } from '../utils/publicUrl';
 
 export const getContacto = async (_req: Request, res: Response) => {
   try {
@@ -34,7 +35,7 @@ export const uploadContactoAvatar = async (req: Request, res: Response) => {
       res.status(400).json({ error: 'No se recibió archivo' });
       return;
     }
-    const url = await contactoService.updateAvatar(req.file.filename);
+    const url = await contactoService.updateAvatar(req.file.filename, getPublicBaseUrl(req));
     res.json({ message: 'Avatar actualizado', data: { url } });
   } catch (error: any) {
     res.status(400).json({ error: error.message });
