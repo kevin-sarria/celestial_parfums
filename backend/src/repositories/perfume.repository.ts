@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma';
 import { Prisma } from '../generated/prisma';
 import { CreatePerfumeDTO } from '../types/perfume.type';
 import { paginatedResponse } from '../utils/pagination';
+import { toSlug } from '../utils/slug';
 
 type PerfumeRow = Prisma.PerfumeGetPayload<{
   include: {
@@ -238,9 +239,13 @@ export const getDestacados = async (limitVendidos = 12) => {
 };
 
 export const findPerfumeBySlug = async (slug: string) => {
-  const nombre = slug.replace(/-/g, ' ');
-  const perfume = await prisma.perfume.findFirst({
-    where: { nombre },
+  // El slug no es reversible (pierde apóstrofes, tildes, símbolos…): se compara
+  // contra el slug generado del nombre, igual que lo construye el frontend.
+  const nombres = await prisma.perfume.findMany({ select: { id: true, nombre: true } });
+  const match = nombres.find((p) => toSlug(p.nombre) === slug);
+  if (!match) return null;
+  const perfume = await prisma.perfume.findUnique({
+    where: { id: match.id },
     include: perfumeInclude,
   });
   if (!perfume) return null;

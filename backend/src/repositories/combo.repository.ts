@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma';
 import { Prisma } from '../generated/prisma';
 import { paginatedResponse } from '../utils/pagination';
+import { toSlug } from '../utils/slug';
 
 type ComboRow = Prisma.ComboGetPayload<{ include: { categoria: true; presentacion: true } }>;
 import { CreateComboDTO } from '../types/combo.type';
@@ -107,9 +108,13 @@ export const findRelatedCombos = async (currentId: number) => {
 };
 
 export const findComboBySlug = async (slug: string) => {
-  const nombre = slug.replace(/-/g, ' ');
-  const combo = await prisma.combo.findFirst({
-    where: { nombre },
+  // Igual que findPerfumeBySlug: el slug no es reversible, se compara contra
+  // el slug generado del nombre.
+  const nombres = await prisma.combo.findMany({ select: { id: true, nombre: true } });
+  const match = nombres.find((c) => toSlug(c.nombre) === slug);
+  if (!match) return null;
+  const combo = await prisma.combo.findUnique({
+    where: { id: match.id },
     include: comboInclude,
   });
   if (!combo) return null;
