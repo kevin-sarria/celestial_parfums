@@ -92,6 +92,12 @@ app.use(globalLimiter);
 app.use(cookieParser());
 app.use(express.json({ limit: '2mb' }));
 
+// Fuerza UTF-8 en todas las respuestas JSON
+app.use((_req, res, next) => {
+  res.type('application/json; charset=utf-8');
+  next();
+});
+
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/api/docs.json', (_req, res) => { res.json(swaggerSpec); });
 
