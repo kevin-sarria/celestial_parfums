@@ -1,6 +1,8 @@
 export interface Lookup {
   id: number;
   nombre: string;
+  /** Solo categorías: % de descuento general que heredan sus perfumes. */
+  descuento?: number;
 }
 
 /** Perfil crediticio interno calculado por el backend (SOLO admin). */

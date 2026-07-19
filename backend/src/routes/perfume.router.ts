@@ -8,6 +8,7 @@ import {
   editPerfume,
   deletePerfume,
   patchDescuentoPerfume,
+  patchDescuentoCategoria,
   patchAgotadoPerfume,
   getAromas,
   addAroma,
@@ -28,7 +29,7 @@ import {
 } from '../controller/perfume.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { createPerfumeSchema, patchDescuentoSchema, patchAgotadoSchema, nombreSchema } from '../schemas/perfume.schema';
+import { createPerfumeSchema, patchDescuentoSchema, patchDescuentoCategoriaSchema, patchAgotadoSchema, nombreSchema } from '../schemas/perfume.schema';
 
 export const perfumeRouter = Router();
 
@@ -45,6 +46,7 @@ perfumeRouter.get('/categorias', getCategorias);
 perfumeRouter.post('/create', requireAdmin, validate(createPerfumeSchema), createPerfume);
 perfumeRouter.patch('/update/:id', requireAdmin, validate(createPerfumeSchema), editPerfume);
 perfumeRouter.delete('/delete/:id', requireAdmin, deletePerfume);
+perfumeRouter.patch('/descuento/por-categoria', requireAdmin, validate(patchDescuentoCategoriaSchema), patchDescuentoCategoria);
 perfumeRouter.patch('/:id/descuento', requireAdmin, validate(patchDescuentoSchema), patchDescuentoPerfume);
 perfumeRouter.patch('/:id/agotado', requireAdmin, validate(patchAgotadoSchema), patchAgotadoPerfume);
 

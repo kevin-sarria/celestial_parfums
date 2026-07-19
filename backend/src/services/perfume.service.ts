@@ -73,6 +73,14 @@ export const patchDescuentoPerfume = async (id: string, descuento: number) => {
   return result;
 };
 
+/** Aplica el mismo % de descuento a todos los perfumes de una categoría. */
+export const patchDescuentoPorCategoria = async (categoriaId: number, descuento: number) => {
+  const d = Math.max(0, Math.min(100, descuento));
+  const count = await perfumeRepository.patchDescuentoPorCategoria(categoriaId, d);
+  bustCatalogoCache();
+  return count;
+};
+
 export const patchAgotadoPerfume = async (id: string, agotado: boolean) => {
   const result = await perfumeRepository.patchAgotadoPerfume(id, agotado);
   bustCatalogoCache();

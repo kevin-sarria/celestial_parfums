@@ -328,7 +328,7 @@ export default function DashboardPage() {
               />
             )}
             {tab === 'descuentos' && (
-              <DescuentosTab perfumes={perfumes} combos={combos} guardedFetch={guardedFetch} onMutate={refreshAll} />
+              <DescuentosTab guardedFetch={guardedFetch} onMutate={refreshAll} />
             )}
             {tab === 'ventas' && <VentasTab guardedFetch={guardedFetch} />}
             {tab === 'creditos' && <CreditosTab guardedFetch={guardedFetch} />}

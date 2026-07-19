@@ -109,6 +109,9 @@ model User {
 model Categoria {
   id         Int       @id @default(autoincrement())
   nombre     String    @unique @db.VarChar(100)
+  // Descuento general de la categoría: los perfumes lo heredan de fondo
+  // (se aplica el mayor entre este % y el propio del perfume)
+  descuento  Int       @default(0)
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   perfumes   Perfume[]

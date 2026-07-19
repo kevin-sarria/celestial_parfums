@@ -1,4 +1,4 @@
-import { useSeo } from '../application/hooks/useSeo';
+﻿import { useSeo } from '../application/hooks/useSeo';
 import PerfumeCard from '../components/PerfumeCard';
 import CardSkeleton from '../components/CardSkeleton';
 import Paginator from '../components/Paginator';
@@ -16,7 +16,7 @@ export default function PerfumesPage() {
   const catalog = usePerfumes();
   useSeo(
     'Perfumes',
-    'Catálogo de perfumes: busca por género, categoría, notas y ocasiones. Contratipos, 1.1 y originales.',
+    'CatÃ¡logo de perfumes: busca por gÃ©nero, categorÃ­a, notas y ocasiones. Contratipos, 1.1 y originales.',
   );
 
   return (
@@ -48,7 +48,7 @@ export default function PerfumesPage() {
           hasActiveFilters={catalog.hasActiveFilters}
           onClear={catalog.clearAll}
         >
-          <FilterGroup label="Género">
+          <FilterGroup label="GÃ©nero">
             {GENEROS.map((g) => (
               <Chip key={g} active={catalog.activeGenero === g} onClick={() => catalog.onGeneroToggle(g)}>
                 {GENERO_LABELS[g]}
@@ -57,7 +57,7 @@ export default function PerfumesPage() {
           </FilterGroup>
 
           {catalog.categorias.length > 0 && (
-            <FilterGroup label="Categoría">
+            <FilterGroup label="CategorÃ­a">
               {catalog.categorias.map((c) => (
                 <Chip
                   key={c.id}
@@ -102,7 +102,7 @@ export default function PerfumesPage() {
 
           {!catalog.loading && !catalog.error && catalog.total === 0 && <EmptyState />}
 
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 justify-center gap-5 sm:grid-cols-[repeat(auto-fill,minmax(16rem,18rem))]">
             {catalog.loading ? (
               <CardSkeleton count={8} />
             ) : (

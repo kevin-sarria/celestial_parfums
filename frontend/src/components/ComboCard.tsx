@@ -62,9 +62,11 @@ export default function ComboCard({ combo: c }: Props) {
           </Badge>
         )}
 
-        <p className="line-clamp-2 min-h-9.75 text-[13px] leading-relaxed text-muted-foreground">
-          {c.descripcion}
-        </p>
+        {c.descripcion && (
+          <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
+            {c.descripcion}
+          </p>
+        )}
 
         <div className="mt-auto flex items-baseline gap-2 border-t border-border/70 pt-3">
           <span className="text-[16px] font-semibold tracking-tight text-primary">

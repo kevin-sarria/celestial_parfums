@@ -1,4 +1,4 @@
-import { useSeo } from '../application/hooks/useSeo';
+﻿import { useSeo } from '../application/hooks/useSeo';
 import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Eye } from 'lucide-react';
@@ -51,11 +51,11 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
   const navigate = useNavigate();
   const catalog = useCatalog();
   useSeo(
-    'Celestial Parfums — Perfumería con esencias premium',
+    'Celestial Parfums â€” PerfumerÃ­a con esencias premium',
     'Perfumes para dama, caballero y unisex: contratipos, 1.1 y originales. Combos con descuento y pedidos por WhatsApp.',
   );
   const { nuevos, masVendidos } = useDestacados();
-  // Con búsqueda o filtros activos las secciones destacadas se ocultan para no estorbar
+  // Con bÃºsqueda o filtros activos las secciones destacadas se ocultan para no estorbar
   const mostrarDestacados = !catalog.loading && !catalog.search && !catalog.hasActiveFilters;
 
   useEffect(() => {
@@ -67,7 +67,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
       {adminPreview && (
         <div className="flex items-center justify-between gap-3 bg-ink px-5 py-2.5 md:px-8">
           <span className="flex items-center gap-2 text-[13px] text-background/90">
-            <Eye className="size-4" /> Vista previa del catálogo — modo administrador
+            <Eye className="size-4" /> Vista previa del catÃ¡logo â€” modo administrador
           </span>
           <Button
             variant="ghost"
@@ -88,7 +88,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
             Descubre tu <em className="italic text-primary">fragancia</em>
           </>
         }
-        subtitle="Colección exclusiva de perfumes seleccionados para cada momento"
+        subtitle="ColecciÃ³n exclusiva de perfumes seleccionados para cada momento"
         searchValue={catalog.search}
         searchPlaceholder="Buscar perfume..."
         onSearchChange={catalog.onSearchChange}
@@ -107,7 +107,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
           hasActiveFilters={catalog.hasActiveFilters}
           onClear={catalog.clearAll}
         >
-          <FilterGroup label="Género">
+          <FilterGroup label="GÃ©nero">
             {GENEROS.map((g) => (
               <Chip key={g} active={catalog.activeGenero === g} onClick={() => catalog.onGeneroToggle(g)}>
                 {GENERO_LABELS[g]}
@@ -116,7 +116,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
           </FilterGroup>
 
           {catalog.categorias.length > 0 && (
-            <FilterGroup label="Categoría">
+            <FilterGroup label="CategorÃ­a">
               {catalog.categorias.map((c) => (
                 <Chip
                   key={c.id}
@@ -174,7 +174,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
           {catalog.error && <p className="py-6 text-center text-sm text-destructive">{catalog.error}</p>}
 
           {catalog.loading && (
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 justify-center gap-5 sm:grid-cols-[repeat(auto-fill,minmax(16rem,18rem))]">
               <CardSkeleton count={8} />
             </div>
           )}
@@ -184,7 +184,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
             catalog.filteredCombos.length === 0 &&
             (!catalog.showPerfumes || catalog.totalPerfumes === 0) && <EmptyState />}
 
-          {/* Nuevos lanzamientos (perfumes con menos de 1 mes en el catálogo) */}
+          {/* Nuevos lanzamientos (perfumes con menos de 1 mes en el catÃ¡logo) */}
           {mostrarDestacados && nuevos.length > 0 && (
             <section className="mb-12 animate-fade-up">
               <SectionHeader title="Nuevos lanzamientos" count={nuevos.length} />
@@ -198,10 +198,10 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
             </section>
           )}
 
-          {/* Los más vendidos (calculado automáticamente de las ventas) */}
+          {/* Los mas vendidos (calculado automÃ¡ticamente de las ventas) */}
           {mostrarDestacados && masVendidos.length > 0 && (
             <section className="mb-12 animate-fade-up">
-              <SectionHeader title="Los más vendidos" />
+              <SectionHeader title="Los mas vendidos" />
               <CardCarousel>
                 {masVendidos.map((p) => (
                   <CarouselItem key={p.id}>
@@ -220,7 +220,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
                 to={catalog.hasMorePerfumes ? '/perfumes' : undefined}
                 count={catalog.totalPerfumes}
               />
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 justify-center gap-5 sm:grid-cols-[repeat(auto-fill,minmax(16rem,18rem))]">
                 {catalog.previewPerfumes.map((p) => (
                   <PerfumeCard key={p.id} perfume={p} />
                 ))}
@@ -236,7 +236,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
                 to={catalog.hasMoreCombos ? '/combos' : undefined}
                 count={catalog.filteredCombos.length}
               />
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid grid-cols-1 justify-center gap-5 sm:grid-cols-[repeat(auto-fill,minmax(16rem,18rem))]">
                 {catalog.previewCombos.map((c) => (
                   <ComboCard key={c.id} combo={c} />
                 ))}

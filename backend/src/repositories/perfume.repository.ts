@@ -28,7 +28,10 @@ export const mapPerfume = (p: PerfumeRow) => ({
   genero:       p.genero ?? null,
   categoria:    p.categoria?.nombre ?? null,
   categoria_id: p.categoria_id ?? null,
-  descuento:    p.descuento,
+  // % efectivo que consume todo el sistema (catálogo, carrito, cupones, SEO):
+  // el mayor entre el propio del perfume y el general de su categoría
+  descuento:        Math.max(p.descuento, p.categoria?.descuento ?? 0),
+  descuento_propio: p.descuento,
   agotado:      p.agotado,
   es_nuevo:     esNuevo(p.created_at),
   tipos_aroma:    p.tipos_aroma.map((r) => r.tipo_aroma.nombre),
@@ -134,8 +137,9 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
         imagen_url:   data.imagen_url ?? null,
         genero:       data.genero ?? null,
         categoria_id: data.categoria_id ?? null,
-        descuento:    data.descuento ?? 0,
-        agotado:      data.agotado ?? false,
+        // El form de edición no envía descuento/agotado: no hay que resetearlos
+        ...(data.descuento !== undefined ? { descuento: data.descuento } : {}),
+        ...(data.agotado !== undefined ? { agotado: data.agotado } : {}),
         tipos_aroma: {
           create: (data.tipos_aroma ?? []).map((tid) => ({ tipo_aroma_id: tid })),
         },
@@ -156,6 +160,12 @@ export const deletePerfume = (id: string) =>
 
 export const patchDescuentoPerfume = (id: string, descuento: number) =>
   prisma.perfume.update({ where: { id: Number(id) }, data: { descuento } });
+
+// Un solo registro en la categoría: los perfumes heredan el % de fondo vía mapPerfume
+export const patchDescuentoPorCategoria = async (categoriaId: number, descuento: number) => {
+  await prisma.categoria.update({ where: { id: categoriaId }, data: { descuento } });
+  return prisma.perfume.count({ where: { categoria_id: categoriaId } });
+};
 
 export const patchAgotadoPerfume = (id: string, agotado: boolean) =>
   prisma.perfume.update({ where: { id: Number(id) }, data: { agotado } });
@@ -287,7 +297,10 @@ export const updateOcasion = (id: string, nombre: string) =>
 // ── Categorías ──────────────────────────────────────────────────────────────
 
 export const getAllCategorias = () =>
-  prisma.categoria.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } });
+  prisma.categoria.findMany({
+    select: { id: true, nombre: true, descuento: true },
+    orderBy: { nombre: 'asc' },
+  });
 
 export const createCategoria = async (nombre: string) => {
   const row = await prisma.categoria.create({ data: { nombre } });

@@ -21,6 +21,11 @@ export const patchDescuentoSchema = z.object({
   descuento: z.number().int().min(0).max(100),
 });
 
+export const patchDescuentoCategoriaSchema = z.object({
+  categoria_id: z.number().int().positive(),
+  descuento: z.number().int().min(0).max(100),
+});
+
 export const patchAgotadoSchema = z.object({
   agotado: z.boolean(),
 });

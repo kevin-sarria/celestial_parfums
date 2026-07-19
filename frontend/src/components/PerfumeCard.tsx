@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, ShoppingCart, Wind } from 'lucide-react';
+import { Clock, ShoppingCart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatPrice, finalPrice } from '@/lib/format';
@@ -13,10 +13,10 @@ interface Props {
   perfume: Perfume;
 }
 
-const GENERO_BADGE_STYLES: Record<string, string> = {
-  caballero: 'bg-sky-50 text-sky-600',
-  dama: 'bg-rose-50 text-rose-500',
-  unisex: 'bg-violet-50 text-violet-500',
+const GENERO_LABEL: Record<string, string> = {
+  caballero: 'Caballero',
+  dama: 'Dama',
+  unisex: 'Unisex',
 };
 
 export default function PerfumeCard({ perfume }: Props) {
@@ -58,26 +58,15 @@ export default function PerfumeCard({ perfume }: Props) {
           </div>
         )}
 
-        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
-          {perfume.genero && (
-            <span
-              className={cn(
-                'flex size-7 items-center justify-center rounded-full text-[13px] font-bold shadow-sm',
-                GENERO_BADGE_STYLES[perfume.genero],
-              )}
-            >
-              {GENERO_SYMBOLS[perfume.genero]}
-            </span>
-          )}
-          {perfume.es_nuevo && (
-            <span className="rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground shadow-sm">
-              Nuevo
-            </span>
-          )}
-        </div>
+        {/* Etiqueta que sobresale del borde izquierdo, como cinta de "recién llegado" */}
+        {perfume.es_nuevo && (
+          <span className="absolute -left-px top-3 rounded-r-full bg-primary py-1 pl-2.5 pr-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-primary-foreground shadow-sm">
+            Nuevo
+          </span>
+        )}
 
         {perfume.descuento > 0 && (
-          <Badge className="absolute right-3 top-3 rounded-full bg-ink px-2.5 text-[11px] font-semibold text-background shadow-sm">
+          <Badge className="absolute right-3 top-3 rounded-full border border-border bg-background/90 px-2 text-[11px] font-semibold text-ink shadow-sm backdrop-blur-sm">
             -{perfume.descuento}%
           </Badge>
         )}
@@ -86,20 +75,6 @@ export default function PerfumeCard({ perfume }: Props) {
           <span className="absolute bottom-3 left-3 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-background backdrop-blur-sm">
             Agotado
           </span>
-        )}
-
-        {!perfume.agotado && (
-          <button
-            type="button"
-            className="absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_24px_-10px] shadow-primary/60 transition-all duration-300 hover:scale-110 active:scale-95"
-            aria-label={`Agregar ${perfume.nombre} al carrito`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setCartModal(true);
-            }}
-          >
-            <ShoppingCart className="size-4" />
-          </button>
         )}
       </div>
 
@@ -127,52 +102,55 @@ export default function PerfumeCard({ perfume }: Props) {
           )}
         </div>
 
-        <p className="line-clamp-2 min-h-9.75 text-[13px] leading-relaxed text-muted-foreground">
-          {perfume.descripcion}
-        </p>
+        {/* Sin datos la fila se colapsa: el footer ancla abajo y las cards de la
+            fila siguen alineadas por el h-full del article */}
+        {perfume.tipos_aroma.length > 0 && (
+          <div className="flex h-5.75 gap-1.5 overflow-hidden">
+            {perfume.tipos_aroma.slice(0, 3).map((a) => (
+              <span
+                key={a}
+                className="whitespace-nowrap rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-medium text-primary"
+              >
+                {a}
+              </span>
+            ))}
+            {perfume.tipos_aroma.length > 3 && (
+              <span className="whitespace-nowrap rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-primary">
+                +{perfume.tipos_aroma.length - 3}
+              </span>
+            )}
+          </div>
+        )}
 
-        <div className="flex h-5.75 gap-1.5 overflow-hidden">
-          {perfume.tipos_aroma.slice(0, 3).map((a) => (
-            <span
-              key={a}
-              className="whitespace-nowrap rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-medium text-primary"
+        <div className="mt-auto flex min-h-9 items-center justify-between gap-3 border-t border-border/70 pt-2.5">
+          <div className="flex items-center gap-2.5 overflow-hidden text-[12px] text-muted-foreground">
+            {perfume.genero && (
+              <span
+                className="whitespace-nowrap text-[13px]"
+                title={GENERO_LABEL[perfume.genero]}
+                aria-label={GENERO_LABEL[perfume.genero]}
+              >
+                {GENERO_SYMBOLS[perfume.genero]}
+              </span>
+            )}
+            {perfume.duracion && (
+              <span className="flex items-center gap-1 whitespace-nowrap">
+                <Clock className="size-3.5" /> {perfume.duracion}
+              </span>
+            )}
+          </div>
+          {!perfume.agotado && (
+            <button
+              type="button"
+              className="flex size-8 shrink-0 items-center justify-center rounded-full border border-border text-ink transition-colors duration-300 hover:border-primary hover:bg-brand-soft hover:text-primary active:scale-95"
+              aria-label={`Agregar ${perfume.nombre} al carrito`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCartModal(true);
+              }}
             >
-              {a}
-            </span>
-          ))}
-          {perfume.tipos_aroma.length > 3 && (
-            <span className="whitespace-nowrap rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-medium text-primary">
-              +{perfume.tipos_aroma.length - 3}
-            </span>
-          )}
-        </div>
-
-        <div className="flex h-5.75 gap-1.5 overflow-hidden">
-          {perfume.ocasiones.slice(0, 3).map((o) => (
-            <span
-              key={o}
-              className="whitespace-nowrap rounded-full border border-border px-2.5 py-0.5 text-[11px] text-muted-foreground"
-            >
-              {o}
-            </span>
-          ))}
-          {perfume.ocasiones.length > 3 && (
-            <span className="whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-              +{perfume.ocasiones.length - 3}
-            </span>
-          )}
-        </div>
-
-        <div className="mt-auto flex min-h-8.25 items-center gap-4 border-t border-border/70 pt-2.5 text-[12px] text-muted-foreground">
-          {perfume.duracion && (
-            <span className="flex items-center gap-1.5">
-              <Clock className="size-3.5" /> {perfume.duracion}
-            </span>
-          )}
-          {perfume.proyeccion && (
-            <span className="flex items-center gap-1.5">
-              <Wind className="size-3.5" /> {perfume.proyeccion}
-            </span>
+              <ShoppingCart className="size-3.5" strokeWidth={1.75} />
+            </button>
           )}
         </div>
       </div>

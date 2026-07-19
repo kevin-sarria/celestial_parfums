@@ -28,7 +28,10 @@ export const perfumeSchema = z.object({
   genero: z.enum(GENEROS).nullable(),
   categoria: z.string().nullable(),
   categoria_id: z.number().nullable(),
+  // % efectivo (el mayor entre el propio y el general de su categoría)
   descuento: z.number(),
+  // % propio del perfume, sin contar el de la categoría (lo usa el dashboard)
+  descuento_propio: z.number().optional(),
   agotado: z.boolean().default(false),
   // true durante los primeros 30 días del perfume en el catálogo
   es_nuevo: z.boolean().default(false),

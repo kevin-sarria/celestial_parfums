@@ -93,6 +93,18 @@ export const patchDescuentoPerfume = async (req: Request, res: Response) => {
   }
 };
 
+export const patchDescuentoCategoria = async (req: Request, res: Response) => {
+  try {
+    const count = await perfumeService.patchDescuentoPorCategoria(
+      Number(req.body.categoria_id),
+      Number(req.body.descuento),
+    );
+    res.json({ message: `Descuento aplicado a ${count} perfumes`, count });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const patchAgotadoPerfume = async (req: Request, res: Response) => {
   try {
     await perfumeService.patchAgotadoPerfume(req.params.id as string, Boolean(req.body.agotado));
