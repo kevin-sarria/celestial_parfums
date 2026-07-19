@@ -10,14 +10,23 @@ interface Lookup {
   nombre: string;
 }
 
+/**
+ * Catálogo del home: los perfumes viajan paginados desde el servidor (solo la
+ * vista previa de 12), con búsqueda y filtros server-side. Los combos son pocos
+ * y se filtran en el cliente.
+ */
 export function useCatalog() {
-  const [perfumes, setPerfumes] = useState<Perfume[]>([]);
+  const [previewPerfumes, setPreviewPerfumes] = useState<Perfume[]>([]);
+  const [totalPerfumes, setTotalPerfumes] = useState(0);
   const [combos, setCombos] = useState<Combo[]>([]);
   const [categorias, setCategorias] = useState<Lookup[]>([]);
+  const [allAromas, setAllAromas] = useState<string[]>([]);
+  const [allOcasiones, setAllOcasiones] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const [search, setSearch] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeAromas, setActiveAromas] = useState<Set<string>>(new Set());
   const [activeOcasiones, setActiveOcasiones] = useState<Set<string>>(new Set());
   const [activeGenero, setActiveGenero] = useState<Genero | ''>('');
@@ -26,50 +35,54 @@ export function useCatalog() {
   const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
+    const t = setTimeout(() => setSearchQuery(search.trim()), 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // Combos + opciones de filtros (una sola vez)
+  useEffect(() => {
     const ac = new AbortController();
     Promise.all([
-      fetch(`${BASE_URL}/api/parfums/`, { signal: ac.signal }).then((r) => r.json()),
       fetch(`${BASE_URL}/api/parfums/categorias`, { signal: ac.signal }).then((r) => r.json()),
+      fetch(`${BASE_URL}/api/parfums/tipos-aroma`, { signal: ac.signal }).then((r) => r.json()),
+      fetch(`${BASE_URL}/api/parfums/ocasiones`, { signal: ac.signal }).then((r) => r.json()),
       fetch(`${BASE_URL}/api/combos`, { signal: ac.signal }).then((r) => r.json()),
     ])
-      .then(([pJson, cJson, combosJson]) => {
-        setPerfumes(pJson.data.data ?? []);
-        setCategorias(cJson.data ?? []);
+      .then(([cats, aromas, ocasiones, combosJson]) => {
+        setCategorias(cats.data ?? []);
+        setAllAromas(((aromas.data ?? []) as Lookup[]).map((a) => a.nombre).sort());
+        setAllOcasiones(((ocasiones.data ?? []) as Lookup[]).map((o) => o.nombre).sort());
         setCombos((combosJson.data ?? []).filter((c: Combo) => c.activo));
+      })
+      .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar el catálogo'); });
+    return () => ac.abort();
+  }, []);
+
+  // Vista previa de perfumes según filtros
+  useEffect(() => {
+    const ac = new AbortController();
+    setLoading(true);
+    const params = new URLSearchParams({ page: '1', limit: String(HOME_PREVIEW_SIZE) });
+    if (searchQuery) params.set('search', searchQuery);
+    if (activeGenero) params.set('genero', activeGenero);
+    if (activeCategorias.size) params.set('categorias', [...activeCategorias].join(','));
+    if (activeAromas.size) params.set('aromas', [...activeAromas].join(','));
+    if (activeOcasiones.size) params.set('ocasiones', [...activeOcasiones].join(','));
+    fetch(`${BASE_URL}/api/parfums/?${params}`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((json) => {
+        setPreviewPerfumes(json.data ?? []);
+        setTotalPerfumes(json.total ?? 0);
       })
       .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar el catálogo'); })
       .finally(() => { if (!ac.signal.aborted) setLoading(false); });
     return () => ac.abort();
-  }, []);
-
-  const allAromas = useMemo(
-    () => [...new Set(perfumes.flatMap((p) => p.tipos_aroma))].sort(),
-    [perfumes],
-  );
-
-  const allOcasiones = useMemo(
-    () => [...new Set(perfumes.flatMap((p) => p.ocasiones))].sort(),
-    [perfumes],
-  );
+  }, [searchQuery, activeGenero, activeCategorias, activeAromas, activeOcasiones]);
 
   const comboCantidades = useMemo(
     () => [...new Set(combos.map((c) => c.cantidad))].sort((a, b) => a - b),
     [combos],
   );
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase();
-    return perfumes.filter((p) =>
-      (!search ||
-        p.nombre.toLowerCase().includes(q) ||
-        (p.descripcion ?? '').toLowerCase().includes(q)) &&
-      (activeAromas.size === 0 || p.tipos_aroma.some((a) => activeAromas.has(a))) &&
-      (activeOcasiones.size === 0 || p.ocasiones.some((o) => activeOcasiones.has(o))) &&
-      (!activeGenero || p.genero === activeGenero) &&
-      (activeCategorias.size === 0 ||
-        (p.categoria != null && activeCategorias.has(p.categoria))),
-    );
-  }, [perfumes, search, activeAromas, activeOcasiones, activeGenero, activeCategorias]);
 
   const filteredCombos = useMemo(() => {
     const q = search.toLowerCase();
@@ -81,9 +94,8 @@ export function useCatalog() {
     );
   }, [combos, search, activeComboCantidades]);
 
-  const previewPerfumes = useMemo(() => filtered.slice(0, HOME_PREVIEW_SIZE), [filtered]);
   const previewCombos = useMemo(() => filteredCombos.slice(0, HOME_PREVIEW_SIZE), [filteredCombos]);
-  const hasMorePerfumes = filtered.length > HOME_PREVIEW_SIZE;
+  const hasMorePerfumes = totalPerfumes > HOME_PREVIEW_SIZE;
   const hasMoreCombos = filteredCombos.length > HOME_PREVIEW_SIZE;
 
   const hasActiveFilters =
@@ -140,7 +152,7 @@ export function useCatalog() {
     allAromas,
     allOcasiones,
     comboCantidades,
-    filtered,
+    totalPerfumes,
     filteredCombos,
     previewPerfumes,
     previewCombos,

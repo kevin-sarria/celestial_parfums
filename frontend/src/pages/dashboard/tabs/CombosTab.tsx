@@ -11,8 +11,7 @@ import ExportButton from '../../../components/ExportButton';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { combosColumns } from '../columns';
-import { API_COMBOS } from '../helpers';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { API_COMBOS, subirImagenAdmin } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { GuardedFetch, Lookup, ComboForm } from '../types';
 import { emptyComboForm } from '../types';
@@ -23,6 +22,7 @@ interface CombosTabProps {
   total: number;
   pageSize: number;
   categorias: Lookup[];
+  presentaciones: Lookup[];
   guardedFetch: GuardedFetch;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
@@ -32,7 +32,7 @@ interface CombosTabProps {
 }
 
 export function CombosTab({
-  combos, page, total, pageSize, categorias,
+  combos, page, total, pageSize, categorias, presentaciones,
   guardedFetch, onPageChange, onPageSizeChange, onSearch, onMutate,
 }: CombosTabProps) {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
@@ -48,7 +48,8 @@ export function CombosTab({
   const openEdit = (c: Combo) => {
     setForm({
       nombre: c.nombre, descripcion: c.descripcion ?? '', imagen_url: c.imagen_url ?? '',
-      categoria_id: c.categoria_id ?? '', cantidad: String(c.cantidad), precio: String(c.precio),
+      categoria_id: c.categoria_id ?? '', presentacion_id: c.presentacion_id ?? '',
+      cantidad: String(c.cantidad), precio: String(c.precio),
       descuento: String(c.descuento), activo: c.activo,
     });
     setFormError(''); setImgMode('url'); setModal({ open: true, editId: c.id });
@@ -60,12 +61,8 @@ export function CombosTab({
     if (!file) return;
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append('image', file);
-      const res = await guardedFetch(`${BASE_URL}/api/upload`, { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Error al subir imagen');
-      setForm(f => ({ ...f, imagen_url: json.url }));
+      const url = await subirImagenAdmin(guardedFetch, file);
+      setForm(f => ({ ...f, imagen_url: url }));
     } catch (err) { setFormError(err instanceof Error ? err.message : 'Error al subir imagen'); }
     finally { setUploading(false); }
   };
@@ -76,6 +73,7 @@ export function CombosTab({
       nombre: form.nombre, descripcion: form.descripcion || null,
       imagen_url: form.imagen_url || null,
       categoria_id: form.categoria_id !== '' ? Number(form.categoria_id) : null,
+      presentacion_id: form.presentacion_id !== '' ? Number(form.presentacion_id) : null,
       cantidad: Number(form.cantidad), precio: Number(form.precio),
       descuento: Number(form.descuento), activo: form.activo,
     };
@@ -190,13 +188,27 @@ export function CombosTab({
             <img src={form.imagen_url} alt="preview" className="mt-2 h-20 rounded-lg border border-border object-cover" />
           )}
         </Field>
-        <Field label="Categoria">
-          <NativeSelect value={form.categoria_id}
-            onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value !== '' ? Number(e.target.value) : '' }))}>
-            <option value="">Sin categoria</option>
-            {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-          </NativeSelect>
-        </Field>
+        <FieldRow>
+          <Field label="Categoria">
+            <NativeSelect value={form.categoria_id}
+              onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value !== '' ? Number(e.target.value) : '' }))}>
+              <option value="">Sin categoria</option>
+              {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+            </NativeSelect>
+          </Field>
+          <Field label="Presentacion de los perfumes">
+            <NativeSelect value={form.presentacion_id}
+              onChange={e => setForm(f => ({ ...f, presentacion_id: e.target.value !== '' ? Number(e.target.value) : '' }))}>
+              <option value="">Cualquier tamaño</option>
+              {presentaciones.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </NativeSelect>
+          </Field>
+        </FieldRow>
+        <p className="-mt-1 text-[12px] leading-relaxed text-muted-foreground">
+          Con categoría y presentación definidas, el carrito detecta el combo
+          automáticamente cuando el cliente junta esa cantidad de perfumes sueltos
+          y le cobra el precio del combo.
+        </p>
         <FieldRow>
           <Field label="Cantidad de perfumes *">
             <Input type="number" min="1" required value={form.cantidad}

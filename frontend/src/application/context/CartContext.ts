@@ -8,7 +8,10 @@ export interface CartItem {
   presentacion: string;
   genero: string | null;
   cantidad: number;
+  /** Precio final unitario (ya con el descuento propio del producto aplicado). */
   precio: number;
+  /** Descuento propio del producto (%); si es >0, un cupón NO se acumula encima. */
+  descuento: number;
   imagen_url: string | null;
   esCombo: boolean;
 }

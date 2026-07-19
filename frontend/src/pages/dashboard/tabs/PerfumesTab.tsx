@@ -12,8 +12,7 @@ import ExportButton from '../../../components/ExportButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { perfumesColumns } from '../columns';
-import { API } from '../helpers';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { API, subirImagenAdmin } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { GuardedFetch, Lookup, PerfumeForm } from '../types';
 import { emptyPerfumeForm } from '../types';
@@ -99,12 +98,8 @@ export function PerfumesTab({
     if (!file) return;
     setUploading(true);
     try {
-      const fd = new FormData();
-      fd.append('image', file);
-      const res = await guardedFetch(`${BASE_URL}/api/upload`, { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Error al subir imagen');
-      setForm(f => ({ ...f, imagen_url: json.url }));
+      const url = await subirImagenAdmin(guardedFetch, file);
+      setForm(f => ({ ...f, imagen_url: url }));
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Error al subir imagen');
     } finally { setUploading(false); }

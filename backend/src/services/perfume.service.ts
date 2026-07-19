@@ -1,33 +1,82 @@
 import * as perfumeRepository from '../repositories/perfume.repository';
 import { CreatePerfumeDTO } from '../types/perfume.type';
+import { cacheClear, cacheGet, cacheSet } from '../utils/cache';
 
-export const allPerfumes = () => perfumeRepository.selectAllParfums();
+/**
+ * El catálogo completo y los destacados son las respuestas públicas más
+ * pesadas y más pedidas: se cachean en memoria y las mutaciones del admin
+ * las invalidan de inmediato (los cambios se ven al instante).
+ */
+export const allPerfumes = async () => {
+  const hit = cacheGet<Awaited<ReturnType<typeof perfumeRepository.selectAllParfums>>>('parfums:all');
+  if (hit) return hit;
+  const data = await perfumeRepository.selectAllParfums();
+  cacheSet('parfums:all', data, 5 * 60_000);
+  return data;
+};
 
-export const allPerfumesPaginated = (page: number, limit: number, search?: string) =>
-  perfumeRepository.selectParfumsPaginated(page, limit, search);
+export const getDestacados = async () => {
+  const hit = cacheGet<Awaited<ReturnType<typeof perfumeRepository.getDestacados>>>('parfums:destacados');
+  if (hit) return hit;
+  const data = await perfumeRepository.getDestacados();
+  cacheSet('parfums:destacados', data, 5 * 60_000);
+  return data;
+};
+
+/** Cualquier cambio del catálogo o de ventas enlazadas debe llamar esto. */
+export const bustCatalogoCache = () => cacheClear('parfums:');
+
+/**
+ * Página del catálogo (público y dashboard) con filtros server-side. Cada
+ * combinación se cachea bajo el prefijo `parfums:` para que las mutaciones
+ * del admin la invaliden junto con el resto del catálogo.
+ */
+export const allPerfumesPaginated = async (
+  page: number,
+  limit: number,
+  search?: string,
+  filtros?: perfumeRepository.CatalogoFiltros,
+) => {
+  const key = `parfums:page:${JSON.stringify([page, limit, search ?? '', filtros ?? null])}`;
+  const hit = cacheGet<Awaited<ReturnType<typeof perfumeRepository.selectParfumsPaginated>>>(key);
+  if (hit) return hit;
+  const data = await perfumeRepository.selectParfumsPaginated(page, limit, search, filtros);
+  cacheSet(key, data, 5 * 60_000);
+  return data;
+};
 
 export const createPerfume = async (data: CreatePerfumeDTO) => {
   if (!data?.nombre || !data?.precio) throw new Error('Nombre y precio son obligatorios');
   if (!data?.tipos_aroma?.length || !data?.ocasiones?.length)
     throw new Error('Debe tener al menos un aroma y una ocasión');
-  return await perfumeRepository.createPerfume(data);
+  const result = await perfumeRepository.createPerfume(data);
+  bustCatalogoCache();
+  return result;
 };
 
 export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
-  return await perfumeRepository.editPerfume(id, data);
+  const result = await perfumeRepository.editPerfume(id, data);
+  bustCatalogoCache();
+  return result;
 };
 
 export const deletePerfume = async (id: string) => {
-  return await perfumeRepository.deletePerfume(id);
+  const result = await perfumeRepository.deletePerfume(id);
+  bustCatalogoCache();
+  return result;
 };
 
 export const patchDescuentoPerfume = async (id: string, descuento: number) => {
   const d = Math.max(0, Math.min(100, descuento));
-  return perfumeRepository.patchDescuentoPerfume(id, d);
+  const result = await perfumeRepository.patchDescuentoPerfume(id, d);
+  bustCatalogoCache();
+  return result;
 };
 
 export const patchAgotadoPerfume = async (id: string, agotado: boolean) => {
-  return perfumeRepository.patchAgotadoPerfume(id, agotado);
+  const result = await perfumeRepository.patchAgotadoPerfume(id, agotado);
+  bustCatalogoCache();
+  return result;
 };
 
 export const getPerfumeBySlug = async (slug: string) => {

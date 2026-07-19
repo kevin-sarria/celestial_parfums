@@ -1,3 +1,4 @@
+import { useSeo } from '../application/hooks/useSeo';
 import Paginator from '../components/Paginator';
 import ComboCard from '../components/ComboCard';
 import CardSkeleton from '../components/CardSkeleton';
@@ -13,6 +14,7 @@ import { useCombos, COMBOS_PAGE_SIZE } from '../application/hooks/useCombos';
 
 export default function CombosPage() {
   const catalog = useCombos();
+  useSeo('Combos de perfumes', 'Combos de 2, 3 y más perfumes con precio especial. Arma el tuyo y pide por WhatsApp.');
 
   return (
     <div className="flex min-h-svh flex-col bg-background">

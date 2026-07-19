@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Home, SprayCan, Gift, Mail, type LucideIcon } from 'lucide-react';
+import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import { BrandMark } from '@/components/BrandMark';
 import { useAuthContext } from '../application/context/useAuthContext';
+import { usePortalCredito } from '../application/hooks/usePortalCredito';
 
 interface Props {
   isHome?: boolean;
@@ -36,6 +37,16 @@ export default function CatalogHeader({ isHome = false }: Props) {
   const navigate = useNavigate();
   const { user, logout } = useAuthContext();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  // "Mi crédito" solo aparece si el cliente tiene un crédito activo con el negocio
+  const { data: portalCredito } = usePortalCredito();
+  const navItems: NavItem[] = [
+    ...NAV_ITEMS,
+    // "Tu perfume ideal" es exclusivo de cuentas registradas
+    ...(user ? [{ to: '/perfume-ideal', label: 'Tu perfume ideal', icon: Sparkles }] : []),
+    ...(portalCredito?.tiene_credito_activo
+      ? [{ to: '/mi-credito', label: 'Mi crédito', icon: HandCoins }]
+      : []),
+  ];
 
   const handleLogout = () => {
     setDrawerOpen(false);
@@ -91,7 +102,7 @@ export default function CatalogHeader({ isHome = false }: Props) {
               )}
 
               <nav className="flex flex-col gap-1 p-3">
-                {NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+                {navItems.map(({ to, label, icon: Icon, end }) => (
                   <NavLink
                     key={to}
                     to={to}

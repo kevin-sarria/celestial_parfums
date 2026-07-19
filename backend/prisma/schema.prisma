@@ -44,6 +44,27 @@ enum ContactoRedesPosicion {
   abajo
 }
 
+enum AnuncioTipo {
+  imagen
+  mensaje
+  descuento
+}
+
+enum AnuncioAudiencia {
+  todos
+  no_registrados
+  registrados
+}
+
+// Ciclo de vida de un código único de descuento:
+// activo (emitido, viaja en el pedido de WhatsApp) → canjeado (la venta se marcó
+// pagada) | anulado (el admin lo invalidó; el cupón vuelve a quedar disponible).
+enum CodigoEstado {
+  activo
+  canjeado
+  anulado
+}
+
 // ── Models ──────────────────────────────────────────────────────────────────
 
 model Role {
@@ -54,6 +75,10 @@ model Role {
   @@map("roles")
 }
 
+// Única lista de personas del sistema: cuentas web reales y "fichas" creadas
+// por el admin (sin_cuenta=true, sin acceso) para clientes del negocio que aún
+// no se registran. Al registrarse con el mismo correo, la ficha se reclama y
+// hereda todo su historial de ventas y créditos.
 model User {
   id                 Int       @id @default(autoincrement())
   nombre             String    @db.VarChar(100)
@@ -64,10 +89,19 @@ model User {
   activo             Boolean   @default(false)
   verification_token String?   @db.VarChar(255)
   token_expiry       DateTime?
+  telefono           String?   @db.VarChar(20)
+  direccion          String?   @db.VarChar(255)
+  // Cupo de crédito base fijado por el admin; el factor de comportamiento lo ajusta.
+  cupo_base          Decimal   @default(0) @db.Decimal(10, 2)
+  // true = ficha creada por el admin, sin acceso a la web todavía.
+  sin_cuenta         Boolean   @default(false)
   created_at         DateTime  @default(now())
   updated_at         DateTime  @updatedAt
   rol                Role      @relation(fields: [rol_id], references: [id])
-  cliente            Cliente?
+  ventas             Venta[]
+  creditos           Credito[]
+  codigos_descuento  DescuentoCodigo[]
+  recomendacion      Recomendacion?
 
   @@map("users")
 }
@@ -79,8 +113,108 @@ model Categoria {
   updated_at DateTime  @updatedAt
   perfumes   Perfume[]
   combos     Combo[]
+  anuncios   AnuncioCategoria[]
 
   @@map("categorias")
+}
+
+// ── Publicidad: ventanas emergentes configurables del catálogo ──────────────
+// tipo imagen/mensaje = informativo; tipo descuento = cupón de un solo uso que
+// aplica a las categorías elegidas y/o combos, SIN acumularse con descuentos
+// de producto ni con otros cupones.
+model Anuncio {
+  id            Int              @id @default(autoincrement())
+  titulo        String           @db.VarChar(150)
+  mensaje       String?          @db.Text
+  imagen_url    String?          @db.Text
+  tipo          AnuncioTipo      @default(mensaje)
+  audiencia     AnuncioAudiencia @default(todos)
+  // true = cada visitante lo ve una sola vez; false = en cada visita
+  una_vez       Boolean          @default(true)
+  activo        Boolean          @default(true)
+  orden         Int              @default(0)
+  inicio        DateTime?        @db.Date
+  fin           DateTime?        @db.Date
+  // Solo tipo descuento:
+  descuento_pct Int              @default(0) @db.UnsignedTinyInt
+  aplica_combos Boolean          @default(false)
+  // Reglas para que el cupón aplique en el carrito (0 = sin mínimo):
+  // unidades mínimas de productos cubiertos y monto mínimo de esos productos.
+  min_unidades  Int              @default(0) @db.UnsignedSmallInt
+  min_monto     Decimal          @default(0) @db.Decimal(10, 2)
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+  categorias    AnuncioCategoria[]
+  codigos       DescuentoCodigo[]
+
+  @@index([activo])
+  @@map("anuncios")
+}
+
+// Categorías de perfume a las que aplica un cupón (contratipos, 1.1, originales…)
+model AnuncioCategoria {
+  anuncio_id   Int
+  categoria_id Int
+  anuncio      Anuncio   @relation(fields: [anuncio_id], references: [id], onDelete: Cascade)
+  categoria    Categoria @relation(fields: [categoria_id], references: [id], onDelete: Cascade)
+
+  @@id([anuncio_id, categoria_id])
+  @@map("anuncio_categorias")
+}
+
+// Código único de descuento emitido al enviar un pedido con cupón. Viaja en el
+// mensaje de WhatsApp; el admin lo valida en el dashboard y se canjea (un solo
+// uso) al marcar la venta como pagada. Máximo un código activo por persona y
+// por tipo de cupón (categorías/combos que cubre).
+model DescuentoCodigo {
+  id          Int          @id @default(autoincrement())
+  codigo      String       @unique @db.VarChar(20)
+  anuncio_id  Int
+  // null = visitante sin cuenta
+  user_id     Int?
+  estado      CodigoEstado @default(activo)
+  // Venta donde se canjeó (o quedó reservado si la venta sigue pendiente de pago)
+  venta_id    Int?         @unique
+  created_at  DateTime     @default(now())
+  canjeado_at DateTime?
+  anuncio     Anuncio @relation(fields: [anuncio_id], references: [id], onDelete: Cascade)
+  user        User?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  venta       Venta?  @relation(fields: [venta_id], references: [id], onDelete: SetNull)
+
+  @@index([user_id, estado])
+  @@index([anuncio_id])
+  @@map("descuento_codigos")
+}
+
+// "Tu perfume ideal": cálculo guardado por usuario. Al volver al apartado se
+// muestra tal cual (sin recalcular); solo se recalcula si cambia sus respuestas.
+model Recomendacion {
+  id         Int      @id @default(autoincrement())
+  user_id    Int      @unique
+  // Respuestas del quiz (género, edad, ocasiones, aromas, presupuesto, etc.)
+  filtros    Json
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  items      RecomendacionItem[]
+
+  @@map("recomendaciones")
+}
+
+model RecomendacionItem {
+  recomendacion_id Int
+  perfume_id       Int
+  orden            Int
+  // Afinidad 0-100 con el perfil de la persona
+  puntaje          Int    @db.UnsignedTinyInt
+  // JSON string con las razones legibles del match ("Ideal para Citas", ...)
+  razones          String @db.Text
+  recomendacion    Recomendacion @relation(fields: [recomendacion_id], references: [id], onDelete: Cascade)
+  perfume          Perfume       @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+
+  @@id([recomendacion_id, perfume_id])
+  @@index([perfume_id])
+  @@map("recomendacion_items")
 }
 
 model Perfume {
@@ -101,6 +235,8 @@ model Perfume {
   tipos_aroma    PerfumeTipoAroma[]
   ocasiones      PerfumeOcasion[]
   presentaciones PerfumePresentacion[]
+  ventas         VentaPerfume[]
+  recomendado_en RecomendacionItem[]
 
   @@index([categoria_id])
   @@index([genero])
@@ -154,6 +290,7 @@ model Presentacion {
   created_at DateTime              @default(now())
   updated_at DateTime              @updatedAt
   perfumes   PerfumePresentacion[]
+  combos     Combo[]
 
   @@map("presentaciones")
 }
@@ -173,37 +310,39 @@ model Venta {
   dia                DateTime @db.Date
   // Nombre libre mostrado (ej: "hermano de Pepe"); el enlace al cliente es opcional.
   persona            String   @db.VarChar(150)
-  cliente_id         Int?
+  // Enlace opcional con la persona (usuario/ficha) que compró.
+  user_id            Int?
   cantidad_perfumes  Int
   presentacion       String   @db.VarChar(20)
   referencia_perfume String   @db.Text
   valor_venta        Decimal  @db.Decimal(10, 2)
   datos_adicionales  String?  @db.Text
+  // false = pedido registrado pero aún sin pagar; al pasar a true se canjea el
+  // código de descuento enlazado (si lo hay).
+  pagada             Boolean  @default(true)
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
-  cliente            Cliente? @relation(fields: [cliente_id], references: [id], onDelete: SetNull)
+  user               User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  // Perfumes del catálogo detectados en la referencia (una venta de combo lleva varios).
+  perfumes           VentaPerfume[]
+  codigo             DescuentoCodigo?
 
   @@index([dia])
-  @@index([cliente_id])
+  @@index([user_id])
   @@map("ventas")
 }
 
-model Cliente {
-  id         Int       @id @default(autoincrement())
-  nombre     String    @db.VarChar(100)
-  apellido   String    @db.VarChar(100)
-  correo     String?   @db.VarChar(150)
-  telefono   String?   @db.VarChar(20)
-  direccion  String?   @db.VarChar(255)
-  // Enlace opcional con la cuenta registrada en la web (para futuros portales de cliente).
-  user_id    Int?      @unique
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  user       User?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  creditos   Credito[]
-  ventas     Venta[]
+// Enlace inferido (por nombre) entre una venta y los perfumes que incluyó;
+// alimenta el cálculo automático de "los más vendidos".
+model VentaPerfume {
+  venta_id   Int
+  perfume_id Int
+  venta      Venta   @relation(fields: [venta_id], references: [id], onDelete: Cascade)
+  perfume    Perfume @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
 
-  @@map("clientes")
+  @@id([venta_id, perfume_id])
+  @@index([perfume_id])
+  @@map("venta_perfume")
 }
 
 model Empresa {
@@ -223,15 +362,15 @@ model Empresa {
 model Credito {
   id            Int             @id @default(autoincrement())
   fecha         DateTime        @db.Date
-  cliente_id    Int
+  user_id       Int
   articulos     String          @db.Text
   deuda_inicial Decimal         @db.Decimal(10, 2)
   created_at    DateTime        @default(now())
   updated_at    DateTime        @updatedAt
-  cliente       Cliente         @relation(fields: [cliente_id], references: [id])
+  user          User            @relation(fields: [user_id], references: [id])
   abonos        CreditoAbono[]
 
-  @@index([cliente_id])
+  @@index([user_id])
   @@index([fecha])
   @@map("creditos")
 }
@@ -309,20 +448,26 @@ model ContactoLink {
 }
 
 model Combo {
-  id           Int        @id @default(autoincrement())
-  nombre       String     @db.VarChar(150)
-  descripcion  String?    @db.Text
-  imagen_url   String?    @db.Text
-  categoria_id Int?
-  cantidad     Int
-  precio       Decimal    @db.Decimal(10, 2)
-  descuento    Int        @default(0) @db.UnsignedTinyInt
-  activo       Boolean    @default(true)
-  created_at   DateTime   @default(now())
-  updated_at   DateTime   @updatedAt
-  categoria    Categoria? @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
+  id              Int           @id @default(autoincrement())
+  nombre          String        @db.VarChar(150)
+  descripcion     String?       @db.Text
+  imagen_url      String?       @db.Text
+  categoria_id    Int?
+  // Presentación de los perfumes del combo (ej: 100ML); null = cualquier tamaño.
+  // Permite detectar automáticamente el combo cuando el carrito junta
+  // `cantidad` perfumes de esta categoría y presentación.
+  presentacion_id Int?
+  cantidad        Int
+  precio          Decimal       @db.Decimal(10, 2)
+  descuento       Int           @default(0) @db.UnsignedTinyInt
+  activo          Boolean       @default(true)
+  created_at      DateTime      @default(now())
+  updated_at      DateTime      @updatedAt
+  categoria       Categoria?    @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
+  presentacion    Presentacion? @relation(fields: [presentacion_id], references: [id], onDelete: SetNull)
 
   @@index([categoria_id])
+  @@index([presentacion_id])
   @@index([activo])
   @@map("combos")
 }

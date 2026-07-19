@@ -7,11 +7,11 @@ const hexColor = z
 const formaSchema = z.enum(['redondo', 'cuadrado']);
 
 export const contactoConfigSchema = z.object({
-  avatar_url: z.string().url('La URL del avatar no es válida').max(2000).optional().or(z.literal('')),
+  avatar_url: z.string().url('La URL del avatar no es válida').max(2000).nullish().or(z.literal('')),
   nombre: z.string().min(1, 'El nombre es obligatorio').max(100),
-  descripcion: z.string().max(500).optional().or(z.literal('')),
+  descripcion: z.string().max(500).nullish().or(z.literal('')),
   fondo_tipo: z.enum(['color', 'imagen']),
-  fondo_valor: z.string().max(500).optional().or(z.literal('')),
+  fondo_valor: z.string().max(500).nullish().or(z.literal('')),
   boton_forma: formaSchema,
   boton_color_fondo: hexColor,
   boton_color_texto: hexColor,

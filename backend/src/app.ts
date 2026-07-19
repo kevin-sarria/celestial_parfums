@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import cors from 'cors';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -16,10 +17,15 @@ import { comboRouter } from './routes/combo.router';
 import { ventaRouter } from './routes/venta.router';
 import { creditoRouter } from './routes/credito.router';
 import { pagoRouter } from './routes/pago.router';
-import { clienteRouter } from './routes/cliente.router';
 import { empresaRouter } from './routes/empresa.router';
 import { importRouter } from './routes/import.router';
 import { contactoRouter } from './routes/contacto.router';
+import { portalRouter } from './routes/portal.router';
+import { usuarioRouter } from './routes/usuario.router';
+import { anuncioRouter } from './routes/anuncio.router';
+import { recomendacionRouter } from './routes/recomendacion.router';
+import { seoRouter } from './routes/seo.router';
+import { errorHandler } from './middleware/error.middleware';
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -63,15 +69,28 @@ app.use(cors({
 const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Demasiados intentos, intenta de nuevo en 15 minutos' } });
 
-app.use(globalLimiter);
-app.use(cookieParser());
-app.use(express.json({ limit: '2mb' }));
+// Comprime las respuestas JSON (el catálogo completo pasa de cientos de KB a decenas)
+app.use(compression());
+
 // Las imágenes se sirven bajo /api/uploads para que en producción pasen por el
 // mismo proxy que el resto de la API (nginx solo redirige /api al backend).
 // Se mantiene /uploads por compatibilidad con URLs antiguas ya guardadas en BD.
-const uploadsStatic = express.static(path.join(__dirname, '../public/uploads'));
+// Van ANTES del rate limiter (una página con muchas fotos no debe gastar el cupo
+// de la API) y con caché larga: el nombre de archivo es único, nunca cambia.
+const uploadsStatic = express.static(path.join(__dirname, '../public/uploads'), {
+  maxAge: '30d',
+  immutable: true,
+});
 app.use('/api/uploads', uploadsStatic);
 app.use('/uploads', uploadsStatic);
+
+// SEO: páginas de producto con Open Graph, sitemap y robots (nginx las proxya
+// aquí). Antes del limiter: los rastreadores no gastan el cupo de la API.
+app.use(seoRouter);
+
+app.use(globalLimiter);
+app.use(cookieParser());
+app.use(express.json({ limit: '2mb' }));
 
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 app.get('/api/docs.json', (_req, res) => { res.json(swaggerSpec); });
@@ -90,15 +109,17 @@ app.use('/api/combos', comboRouter);
 app.use('/api/ventas', ventaRouter);
 app.use('/api/creditos', creditoRouter);
 app.use('/api/pagos', pagoRouter);
-app.use('/api/clientes', clienteRouter);
 app.use('/api/empresas', empresaRouter);
 app.use('/api/import', importRouter);
 app.use('/api/contacto', contactoRouter);
+app.use('/api/portal', portalRouter);
+app.use('/api/usuarios', usuarioRouter);
+app.use('/api/anuncios', anuncioRouter);
+app.use('/api/recomendaciones', recomendacionRouter);
 
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
-  logger.error(err.message, { stack: err.stack });
-  res.status(500).json({ error: 'Error interno del servidor' });
-});
+// Middleware central de errores: HttpError responde con su status semántico
+// (404/409...), un Error de servicio mantiene el 400 histórico.
+app.use(errorHandler);
 
 app.listen(PORT, () => {
   logger.info(`Servidor corriendo en http://localhost:${PORT}`);

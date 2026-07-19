@@ -28,6 +28,8 @@ interface ImportResult {
   actualizados: number;
   omitidos: number;
   errores: string[];
+  /** Mensajes informativos del backend (ej: cuántas ventas quedaron enlazadas). */
+  info: string[];
 }
 
 interface ImportModalProps {
@@ -112,6 +114,7 @@ export default function ImportModal({ open, onClose, entity, guardedFetch, onImp
         actualizados: json.actualizados ?? 0,
         omitidos: json.omitidos ?? 0,
         errores: json.errores ?? [],
+        info: json.info ?? [],
       });
       if ((json.insertados ?? 0) > 0 || (json.actualizados ?? 0) > 0) onImported();
     } catch {
@@ -159,6 +162,11 @@ export default function ImportModal({ open, onClose, entity, guardedFetch, onImp
               <Badge variant="secondary">Omitidos: {result.omitidos}</Badge>
             )}
           </div>
+          {result.info.length > 0 && (
+            <ul className="space-y-1 rounded-lg border border-primary/25 bg-brand-soft/60 p-3 text-[13px] text-primary">
+              {result.info.map((m, i) => <li key={i}>{m}</li>)}
+            </ul>
+          )}
           {result.errores.length > 0 && (
             <div>
               <p className="mb-1.5 text-[13px] font-semibold text-foreground">Errores ({result.errores.length}):</p>

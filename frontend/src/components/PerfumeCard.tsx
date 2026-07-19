@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Wind } from 'lucide-react';
+import { Clock, ShoppingCart, Wind } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatPrice, finalPrice } from '@/lib/format';
+import AddToCartModal from './AddToCartModal';
 import type { Perfume } from '../domain/entities/perfume.schema';
 import { GENERO_SYMBOLS } from '../domain/entities/perfume.schema';
 import { toSlug } from '../utils/slug';
@@ -19,10 +21,12 @@ const GENERO_BADGE_STYLES: Record<string, string> = {
 
 export default function PerfumeCard({ perfume }: Props) {
   const navigate = useNavigate();
+  const [cartModal, setCartModal] = useState(false);
   const goToDetail = () => navigate(`/perfume/${toSlug(perfume.nombre)}`);
   const precioFinal = finalPrice(perfume.precio, perfume.descuento);
 
   return (
+    <>
     <article
       className={cn(
         // h-full: todas las cards de una fila comparten la misma altura
@@ -54,16 +58,23 @@ export default function PerfumeCard({ perfume }: Props) {
           </div>
         )}
 
-        {perfume.genero && (
-          <span
-            className={cn(
-              'absolute left-3 top-3 flex size-7 items-center justify-center rounded-full text-[13px] font-bold shadow-sm',
-              GENERO_BADGE_STYLES[perfume.genero],
-            )}
-          >
-            {GENERO_SYMBOLS[perfume.genero]}
-          </span>
-        )}
+        <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
+          {perfume.genero && (
+            <span
+              className={cn(
+                'flex size-7 items-center justify-center rounded-full text-[13px] font-bold shadow-sm',
+                GENERO_BADGE_STYLES[perfume.genero],
+              )}
+            >
+              {GENERO_SYMBOLS[perfume.genero]}
+            </span>
+          )}
+          {perfume.es_nuevo && (
+            <span className="rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground shadow-sm">
+              Nuevo
+            </span>
+          )}
+        </div>
 
         {perfume.descuento > 0 && (
           <Badge className="absolute right-3 top-3 rounded-full bg-ink px-2.5 text-[11px] font-semibold text-background shadow-sm">
@@ -75,6 +86,20 @@ export default function PerfumeCard({ perfume }: Props) {
           <span className="absolute bottom-3 left-3 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-background backdrop-blur-sm">
             Agotado
           </span>
+        )}
+
+        {!perfume.agotado && (
+          <button
+            type="button"
+            className="absolute bottom-3 right-3 flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_10px_24px_-10px] shadow-primary/60 transition-all duration-300 hover:scale-110 active:scale-95"
+            aria-label={`Agregar ${perfume.nombre} al carrito`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCartModal(true);
+            }}
+          >
+            <ShoppingCart className="size-4" />
+          </button>
         )}
       </div>
 
@@ -152,5 +177,23 @@ export default function PerfumeCard({ perfume }: Props) {
         </div>
       </div>
     </article>
+
+    {/* Fuera del <article> para que los clics dentro del modal no naveguen al detalle */}
+    <AddToCartModal
+      open={cartModal}
+      onClose={() => setCartModal(false)}
+      producto={{
+        id: perfume.id,
+        nombre: perfume.nombre,
+        precio: precioFinal,
+        descuento: perfume.descuento,
+        imagen_url: perfume.imagen_url,
+        esCombo: false,
+        categoria: perfume.categoria,
+        genero: perfume.genero,
+        presentaciones: perfume.presentaciones,
+      }}
+    />
+    </>
   );
 }

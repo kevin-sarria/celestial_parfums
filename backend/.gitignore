@@ -8,3 +8,6 @@ public/uploads
 
 # Salida de compilacion
 dist
+
+# Respaldos locales de la base de datos (contienen datos de clientes)
+backup-*.sql

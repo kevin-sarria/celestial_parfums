@@ -1,6 +1,6 @@
 export interface CreateCreditoDTO {
   fecha: string;
-  cliente_id: number;
+  user_id: number;
   articulos: string;
   deuda_inicial: number;
 }

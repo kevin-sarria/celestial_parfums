@@ -1,6 +1,41 @@
 import * as xlsx from 'xlsx';
+import crypto from 'crypto';
 import { prisma } from '../config/prisma';
 import { IMPORT_SPECS } from '../schemas/import.spec';
+import { buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
+import { cacheClear } from '../utils/cache';
+
+/** Toda importación puede tocar catálogo o ventas: se invalida el caché público. */
+export const bustImportCache = () => cacheClear('parfums:');
+
+/** Índice de perfumes para inferir el enlace venta→perfume por nombre. */
+async function loadPerfumeIndex() {
+  const perfumes = await prisma.perfume.findMany({ select: { id: true, nombre: true } });
+  return buildPerfumeIndex(perfumes);
+}
+
+/**
+ * Busca o crea la persona (usuario/ficha) para una fila de crédito importada.
+ * Sin correo conocido se genera uno sintético: la ficha no puede iniciar sesión.
+ */
+async function ensurePersona(nombre: string, apellido: string, telefono: string | null, correo: string | null) {
+  const existente = await prisma.user.findFirst({
+    where: correo
+      ? { OR: [{ email: correo }, { nombre, apellido, ...(telefono ? { telefono } : {}) }] }
+      : { nombre, apellido, ...(telefono ? { telefono } : {}) },
+  });
+  if (existente) return { id: existente.id, creado: false };
+  const email = correo && !(await prisma.user.findFirst({ where: { email: correo } }))
+    ? correo
+    : `ficha-${crypto.randomBytes(6).toString('hex')}@sin-cuenta.local`;
+  const u = await prisma.user.create({
+    data: {
+      nombre, apellido, email, telefono, password: '!sin-acceso!',
+      rol_id: 2, activo: false, sin_cuenta: true,
+    },
+  });
+  return { id: u.id, creado: true };
+}
 
 function toDate(val: any): Date {
   if (val instanceof Date) return val;
@@ -75,6 +110,8 @@ export interface EntityImportResult {
   actualizados: number;
   omitidos: number;
   errores: string[];
+  /** Mensajes informativos (no son errores), ej: cuántas ventas quedaron enlazadas. */
+  info?: string[];
 }
 
 export const buildTemplate = (entity: string): Buffer => {
@@ -182,14 +219,14 @@ export const exportEntity = async (entity: string): Promise<Buffer> => {
   if (entity === 'creditos') {
     const creditos = await prisma.credito.findMany({
       orderBy: { fecha: 'asc' },
-      include: { cliente: true, abonos: { orderBy: { fecha: 'asc' } } },
+      include: { user: true, abonos: { orderBy: { fecha: 'asc' } } },
     });
     return sheetFromRows(entity, creditos.map(c => ({
       fecha: fmtDate(c.fecha),
-      nombre_cliente: c.cliente.nombre,
-      apellido_cliente: c.cliente.apellido,
-      telefono: c.cliente.telefono ?? '',
-      correo: c.cliente.correo ?? '',
+      nombre_cliente: c.user.nombre,
+      apellido_cliente: c.user.apellido,
+      telefono: c.user.telefono ?? '',
+      correo: c.user.sin_cuenta ? '' : c.user.email,
       articulos: c.articulos,
       deuda_inicial: Number(c.deuda_inicial),
       abonos: c.abonos.map(a => Number(a.monto)).join(', '),
@@ -363,6 +400,8 @@ export const importEntity = async (entity: string, buffer: Buffer): Promise<Enti
 
   // ── Ventas ──────────────────────────────────────────────────────────────────
   if (entity === 'ventas') {
+    const perfumeIndex = await loadPerfumeIndex();
+    let enlazadas = 0;
     const data: any[] = [];
     for (const [i, r] of rows.entries()) {
       const fila = i + 2;
@@ -374,19 +413,33 @@ export const importEntity = async (entity: string, buffer: Buffer): Promise<Enti
       if (toStr(r['valor_venta']) === '' || isNaN(Number(r['valor_venta']))) {
         result.errores.push(`Fila ${fila} (${persona}): el valor_venta es obligatorio y debe ser numerico`); result.omitidos++; continue;
       }
+      const perfumeIds = matchPerfumes(referencia, perfumeIndex);
+      if (perfumeIds.length) enlazadas++;
       data.push({
         dia,
         persona,
         cantidad_perfumes: toNum(r['cantidad_perfumes']) || 1,
         presentacion: toStr(r['presentacion']) || '30ML',
         referencia_perfume: referencia,
+        perfume_ids: perfumeIds,
         valor_venta: toNum(r['valor_venta']),
         datos_adicionales: toNullStr(r['datos_adicionales']),
       });
     }
+    // create fila a fila (no createMany) para poder anidar los enlaces a perfumes
+    for (const { perfume_ids, ...venta } of data) {
+      try {
+        await prisma.venta.create({
+          data: { ...venta, perfumes: { create: perfume_ids.map((pid: number) => ({ perfume_id: pid })) } },
+        });
+        result.insertados++;
+      } catch (e: any) {
+        result.errores.push(`Venta (${venta.persona}): ${e.message}`);
+        result.omitidos++;
+      }
+    }
     if (data.length) {
-      const created = await prisma.venta.createMany({ data });
-      result.insertados = created.count;
+      result.info = [`${enlazadas} de ${data.length} ventas quedaron enlazadas a perfumes del catalogo por nombre.`];
     }
     return result;
   }
@@ -410,17 +463,8 @@ export const importEntity = async (entity: string, buffer: Buffer): Promise<Enti
       const key = `${nombre.toLowerCase()}|${apellido.toLowerCase()}|${telefono ?? ''}`;
       try {
         if (!clienteCache[key]) {
-          const existente = await prisma.cliente.findFirst({
-            where: { nombre, apellido, ...(telefono ? { telefono } : {}) },
-          });
-          if (existente) {
-            clienteCache[key] = existente.id;
-          } else {
-            const c = await prisma.cliente.create({
-              data: { nombre, apellido, telefono, correo: toNullStr(r['correo']) },
-            });
-            clienteCache[key] = c.id;
-          }
+          const persona = await ensurePersona(nombre, apellido, telefono, toNullStr(r['correo']));
+          clienteCache[key] = persona.id;
         }
         const abonos = splitList(r['abonos'])
           .map(Number)
@@ -429,7 +473,7 @@ export const importEntity = async (entity: string, buffer: Buffer): Promise<Enti
         await prisma.credito.create({
           data: {
             fecha,
-            cliente_id: clienteCache[key],
+            user_id: clienteCache[key],
             articulos,
             deuda_inicial: toNum(r['deuda_inicial']),
             abonos: { create: abonos },
@@ -507,6 +551,7 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
 
   // ── VENTAS ──────────────────────────────────────────────────────────────────
   if (wb.SheetNames.includes('Ventas')) {
+    const perfumeIndex = await loadPerfumeIndex();
     const data = rows(wb.Sheets['Ventas'])
       .filter(r => r['Dia'] && r['Persona'])
       .map(r => ({
@@ -515,15 +560,20 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
         cantidad_perfumes:   toNum(r['Cantidad Perfumes']) || 1,
         presentacion:        toStr(r['Presentacion Perfumes']),
         referencia_perfume:  toStr(r['Referencia Perfume']),
+        perfume_ids:         matchPerfumes(toStr(r['Referencia Perfume']), perfumeIndex),
         valor_venta:         toNum(r['Valor Venta']),
         datos_adicionales:   toNullStr(r['Datos Adicionales Venta']),
       }));
 
-    try {
-      const created = await prisma.venta.createMany({ data });
-      result.ventas = created.count;
-    } catch (e: any) {
-      result.errores.push(`Ventas: ${e.message}`);
+    for (const { perfume_ids, ...venta } of data) {
+      try {
+        await prisma.venta.create({
+          data: { ...venta, perfumes: { create: perfume_ids.map((pid) => ({ perfume_id: pid })) } },
+        });
+        result.ventas++;
+      } catch (e: any) {
+        result.errores.push(`Venta (${venta.persona}): ${e.message}`);
+      }
     }
   }
 
@@ -544,16 +594,9 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
 
       try {
         if (!clienteCache[key]) {
-          const c = await prisma.cliente.create({
-            data: {
-              nombre,
-              apellido,
-              telefono: celular,
-              correo:   toNullStr(r['Correo']),
-            },
-          });
-          clienteCache[key] = c.id;
-          result.clientes_creados++;
+          const persona = await ensurePersona(nombre, apellido, celular, toNullStr(r['Correo']));
+          clienteCache[key] = persona.id;
+          if (persona.creado) result.clientes_creados++;
         }
 
         const ab = (n: number) => toNullNum(r[`Abono ${n}`]);
@@ -564,7 +607,7 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
         await prisma.credito.create({
           data: {
             fecha:         toDate(r['Fecha']),
-            cliente_id:    clienteCache[key],
+            user_id:       clienteCache[key],
             articulos:     toStr(r['Articulos']),
             deuda_inicial: toNum(r['Deuda Inicial']),
             abonos:        { create: abonosData },

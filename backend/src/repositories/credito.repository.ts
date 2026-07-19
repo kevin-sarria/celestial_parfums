@@ -2,7 +2,10 @@ import { prisma } from '../config/prisma';
 import { CreateCreditoDTO } from '../types/credito.type';
 import { paginatedResponse } from '../utils/pagination';
 
-const includeAll = { cliente: true, abonos: { orderBy: { created_at: 'asc' as const } } } as const;
+const includeAll = {
+  user: { select: { id: true, nombre: true, apellido: true, telefono: true, email: true, direccion: true, sin_cuenta: true } },
+  abonos: { orderBy: { created_at: 'asc' as const } },
+} as const;
 
 const mapCredito = (c: any) => {
   const abonos = (c.abonos ?? []).map((a: any) => ({
@@ -15,15 +18,17 @@ const mapCredito = (c: any) => {
   const deudaInicial = Number(c.deuda_inicial);
 
   return {
-    id:            c.id,
-    fecha:         c.fecha,
+    id:    c.id,
+    fecha: c.fecha,
+    // "cliente" para el panel = la persona (usuario o ficha) dueña del crédito
     cliente: {
-      id:        c.cliente.id,
-      nombre:    c.cliente.nombre,
-      apellido:  c.cliente.apellido,
-      telefono:  c.cliente.telefono ?? null,
-      correo:    c.cliente.correo ?? null,
-      direccion: c.cliente.direccion ?? null,
+      id:         c.user.id,
+      nombre:     c.user.nombre,
+      apellido:   c.user.apellido,
+      telefono:   c.user.telefono ?? null,
+      correo:     c.user.sin_cuenta ? null : c.user.email,
+      direccion:  c.user.direccion ?? null,
+      sin_cuenta: c.user.sin_cuenta,
     },
     articulos:      c.articulos,
     deuda_inicial:  deudaInicial,
@@ -40,10 +45,10 @@ export const getAllCreditos = async (page: number, limit: number, search?: strin
     ? {
         OR: [
           { articulos: { contains: search } },
-          { cliente: { nombre: { contains: search } } },
-          { cliente: { apellido: { contains: search } } },
-          { cliente: { telefono: { contains: search } } },
-          { cliente: { correo: { contains: search } } },
+          { user: { nombre: { contains: search } } },
+          { user: { apellido: { contains: search } } },
+          { user: { telefono: { contains: search } } },
+          { user: { email: { contains: search } } },
         ],
       }
     : undefined;
@@ -58,7 +63,7 @@ export const createCredito = async (data: CreateCreditoDTO) => {
   const row = await prisma.credito.create({
     data: {
       fecha:         new Date(data.fecha),
-      cliente_id:    data.cliente_id,
+      user_id:       data.user_id,
       articulos:     data.articulos,
       deuda_inicial: data.deuda_inicial,
     },

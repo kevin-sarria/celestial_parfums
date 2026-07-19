@@ -1,4 +1,4 @@
-import { type ReactNode, useState, useRef, useCallback } from 'react';
+import { type ReactNode, useState, useRef, useCallback, useEffect } from 'react';
 import { Search, X, Filter, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -39,11 +39,32 @@ interface SmartTableProps<T> {
 
 const SERVER_SEARCH_DEBOUNCE_MS = 2000;
 
-function getPages(page: number, totalPages: number): (number | '...')[] {
+function getPages(page: number, totalPages: number, compacto: boolean): (number | '...')[] {
+  // En pantallas angostas el paginador completo no cabe y se desbordaba del
+  // borde de la tarjeta: se muestra una ventana de máximo 5 posiciones.
+  if (compacto) {
+    if (totalPages <= 4) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    if (page <= 2) return [1, 2, 3, '...', totalPages];
+    if (page >= totalPages - 1) return [1, '...', totalPages - 2, totalPages - 1, totalPages];
+    return [1, '...', page, '...', totalPages];
+  }
   if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
   if (page <= 4) return [1, 2, 3, 4, 5, '...', totalPages];
   if (page >= totalPages - 3) return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
   return [1, '...', page - 1, page, page + 1, '...', totalPages];
+}
+
+/** true en pantallas angostas (celular): el paginador usa la versión compacta. */
+function usePantallaAngosta() {
+  const [angosta, setAngosta] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 520px)');
+    const onChange = () => setAngosta(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return angosta;
 }
 
 export function SmartTable<T>({
@@ -57,6 +78,7 @@ export function SmartTable<T>({
 }: SmartTableProps<T>) {
   const { processed, sort, toggleSort, filters, setFilter, clearAll, search, setSearch, activeFiltersCount } =
     useTableControls(rows, columns);
+  const pantallaAngosta = usePantallaAngosta();
 
   // ── Búsqueda en servidor (opcional) ──
   const isServerSearch = !!onServerSearch;
@@ -303,7 +325,7 @@ export function SmartTable<T>({
           </div>
 
           {totalPages > 1 && (
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap items-center gap-1">
               <Button
                 variant="outline"
                 size="icon"
@@ -314,7 +336,7 @@ export function SmartTable<T>({
               >
                 ‹
               </Button>
-              {getPages(pagination.page, totalPages).map((p, i) =>
+              {getPages(pagination.page, totalPages, pantallaAngosta).map((p, i) =>
                 p === '...' ? (
                   <span key={`e${i}`} className="px-1 text-muted-foreground">…</span>
                 ) : (

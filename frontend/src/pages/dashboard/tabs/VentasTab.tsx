@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pencil, Trash2, Upload } from 'lucide-react';
+import { CheckCircle2, Link2, Pencil, Trash2, TriangleAlert, Upload, X, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,13 +9,18 @@ import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { ventasColumns } from '../columns';
-import { API_VENTAS, API_CLIENTES, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
+import { API, API_VENTAS, API_USUARIOS, DEFAULT_PAGE_SIZE, formatPrice, parseClienteSeleccion, personaLabel, validarCodigoDescuento } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, StatCard, StatRow } from '../ui';
-import type { GuardedFetch, Venta, VentaForm, Cliente } from '../types';
+import type { CodigoValidado, GuardedFetch, Venta, VentaForm, Usuario } from '../types';
 import { emptyVentaForm } from '../types';
 
 interface VentasTabProps {
   guardedFetch: GuardedFetch;
+}
+
+interface PerfumeOption {
+  id: number;
+  nombre: string;
 }
 
 export function VentasTab({ guardedFetch }: VentasTabProps) {
@@ -24,80 +29,126 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totales, setTotales] = useState<{ total_unidades: number; total_dinero: number } | null>(null);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [perfumes, setPerfumes] = useState<PerfumeOption[]>([]);
 
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<VentaForm>(emptyVentaForm());
+  // Referencia libre de una venta importada que no coincidió con el catálogo
+  const [referenciaInvalida, setReferenciaInvalida] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Ventas y totales cambian con cada acción; personas y catálogo solo al montar
   const load = async (p = page, s = pageSize, term = searchTerm) => {
     const searchQs = term ? `&search=${encodeURIComponent(term)}` : '';
-    const [vRes, tRes, clRes] = await Promise.all([
+    const [vRes, tRes] = await Promise.all([
       guardedFetch(`${API_VENTAS}?page=${p}&limit=${s}${searchQs}`),
       guardedFetch(`${API_VENTAS}/totales`),
-      guardedFetch(API_CLIENTES),
     ]);
-    const [v, t, cl] = await Promise.all([vRes.json(), tRes.json(), clRes.json()]);
+    const [v, t] = await Promise.all([vRes.json(), tRes.json()]);
     setVentas(v.data ?? []);
     setTotal(v.total ?? 0);
     setPage(p);
     setTotales(t.data ?? null);
-    setClientes(cl.data ?? []);
   };
 
-  useEffect(() => { load(1); }, []);
+  const loadCatalogos = async () => {
+    const [uRes, pRes] = await Promise.all([guardedFetch(API_USUARIOS), fetch(`${API}/`)]);
+    const [u, pf] = await Promise.all([uRes.json(), pRes.json()]);
+    setUsuarios((u.data ?? []).filter((x: Usuario) => x.rol_id !== 1));
+    setPerfumes(
+      ((pf.data?.data ?? []) as PerfumeOption[])
+        .map((x) => ({ id: x.id, nombre: x.nombre }))
+        .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
+    );
+  };
 
-  const openCreate = () => { setForm(emptyVentaForm()); setError(''); setModal({ open: true, editId: null }); };
+  useEffect(() => { load(1); loadCatalogos(); }, []);
+
+  // Certificación inline del código de descuento del pedido
+  const [codigoCheck, setCodigoCheck] = useState<CodigoValidado | null>(null);
+  const [checking, setChecking] = useState(false);
+
+  const openCreate = () => {
+    setForm(emptyVentaForm()); setReferenciaInvalida(''); setError(''); setCodigoCheck(null);
+    setModal({ open: true, editId: null });
+  };
   const openEdit = (v: Venta) => {
     setForm({
       ...emptyVentaForm(),
       dia: v.dia.slice(0, 10), persona: v.persona,
-      cliente_id: v.cliente_id ?? '',
+      user_id: v.user_id ?? '',
       cantidad_perfumes: String(v.cantidad_perfumes), presentacion: v.presentacion,
-      referencia_perfume: v.referencia_perfume, valor_venta: String(v.valor_venta),
+      perfume_ids: v.perfumes.map(p => p.id),
+      valor_venta: String(v.valor_venta),
       datos_adicionales: v.datos_adicionales ?? '',
+      pagada: v.pagada,
+      codigo_descuento: v.codigo?.codigo ?? '',
     });
-    setError(''); setModal({ open: true, editId: v.id });
+    // Venta importada cuya referencia libre no coincidió con ningún perfume
+    setReferenciaInvalida(v.perfumes.length === 0 ? v.referencia_perfume : '');
+    setError(''); setCodigoCheck(null); setModal({ open: true, editId: v.id });
   };
   const closeModal = () => setModal({ open: false, editId: null });
+
+  const validarCodigo = async () => {
+    const codigo = form.codigo_descuento.trim();
+    if (!codigo) return;
+    setChecking(true); setCodigoCheck(null);
+    setCodigoCheck(await validarCodigoDescuento(guardedFetch, codigo));
+    setChecking(false);
+  };
+
+  const addPerfume = (id: number) => {
+    if (!id) return;
+    setForm(f => (f.perfume_ids.includes(id) ? f : { ...f, perfume_ids: [...f.perfume_ids, id] }));
+  };
+  const removePerfume = (id: number) =>
+    setForm(f => ({ ...f, perfume_ids: f.perfume_ids.filter(x => x !== id) }));
 
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault(); setLoading(true); setError('');
 
-    // Enlace de cliente opcional: '' = sin enlace, 'nuevo' = crear, número = existente.
-    let clienteId: number | null = typeof form.cliente_id === 'number' ? form.cliente_id : null;
+    if (form.perfume_ids.length === 0) {
+      setError('Selecciona al menos un perfume del catálogo'); setLoading(false); return;
+    }
 
-    if (form.cliente_id === 'nuevo') {
+    // Enlace de persona opcional: '' = sin enlace, 'nuevo' = crear ficha, número = existente.
+    let userId: number | null = typeof form.user_id === 'number' ? form.user_id : null;
+
+    if (form.user_id === 'nuevo') {
       if (!form.nuevo_nombre.trim() || !form.nuevo_apellido.trim()) {
-        setError('Nombre y apellido del cliente son obligatorios'); setLoading(false); return;
+        setError('Nombre y apellido de la persona son obligatorios'); setLoading(false); return;
       }
       try {
-        const res = await guardedFetch(API_CLIENTES, {
+        const res = await guardedFetch(API_USUARIOS, {
           method: 'POST',
           body: JSON.stringify({
             nombre: form.nuevo_nombre.trim(), apellido: form.nuevo_apellido.trim(),
-            correo: form.nuevo_correo.trim() || null,
-            telefono: form.nuevo_telefono.trim() || null,
-            direccion: form.nuevo_direccion.trim() || null,
+            email: form.nuevo_correo.trim() || undefined,
+            telefono: form.nuevo_telefono.trim() || undefined,
+            direccion: form.nuevo_direccion.trim() || undefined,
           }),
         });
         const json = await res.json();
-        if (!res.ok) { setError(json.error ?? 'Error al crear cliente'); setLoading(false); return; }
-        clienteId = json.data.id;
-      } catch { setError('No se pudo crear el cliente'); setLoading(false); return; }
+        if (!res.ok) { setError(json.error ?? 'Error al crear la persona'); setLoading(false); return; }
+        userId = json.data.id;
+      } catch { setError('No se pudo crear la persona'); setLoading(false); return; }
     }
 
     const body = {
       dia: form.dia, persona: form.persona.trim(),
-      cliente_id: clienteId,
+      user_id: userId,
       cantidad_perfumes: Number(form.cantidad_perfumes),
       presentacion: form.presentacion,
-      referencia_perfume: form.referencia_perfume.trim(),
+      perfume_ids: form.perfume_ids,
       valor_venta: Number(form.valor_venta),
       datos_adicionales: form.datos_adicionales.trim() || null,
+      pagada: form.pagada,
+      codigo_descuento: form.codigo_descuento.trim().toUpperCase() || null,
     };
     try {
       const url = modal.editId ? `${API_VENTAS}/${modal.editId}` : API_VENTAS;
@@ -106,6 +157,7 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? 'Error al guardar'); return; }
       closeModal(); load();
+      if (form.user_id === 'nuevo') loadCatalogos(); // la persona recién creada debe aparecer
     } catch { setError('No se pudo conectar con el servidor'); }
     finally { setLoading(false); }
   };
@@ -115,6 +167,21 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
     await guardedFetch(`${API_VENTAS}/${id}`, { method: 'DELETE' }); load();
   };
 
+  const [enlazando, setEnlazando] = useState(false);
+  // Reintenta la inferencia venta→perfumes para las ventas importadas sin enlazar
+  const handleEnlazar = async () => {
+    setEnlazando(true);
+    try {
+      const res = await guardedFetch(`${API_VENTAS}/enlazar-perfumes`, { method: 'POST' });
+      const json = await res.json();
+      alert(res.ok ? json.message : (json.error ?? 'Error al enlazar'));
+      if (res.ok) load();
+    } catch { alert('No se pudo conectar con el servidor'); }
+    finally { setEnlazando(false); }
+  };
+
+  const disponibles = perfumes.filter(p => !form.perfume_ids.includes(p.id));
+
   return (
     <>
       <Section>
@@ -122,6 +189,13 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
           <SectionTitle count={total}>Ventas</SectionTitle>
           <ToolbarActions>
             <ExportButton entity="ventas" guardedFetch={guardedFetch} />
+            <Button
+              variant="outline" size="sm" disabled={enlazando}
+              title="Intenta enlazar por nombre las ventas importadas que aún no tienen perfume del catálogo"
+              onClick={handleEnlazar}
+            >
+              <Link2 className="size-4" /> {enlazando ? 'Enlazando…' : 'Enlazar perfumes'}
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Upload className="size-4" /> Importar
             </Button>
@@ -185,22 +259,18 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
               onChange={e => setForm(f => ({ ...f, persona: e.target.value }))} />
           </Field>
         </FieldRow>
+
         <Field label="Cliente enlazado (opcional)">
-          <NativeSelect value={String(form.cliente_id)}
-            onChange={e => {
-              const val = e.target.value;
-              setForm(f => ({ ...f, cliente_id: val === '' ? '' : val === 'nuevo' ? 'nuevo' : Number(val) }));
-            }}>
+          <NativeSelect value={String(form.user_id)}
+            onChange={e => setForm(f => ({ ...f, user_id: parseClienteSeleccion(e.target.value) }))}>
             <option value="">— Sin cliente —</option>
-            <option value="nuevo">+ Crear cliente nuevo</option>
-            {clientes.map(cl => (
-              <option key={cl.id} value={cl.id}>
-                {cl.nombre} {cl.apellido}{cl.telefono ? ` · ${cl.telefono}` : ''}
-              </option>
+            <option value="nuevo">+ Registrar persona nueva</option>
+            {usuarios.map(u => (
+              <option key={u.id} value={u.id}>{personaLabel(u)}</option>
             ))}
           </NativeSelect>
         </Field>
-        {form.cliente_id === 'nuevo' && (
+        {form.user_id === 'nuevo' && (
           <div className="space-y-3 rounded-xl border border-border bg-secondary/40 p-3.5">
             <FieldRow>
               <Field label="Nombre *">
@@ -217,7 +287,7 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
                 <Input value={form.nuevo_telefono} maxLength={20}
                   onChange={e => setForm(f => ({ ...f, nuevo_telefono: e.target.value }))} />
               </Field>
-              <Field label="Correo">
+              <Field label="Correo (si se registra con él, hereda su historial)">
                 <Input type="email" value={form.nuevo_correo} maxLength={100}
                   onChange={e => setForm(f => ({ ...f, nuevo_correo: e.target.value }))} />
               </Field>
@@ -228,6 +298,41 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
             </Field>
           </div>
         )}
+
+        <Field label="Perfumes vendidos * (elige uno o varios del catálogo)">
+          <div className="space-y-2">
+            {referenciaInvalida && form.perfume_ids.length === 0 && (
+              <p className="flex items-start gap-2 rounded-lg border border-amber-400/45 bg-amber-400/10 px-3 py-2 text-[12.5px] font-medium text-amber-700">
+                <TriangleAlert className="mt-0.5 size-4 shrink-0" />
+                "{referenciaInvalida}" no coincide con los perfumes registrados en la base de
+                datos; por favor selecciona uno o varios válidos.
+              </p>
+            )}
+            {form.perfume_ids.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {form.perfume_ids.map(id => {
+                  const p = perfumes.find(x => x.id === id);
+                  return (
+                    <span key={id} className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-[12.5px] font-medium text-primary">
+                      {p?.nombre ?? `#${id}`}
+                      <button type="button" aria-label={`Quitar ${p?.nombre ?? id}`}
+                        className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
+                        onClick={() => removePerfume(id)}>
+                        <X className="size-3" />
+                      </button>
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+            <NativeSelect value=""
+              onChange={e => addPerfume(Number(e.target.value))}>
+              <option value="">+ Agregar perfume…</option>
+              {disponibles.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
+            </NativeSelect>
+          </div>
+        </Field>
+
         <FieldRow>
           <Field label="Cantidad *">
             <Input type="number" min="1" required value={form.cantidad_perfumes}
@@ -240,14 +345,46 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
             </NativeSelect>
           </Field>
         </FieldRow>
-        <Field label="Referencia(s) de perfume *">
-          <Input required placeholder="Ej: Invictus, Sauvage" value={form.referencia_perfume} maxLength={200}
-            onChange={e => setForm(f => ({ ...f, referencia_perfume: e.target.value }))} />
+        <FieldRow>
+          <Field label="Valor venta (COP) *">
+            <Input type="number" min="0" required value={form.valor_venta}
+              onChange={e => setForm(f => ({ ...f, valor_venta: e.target.value }))} />
+          </Field>
+          <Field label="Estado de pago">
+            <NativeSelect value={form.pagada ? 'pagada' : 'pendiente'}
+              onChange={e => setForm(f => ({ ...f, pagada: e.target.value === 'pagada' }))}>
+              <option value="pagada">Pagada</option>
+              <option value="pendiente">Pendiente de pago</option>
+            </NativeSelect>
+          </Field>
+        </FieldRow>
+
+        <Field label="Código de descuento (si el pedido de WhatsApp traía uno)">
+          <div className="flex gap-2">
+            <Input value={form.codigo_descuento} maxLength={20} placeholder="Ej: CP-7XK2M9"
+              className="uppercase"
+              onChange={e => { setForm(f => ({ ...f, codigo_descuento: e.target.value })); setCodigoCheck(null); }} />
+            <Button type="button" variant="outline" disabled={checking || !form.codigo_descuento.trim()} onClick={validarCodigo}>
+              {checking ? 'Validando…' : 'Validar'}
+            </Button>
+          </div>
+          {codigoCheck && (
+            <p className={`mt-1.5 flex items-start gap-1.5 text-[12.5px] font-medium ${codigoCheck.valido || codigoCheck.venta ? 'text-emerald-700' : 'text-destructive'}`}>
+              {codigoCheck.valido || codigoCheck.venta
+                ? <CheckCircle2 className="mt-0.5 size-3.5 shrink-0" />
+                : <XCircle className="mt-0.5 size-3.5 shrink-0" />}
+              <span>
+                {codigoCheck.motivo}
+                {codigoCheck.cupon && ` — "${codigoCheck.cupon.titulo}" (-${codigoCheck.cupon.descuento_pct}%) de ${codigoCheck.persona}`}
+              </span>
+            </p>
+          )}
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            El código se canjea (deja de servir) cuando la venta queda marcada como pagada;
+            si la venta se edita sin código o se elimina, vuelve a quedar activo.
+          </p>
         </Field>
-        <Field label="Valor venta (COP) *">
-          <Input type="number" min="0" required value={form.valor_venta}
-            onChange={e => setForm(f => ({ ...f, valor_venta: e.target.value }))} />
-        </Field>
+
         <Field label="Datos adicionales">
           <Textarea rows={2} value={form.datos_adicionales} maxLength={300}
             onChange={e => setForm(f => ({ ...f, datos_adicionales: e.target.value }))} />

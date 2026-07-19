@@ -18,6 +18,8 @@ interface Props {
     id: number;
     nombre: string;
     precio: number;
+    /** Descuento propio del producto (%): con él, los cupones no se acumulan. */
+    descuento: number;
     imagen_url: string | null;
     esCombo: boolean;
     categoria: string | null;
@@ -51,6 +53,7 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
       genero: producto.genero,
       cantidad,
       precio: producto.precio,
+      descuento: producto.descuento,
       imagen_url: producto.imagen_url,
       esCombo: producto.esCombo,
     });

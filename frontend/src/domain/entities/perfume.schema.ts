@@ -28,6 +28,8 @@ export const perfumeSchema = z.object({
   categoria_id: z.number().nullable(),
   descuento: z.number(),
   agotado: z.boolean().default(false),
+  // true durante los primeros 30 días del perfume en el catálogo
+  es_nuevo: z.boolean().default(false),
   tipos_aroma: z.array(z.string()),
   ocasiones: z.array(z.string()),
   presentaciones: z.array(z.string()),

@@ -1,3 +1,4 @@
+import { useSeo } from '../application/hooks/useSeo';
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, ShoppingCart, Wind } from 'lucide-react';
@@ -25,6 +26,7 @@ export default function PerfumeDetailPage() {
   const navigate = useNavigate();
   const { perfume, related, loading, error } = usePerfumeDetail(slug);
   const [cartModal, setCartModal] = useState(false);
+  useSeo(perfume?.nombre, perfume?.descripcion ?? undefined);
 
   const precioFinal = perfume ? finalPrice(perfume.precio, perfume.descuento) : 0;
 
@@ -198,6 +200,7 @@ export default function PerfumeDetailPage() {
             id: perfume.id,
             nombre: perfume.nombre,
             precio: precioFinal,
+            descuento: perfume.descuento,
             imagen_url: perfume.imagen_url,
             esCombo: false,
             categoria: perfume.categoria,

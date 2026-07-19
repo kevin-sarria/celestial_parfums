@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getRelatedPerfumes,
   getPerfumeBySlug,
+  getDestacados,
   selectAllPerfumes,
   createPerfume,
   editPerfume,
@@ -34,6 +35,7 @@ export const perfumeRouter = Router();
 // Public read endpoints
 perfumeRouter.get('/by-slug/:slug/related', getRelatedPerfumes);
 perfumeRouter.get('/by-slug/:slug', getPerfumeBySlug);
+perfumeRouter.get('/destacados', getDestacados);
 perfumeRouter.get('/', selectAllPerfumes);
 perfumeRouter.get('/tipos-aroma', getAromas);
 perfumeRouter.get('/ocasiones', getOcasiones);

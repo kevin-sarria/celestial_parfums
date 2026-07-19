@@ -1,22 +1,39 @@
 import { prisma } from '../config/prisma';
 import { CreateVentaDTO } from '../types/venta.type';
 import { paginatedResponse } from '../utils/pagination';
+import { buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
+import { aplicarCodigoAVenta, liberarCodigoDeVenta, validarCodigoParaVenta } from '../services/anuncio.service';
 
-const includeCliente = { cliente: true } as const;
+const includeRel = {
+  user: { select: { id: true, nombre: true, apellido: true, telefono: true, email: true } },
+  perfumes: { include: { perfume: { select: { id: true, nombre: true } } } },
+  codigo: { include: { anuncio: { select: { titulo: true, descuento_pct: true } } } },
+} as const;
 
 const mapVenta = (v: any) => ({
   id:                 v.id,
   dia:                v.dia,
   persona:            v.persona,
-  cliente_id:         v.cliente_id ?? null,
-  cliente:            v.cliente
-    ? { id: v.cliente.id, nombre: v.cliente.nombre, apellido: v.cliente.apellido, telefono: v.cliente.telefono ?? null }
+  user_id:            v.user_id ?? null,
+  user:               v.user
+    ? { id: v.user.id, nombre: v.user.nombre, apellido: v.user.apellido, telefono: v.user.telefono ?? null, email: v.user.email }
     : null,
   cantidad_perfumes:  v.cantidad_perfumes,
   presentacion:       v.presentacion,
   referencia_perfume: v.referencia_perfume,
+  // Una venta de combo puede llevar varios perfumes del catálogo enlazados
+  perfumes:           (v.perfumes ?? []).map((vp: any) => ({ id: vp.perfume.id, nombre: vp.perfume.nombre })),
   valor_venta:        Number(v.valor_venta),
   datos_adicionales:  v.datos_adicionales ?? null,
+  pagada:             v.pagada,
+  codigo:             v.codigo
+    ? {
+        codigo: v.codigo.codigo,
+        estado: v.codigo.estado,
+        titulo: v.codigo.anuncio?.titulo ?? '',
+        descuento_pct: v.codigo.anuncio?.descuento_pct ?? 0,
+      }
+    : null,
   created_at:         v.created_at,
 });
 
@@ -29,56 +46,119 @@ export const getAllVentas = async (page: number, limit: number, search?: string)
           { referencia_perfume: { contains: search } },
           { presentacion: { contains: search } },
           { datos_adicionales: { contains: search } },
-          { cliente: { nombre: { contains: search } } },
-          { cliente: { apellido: { contains: search } } },
-          { cliente: { telefono: { contains: search } } },
+          { user: { nombre: { contains: search } } },
+          { user: { apellido: { contains: search } } },
+          { user: { telefono: { contains: search } } },
         ],
       }
     : undefined;
   const [rows, total] = await Promise.all([
-    prisma.venta.findMany({ where, skip, take: limit, orderBy: { dia: 'desc' }, include: includeCliente }),
+    prisma.venta.findMany({ where, skip, take: limit, orderBy: { dia: 'desc' }, include: includeRel }),
     prisma.venta.count({ where }),
   ]);
   return paginatedResponse(rows.map(mapVenta), total, page, limit);
 };
 
+/** La referencia visible se construye con los nombres reales del catálogo. */
+const referenciaFromIds = async (perfumeIds: number[]) => {
+  const perfumes = await prisma.perfume.findMany({
+    where: { id: { in: perfumeIds } },
+    select: { id: true, nombre: true },
+  });
+  if (perfumes.length !== perfumeIds.length) {
+    throw new Error('Alguno de los perfumes seleccionados ya no existe en el catálogo');
+  }
+  const nombreById = new Map(perfumes.map((p) => [p.id, p.nombre]));
+  return perfumeIds.map((id) => nombreById.get(id)).join(', ');
+};
+
 export const createVenta = async (data: CreateVentaDTO) => {
+  const referencia = await referenciaFromIds(data.perfume_ids);
+  const pagada = data.pagada ?? true;
+  const codigo = data.codigo_descuento?.trim() || null;
+  // Validar el código ANTES de crear para no dejar una venta a medias
+  if (codigo) await validarCodigoParaVenta(codigo, null);
   const row = await prisma.venta.create({
     data: {
       dia:                new Date(data.dia),
       persona:            data.persona,
-      cliente_id:         data.cliente_id ?? null,
+      user_id:            data.user_id ?? null,
       cantidad_perfumes:  data.cantidad_perfumes,
       presentacion:       data.presentacion,
-      referencia_perfume: data.referencia_perfume,
+      referencia_perfume: referencia,
+      perfumes:           { create: data.perfume_ids.map((pid) => ({ perfume_id: pid })) },
       valor_venta:        data.valor_venta,
       datos_adicionales:  data.datos_adicionales ?? null,
+      pagada,
     },
-    include: includeCliente,
+    include: includeRel,
   });
+  if (codigo) {
+    await aplicarCodigoAVenta(codigo, row.id, pagada);
+    return mapVenta(await prisma.venta.findUnique({ where: { id: row.id }, include: includeRel }));
+  }
   return mapVenta(row);
 };
 
 export const updateVenta = async (id: string, data: CreateVentaDTO) => {
-  const row = await prisma.venta.update({
-    where: { id: Number(id) },
+  const referencia = await referenciaFromIds(data.perfume_ids);
+  const ventaId = Number(id);
+  const pagada = data.pagada ?? true;
+  const codigo = data.codigo_descuento?.trim() || null;
+  if (codigo) await validarCodigoParaVenta(codigo, ventaId);
+  await prisma.venta.update({
+    where: { id: ventaId },
     data: {
       dia:                new Date(data.dia),
       persona:            data.persona,
-      cliente_id:         data.cliente_id ?? null,
+      user_id:            data.user_id ?? null,
       cantidad_perfumes:  data.cantidad_perfumes,
       presentacion:       data.presentacion,
-      referencia_perfume: data.referencia_perfume,
+      referencia_perfume: referencia,
+      perfumes:           { deleteMany: {}, create: data.perfume_ids.map((pid) => ({ perfume_id: pid })) },
       valor_venta:        data.valor_venta,
       datos_adicionales:  data.datos_adicionales ?? null,
+      pagada,
     },
-    include: includeCliente,
   });
-  return mapVenta(row);
+  // Si el código cambió o se quitó, el anterior vuelve a quedar activo
+  await liberarCodigoDeVenta(ventaId, codigo);
+  if (codigo) await aplicarCodigoAVenta(codigo, ventaId, pagada);
+  return mapVenta(await prisma.venta.findUnique({ where: { id: ventaId }, include: includeRel }));
 };
 
-export const deleteVenta = (id: string) =>
-  prisma.venta.delete({ where: { id: Number(id) } });
+/**
+ * Reintenta el enlace venta→perfumes de las ventas importadas sin ningún
+ * enlace (la referencia libre del Excel se compara contra el catálogo).
+ */
+export const relinkVentasPerfume = async () => {
+  const [perfumes, ventas] = await Promise.all([
+    prisma.perfume.findMany({ select: { id: true, nombre: true } }),
+    prisma.venta.findMany({
+      where: { perfumes: { none: {} } },
+      select: { id: true, referencia_perfume: true },
+    }),
+  ]);
+  const index = buildPerfumeIndex(perfumes);
+  let enlazadas = 0;
+  for (const v of ventas) {
+    const ids = matchPerfumes(v.referencia_perfume, index);
+    if (ids.length) {
+      await prisma.ventaPerfume.createMany({
+        data: ids.map((pid) => ({ venta_id: v.id, perfume_id: pid })),
+        skipDuplicates: true,
+      });
+      enlazadas++;
+    }
+  }
+  return { revisadas: ventas.length, enlazadas };
+};
+
+export const deleteVenta = async (id: string) => {
+  // El código enlazado vuelve a estar activo: la venta ya no existe
+  await liberarCodigoDeVenta(Number(id));
+  return prisma.venta.delete({ where: { id: Number(id) } });
+};
 
 export const getVentaTotales = async () => {
   const agg = await prisma.venta.aggregate({

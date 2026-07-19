@@ -12,7 +12,11 @@ type PerfumeRow = Prisma.PerfumeGetPayload<{
   };
 }>;
 
-const mapPerfume = (p: PerfumeRow) => ({
+// Un perfume cuenta como "nuevo lanzamiento" durante sus primeros 30 días en el catálogo.
+const NUEVO_DIAS = 30;
+const esNuevo = (created: Date) => Date.now() - created.getTime() < NUEVO_DIAS * 86400000;
+
+export const mapPerfume = (p: PerfumeRow) => ({
   id:           p.id,
   nombre:       p.nombre,
   descripcion:  p.descripcion ?? null,
@@ -25,12 +29,13 @@ const mapPerfume = (p: PerfumeRow) => ({
   categoria_id: p.categoria_id ?? null,
   descuento:    p.descuento,
   agotado:      p.agotado,
+  es_nuevo:     esNuevo(p.created_at),
   tipos_aroma:    p.tipos_aroma.map((r) => r.tipo_aroma.nombre),
   ocasiones:      p.ocasiones.map((r) => r.ocasion.nombre),
   presentaciones: p.presentaciones.map((r) => r.presentacion.nombre),
 });
 
-const perfumeInclude = {
+export const perfumeInclude = {
   categoria:      true,
   tipos_aroma:    { include: { tipo_aroma: true } },
   ocasiones:      { include: { ocasion: true } },
@@ -45,17 +50,38 @@ export const selectAllParfums = async () => {
   return { data: perfumes.map(mapPerfume) };
 };
 
-export const selectParfumsPaginated = async (page: number, limit: number, search?: string) => {
+/** Filtros del catálogo público (por nombre, tal como los muestra el frontend). */
+export interface CatalogoFiltros {
+  genero?: 'dama' | 'caballero' | 'unisex';
+  categorias?: string[];
+  aromas?: string[];
+  ocasiones?: string[];
+}
+
+export const selectParfumsPaginated = async (
+  page: number,
+  limit: number,
+  search?: string,
+  filtros?: CatalogoFiltros,
+) => {
   const skip = (page - 1) * limit;
-  const where: Prisma.PerfumeWhereInput | undefined = search
-    ? {
-        OR: [
-          { nombre: { contains: search } },
-          { descripcion: { contains: search } },
-          { categoria: { nombre: { contains: search } } },
-        ],
-      }
-    : undefined;
+  const and: Prisma.PerfumeWhereInput[] = [];
+  if (search) {
+    and.push({
+      OR: [
+        { nombre: { contains: search } },
+        { descripcion: { contains: search } },
+        { categoria: { nombre: { contains: search } } },
+      ],
+    });
+  }
+  if (filtros?.genero) and.push({ genero: filtros.genero });
+  if (filtros?.categorias?.length) and.push({ categoria: { nombre: { in: filtros.categorias } } });
+  if (filtros?.aromas?.length)
+    and.push({ tipos_aroma: { some: { tipo_aroma: { nombre: { in: filtros.aromas } } } } });
+  if (filtros?.ocasiones?.length)
+    and.push({ ocasiones: { some: { ocasion: { nombre: { in: filtros.ocasiones } } } } });
+  const where: Prisma.PerfumeWhereInput | undefined = and.length ? { AND: and } : undefined;
   const [rows, total] = await Promise.all([
     prisma.perfume.findMany({ where, include: perfumeInclude, orderBy: { nombre: 'asc' }, skip, take: limit }),
     prisma.perfume.count({ where }),
@@ -152,6 +178,63 @@ export const findRelatedPerfumes = async (currentId: number, aromaNames: string[
   }
 
   return candidates.slice(0, 5).map(mapPerfume);
+};
+
+/**
+ * Destacados del catálogo:
+ * - nuevos: perfumes con menos de 30 días. Pocos → más recientes primero;
+ *   40 o más → ordenados por más vendidos y luego alfabético.
+ * - mas_vendidos: top por unidades vendidas según las ventas enlazadas a perfume.
+ */
+export const getDestacados = async (limitVendidos = 12) => {
+  const desde = new Date(Date.now() - NUEVO_DIAS * 86400000);
+
+  // Una venta de combo enlaza varios perfumes: sus unidades se reparten
+  // (equitativamente) entre los perfumes detectados en esa venta.
+  const enlaces = await prisma.ventaPerfume.findMany({
+    include: { venta: { select: { cantidad_perfumes: true } } },
+  });
+  const perfumesPorVenta = new Map<number, number>();
+  for (const e of enlaces) {
+    perfumesPorVenta.set(e.venta_id, (perfumesPorVenta.get(e.venta_id) ?? 0) + 1);
+  }
+  const vendidosMap = new Map<number, number>();
+  for (const e of enlaces) {
+    const n = perfumesPorVenta.get(e.venta_id) ?? 1;
+    const unidades = Math.max(1, Math.round((e.venta.cantidad_perfumes || 1) / n));
+    vendidosMap.set(e.perfume_id, (vendidosMap.get(e.perfume_id) ?? 0) + unidades);
+  }
+
+  const nuevos = await prisma.perfume.findMany({
+    where: { created_at: { gte: desde } },
+    include: perfumeInclude,
+  });
+  const nuevosOrdenados =
+    nuevos.length >= 40
+      ? [...nuevos].sort(
+          (a, b) =>
+            (vendidosMap.get(b.id) ?? 0) - (vendidosMap.get(a.id) ?? 0) ||
+            a.nombre.localeCompare(b.nombre, 'es'),
+        )
+      : [...nuevos].sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+
+  const topIds = [...vendidosMap.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limitVendidos)
+    .map(([id]) => id);
+  const topRows = topIds.length
+    ? await prisma.perfume.findMany({ where: { id: { in: topIds } }, include: perfumeInclude })
+    : [];
+  const byId = new Map(topRows.map((p) => [p.id, p]));
+
+  return {
+    // Tope de 40 para acotar el payload del home (ya vienen ordenados)
+    nuevos: nuevosOrdenados.slice(0, 40).map(mapPerfume),
+    mas_vendidos: topIds
+      .map((id) => byId.get(id))
+      .filter((p): p is NonNullable<typeof p> => p != null)
+      .map((p) => ({ ...mapPerfume(p), unidades_vendidas: vendidosMap.get(p.id) ?? 0 })),
+  };
 };
 
 export const findPerfumeBySlug = async (slug: string) => {

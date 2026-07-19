@@ -11,7 +11,7 @@ import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { ContactoLinktree } from '../../../components/contacto/ContactoLinktree';
 import { RED_OPTIONS, getRedIcon, getRedLabel } from '../../../components/contacto/redIcons';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
-import { API_CONTACTO } from '../helpers';
+import { API_CONTACTO, subirImagenAdmin } from '../helpers';
 import type { GuardedFetch } from '../types';
 import type { ContactoConfig, ContactoForma, ContactoLink } from '../../../domain/entities/contacto.schema';
 
@@ -177,15 +177,12 @@ export function RedesTab({ guardedFetch }: Props) {
     if (!file) return;
     setUploadingAvatar(true); setConfigMsg(''); setConfigError('');
     try {
-      const fd = new FormData();
-      fd.append('image', file);
-      const res = await guardedFetch(`${API_CONTACTO}/avatar`, { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok) { setConfigError(json.error ?? 'No se pudo subir la imagen'); return; }
-      set('avatar_url', json.data.url);
+      const url = await subirImagenAdmin(guardedFetch, file, `${API_CONTACTO}/avatar`);
+      set('avatar_url', url);
       setConfigMsg('Avatar subido y guardado ✓');
       setTimeout(() => setConfigMsg(''), 3000);
-    } finally { setUploadingAvatar(false); }
+    } catch (err) { setConfigError(err instanceof Error ? err.message : 'No se pudo subir la imagen'); }
+    finally { setUploadingAvatar(false); }
   };
 
   /** Descarga config + links como respaldo JSON re-importable. */
@@ -321,12 +318,14 @@ export function RedesTab({ guardedFetch }: Props) {
       ? (link.emoji ? null : getRedIcon(link.nombre))
       : (link.icono ? getRedIcon(link.icono) : null);
     return (
-      <div key={link.id} className="flex items-center gap-3 rounded-xl border border-border bg-background px-3.5 py-2.5">
+      // flex-wrap + basis del contenido: en pantallas angostas los 4 controles
+      // bajan a una segunda línea en lugar de aplastar el nombre a "C…"
+      <div key={link.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-background px-3.5 py-2.5">
         <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-[15px]">
           {Icon ? <Icon className="size-4 text-primary" /> : (link.emoji || <Link2 className="size-4 text-primary" />)}
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1 basis-40">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
             <span className="truncate text-[13.5px] font-medium text-foreground">
               {link.tipo === 'red' ? getRedLabel(link.nombre) : link.nombre}
             </span>
@@ -339,7 +338,7 @@ export function RedesTab({ guardedFetch }: Props) {
           </div>
           <span className="block truncate text-[12px] text-muted-foreground">{link.url}</span>
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" title="Subir"
             disabled={index === 0} onClick={() => moveLink(link, -1)}>
             <ArrowUp className="size-4" />

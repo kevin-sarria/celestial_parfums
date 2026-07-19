@@ -4,8 +4,8 @@ import { CreateCreditoDTO } from '../types/credito.type';
 export const getAllCreditos = (page: number, limit: number, search?: string) => repo.getAllCreditos(page, limit, search);
 
 export const createCredito = (data: CreateCreditoDTO) => {
-  if (!data.fecha || !data.cliente_id || !data.articulos)
-    throw new Error('Fecha, cliente y artículos son obligatorios');
+  if (!data.fecha || !data.user_id || !data.articulos)
+    throw new Error('Fecha, persona y artículos son obligatorios');
   if (data.deuda_inicial <= 0)
     throw new Error('La deuda inicial debe ser mayor a 0');
   return repo.createCredito(data);

@@ -2,27 +2,32 @@ import { prisma } from '../config/prisma';
 import { Prisma } from '../generated/prisma';
 import { paginatedResponse } from '../utils/pagination';
 
-type ComboRow = Prisma.ComboGetPayload<{ include: { categoria: true } }>;
+type ComboRow = Prisma.ComboGetPayload<{ include: { categoria: true; presentacion: true } }>;
 import { CreateComboDTO } from '../types/combo.type';
 
 const mapCombo = (c: ComboRow) => ({
-  id:           c.id,
-  nombre:       c.nombre,
-  descripcion:  c.descripcion ?? null,
-  imagen_url:   c.imagen_url ?? null,
-  categoria_id: c.categoria_id ?? null,
-  categoria:    c.categoria?.nombre ?? null,
-  cantidad:     c.cantidad,
-  precio:       Number(c.precio),
-  descuento:    c.descuento,
-  activo:       c.activo,
+  id:              c.id,
+  nombre:          c.nombre,
+  descripcion:     c.descripcion ?? null,
+  imagen_url:      c.imagen_url ?? null,
+  categoria_id:    c.categoria_id ?? null,
+  categoria:       c.categoria?.nombre ?? null,
+  // Presentación de los perfumes del combo; null = cualquier tamaño
+  presentacion_id: c.presentacion_id ?? null,
+  presentacion:    c.presentacion?.nombre ?? null,
+  cantidad:        c.cantidad,
+  precio:          Number(c.precio),
+  descuento:       c.descuento,
+  activo:          c.activo,
 });
+
+const comboInclude = { categoria: true, presentacion: true } as const;
 
 const comboOrderBy = [{ cantidad: 'asc' as const }, { nombre: 'asc' as const }];
 
 export const selectAllCombos = async () => {
   const combos = await prisma.combo.findMany({
-    include: { categoria: true },
+    include: comboInclude,
     orderBy: comboOrderBy,
   });
   return combos.map(mapCombo);
@@ -40,7 +45,7 @@ export const selectCombosPaginated = async (page: number, limit: number, search?
       }
     : undefined;
   const [rows, total] = await Promise.all([
-    prisma.combo.findMany({ where, include: { categoria: true }, orderBy: comboOrderBy, skip, take: limit }),
+    prisma.combo.findMany({ where, include: comboInclude, orderBy: comboOrderBy, skip, take: limit }),
     prisma.combo.count({ where }),
   ]);
   return paginatedResponse(rows.map(mapCombo), total, page, limit);
@@ -49,14 +54,15 @@ export const selectCombosPaginated = async (page: number, limit: number, search?
 export const createCombo = async (data: CreateComboDTO) => {
   const combo = await prisma.combo.create({
     data: {
-      nombre:       data.nombre,
-      descripcion:  data.descripcion ?? null,
-      imagen_url:   data.imagen_url ?? null,
-      categoria_id: data.categoria_id ?? null,
-      cantidad:     data.cantidad,
-      precio:       data.precio,
-      descuento:    data.descuento ?? 0,
-      activo:       data.activo ?? true,
+      nombre:          data.nombre,
+      descripcion:     data.descripcion ?? null,
+      imagen_url:      data.imagen_url ?? null,
+      categoria_id:    data.categoria_id ?? null,
+      presentacion_id: data.presentacion_id ?? null,
+      cantidad:        data.cantidad,
+      precio:          data.precio,
+      descuento:       data.descuento ?? 0,
+      activo:          data.activo ?? true,
     },
   });
   return combo.id;
@@ -66,14 +72,15 @@ export const updateCombo = (id: string, data: CreateComboDTO) =>
   prisma.combo.update({
     where: { id: Number(id) },
     data: {
-      nombre:       data.nombre,
-      descripcion:  data.descripcion ?? null,
-      imagen_url:   data.imagen_url ?? null,
-      categoria_id: data.categoria_id ?? null,
-      cantidad:     data.cantidad,
-      precio:       data.precio,
-      descuento:    data.descuento ?? 0,
-      activo:       data.activo ?? true,
+      nombre:          data.nombre,
+      descripcion:     data.descripcion ?? null,
+      imagen_url:      data.imagen_url ?? null,
+      categoria_id:    data.categoria_id ?? null,
+      presentacion_id: data.presentacion_id ?? null,
+      cantidad:        data.cantidad,
+      precio:          data.precio,
+      descuento:       data.descuento ?? 0,
+      activo:          data.activo ?? true,
     },
   });
 
@@ -86,7 +93,7 @@ export const patchComboDescuento = (id: string, descuento: number) =>
 export const findRelatedCombos = async (currentId: number) => {
   const candidates = await prisma.combo.findMany({
     where: { id: { not: currentId }, activo: true },
-    include: { categoria: true },
+    include: comboInclude,
     take: 20,
   });
 
@@ -103,19 +110,8 @@ export const findComboBySlug = async (slug: string) => {
   const nombre = slug.replace(/-/g, ' ');
   const combo = await prisma.combo.findFirst({
     where: { nombre },
-    include: { categoria: true },
+    include: comboInclude,
   });
   if (!combo) return null;
-  return {
-    id:           combo.id,
-    nombre:       combo.nombre,
-    descripcion:  combo.descripcion ?? null,
-    imagen_url:   combo.imagen_url ?? null,
-    categoria_id: combo.categoria_id ?? null,
-    categoria:    combo.categoria?.nombre ?? null,
-    cantidad:     combo.cantidad,
-    precio:       Number(combo.precio),
-    descuento:    combo.descuento,
-    activo:       combo.activo,
-  };
+  return mapCombo(combo);
 };

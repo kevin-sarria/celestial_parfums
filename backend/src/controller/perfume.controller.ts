@@ -11,6 +11,15 @@ export const getRelatedPerfumes = async (req: Request, res: Response) => {
   }
 };
 
+export const getDestacados = async (_req: Request, res: Response) => {
+  try {
+    const data = await perfumeService.getDestacados();
+    res.json({ data });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const getPerfumeBySlug = async (req: Request, res: Response) => {
   try {
     const data = await perfumeService.getPerfumeBySlug(req.params.slug as string);
@@ -20,11 +29,24 @@ export const getPerfumeBySlug = async (req: Request, res: Response) => {
   }
 };
 
+/** Lista separada por comas saneada (máx. 20 valores). */
+const parseLista = (v: unknown): string[] | undefined => {
+  if (typeof v !== 'string' || !v.trim()) return undefined;
+  const items = v.split(',').map((s) => s.trim()).filter(Boolean).slice(0, 20);
+  return items.length ? items : undefined;
+};
+
 export const selectAllPerfumes = async (req: Request, res: Response) => {
   try {
     if (req.query.page) {
       const { page, limit } = parsePagination(req.query as any);
-      const result = await perfumeService.allPerfumesPaginated(page, limit, parseSearch(req.query as any));
+      const generoRaw = typeof req.query.genero === 'string' ? req.query.genero : '';
+      const result = await perfumeService.allPerfumesPaginated(page, limit, parseSearch(req.query as any), {
+        genero: ['dama', 'caballero', 'unisex'].includes(generoRaw) ? (generoRaw as 'dama' | 'caballero' | 'unisex') : undefined,
+        categorias: parseLista(req.query.categorias),
+        aromas: parseLista(req.query.aromas),
+        ocasiones: parseLista(req.query.ocasiones),
+      });
       res.json(result);
     } else {
       const result = await perfumeService.allPerfumes();

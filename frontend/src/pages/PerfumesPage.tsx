@@ -1,3 +1,4 @@
+import { useSeo } from '../application/hooks/useSeo';
 import PerfumeCard from '../components/PerfumeCard';
 import CardSkeleton from '../components/CardSkeleton';
 import Paginator from '../components/Paginator';
@@ -13,6 +14,10 @@ import { GENEROS, GENERO_LABELS } from '../domain/entities/perfume.schema';
 
 export default function PerfumesPage() {
   const catalog = usePerfumes();
+  useSeo(
+    'Perfumes',
+    'Catálogo de perfumes: busca por género, categoría, notas y ocasiones. Contratipos, 1.1 y originales.',
+  );
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -23,7 +28,7 @@ export default function PerfumesPage() {
         subtitle={
           catalog.loading
             ? ''
-            : `${catalog.filtered.length} ${catalog.filtered.length === 1 ? 'perfume' : 'perfumes'} disponibles`
+            : `${catalog.total} ${catalog.total === 1 ? 'perfume' : 'perfumes'} disponibles`
         }
         searchValue={catalog.search}
         searchPlaceholder="Buscar perfume..."
@@ -95,19 +100,19 @@ export default function PerfumesPage() {
         <main className="min-w-0 flex-1">
           {catalog.error && <p className="py-6 text-center text-sm text-destructive">{catalog.error}</p>}
 
-          {!catalog.loading && !catalog.error && catalog.filtered.length === 0 && <EmptyState />}
+          {!catalog.loading && !catalog.error && catalog.total === 0 && <EmptyState />}
 
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
             {catalog.loading ? (
               <CardSkeleton count={8} />
             ) : (
-              catalog.paginated.map((p) => <PerfumeCard key={p.id} perfume={p} />)
+              catalog.items.map((p) => <PerfumeCard key={p.id} perfume={p} />)
             )}
           </div>
 
           <Paginator
             page={catalog.page}
-            total={catalog.filtered.length}
+            total={catalog.total}
             pageSize={PERFUMES_PAGE_SIZE}
             onChange={(p) => {
               catalog.setPage(p);

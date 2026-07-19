@@ -1,49 +1,35 @@
-import { Request, Response } from 'express';
 import * as ventaService from '../services/venta.service';
 import { parsePagination, parseSearch } from '../utils/pagination';
+import { h } from '../middleware/error.middleware';
 
-export const getVentas = async (req: Request, res: Response) => {
-  try {
-    const { page, limit } = parsePagination(req.query as any);
-    const result = await ventaService.getAllVentas(page, limit, parseSearch(req.query as any));
-    res.json(result);
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};
+// Handlers envueltos con h(): los errores (incl. HttpError con status
+// semántico, ej. conflictos de códigos de descuento) van al middleware central.
 
-export const addVenta = async (req: Request, res: Response) => {
-  try {
-    const data = await ventaService.createVenta(req.body);
-    res.status(201).json({ message: 'Venta registrada', data });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};
+export const getVentas = h(async (req, res) => {
+  const { page, limit } = parsePagination(req.query as any);
+  res.json(await ventaService.getAllVentas(page, limit, parseSearch(req.query as any)));
+});
 
-export const editVenta = async (req: Request, res: Response) => {
-  try {
-    const data = await ventaService.updateVenta(req.params.id as string, req.body);
-    res.json({ message: 'Venta actualizada', data });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};
+export const addVenta = h(async (req, res) => {
+  const data = await ventaService.createVenta(req.body);
+  res.status(201).json({ message: 'Venta registrada', data });
+});
 
-export const removeVenta = async (req: Request, res: Response) => {
-  try {
-    await ventaService.deleteVenta(req.params.id as string);
-    res.json({ message: 'Venta eliminada' });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};
+export const editVenta = h(async (req, res) => {
+  const data = await ventaService.updateVenta(req.params.id as string, req.body);
+  res.json({ message: 'Venta actualizada', data });
+});
 
-export const getTotales = async (_req: Request, res: Response) => {
-  try {
-    const data = await ventaService.getVentaTotales();
-    res.json({ data });
-  } catch (error: any) {
-    res.status(400).json({ error: error.message });
-  }
-};
+export const removeVenta = h(async (req, res) => {
+  await ventaService.deleteVenta(req.params.id as string);
+  res.json({ message: 'Venta eliminada' });
+});
+
+export const getTotales = h(async (_req, res) => {
+  res.json({ data: await ventaService.getVentaTotales() });
+});
+
+export const relinkPerfumes = h(async (_req, res) => {
+  const data = await ventaService.relinkVentasPerfume();
+  res.json({ message: `${data.enlazadas} de ${data.revisadas} ventas enlazadas a un perfume`, data });
+});

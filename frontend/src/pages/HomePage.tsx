@@ -1,3 +1,4 @@
+import { useSeo } from '../application/hooks/useSeo';
 import { useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Eye } from 'lucide-react';
@@ -7,12 +8,15 @@ import ComboCard from '../components/ComboCard';
 import CardSkeleton from '../components/CardSkeleton';
 import CartFab from '../components/CartFab';
 import WhatsAppFab from '../components/WhatsAppFab';
+import AnunciosPopups from '../components/AnunciosPopups';
 import CatalogHeader from '../components/CatalogHeader';
 import CatalogHero from '../components/catalog/CatalogHero';
 import EmptyState from '../components/catalog/EmptyState';
 import { Chip, FilterGroup } from '../components/catalog/FilterChips';
 import { FilterSidebar, FilterToggleBar } from '../components/catalog/FilterSidebar';
+import { CardCarousel, CarouselItem } from '../components/catalog/CardCarousel';
 import { useCatalog } from '../application/hooks/useCatalog';
+import { useDestacados } from '../application/hooks/useDestacados';
 import { GENEROS, GENERO_LABELS } from '../domain/entities/perfume.schema';
 
 interface Props {
@@ -46,6 +50,13 @@ function SectionHeader({ title, to, count }: SectionHeaderProps) {
 export default function HomePage({ isAdmin = false, adminPreview = false }: Props) {
   const navigate = useNavigate();
   const catalog = useCatalog();
+  useSeo(
+    'Celestial Parfums — Perfumería con esencias premium',
+    'Perfumes para dama, caballero y unisex: contratipos, 1.1 y originales. Combos con descuento y pedidos por WhatsApp.',
+  );
+  const { nuevos, masVendidos } = useDestacados();
+  // Con búsqueda o filtros activos las secciones destacadas se ocultan para no estorbar
+  const mostrarDestacados = !catalog.loading && !catalog.search && !catalog.hasActiveFilters;
 
   useEffect(() => {
     if (isAdmin) navigate('/dashboard', { replace: true });
@@ -171,15 +182,43 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
           {!catalog.loading &&
             !catalog.error &&
             catalog.filteredCombos.length === 0 &&
-            (!catalog.showPerfumes || catalog.filtered.length === 0) && <EmptyState />}
+            (!catalog.showPerfumes || catalog.totalPerfumes === 0) && <EmptyState />}
+
+          {/* Nuevos lanzamientos (perfumes con menos de 1 mes en el catálogo) */}
+          {mostrarDestacados && nuevos.length > 0 && (
+            <section className="mb-12 animate-fade-up">
+              <SectionHeader title="Nuevos lanzamientos" count={nuevos.length} />
+              <CardCarousel>
+                {nuevos.map((p) => (
+                  <CarouselItem key={p.id}>
+                    <PerfumeCard perfume={p} />
+                  </CarouselItem>
+                ))}
+              </CardCarousel>
+            </section>
+          )}
+
+          {/* Los más vendidos (calculado automáticamente de las ventas) */}
+          {mostrarDestacados && masVendidos.length > 0 && (
+            <section className="mb-12 animate-fade-up">
+              <SectionHeader title="Los más vendidos" />
+              <CardCarousel>
+                {masVendidos.map((p) => (
+                  <CarouselItem key={p.id}>
+                    <PerfumeCard perfume={p} />
+                  </CarouselItem>
+                ))}
+              </CardCarousel>
+            </section>
+          )}
 
           {/* Perfumes individuales */}
-          {!catalog.loading && catalog.showPerfumes && catalog.filtered.length > 0 && (
+          {!catalog.loading && catalog.showPerfumes && catalog.totalPerfumes > 0 && (
             <section className="animate-fade-up">
               <SectionHeader
                 title="Perfumes individuales"
                 to={catalog.hasMorePerfumes ? '/perfumes' : undefined}
-                count={catalog.filtered.length}
+                count={catalog.totalPerfumes}
               />
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
                 {catalog.previewPerfumes.map((p) => (
@@ -209,6 +248,8 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
 
       <WhatsAppFab />
       <CartFab />
+      {/* Ventanas emergentes configuradas por el admin (no en la vista previa) */}
+      {!adminPreview && <AnunciosPopups />}
     </div>
   );
 }

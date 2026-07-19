@@ -33,12 +33,14 @@ export default function CatalogHero({
       )}
       <div className="relative mx-auto mt-7 max-w-md">
         <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+        {/* text-base en móvil: con fuente <16px iOS hace zoom a toda la página al
+            enfocar el input y no lo revierte (queda "agrandada" y descuadrada). */}
         <Input
           type="search"
           value={searchValue}
           placeholder={searchPlaceholder}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="h-11 rounded-full border-border bg-card pl-11 pr-5 text-sm shadow-none transition-shadow duration-300 focus-visible:shadow-[0_8px_30px_-12px_rgb(0_0_0/0.2)]"
+          className="h-11 rounded-full border-border bg-card pl-11 pr-5 text-base shadow-none transition-shadow duration-300 focus-visible:shadow-[0_8px_30px_-12px_rgb(0_0_0/0.2)] md:text-sm"
         />
       </div>
     </section>

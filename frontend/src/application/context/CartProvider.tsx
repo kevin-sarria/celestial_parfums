@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { CartContext, type CartItem } from './CartContext';
 import { useAuthContext } from './useAuthContext';
 
@@ -7,7 +7,9 @@ const STORAGE_KEY = 'celestial_cart';
 function loadCart(): CartItem[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const items: CartItem[] = raw ? JSON.parse(raw) : [];
+    // Carritos guardados antes del campo `descuento`: se asume 0
+    return items.map((i) => ({ ...i, descuento: i.descuento ?? 0 }));
   } catch { return []; }
 }
 
@@ -20,12 +22,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>(loadCart);
   const [isOpen, setIsOpen] = useState(false);
 
+  // El carrito se vacía SOLO al cerrar sesión (transición usuario→null), no al
+  // entrar como visitante: los carritos anónimos deben sobrevivir la recarga.
+  const prevUser = useRef(user);
   useEffect(() => {
-    if (!user) {
+    if (prevUser.current && !user) {
       setItems([]);
       localStorage.removeItem(STORAGE_KEY);
       setIsOpen(false);
     }
+    prevUser.current = user;
   }, [user]);
 
   const persist = (next: CartItem[]) => { setItems(next); saveCart(next); };

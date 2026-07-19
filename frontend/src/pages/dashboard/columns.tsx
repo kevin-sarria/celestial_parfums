@@ -22,10 +22,10 @@ export const ventasColumns: ColumnDef<Venta>[] = [
     render: v => (
       <span>
         {v.persona}
-        {v.cliente && (
+        {v.user && (
           <SubText>
             <span className="inline-flex items-center gap-1 text-primary">
-              <LinkIcon className="size-3" /> {v.cliente.nombre} {v.cliente.apellido}
+              <LinkIcon className="size-3" /> {v.user.nombre} {v.user.apellido}
             </span>
           </SubText>
         )}
@@ -37,8 +37,37 @@ export const ventasColumns: ColumnDef<Venta>[] = [
     getValue: v => v.presentacion,
     render: v => <Badge variant="outline" className="border-primary/30 bg-brand-soft text-primary">{v.presentacion}</Badge>,
     className: cellMeta, noTruncate: true },
-  { key: 'referencia_perfume', header: 'Referencia', type: 'string', getValue: v => v.referencia_perfume },
-  { key: 'valor_venta', header: 'Valor', type: 'currency', getValue: v => v.valor_venta, render: v => formatPrice(v.valor_venta), className: cellPrice, noTruncate: true },
+  { key: 'referencia_perfume', header: 'Referencia', type: 'string', getValue: v => v.referencia_perfume,
+    render: v => (
+      <span>
+        {v.referencia_perfume}
+        {v.perfumes.length > 0 && (
+          <SubText>
+            <span className="inline-flex items-center gap-1 text-primary">
+              <LinkIcon className="size-3" /> {v.perfumes.map(p => p.nombre).join(' · ')}
+            </span>
+          </SubText>
+        )}
+      </span>
+    ) },
+  { key: 'valor_venta', header: 'Valor', type: 'currency', getValue: v => v.valor_venta,
+    render: v => (
+      <span>
+        {formatPrice(v.valor_venta)}
+        {v.codigo && (
+          <SubText>
+            <span className="text-primary">🎟 {v.codigo.codigo} (-{v.codigo.descuento_pct}%)</span>
+          </SubText>
+        )}
+      </span>
+    ),
+    className: cellPrice, noTruncate: true },
+  { key: 'pagada', header: 'Pago', type: 'enum', enumOptions: ['Pagada', 'Pendiente'],
+    getValue: v => (v.pagada ? 'Pagada' : 'Pendiente'),
+    render: v => v.pagada
+      ? <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-600">Pagada</Badge>
+      : <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-600">Pendiente</Badge>,
+    noTruncate: true },
   { key: 'datos_adicionales', header: 'Datos adicionales', type: 'string', getValue: v => v.datos_adicionales ?? '',
     render: v => <>{v.datos_adicionales ?? '—'}</> },
 ];
@@ -112,7 +141,16 @@ export const combosColumns: ColumnDef<Combo>[] = [
       </span>
     ),
     className: cellName },
-  { key: 'cantidad', header: 'Perfumes', type: 'number', getValue: c => c.cantidad, render: c => `${c.cantidad} perfumes`, className: cellMeta, noTruncate: true },
+  { key: 'cantidad', header: 'Perfumes', type: 'number', getValue: c => c.cantidad,
+    render: c => (
+      <span>
+        {c.cantidad} perfumes
+        {(c.categoria || c.presentacion) && (
+          <SubText>{[c.categoria, c.presentacion ?? 'cualquier tamaño'].filter(Boolean).join(' · ')}</SubText>
+        )}
+      </span>
+    ),
+    className: cellMeta, noTruncate: true },
   { key: 'precio', header: 'Precio', type: 'currency', getValue: c => c.precio, render: c => formatPrice(c.precio), className: cellPrice, noTruncate: true },
   { key: 'descuento', header: 'Descuento', type: 'number', getValue: c => c.descuento, render: c => c.descuento > 0 ? `${c.descuento}%` : '—', className: cellMeta, noTruncate: true },
   { key: 'precio_final', header: 'Precio final', type: 'currency',

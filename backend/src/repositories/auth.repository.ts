@@ -32,6 +32,31 @@ export const activateUser = (id: number) =>
     data: { activo: true, verification_token: null, token_expiry: null },
   });
 
+/**
+ * Una ficha creada por el admin (sin_cuenta) se "reclama" cuando la persona se
+ * registra con ese correo: obtiene acceso web y conserva TODO su historial de
+ * ventas y créditos (misma fila de users).
+ */
+export const claimFichaUser = (
+  id: number,
+  data: {
+    hashedPassword: string;
+    activo: boolean;
+    verification_token?: string | null;
+    token_expiry?: Date | null;
+  },
+) =>
+  prisma.user.update({
+    where: { id },
+    data: {
+      password: data.hashedPassword,
+      activo: data.activo,
+      sin_cuenta: false,
+      verification_token: data.verification_token ?? null,
+      token_expiry: data.token_expiry ?? null,
+    },
+  });
+
 /** Crea una cuenta ya activa a partir de un inicio de sesión con Google. */
 export const createGoogleUser = (data: {
   nombre: string;

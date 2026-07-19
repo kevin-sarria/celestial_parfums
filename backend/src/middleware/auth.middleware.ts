@@ -1,7 +1,10 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'celestial_secret_key';
+// Mismo criterio que auth.service: en producción JWT_SECRET es obligatoria
+// (el arranque ya falla allí si falta); el fallback solo aplica en desarrollo
+// y debe coincidir con el de requireSecret() para que los tokens validen.
+const JWT_SECRET = process.env.JWT_SECRET?.trim() || 'dev_only_jwt_secret';
 
 export interface JWTPayload {
   id: number;

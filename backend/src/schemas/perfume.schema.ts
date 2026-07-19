@@ -2,11 +2,12 @@ import { z } from 'zod/v4';
 
 export const createPerfumeSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio').max(150),
-  descripcion: z.string().max(5000).optional(),
+  // Campos opcionales: aceptan texto, null o ausente (el formulario envía null al vaciarlos)
+  descripcion: z.string().max(5000).nullish(),
   precio: z.number().positive('El precio debe ser mayor a 0'),
-  duracion: z.string().max(50).optional(),
-  proyeccion: z.string().max(50).optional(),
-  imagen_url: z.string().url().optional().or(z.literal('')),
+  duracion: z.string().max(50).nullish(),
+  proyeccion: z.string().max(50).nullish(),
+  imagen_url: z.string().url().nullish().or(z.literal('')),
   genero: z.enum(['dama', 'caballero', 'unisex']).nullable().optional(),
   categoria_id: z.number().int().positive().nullable().optional(),
   descuento: z.number().int().min(0).max(100).optional(),

@@ -1,3 +1,4 @@
+import { useSeo } from '../application/hooks/useSeo';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -19,6 +20,7 @@ interface ContactoData {
  */
 export default function ContactPage() {
   const navigate = useNavigate();
+  useSeo('Contáctame', 'Escríbenos por WhatsApp o encuéntranos en redes sociales.');
   const [data, setData] = useState<ContactoData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

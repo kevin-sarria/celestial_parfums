@@ -9,6 +9,7 @@ import {
   createUser,
   createGoogleUser,
   activateUser,
+  claimFichaUser,
 } from '../repositories/auth.repository';
 import type { LoginDTO, RegisterDTO } from '../types/auth.type';
 import { transporter } from '../config/mailer';
@@ -96,7 +97,14 @@ export const googleAuthService = async (credential: string) => {
   const email = payload.email.toLowerCase();
   let user = await findUserByEmailAny(email);
 
-  if (user) {
+  if (user?.sin_cuenta) {
+    // Ficha creada por el admin con este correo: la persona la reclama con
+    // Google y hereda todo su historial de ventas y créditos.
+    const randomPassword = crypto.randomBytes(32).toString('hex');
+    const hashedPassword = await bcrypt.hash(randomPassword, 10);
+    await claimFichaUser(user.id, { hashedPassword, activo: true });
+    user = { ...user, activo: true, sin_cuenta: false };
+  } else if (user) {
     // Cuenta creada por registro normal pero aún sin activar: Google la valida.
     if (!user.activo) {
       await activateUser(user.id);
@@ -150,13 +158,21 @@ const doRegister = async (dto: RegisterDTO) => {
   }
 
   const exists = await findUserByEmailAny(dto.email);
-  if (exists) throw new Error('El email ya está registrado');
+  if (exists && !exists.sin_cuenta) throw new Error('El email ya está registrado');
 
   const hashedPassword = await bcrypt.hash(dto.password, 10);
   const verification_token = crypto.randomBytes(32).toString('hex');
   const token_expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-  const { id } = await createUser({ ...dto, hashedPassword, verification_token, token_expiry });
+  let id: number;
+  if (exists) {
+    // Ficha del admin con este correo: la persona la reclama al registrarse y
+    // hereda su historial; igual debe verificar el correo para activarla.
+    await claimFichaUser(exists.id, { hashedPassword, activo: false, verification_token, token_expiry });
+    id = exists.id;
+  } else {
+    ({ id } = await createUser({ ...dto, hashedPassword, verification_token, token_expiry }));
+  }
 
   const verifyUrl = `${FRONTEND_URL}/verify?token=${verification_token}`;
 

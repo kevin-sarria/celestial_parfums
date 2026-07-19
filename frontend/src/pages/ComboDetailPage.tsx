@@ -1,3 +1,4 @@
+import { useSeo } from '../application/hooks/useSeo';
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
@@ -17,6 +18,7 @@ export default function ComboDetailPage() {
   const navigate = useNavigate();
   const { combo, related, loading, error } = useComboDetail(slug);
   const [cartModal, setCartModal] = useState(false);
+  useSeo(combo?.nombre, combo?.descripcion ?? undefined);
 
   const precioFinal = combo ? finalPrice(combo.precio, combo.descuento) : 0;
 
@@ -126,6 +128,7 @@ export default function ComboDetailPage() {
             id: combo.id,
             nombre: combo.nombre,
             precio: precioFinal,
+            descuento: combo.descuento,
             imagen_url: combo.imagen_url,
             esCombo: true,
             categoria: combo.categoria,
