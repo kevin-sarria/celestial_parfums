@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import type { Perfume } from '../../domain/entities/perfume.schema';
 import { BASE_URL } from '../../infrastructure/api/client';
 

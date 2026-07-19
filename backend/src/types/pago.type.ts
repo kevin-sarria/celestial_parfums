@@ -1,4 +1,4 @@
-export interface CreatePagoDTO {
+﻿export interface CreatePagoDTO {
   dia: string;
   empresa_id: number;
   valor_compra: number;

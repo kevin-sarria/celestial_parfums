@@ -1,4 +1,4 @@
-import { useState, useEffect, type ReactNode } from 'react';
+﻿import { useState, useEffect, type ReactNode } from 'react';
 import { authStorage } from '../../infrastructure/storage/auth.storage';
 import { BASE_URL } from '../../infrastructure/api/client';
 import type { AuthUser } from '../../domain/entities/auth.schema';

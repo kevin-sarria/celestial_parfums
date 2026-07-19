@@ -1,4 +1,4 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { getVentas, addVenta, editVenta, removeVenta, getTotales, relinkPerfumes } from '../controller/venta.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';

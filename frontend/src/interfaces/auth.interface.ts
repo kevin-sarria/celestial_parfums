@@ -1,4 +1,4 @@
-import type { AuthUser } from "../domain/entities/auth.schema";
+﻿import type { AuthUser } from "../domain/entities/auth.schema";
 
 export interface AuthContextValue {
   user: AuthUser | null;

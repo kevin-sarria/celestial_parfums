@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+﻿import { useState, useMemo } from 'react';
 import type { ColumnDef, SortState, FiltersState, FilterValue } from './tableTypes';
 
 function sanitizeStr(v: unknown): string {

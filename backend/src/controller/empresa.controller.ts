@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+﻿import { Request, Response } from 'express';
 import * as empresaService from '../services/empresa.service';
 
 export const getEmpresas = async (_req: Request, res: Response) => {

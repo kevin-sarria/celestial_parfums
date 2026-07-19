@@ -1,4 +1,4 @@
-import { ShoppingCart } from 'lucide-react';
+﻿import { ShoppingCart } from 'lucide-react';
 import { useCart } from '../application/context/useCart';
 
 export default function CartFab() {

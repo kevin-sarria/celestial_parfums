@@ -1,4 +1,4 @@
-﻿import { useSeo } from '../application/hooks/useSeo';
+import { useSeo } from '../application/hooks/useSeo';
 import PerfumeCard from '../components/PerfumeCard';
 import CardSkeleton from '../components/CardSkeleton';
 import Paginator from '../components/Paginator';
@@ -16,7 +16,7 @@ export default function PerfumesPage() {
   const catalog = usePerfumes();
   useSeo(
     'Perfumes',
-    'CatÃ¡logo de perfumes: busca por gÃ©nero, categorÃ­a, notas y ocasiones. Contratipos, 1.1 y originales.',
+    'Catálogo de perfumes: busca por género, categoría, notas y ocasiones. Contratipos, 1.1 y originales.',
   );
 
   return (
@@ -48,7 +48,7 @@ export default function PerfumesPage() {
           hasActiveFilters={catalog.hasActiveFilters}
           onClear={catalog.clearAll}
         >
-          <FilterGroup label="GÃ©nero">
+          <FilterGroup label="Género">
             {GENEROS.map((g) => (
               <Chip key={g} active={catalog.activeGenero === g} onClick={() => catalog.onGeneroToggle(g)}>
                 {GENERO_LABELS[g]}
@@ -57,7 +57,7 @@ export default function PerfumesPage() {
           </FilterGroup>
 
           {catalog.categorias.length > 0 && (
-            <FilterGroup label="CategorÃ­a">
+            <FilterGroup label="Categoría">
               {catalog.categorias.map((c) => (
                 <Chip
                   key={c.id}

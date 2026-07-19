@@ -1,4 +1,4 @@
-import { useSeo } from '../application/hooks/useSeo';
+﻿import { useSeo } from '../application/hooks/useSeo';
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingCart } from 'lucide-react';
@@ -51,7 +51,7 @@ export default function ComboDetailPage() {
                 <img src={combo.imagen_url} alt={combo.nombre} className="aspect-4/5 h-full w-full object-cover" />
               ) : (
                 <div className="flex aspect-4/5 items-center justify-center">
-                  <span className="text-7xl">🎁</span>
+                  <span className="text-7xl">ð</span>
                 </div>
               )}
               {combo.descuento > 0 && (

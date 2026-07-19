@@ -1,4 +1,4 @@
-import { prisma } from '../config/prisma';
+﻿import { prisma } from '../config/prisma';
 import { CreatePagoDTO } from '../types/pago.type';
 import { paginatedResponse } from '../utils/pagination';
 
