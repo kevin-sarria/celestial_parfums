@@ -10,8 +10,10 @@ import { loginSchema } from '../domain/entities/auth.schema';
 import { BASE_URL } from '../infrastructure/api/client';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
 import { useAuthContext } from '../application/context/useAuthContext';
+import { useSeo } from '../application/hooks/useSeo';
 
 export default function LoginPage() {
+  useSeo('Iniciar sesión');
   const navigate = useNavigate();
   const auth = useAuthContext();
   const [email, setEmail] = useState('');

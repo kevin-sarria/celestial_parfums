@@ -3,16 +3,18 @@ import { z } from 'zod';
 export const GENEROS = ['dama', 'caballero', 'unisex'] as const;
 export type Genero = (typeof GENEROS)[number];
 
+// ︎ fuerza presentación de TEXTO: sin él, iOS dibuja ♀/♂ como emoji
+// (ignora el color y tamaño del CSS).
 export const GENERO_LABELS: Record<Genero, string> = {
-  dama: '♀ Dama',
-  caballero: '♂ Caballero',
-  unisex: '⚥ Unisex',
+  dama: '♀︎ Dama',
+  caballero: '♂︎ Caballero',
+  unisex: '⚥︎ Unisex',
 };
 
 export const GENERO_SYMBOLS: Record<Genero, string> = {
-  dama: '♀',
-  caballero: '♂',
-  unisex: '⚥',
+  dama: '♀︎',
+  caballero: '♂︎',
+  unisex: '⚥︎',
 };
 
 export const perfumeSchema = z.object({

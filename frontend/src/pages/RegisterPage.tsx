@@ -10,8 +10,10 @@ import { BrandMark } from '@/components/BrandMark';
 import { registerSchema } from '../domain/entities/auth.schema';
 import { BASE_URL } from '../infrastructure/api/client';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
+import { useSeo } from '../application/hooks/useSeo';
 
 export default function RegisterPage() {
+  useSeo('Crear cuenta');
   const navigate = useNavigate();
   const [form, setForm] = useState({
     nombre: '',

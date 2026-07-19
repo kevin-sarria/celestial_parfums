@@ -17,6 +17,7 @@ import type { Perfume } from '../../domain/entities/perfume.schema';
 import type { Combo } from '../../domain/entities/combo.schema';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import { useGuardedFetch } from './useGuardedFetch';
+import { useSeo } from '../../application/hooks/useSeo';
 import { API, API_COMBOS, DEFAULT_PAGE_SIZE } from './helpers';
 import type { Tab, Lookup } from './types';
 import { PerfumesTab } from './tabs/PerfumesTab';
@@ -60,6 +61,7 @@ const sectionOfTab = (tab: Tab) =>
   NAV_SECTIONS.find(s => s.tabs.includes(tab))?.id ?? NAV_SECTIONS[0].id;
 
 export default function DashboardPage() {
+  useSeo('Dashboard');
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuthContext();
   const guardedFetch = useGuardedFetch();

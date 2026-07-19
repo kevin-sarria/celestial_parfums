@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { BrandMark } from '@/components/BrandMark';
 import { BASE_URL } from '../infrastructure/api/client';
+import { useSeo } from '../application/hooks/useSeo';
 
 export default function VerifyPage() {
+  useSeo('Verificar correo');
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');

@@ -7,6 +7,7 @@ import { formatPrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { usePortalCredito } from '../application/hooks/usePortalCredito';
 import { useAuthContext } from '../application/context/useAuthContext';
+import { useSeo } from '../application/hooks/useSeo';
 
 const fmtFecha = (d: string) =>
   new Date(d).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -16,6 +17,7 @@ const fmtFecha = (d: string) =>
  * Los créditos los otorga únicamente el administrador desde el dashboard.
  */
 export default function MiCreditoPage() {
+  useSeo('Mi crédito');
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const { data, loading } = usePortalCredito();
