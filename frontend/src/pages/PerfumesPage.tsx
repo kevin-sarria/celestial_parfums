@@ -9,6 +9,7 @@ import CatalogHero from '../components/catalog/CatalogHero';
 import EmptyState from '../components/catalog/EmptyState';
 import { Chip, FilterGroup } from '../components/catalog/FilterChips';
 import { FilterSidebar, FilterToggleBar } from '../components/catalog/FilterSidebar';
+import DescargarCatalogoButton from '../components/DescargarCatalogoButton';
 import { usePerfumes, PERFUMES_PAGE_SIZE } from '../application/hooks/usePerfumes';
 import { GENEROS, GENERO_LABELS } from '../domain/entities/perfume.schema';
 
@@ -41,6 +42,11 @@ export default function PerfumesPage() {
         onToggle={() => catalog.setShowFilters((v) => !v)}
         onClear={catalog.clearAll}
       />
+
+      {/* Beneficio para registrados: catálogo completo en PDF */}
+      <div className="mx-auto flex w-full max-w-7xl justify-end px-5 pb-4 md:px-8">
+        <DescargarCatalogoButton />
+      </div>
 
       <div className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-5 pb-20 md:px-8 lg:flex-row">
         <FilterSidebar

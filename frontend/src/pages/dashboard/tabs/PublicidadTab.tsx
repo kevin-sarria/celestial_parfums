@@ -53,6 +53,7 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
       descuento_pct: String(a.descuento_pct || 10),
       aplica_combos: a.aplica_combos, categoria_ids: a.categoria_ids,
       min_unidades: String(a.min_unidades || 0), min_monto: String(a.min_monto || 0),
+      max_descuento: String(a.max_descuento || 0), max_canjes: String(a.max_canjes || 0),
     });
     setError(''); setModal({ open: true, editId: a.id });
   };
@@ -90,6 +91,8 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
       categoria_ids: form.categoria_ids,
       min_unidades: Number(form.min_unidades) || 0,
       min_monto: Number(form.min_monto) || 0,
+      max_descuento: Number(form.max_descuento) || 0,
+      max_canjes: Number(form.max_canjes) || 0,
     };
     try {
       const url = modal.editId ? `${API_ANUNCIOS}/${modal.editId}` : API_ANUNCIOS;
@@ -183,6 +186,7 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
                   Aplica a: {[...resultado.cupon.categorias, ...(resultado.cupon.aplica_combos ? ['Combos'] : [])].join(', ')}
                   {resultado.cupon.min_unidades > 0 && ` · Mínimo ${resultado.cupon.min_unidades} unidades`}
                   {resultado.cupon.min_monto > 0 && ` · Compra mínima ${formatPrice(resultado.cupon.min_monto)}`}
+                  {resultado.cupon.max_descuento > 0 && ` · Tope ${formatPrice(resultado.cupon.max_descuento)}`}
                   <br />
                   Emitido para: {resultado.persona}{resultado.emitido && ` · ${fmtDate(resultado.emitido)}`}
                   {resultado.venta && ` · Canjeado en la venta #${resultado.venta.id} (${resultado.venta.persona}, ${fmtDate(resultado.venta.dia)})`}
@@ -244,12 +248,14 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
                 {a.tipo === 'descuento' && (
                   <> · Aplica a: {[...a.categorias, ...(a.aplica_combos ? ['Combos'] : [])].join(', ') || '—'}
                      {a.min_unidades > 0 && ` · Mínimo ${a.min_unidades} unidades`}
-                     {a.min_monto > 0 && ` · Compra mínima ${formatPrice(a.min_monto)}`}</>
+                     {a.min_monto > 0 && ` · Compra mínima ${formatPrice(a.min_monto)}`}
+                     {a.max_descuento > 0 && ` · Tope ${formatPrice(a.max_descuento)}`}</>
                 )}
               </p>
               {a.tipo === 'descuento' && (
                 <p className="mt-1 text-[12px] font-medium text-primary">
                   🎟 {a.codigos_activos} por canjear · {a.codigos_canjeados} canjeados
+                  {a.max_canjes > 0 && ` · cupo ${a.codigos_activos + a.codigos_canjeados}/${a.max_canjes}`}
                 </p>
               )}
             </li>
@@ -341,11 +347,22 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
                   onChange={e => setForm(f => ({ ...f, min_monto: e.target.value }))} />
               </Field>
             </FieldRow>
+            <FieldRow>
+              <Field label="Tope del descuento COP (0 = sin tope)">
+                <Input type="number" min="0" value={form.max_descuento}
+                  onChange={e => setForm(f => ({ ...f, max_descuento: e.target.value }))} />
+              </Field>
+              <Field label="Cupo total de canjes (0 = ilimitado)">
+                <Input type="number" min="0" max="9999" value={form.max_canjes}
+                  onChange={e => setForm(f => ({ ...f, max_canjes: e.target.value }))} />
+              </Field>
+            </FieldRow>
             <p className="text-[12px] leading-relaxed text-muted-foreground">
               Los mínimos se cuentan sobre los productos del carrito que el cupón cubre.
               El cupón es de <strong>un solo uso por persona</strong> (al enviar el pedido
-              se emite un código único que llega en el mensaje de WhatsApp) y no se
-              acumula: los productos con descuento propio conservan el suyo.
+              se emite un código único que llega en el mensaje de WhatsApp) y cada persona
+              sostiene <strong>un solo cupón a la vez</strong>. El tope limita el descuento
+              en pesos por canje y el cupo cierra la campaña al agotarse los códigos.
             </p>
           </div>
         )}

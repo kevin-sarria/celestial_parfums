@@ -19,6 +19,9 @@ export const createAnuncioSchema = z.object({
   // Reglas para que el cupón aplique (0 = sin mínimo)
   min_unidades: z.number().int().min(0).max(999).optional(),
   min_monto: z.number().min(0).optional(),
+  // Guardarraíles (0 = sin límite): tope del descuento en pesos y cupo de canjes
+  max_descuento: z.number().min(0).optional(),
+  max_canjes: z.number().int().min(0).max(9999).optional(),
 });
 
 export type CreateAnuncioInput = z.infer<typeof createAnuncioSchema>;

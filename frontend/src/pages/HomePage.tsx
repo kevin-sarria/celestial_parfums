@@ -9,6 +9,7 @@ import CardSkeleton from '../components/CardSkeleton';
 import CartFab from '../components/CartFab';
 import WhatsAppFab from '../components/WhatsAppFab';
 import AnunciosPopups from '../components/AnunciosPopups';
+import ComoFunciona from '../components/ComoFunciona';
 import CatalogHeader from '../components/CatalogHeader';
 import CatalogHero from '../components/catalog/CatalogHero';
 import EmptyState from '../components/catalog/EmptyState';
@@ -205,7 +206,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
               <CardCarousel>
                 {masVendidos.map((p) => (
                   <CarouselItem key={p.id}>
-                    <PerfumeCard perfume={p} />
+                    <PerfumeCard perfume={p} vendidos={p.unidades_vendidas} />
                   </CarouselItem>
                 ))}
               </CardCarousel>
@@ -243,6 +244,8 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
               </div>
             </section>
           )}
+
+          {!catalog.loading && <ComoFunciona />}
         </main>
       </div>
 

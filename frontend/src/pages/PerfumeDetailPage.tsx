@@ -14,6 +14,7 @@ import CartFab from '../components/CartFab';
 import CatalogHeader from '../components/CatalogHeader';
 import { usePerfumeDetail } from '../application/hooks/usePerfumeDetail';
 import { GENERO_LABELS } from '../domain/entities/perfume.schema';
+import { aromaColor } from '../domain/entities/aroma.colors';
 
 const GENERO_PILL_STYLES: Record<string, string> = {
   caballero: 'border-sky-200 bg-sky-50 text-sky-600',
@@ -53,7 +54,7 @@ export default function PerfumeDetailPage() {
 
       {!loading && perfume && (
         <>
-          <main className="mx-auto grid w-full max-w-6xl gap-10 px-5 pb-16 pt-6 md:px-8 lg:grid-cols-2 lg:gap-14 animate-fade-up">
+          <main className="mx-auto grid w-full max-w-6xl gap-10 px-5 pb-28 pt-6 md:px-8 md:pb-16 lg:grid-cols-2 lg:gap-14 animate-fade-up">
             <div className="relative overflow-hidden rounded-3xl border border-border bg-secondary">
               {perfume.imagen_url ? (
                 <img
@@ -119,11 +120,18 @@ export default function PerfumeDetailPage() {
                     Notas & Aromas
                   </p>
                   <div className="flex flex-wrap gap-1.5">
-                    {perfume.tipos_aroma.map((a) => (
-                      <span key={a} className="rounded-full bg-brand-soft px-3 py-1 text-[12px] font-medium text-primary">
-                        {a}
-                      </span>
-                    ))}
+                    {perfume.tipos_aroma.map((a) => {
+                      const c = aromaColor(a);
+                      return (
+                        <span
+                          key={a}
+                          className="rounded-full px-3 py-1 text-[12px] font-medium"
+                          style={{ backgroundColor: c.bg, color: c.fg }}
+                        >
+                          {a}
+                        </span>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -188,6 +196,26 @@ export default function PerfumeDetailPage() {
             </section>
           )}
         </>
+      )}
+
+      {/* Barra de compra fija en móvil: el CTA siempre a un toque de distancia */}
+      {perfume && !perfume.agotado && (
+        <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-3 border-t border-border bg-background/95 px-5 py-3 backdrop-blur-sm md:hidden">
+          <div className="min-w-0">
+            <p className="truncate text-[12px] text-muted-foreground">{perfume.nombre}</p>
+            <p className="text-[15px] font-semibold text-primary">
+              {formatPrice(precioFinal)}
+              {perfume.descuento > 0 && (
+                <span className="ml-2 text-[11.5px] font-normal text-muted-foreground line-through">
+                  {formatPrice(perfume.precio)}
+                </span>
+              )}
+            </p>
+          </div>
+          <Button className="h-10 shrink-0 rounded-full px-5" onClick={() => setCartModal(true)}>
+            <ShoppingCart className="size-4" /> Agregar
+          </Button>
+        </div>
       )}
 
       <CartFab />

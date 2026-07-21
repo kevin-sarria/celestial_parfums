@@ -1,0 +1,205 @@
+﻿nombre	sin_categoria	sin_aromas	sin_ocasiones	sin_descripcion	sin_imagen
+1 Million Lucky by Paco Rabanne	X	X	X		
+1 One Million Elixir By Paco Rabanne	X	X	X		
+212 By Carolina Herrera	X	X	X		
+212 Heroes Forever Young	X	X	X		
+212 Men	X	X	X		
+212 NYC	X	X	X		
+212 Sexy	X				
+212 VIP Black By Carolina Herrera	X	X	X		
+212 VIP Rosé By Carolina Herrera	X	X	X		
+360 Men by Perry Ellis	X	X	X		
+360 Red by Perry Ellis	X	X	X		
+9 PM Rebel	X	X	X		
+9pm By Afnan	X	X	X		
+Acqua Di Gio By Giorgio Armani	X	X	X		
+Acqua Di Giò Profumo	X	X	X		
+Acqua di Gioia By Giorgio Armani		X	X		
+Ahli Canes	X	X	X		
+AHLI Karpos	X	X	X		
+Ahli Octans		X	X		
+Ahli Vega By Ahli	X	X	X		
+Ajwad	X	X	X		
+Allure Homme Sport By Chanel	X	X	X		
+Althaïr By Parfums de Marly	X	X	X		
+Amber Oud Dubai Night	X	X	X		
+Amber Oud Gold Edition By Al Haramain	X	X	X		
+Amor Amor By Cacharel	X	X	X		
+Ana Al Awwal by Nusuk				X	
+Ange Ou Demon	X	X	X		
+Arabians Tonka	X	X	X		
+Art Of Universe	X	X	X		
+Asad	X	X	X		
+Asad Bourbon	X	X	X		
+Asad Elixir	X	X	X		
+Attrape Reves	X	X	X		
+Baccarat Rouge 540 Maison By Francis Kurkdjian	X	X	X		
+Bad Boy by Carolina Herrera	X	X	X		
+Bade'e Al Oud Amethyst By Lattafa	X	X	X		
+Bade'e Al Oud Honor & Glory	X	X	X		
+Bade'e Al Oud Honor & Glory By Lattafa	X	X	X		
+Bade'e Al Oud Oud for Glory	X	X	X		
+Bade'e Al Oud Sublime By Lattafa	X	X	X		
+Berry On Top	X	X	X		
+BFF KKW Fragrance By Kim Kardashan	X	X	X		
+Bharara King	X	X	X		
+Bianco Latte	X	X	X		
+Bleecker Street By Bond No 9		X	X		
+Bleu Chanel	X	X	X		
+Blue Label By Givenchy	X	X	X		
+Bombshell By Victoria's Secret	X	X	X		
+Boss Bottled By Hugo Boss	X	X	X		
+Boss The Scent By Hugo Boss	X	X	X		
+Burberry	X	X	X		
+Cafe Intense Montale	X	X	X		
+Can Can	X	X	X		
+CH Men by Carolina Herrera	X	X	X		
+Chocolate Greedy by Montale	X	X	X		
+Cielo Eau de Parfum By Yanbal	X	X	X		
+CK IN2U for Her Calvin Klein	X	X	X		
+Classique	X	X	X		
+Cloud by Ariana Grande	X	X	X		
+Cloud Pink By Ariana Grande	X	X	X		
+Club de Nuit Intense Man By Armaf	X	X	X		
+Club De Nuit Sillage	X	X	X		
+Coco Chanel	X	X	X		
+Coconut Passion by Victoria Secret	X	X	X		
+Creed Aventus	X	X	X		
+D'orsay	X	X	X		
+Delina By Parfums de Marly	X	X	X		
+Diesel Plus Plus By Diesel	X	X	X		
+Eau Sexy By Victoria Secret	X	X	X		
+Eclaire by Lattafa	X	X	X		
+El Arte Del Barrio By Ryan Castro	X	X	X		
+Emeer by Lattafa	X	X	X		
+Erba Pura By Xerjoff		X	X		
+Eros by Versace	X	X	X		
+Eros Flame By Versace	X	X	X		
+Essential Lacoste	X	X	X		
+Eternity by Calvin Klein	X	X	X		
+Fantasy By Britney Spears	X	X	X		
+Faraó Ramsés I Bharara	X	X	X		
+Farenheit	X	X	X		
+Flower by Kenzo	X	X	X		
+Fresh Couture	X	X	X		
+Gold Rush	X	X	X		
+Good Girl By Carolina Herrera	X	X	X		
+Hawas Diva Rasasi	X	X	X		
+Hawas Elixir Rasasi	X	X	X		
+Hawas Fire Rasasi	X	X	X		
+Hawas Malibu	X	X	X		
+Haya by Lattafa	X	X	X		
+Heiress By Paris Hilton	X	X	X		
+Her Confession	X	X	X		
+His Confession	X	X	X		
+Hugo By Hugo Boss	X	X	X		
+Hugo Energise By Hugo Boss	X	X	X		
+Il Ego ILMIN	X	X	X		
+Il Erotique ILMIN	X	X	X		
+Il Kakuno By ILMIN	X	X	X		
+Il Mexico ILMIN	X	X	X		
+Il Orgasme ILMIN	X	X	X		
+Il Roso By ILMIN	X	X	X		
+Il Vita By Ilmin	X	X	X		
+Imagination by Louis Vuitton	X	X	X		
+Insurrection Reyane Tradition	X	X	X		
+Intense Cafe By Montale	X	X	X		
+Invictus Aqua	X	X	X		
+Invictus By Paco Rabanne	X	X	X		
+Invictus Intense	X	X	X		
+Invictus Legend	X	X	X		
+Invictus Onix	X	X	X		
+Invictus Parfum	X	X	X		
+Invictus Victory By Paco Rabanne	X	X	X		
+Jean Paul Gaultier Le Male Elixir	X	X	X		
+Khamrah By Lattafa	X	X	X		
+Khamrah Dukhan	X	X	X		
+Khamrah Qahwa By Lattafa	X	X	X		
+Kirkè Tiziana Terenzi	X	X	X		
+L'Eau d'Issey Pour Homme Clasica By Issey Miyake	X	X	X		
+La Bomba Carolina Herrera	X	X	X		
+La Vie Est Belle Lancôme	X	X	X		
+Lacoste Blanca	X	X	X		
+Lacoste Red	X	X	X		
+Lacoste Verde	X	X	X		
+Lady Million	X	X	X		
+Lapidus Pour Homme	X	X	X		
+Le Beau by Jean Paul Gaultier	X	X	X		
+Le Beau Le Parfum	X	X	X		
+Le Beau Paradise Garden	X	X	X		
+Le Male Jean Paul Gaultier	X	X	X		
+Le Male Le Parfum by Jean Paul Gaultier	X	X	X		
+Light Blue By Dolce & Gabbana	X	X	X		
+Loewe 7	X	X	X		
+Mallow Maddnes	X	X	X		
+Mandarin Sky		X	X		
+Marsmallow Blush	X	X	X		
+Mayar By Lattafa	X	X	X		
+Megamare Orto Parisi	X	X	X		
+Meow by Katy Perry	X	X	X		
+Mercedes Benz Club Black	X	X	X		
+Millésime Impérial By Creed	X	X	X		
+Miss Dior Blooming Bouquet Dior	X	X	X		
+Moschino Funny! Moschino	X	X	X		
+Nautica Voyage	X	X	X		
+Nebras	X	X	X		X
+Nitro Red Dumont	X	X	X		
+No Limit$ Philipp Plein	X	X	X		
+Noble Blush By Lattafa	X	X	X		
+Odyssey BA HA MAS	X	X	X		
+Odyssey Candee	X	X	X		
+Odyssey Dubai Chocolat	X	X	X		
+Odyssey Go Mango Armaf	X	X	X		
+Odyssey Homme White	X	X	X		
+Odyssey Mandarin Sky Elixir Armaf	X	X	X		
+Odyssey Mandarin Sky Vintage Edition Armaf	X	X	X		
+Odyssey Spectra	X	X	X		
+Ohm by Yanbal	X	X	X		
+Ombre Nomade By Louis Vuitton	X	X	X		
+Omnia Coral	X	X	X		
+Oscar for Men By Oscar de la Renta	X	X	X		
+Oud Maracujá Maison Crivelli	X	X	X		
+Pacific Chill by Louis Vuitton	X	X	X		
+Paris Hilton	X	X	X		
+Phantom by Paco Rabanne	X	X	X		
+Polo Red By Ralph Lauren	X	X	X		
+Power Of You Giorgio Armani	X	X	X		
+Pure Seduction by Victoria Secret	X	X	X		
+Pure XS By Paco Rabanne	X	X	X		
+Que Chimba! Lorenzo Pazzaglia	X	X	X		
+Ralph	X	X	X		
+Red Tobbaco	X	X	X		
+Royal Amber Orientica	X	X	X		
+Santal 33	X	X	X		
+Sauvage By Christian Dior	X	X	X		
+Sauvage Elixir By Dior	X	X	X		
+Scandal by Jean Paul Gaultier Dama	X	X	X		
+Sense Laverne	X	X	X		
+Shaheen Gold Lattafa	X	X	X		
+Silver Mountain Water By Creed	X	X	X		
+Solo Loewe	X	X	X		
+Sorbetto Rosso Escada	X	X	X		
+Starry Night By Montale	X	X	X		
+Starwalker By Montblanc	X	X	X		
+Stronger With You	X	X	X		
+Summer Hammer Lorenzo Pazzaglia	X	X	X		
+Sweet Like Candy by Ariana Grande	X	X	X		
+Swiss Army	X	X	X		
+Temptation by Yanbal	X	X	X		
+Thank U, Next By Ariana Grande	X	X	X		
+Tommy Girl by Tommy Hilfiger	X	X	X		
+Toy 2 Bubble Gum	X	X	X		
+Toy 2 By Moschino	X	X	X		
+Toy Boy By Moschino	X	X	X		
+Valentino Donna Purple Melancholia	X	X	X		
+Valentino Uomo Born In Roma Purple Melancholia	X	X	X		
+Vanilla Freak	X	X	X		
+Versace Pour Homme Dylan Blue	X	X	X		
+Viking Kashmir	X	X	X		
+XJ 1861 Naxos Xerjoff	X	X	X		
+Yara By Lattafa	X	X	X		
+Yara Candy By Lattafa	X	X	X		
+Yara Moi	X	X	X		
+Yara Tous	X	X	X		
+Yum Yum by Armaf	X	X	X		
+Yves Saint Laurent	X	X	X		

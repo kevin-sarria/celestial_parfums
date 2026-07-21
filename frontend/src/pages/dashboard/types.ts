@@ -213,6 +213,9 @@ export interface Anuncio {
   /** Reglas para que el cupón aplique en el carrito (0 = sin mínimo). */
   min_unidades: number;
   min_monto: number;
+  /** Guardarraíles (0 = sin límite): tope del descuento en pesos y cupo de canjes. */
+  max_descuento: number;
+  max_canjes: number;
   categoria_ids: number[];
   categorias: string[];
   /** Códigos emitidos sin canjear / canjeados en ventas pagadas. */
@@ -227,6 +230,7 @@ export interface AnuncioForm {
   inicio: string; fin: string;
   descuento_pct: string; aplica_combos: boolean; categoria_ids: number[];
   min_unidades: string; min_monto: string;
+  max_descuento: string; max_canjes: string;
 }
 
 export const emptyAnuncioForm = (): AnuncioForm => ({
@@ -236,6 +240,7 @@ export const emptyAnuncioForm = (): AnuncioForm => ({
   inicio: '', fin: '',
   descuento_pct: '10', aplica_combos: false, categoria_ids: [],
   min_unidades: '0', min_monto: '0',
+  max_descuento: '0', max_canjes: '0',
 });
 
 /** Resultado de la certificación de un código de descuento (admin). */
@@ -248,6 +253,7 @@ export interface CodigoValidado {
     id: number; titulo: string; descuento_pct: number;
     aplica_combos: boolean; categorias: string[];
     min_unidades: number; min_monto: number;
+    max_descuento: number;
   };
   persona?: string;
   emitido?: string;

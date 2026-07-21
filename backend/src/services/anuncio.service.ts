@@ -24,6 +24,8 @@ const mapAnuncio = (a: any) => ({
   aplica_combos: a.aplica_combos,
   min_unidades: a.min_unidades ?? 0,
   min_monto: Number(a.min_monto ?? 0),
+  max_descuento: Number(a.max_descuento ?? 0),
+  max_canjes: a.max_canjes ?? 0,
   categoria_ids: (a.categorias ?? []).map((c: any) => c.categoria.id),
   categorias: (a.categorias ?? []).map((c: any) => c.categoria.nombre),
   // Solo en el listado admin (a.codigos ausente en el público)
@@ -43,6 +45,23 @@ const whereVigentes = () => {
   };
 };
 
+/** Excluye cupones cuya campaña ya agotó su cupo de códigos (activos+canjeados). */
+const filtrarCupoDisponible = async <T extends { id: number; tipo: string; max_canjes: number }>(
+  rows: T[],
+): Promise<T[]> => {
+  const limitados = rows.filter((a) => a.tipo === 'descuento' && a.max_canjes > 0);
+  if (!limitados.length) return rows;
+  const counts = await prisma.descuentoCodigo.groupBy({
+    by: ['anuncio_id'],
+    where: { anuncio_id: { in: limitados.map((a) => a.id) }, estado: { in: ['activo', 'canjeado'] } },
+    _count: { _all: true },
+  });
+  const usados = new Map(counts.map((c) => [c.anuncio_id, c._count._all]));
+  return rows.filter(
+    (a) => a.tipo !== 'descuento' || a.max_canjes === 0 || (usados.get(a.id) ?? 0) < a.max_canjes,
+  );
+};
+
 export const getAnunciosPublicos = async () => {
   const hit = cacheGet<ReturnType<typeof mapAnuncio>[]>('anuncios:public');
   if (hit) return hit;
@@ -51,7 +70,8 @@ export const getAnunciosPublicos = async () => {
     orderBy: { orden: 'asc' },
     include: includeRel,
   });
-  const data = rows.map(mapAnuncio);
+  // Una campaña con el cupo agotado deja de anunciarse (nadie ve promesas vencidas)
+  const data = (await filtrarCupoDisponible(rows)).map(mapAnuncio);
   cacheSet('anuncios:public', data, 60_000);
   return data;
 };
@@ -81,6 +101,8 @@ const toData = (dto: CreateAnuncioInput) => ({
   aplica_combos: dto.tipo === 'descuento' ? (dto.aplica_combos ?? false) : false,
   min_unidades: dto.tipo === 'descuento' ? (dto.min_unidades ?? 0) : 0,
   min_monto: dto.tipo === 'descuento' ? (dto.min_monto ?? 0) : 0,
+  max_descuento: dto.tipo === 'descuento' ? (dto.max_descuento ?? 0) : 0,
+  max_canjes: dto.tipo === 'descuento' ? (dto.max_canjes ?? 0) : 0,
 });
 
 const validar = (dto: CreateAnuncioInput) => {
@@ -132,10 +154,19 @@ export const deleteAnuncio = async (id: number) => {
 // ── Cupones del usuario registrado ──────────────────────────────────────────
 
 /**
- * Cupones vigentes que este usuario todavía puede usar: sin código emitido ni
- * canjeado para ese cupón (un código anulado libera el cupón de nuevo).
+ * El cupón que este usuario puede usar. Reglas del negocio:
+ * - Una persona sostiene A LO SUMO UN cupón a la vez: con un código activo
+ *   (emitido y sin canjear) no recibe otro hasta canjearlo o que se anule.
+ * - Cada cupón se usa UNA sola vez en la vida (canjeado bloquea ese cupón,
+ *   pero no impide recibir el cupón de una campaña distinta).
+ * - De lo elegible se entrega solo el de mayor descuento, respetando el cupo
+ *   de la campaña.
  */
 export const getDescuentosDisponibles = async (userId: number) => {
+  const activo = await prisma.descuentoCodigo.findFirst({
+    where: { user_id: userId, estado: 'activo' },
+  });
+  if (activo) return [];
   const rows = await prisma.anuncio.findMany({
     where: {
       ...whereVigentes(),
@@ -143,10 +174,11 @@ export const getDescuentosDisponibles = async (userId: number) => {
       audiencia: { in: ['todos', 'registrados'] },
       codigos: { none: { user_id: userId, estado: { in: ['activo', 'canjeado'] } } },
     },
-    orderBy: { orden: 'asc' },
+    orderBy: [{ descuento_pct: 'desc' }, { orden: 'asc' }],
     include: includeRel,
   });
-  return rows.map(mapAnuncio);
+  const disponibles = await filtrarCupoDisponible(rows);
+  return disponibles.slice(0, 1).map(mapAnuncio);
 };
 
 // ── Códigos únicos de descuento ─────────────────────────────────────────────
@@ -176,10 +208,19 @@ const getCuponVigente = async (anuncioId: number) => {
   return anuncio;
 };
 
+/** Cupo total de la campaña: códigos ya emitidos (activos o canjeados) vs. max_canjes. */
+const verificarCupo = async (anuncio: { id: number; max_canjes: number }) => {
+  if (!anuncio.max_canjes) return;
+  const emitidos = await prisma.descuentoCodigo.count({
+    where: { anuncio_id: anuncio.id, estado: { in: ['activo', 'canjeado'] } },
+  });
+  if (emitidos >= anuncio.max_canjes) throw conflict('Este cupón ya agotó su cupo de canjes');
+};
+
 /**
- * Emite el código único de un usuario registrado para un cupón. Regla del
- * negocio: máximo UN código activo por persona y por tipo de cupón (categorías
- * o combos que cubre); nunca dos códigos para el mismo cupón.
+ * Emite el código único de un usuario registrado para un cupón. Reglas:
+ * un solo cupón activo por persona (sea de la promo que sea), un solo uso
+ * en la vida por promo, y la campaña no emite más allá de su cupo.
  */
 export const emitirCodigo = async (userId: number, anuncioId: number) => {
   const anuncio = await getCuponVigente(anuncioId);
@@ -188,24 +229,17 @@ export const emitirCodigo = async (userId: number, anuncioId: number) => {
 
   const previos = await prisma.descuentoCodigo.findMany({
     where: { user_id: userId, estado: { in: ['activo', 'canjeado'] } },
-    include: { anuncio: { include: { categorias: true } } },
   });
 
   const mismo = previos.find((c) => c.anuncio_id === anuncioId);
   if (mismo?.estado === 'canjeado') throw conflict('Ya usaste este cupón');
   if (mismo) return mismo; // ya tiene su código: se reenvía el mismo
 
-  // Un código activo por tipo: no puede tener otro vivo que cubra lo mismo
-  const cats = new Set(anuncio.categorias.map((c) => c.categoria_id));
-  const conflicto = previos.find(
-    (c) =>
-      c.estado === 'activo' &&
-      ((anuncio.aplica_combos && c.anuncio.aplica_combos) ||
-        c.anuncio.categorias.some((x) => cats.has(x.categoria_id))),
-  );
-  if (conflicto)
-    throw conflict(`Ya tienes un código activo para ese tipo de productos (${conflicto.codigo})`);
+  const otroActivo = previos.find((c) => c.estado === 'activo');
+  if (otroActivo)
+    throw conflict(`Ya tienes un cupón activo (${otroActivo.codigo}); úsalo antes de tomar otro`);
 
+  await verificarCupo(anuncio);
   return crearCodigoUnico(anuncioId, userId);
 };
 
@@ -214,6 +248,7 @@ export const emitirCodigoAnonimo = async (anuncioId: number) => {
   const anuncio = await getCuponVigente(anuncioId);
   if (anuncio.audiencia === 'registrados')
     throw new Error('Este cupón es solo para cuentas registradas');
+  await verificarCupo(anuncio);
   return crearCodigoUnico(anuncioId, null);
 };
 
@@ -245,6 +280,7 @@ export const validarCodigo = async (codigoStr: string) => {
       categorias: row.anuncio.categorias.map((c) => c.categoria.nombre),
       min_unidades: row.anuncio.min_unidades,
       min_monto: Number(row.anuncio.min_monto),
+      max_descuento: Number(row.anuncio.max_descuento ?? 0),
     },
     persona: row.user ? `${row.user.nombre} ${row.user.apellido}` : 'Visitante sin cuenta',
     emitido: row.created_at,

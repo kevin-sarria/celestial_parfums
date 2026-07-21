@@ -145,6 +145,10 @@ model Anuncio {
   // unidades mínimas de productos cubiertos y monto mínimo de esos productos.
   min_unidades  Int              @default(0) @db.UnsignedSmallInt
   min_monto     Decimal          @default(0) @db.Decimal(10, 2)
+  // Guardarraíles del cupón (0 = sin límite): tope del descuento en pesos por
+  // canje y cupo total de códigos que la campaña puede emitir.
+  max_descuento Decimal          @default(0) @db.Decimal(10, 2)
+  max_canjes    Int              @default(0) @db.UnsignedSmallInt
   created_at    DateTime         @default(now())
   updated_at    DateTime         @updatedAt
   categorias    AnuncioCategoria[]

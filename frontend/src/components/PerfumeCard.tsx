@@ -11,6 +11,8 @@ import { toSlug } from '../utils/slug';
 
 interface Props {
   perfume: Perfume;
+  /** Unidades vendidas (prueba social en "Los más vendidos"). */
+  vendidos?: number;
 }
 
 const GENERO_LABEL: Record<string, string> = {
@@ -19,7 +21,7 @@ const GENERO_LABEL: Record<string, string> = {
   unisex: 'Unisex',
 };
 
-export default function PerfumeCard({ perfume }: Props) {
+export default function PerfumeCard({ perfume, vendidos }: Props) {
   const navigate = useNavigate();
   const [cartModal, setCartModal] = useState(false);
   const goToDetail = () => navigate(`/perfume/${toSlug(perfume.nombre)}`);
@@ -74,6 +76,13 @@ export default function PerfumeCard({ perfume }: Props) {
         {perfume.agotado && (
           <span className="absolute bottom-3 left-3 rounded-full bg-ink/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-background backdrop-blur-sm">
             Agotado
+          </span>
+        )}
+
+        {/* Prueba social real: solo con ventas suficientes para dar confianza */}
+        {!perfume.agotado && (vendidos ?? 0) >= 3 && (
+          <span className="absolute bottom-3 right-3 rounded-full border border-border bg-background/90 px-2.5 py-0.5 text-[10.5px] font-medium text-ink shadow-sm backdrop-blur-sm">
+            {vendidos} vendidos
           </span>
         )}
       </div>

@@ -17,6 +17,8 @@ export interface Anuncio {
   /** Reglas para que el cupón aplique en el carrito (0 = sin mínimo). */
   min_unidades: number;
   min_monto: number;
+  /** Tope del descuento en pesos (0 = sin tope). */
+  max_descuento: number;
 }
 
 const VISTO_KEY = (id: number) => `celestial_anuncio_visto_${id}`;
@@ -66,6 +68,8 @@ export interface Cupon {
   categorias: string[];
   min_unidades: number;
   min_monto: number;
+  /** Tope del descuento en pesos (0 = sin tope). */
+  max_descuento: number;
 }
 
 /**

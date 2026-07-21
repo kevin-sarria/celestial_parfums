@@ -19,11 +19,20 @@ export interface ComboDetectado {
   ahorro: number;
 }
 
+/** Combo que está a 1-2 perfumes de armarse: empujón de venta en el carrito. */
+export interface ComboSugerido {
+  nombre: string;
+  categoria: string;
+  presentacion: string;
+  faltan: number;
+}
+
 export interface DeteccionCombos {
   detectados: ComboDetectado[];
   /** Unidades de cada item ya cubiertas por un combo (no reciben cupón). */
   consumidas: Map<string, number>;
   ahorroTotal: number;
+  sugerencias: ComboSugerido[];
 }
 
 /**
@@ -35,6 +44,7 @@ export interface DeteccionCombos {
 export function detectarCombos(items: CartItem[], combos: Combo[]): DeteccionCombos {
   const detectados: ComboDetectado[] = [];
   const consumidas = new Map<string, number>();
+  const sugerencias: ComboSugerido[] = [];
 
   // Perfumes sueltos sin descuento propio, agrupados por categoría+presentación
   const grupos = new Map<string, CartItem[]>();
@@ -89,12 +99,29 @@ export function detectarCombos(items: CartItem[], combos: Combo[]): DeteccionCom
         });
       }
     }
+
+    // Empujón de venta: si con 1-2 perfumes más se arma un combo, se sugiere.
+    // Se ofrece el combo más pequeño alcanzable con las unidades sueltas restantes.
+    if (unidades.length > 0) {
+      const alcanzable = [...candidatos]
+        .sort((a, b) => a.cantidad - b.cantidad)
+        .find((c) => c.cantidad > unidades.length && c.cantidad - unidades.length <= 2);
+      if (alcanzable) {
+        sugerencias.push({
+          nombre: alcanzable.nombre,
+          categoria,
+          presentacion,
+          faltan: alcanzable.cantidad - unidades.length,
+        });
+      }
+    }
   }
 
   return {
     detectados,
     consumidas,
     ahorroTotal: detectados.reduce((s, d) => s + d.ahorro, 0),
+    sugerencias,
   };
 }
 

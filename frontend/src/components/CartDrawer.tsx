@@ -29,51 +29,49 @@ export default function CartDrawer() {
   const deteccion = useComboDetector(items, isOpen && items.length > 0);
 
   // Reglas del negocio: el precio de combo es mayoreo permanente y SIEMPRE aplica;
-  // el cupón (promo de un solo uso por persona) descuenta sobre lo que realmente se
-  // paga, combo incluido. Lo que no se acumula: dos cupones sobre la misma unidad,
-  // ni cupón sobre un producto con descuento propio.
+  // el cupón (promo de un solo uso por persona) descuenta sobre lo que realmente
+  // se paga, combo incluido, con su tope en pesos. Por compra se redime UN solo
+  // cupón: el que más descuenta.
   const { aplicados, sinMinimo } = useMemo(() => {
-    const usadas = new Map<string, number>(); // unidades que ya recibieron un cupón
-    const aplicados: CuponAplicado[] = [];
+    const candidatos: CuponAplicado[] = [];
     const sinMinimo: { cupon: Cupon; faltanUnidades: number; faltaMonto: number }[] = [];
 
     for (const cupon of cupones) {
       const cubiertos = items.filter((i) => cubre(cupon, i));
       if (cubiertos.length === 0) continue;
 
-      const libresPorItem = new Map<string, number>();
-      for (const item of cubiertos) {
-        const libres = item.cantidad - (usadas.get(item.id) ?? 0);
-        if (libres > 0) libresPorItem.set(item.id, libres);
-      }
-      const totalU = [...libresPorItem.values()].reduce((s, n) => s + n, 0);
-      if (totalU === 0) continue;
-
-      const bruto = cubiertos.reduce(
-        (s, i) => s + i.precio * (libresPorItem.get(i.id) ?? 0), 0);
-      // Los combos armados con productos cubiertos ya rebajaron el precio: el
-      // cupón (y sus mínimos) se calculan sobre el monto que se paga de verdad
+      // Los mínimos se miden sobre el precio de lista (lo que el cliente "compró");
+      // el % del cupón se calcula sobre lo que paga de verdad (combo ya rebajado)
+      const totalU = cubiertos.reduce((s, i) => s + i.cantidad, 0);
+      const bruto = cubiertos.reduce((s, i) => s + i.precio * i.cantidad, 0);
       const ahorroCombos = deteccion.detectados
         .filter((d) => cupon.categorias.includes(d.categoria))
         .reduce((s, d) => s + d.ahorro, 0);
       const base = Math.max(0, bruto - ahorroCombos);
 
-      if (totalU < cupon.min_unidades || base < cupon.min_monto) {
+      if (totalU < cupon.min_unidades || bruto < cupon.min_monto) {
         sinMinimo.push({
           cupon,
           faltanUnidades: Math.max(0, cupon.min_unidades - totalU),
-          faltaMonto: Math.max(0, cupon.min_monto - base),
+          faltaMonto: Math.max(0, cupon.min_monto - bruto),
         });
         continue;
       }
 
-      const monto = Math.round((base * cupon.descuento_pct) / 100);
+      // Tope de la campaña: el % nunca descuenta más de max_descuento en pesos
+      let monto = Math.round((base * cupon.descuento_pct) / 100);
+      if (cupon.max_descuento > 0) monto = Math.min(monto, cupon.max_descuento);
       if (monto <= 0) continue;
-      for (const [id, libres] of libresPorItem)
-        usadas.set(id, (usadas.get(id) ?? 0) + libres);
-      aplicados.push({ cupon, monto, unidadesPorItem: libresPorItem });
+      candidatos.push({
+        cupon,
+        monto,
+        unidadesPorItem: new Map(cubiertos.map((i) => [i.id, i.cantidad])),
+      });
     }
-    return { aplicados, sinMinimo };
+
+    // Por compra se redime UN solo cupón: el que más descuenta
+    candidatos.sort((a, b) => b.monto - a.monto);
+    return { aplicados: candidatos.slice(0, 1), sinMinimo };
   }, [items, cupones, deteccion]);
 
   const subtotal = items.reduce((sum, i) => sum + i.precio * i.cantidad, 0);
@@ -201,6 +199,21 @@ export default function CartDrawer() {
 
         {items.length > 0 && (
           <div className="space-y-3 border-t border-border/70 px-5 py-4">
+            {/* Empujón de venta: falta poco para armar un combo con mejor precio */}
+            {deteccion.sugerencias.map((s) => (
+              <p
+                key={`${s.categoria}-${s.presentacion}`}
+                className="flex items-start gap-1.5 rounded-xl bg-brand-soft px-3 py-2 text-[12px] leading-relaxed text-primary"
+              >
+                <Gift className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  Agrega {s.faltan === 1 ? 'un perfume más' : `${s.faltan} perfumes más`} de{' '}
+                  {s.categoria}{s.presentacion ? ` (${s.presentacion})` : ''} y activas el precio
+                  especial del combo "{s.nombre}".
+                </span>
+              </p>
+            ))}
+
             {/* Aviso: falta poco para que un cupón aplique */}
             {sinMinimo.map(({ cupon, faltanUnidades, faltaMonto }) => (
               <p key={cupon.id} className="flex items-start gap-1.5 text-[12px] leading-relaxed text-muted-foreground">
@@ -245,6 +258,7 @@ export default function CartDrawer() {
               </div>
             ))}
 
+
             <div className="flex items-center justify-between">
               <span className="text-[13px] text-muted-foreground">Total estimado</span>
               <strong className="font-display text-xl font-medium text-ink">{formatPrice(totalPrecio)}</strong>
@@ -256,6 +270,9 @@ export default function CartDrawer() {
               <WhatsAppIcon size={17} />
               Enviar pedido por WhatsApp
             </Button>
+            <p className="text-center text-[11.5px] leading-relaxed text-muted-foreground">
+              Sin pagos en línea: al enviar el pedido coordinamos contigo el pago y la entrega.
+            </p>
             <Button
               variant="ghost"
               className="w-full rounded-full text-muted-foreground hover:text-destructive"

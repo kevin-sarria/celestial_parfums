@@ -48,6 +48,8 @@ export default function AnunciosPopups() {
                       ` · comprando ${actual.min_unidades} ${actual.min_unidades === 1 ? 'unidad' : 'unidades'} o más`}
                     {actual.min_monto > 0 &&
                       ` · en compras desde $${actual.min_monto.toLocaleString('es-CO')}`}
+                    {actual.max_descuento > 0 &&
+                      ` · hasta $${actual.max_descuento.toLocaleString('es-CO')} de descuento`}
                     {' '}· se aplica solo en tu carrito
                   </p>
                 </div>
