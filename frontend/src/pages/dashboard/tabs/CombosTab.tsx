@@ -150,7 +150,7 @@ export function CombosTab({
             onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
         </Field>
         <Field label="Descripcion">
-          <Textarea rows={2} value={form.descripcion} maxLength={300}
+          <Textarea rows={2} value={form.descripcion}
             onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} />
         </Field>
         <Field label="Imagen">
