@@ -28,38 +28,50 @@ export default function CartDrawer() {
   // Combos armados automáticamente con perfumes sueltos (misma categoría y tamaño)
   const deteccion = useComboDetector(items, isOpen && items.length > 0);
 
-  // Regla del negocio: los descuentos NUNCA se acumulan. Cada unidad recibe como
-  // mucho UNA rebaja: su descuento propio, el precio de combo detectado o UN cupón.
+  // Reglas del negocio: el precio de combo es mayoreo permanente y SIEMPRE aplica;
+  // el cupón (promo de un solo uso por persona) descuenta sobre lo que realmente se
+  // paga, combo incluido. Lo que no se acumula: dos cupones sobre la misma unidad,
+  // ni cupón sobre un producto con descuento propio.
   const { aplicados, sinMinimo } = useMemo(() => {
-    const usadas = new Map(deteccion.consumidas);
+    const usadas = new Map<string, number>(); // unidades que ya recibieron un cupón
     const aplicados: CuponAplicado[] = [];
     const sinMinimo: { cupon: Cupon; faltanUnidades: number; faltaMonto: number }[] = [];
 
     for (const cupon of cupones) {
       const cubiertos = items.filter((i) => cubre(cupon, i));
       if (cubiertos.length === 0) continue;
-      // Los mínimos se miden sobre todo lo cubierto que hay en el carrito
-      const totalU = cubiertos.reduce((s, i) => s + i.cantidad, 0);
-      const totalM = cubiertos.reduce((s, i) => s + i.precio * i.cantidad, 0);
-      if (totalU < cupon.min_unidades || totalM < cupon.min_monto) {
+
+      const libresPorItem = new Map<string, number>();
+      for (const item of cubiertos) {
+        const libres = item.cantidad - (usadas.get(item.id) ?? 0);
+        if (libres > 0) libresPorItem.set(item.id, libres);
+      }
+      const totalU = [...libresPorItem.values()].reduce((s, n) => s + n, 0);
+      if (totalU === 0) continue;
+
+      const bruto = cubiertos.reduce(
+        (s, i) => s + i.precio * (libresPorItem.get(i.id) ?? 0), 0);
+      // Los combos armados con productos cubiertos ya rebajaron el precio: el
+      // cupón (y sus mínimos) se calculan sobre el monto que se paga de verdad
+      const ahorroCombos = deteccion.detectados
+        .filter((d) => cupon.categorias.includes(d.categoria))
+        .reduce((s, d) => s + d.ahorro, 0);
+      const base = Math.max(0, bruto - ahorroCombos);
+
+      if (totalU < cupon.min_unidades || base < cupon.min_monto) {
         sinMinimo.push({
           cupon,
           faltanUnidades: Math.max(0, cupon.min_unidades - totalU),
-          faltaMonto: Math.max(0, cupon.min_monto - totalM),
+          faltaMonto: Math.max(0, cupon.min_monto - base),
         });
         continue;
       }
-      let monto = 0;
-      const unidadesPorItem = new Map<string, number>();
-      for (const item of cubiertos) {
-        const libres = item.cantidad - (usadas.get(item.id) ?? 0);
-        if (libres <= 0) continue;
-        monto += (item.precio * libres * cupon.descuento_pct) / 100;
-        usadas.set(item.id, (usadas.get(item.id) ?? 0) + libres);
-        unidadesPorItem.set(item.id, libres);
-      }
-      monto = Math.round(monto);
-      if (monto > 0) aplicados.push({ cupon, monto, unidadesPorItem });
+
+      const monto = Math.round((base * cupon.descuento_pct) / 100);
+      if (monto <= 0) continue;
+      for (const [id, libres] of libresPorItem)
+        usadas.set(id, (usadas.get(id) ?? 0) + libres);
+      aplicados.push({ cupon, monto, unidadesPorItem: libresPorItem });
     }
     return { aplicados, sinMinimo };
   }, [items, cupones, deteccion]);

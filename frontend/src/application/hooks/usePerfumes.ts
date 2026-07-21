@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { Genero, Perfume } from '../../domain/entities/perfume.schema';
 import { BASE_URL } from '../../infrastructure/api/client';
 
@@ -27,10 +28,15 @@ export function usePerfumes() {
   // La búsqueda va al servidor con un pequeño debounce para no disparar una
   // petición por tecla
   const [searchQuery, setSearchQuery] = useState('');
+  // ?categoria=X preselecciona el filtro (lo usa "Elegir mis perfumes" de un combo)
+  const [searchParams] = useSearchParams();
   const [activeAromas, setActiveAromas] = useState<Set<string>>(new Set());
   const [activeOcasiones, setActiveOcasiones] = useState<Set<string>>(new Set());
   const [activeGenero, setActiveGenero] = useState<Genero | ''>('');
-  const [activeCategorias, setActiveCategorias] = useState<Set<string>>(new Set());
+  const [activeCategorias, setActiveCategorias] = useState<Set<string>>(() => {
+    const c = searchParams.get('categoria');
+    return c ? new Set([c]) : new Set();
+  });
   const [showFilters, setShowFilters] = useState(false);
   const [page, setPage] = useState(1);
 

@@ -1,14 +1,12 @@
 ﻿import { useSeo } from '../application/hooks/useSeo';
-import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Sparkles, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { formatPrice, finalPrice } from '@/lib/format';
 import ComboCard from '../components/ComboCard';
 import { CardCarousel, CarouselItem } from '../components/catalog/CardCarousel';
 import PerfumeSpinner from '../components/PerfumeSpinner';
-import AddToCartModal from '../components/AddToCartModal';
 import CartFab from '../components/CartFab';
 import CatalogHeader from '../components/CatalogHeader';
 import { useComboDetail } from '../application/hooks/useComboDetail';
@@ -17,8 +15,12 @@ export default function ComboDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { combo, related, loading, error } = useComboDetail(slug);
-  const [cartModal, setCartModal] = useState(false);
   useSeo(combo?.nombre, combo?.descripcion ?? undefined);
+
+  // El combo no se agrega como item: la persona elige sus perfumes en el
+  // catálogo y el carrito arma el combo (y su precio) automáticamente
+  const armarCombo = () =>
+    navigate(combo?.categoria ? `/perfumes?categoria=${encodeURIComponent(combo.categoria)}` : '/perfumes');
 
   const precioFinal = combo ? finalPrice(combo.precio, combo.descuento) : 0;
 
@@ -91,11 +93,21 @@ export default function ComboDetailPage() {
               <Button
                 size="lg"
                 className="mt-2 h-12 w-fit rounded-full px-8 text-[14px] shadow-[0_12px_30px_-12px] shadow-primary/50 transition-all duration-300 hover:shadow-[0_16px_36px_-12px] hover:shadow-primary/60"
-                onClick={() => setCartModal(true)}
+                onClick={armarCombo}
               >
-                <ShoppingCart className="size-4" />
-                Agregar al carrito
+                <Sparkles className="size-4" />
+                Elegir mis {combo.cantidad} perfumes
               </Button>
+
+              <p className="flex max-w-prose items-start gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                <Info className="mt-0.5 size-3.5 shrink-0" />
+                <span>
+                  Agrega {combo.cantidad} perfumes
+                  {combo.categoria ? ` de la categoría ${combo.categoria}` : ''}
+                  {combo.presentacion ? ` en presentación ${combo.presentacion}` : ' de la misma presentación'} a tu
+                  carrito y el precio del combo se aplica automáticamente.
+                </span>
+              </p>
             </div>
           </main>
 
@@ -119,24 +131,6 @@ export default function ComboDetailPage() {
       )}
 
       <CartFab />
-
-      {combo && (
-        <AddToCartModal
-          open={cartModal}
-          onClose={() => setCartModal(false)}
-          producto={{
-            id: combo.id,
-            nombre: combo.nombre,
-            precio: precioFinal,
-            descuento: combo.descuento,
-            imagen_url: combo.imagen_url,
-            esCombo: true,
-            categoria: combo.categoria,
-            genero: null,
-            presentaciones: [],
-          }}
-        />
-      )}
     </div>
   );
 }
