@@ -38,9 +38,12 @@ export const subirImagenAdmin = async (
   const fd = new FormData();
   fd.append('image', file);
   const res = await guardedFetch(endpoint, { method: 'POST', body: fd });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error ?? 'No se pudo subir la imagen');
-  return json.url ?? json.data?.url;
+  if (res.status === 413) throw new Error('La imagen es demasiado pesada: el máximo permitido es 5MB');
+  // El proxy (nginx) puede responder con HTML en vez de JSON cuando rechaza la petición
+  let json: { error?: string; url?: string; data?: { url?: string } } | null = null;
+  try { json = await res.json(); } catch { json = null; }
+  if (!res.ok || !json) throw new Error(json?.error ?? `No se pudo subir la imagen (error ${res.status})`);
+  return json.url ?? json.data?.url ?? '';
 };
 
 /** Certifica un código de descuento contra el backend (nunca lanza: devuelve el motivo). */
