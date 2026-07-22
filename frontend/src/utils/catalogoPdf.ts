@@ -173,12 +173,14 @@ const filaPerfume = (doc: jsPDF, p: Perfume, foto: string | null, y: number) => 
     doc.text(ocas, xTexto, y + 23.5);
   }
 
-  // Precio a la derecha (con tachado si hay descuento)
+  // Precio a la derecha (con tachado si hay descuento). Con varias tallas a
+  // distinto precio se anuncia el más barato como "desde".
   const precio = finalPrice(p.precio, p.descuento);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(...IRIS);
-  doc.text(formatCOP(precio), PAGE_W - MARGIN, y + 7, { align: 'right' });
+  const etiqueta = p.varios_precios ? `desde ${formatCOP(precio)}` : formatCOP(precio);
+  doc.text(etiqueta, PAGE_W - MARGIN, y + 7, { align: 'right' });
   if (p.descuento > 0) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);

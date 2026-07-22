@@ -136,7 +136,12 @@ export default function BuscadorSelect({
       />
 
       {abierto && (
-        <div className="absolute inset-x-0 z-50 mt-1 overflow-hidden rounded-md border border-border bg-card shadow-lg">
+        // left/right en línea: si `inset-x-0` no aplica, el panel se encogería
+        // al ancho del texto más largo y quedaría desalineado del campo.
+        <div
+          className="absolute z-50 mt-1 overflow-hidden rounded-md border border-border bg-card shadow-lg"
+          style={{ left: 0, right: 0, width: '100%' }}
+        >
           {/* El buscador vive dentro del panel */}
           <div className="relative border-b border-border/70">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -163,10 +168,12 @@ export default function BuscadorSelect({
                   role="option"
                   aria-selected={esSelector && String(o.id) === String(value ?? '')}
                   className={cn(
-                    'block w-full rounded px-2.5 py-1.5 text-left text-sm text-foreground transition-colors',
+                    'block w-full rounded py-1.5 pr-2.5 text-left text-sm text-foreground transition-colors',
                     i === resaltada ? 'bg-brand-soft text-primary' : 'hover:bg-brand-soft hover:text-primary',
                     esSelector && String(o.id) === String(value ?? '') && 'font-medium text-primary',
                   )}
+                  // Mismo margen que el texto del buscador: todo alineado en una columna
+                  style={{ paddingLeft: '2.25rem' }}
                   // onMouseDown corre antes que el blur del buscador: el clic no se pierde
                   onMouseDown={(e) => { e.preventDefault(); elegir(o.id); }}
                   onMouseEnter={() => setResaltada(i)}

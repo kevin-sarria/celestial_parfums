@@ -7,7 +7,7 @@ import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 
 type PerfumeRow = Prisma.PerfumeGetPayload<{
   include: {
-    categoria:      true;
+    categoria:      { include: { precios: true } };
     tipos_aroma:    { include: { tipo_aroma: true } };
     ocasiones:      { include: { ocasion: true } };
     presentaciones: { include: { presentacion: true } };
@@ -18,30 +18,60 @@ type PerfumeRow = Prisma.PerfumeGetPayload<{
 const NUEVO_DIAS = 7;
 const esNuevo = (created: Date) => Date.now() - created.getTime() < NUEVO_DIAS * 86400000;
 
-export const mapPerfume = (p: PerfumeRow) => ({
-  id:           p.id,
-  nombre:       p.nombre,
-  descripcion:  p.descripcion ?? null,
-  precio:       Number(p.precio),
-  duracion:     p.duracion ?? null,
-  proyeccion:   p.proyeccion ?? null,
-  imagen_url:   p.imagen_url ?? null,
-  genero:       p.genero ?? null,
-  categoria:    p.categoria?.nombre ?? null,
-  categoria_id: p.categoria_id ?? null,
-  // % efectivo que consume todo el sistema (catálogo, carrito, cupones, SEO):
-  // el mayor entre el propio del perfume y el general de su categoría
-  descuento:        Math.max(p.descuento, p.categoria?.descuento ?? 0),
-  descuento_propio: p.descuento,
-  agotado:      p.agotado,
-  es_nuevo:     esNuevo(p.created_at),
-  tipos_aroma:    p.tipos_aroma.map((r) => r.tipo_aroma.nombre),
-  ocasiones:      p.ocasiones.map((r) => r.ocasion.nombre),
-  presentaciones: p.presentaciones.map((r) => r.presentacion.nombre),
-});
+/**
+ * Precio de un perfume en una presentación, en cascada:
+ *   1. precio propio de esa presentación (excepción: los de esencia premium lo usan)
+ *   2. precio de la lista para (categoría, presentación)
+ *   3. precio de respaldo del perfume (perfumes sin categoría o sin lista aún)
+ * Así, subir el precio de la lista mueve a todos los perfumes de esa categoría
+ * de una sola vez, sin tocar los que tienen precio propio.
+ */
+const resolverPrecios = (p: PerfumeRow) => {
+  const lista = new Map((p.categoria?.precios ?? []).map((pr) => [pr.presentacion_id, Number(pr.precio)]));
+  return p.presentaciones.map((r) => ({
+    presentacion: r.presentacion.nombre,
+    precio: Number(r.precio ?? lista.get(r.presentacion_id) ?? p.precio),
+    /** true = ese precio es exclusivo del perfume, no viene de la lista */
+    propio: r.precio != null,
+  }));
+};
+
+export const mapPerfume = (p: PerfumeRow) => {
+  const precios = resolverPrecios(p);
+  // El precio "de portada" (cards, PDF, SEO) es el más barato de sus
+  // presentaciones: es el que acompaña al "desde $X" cuando hay varias.
+  const desde = precios.length ? Math.min(...precios.map((x) => x.precio)) : Number(p.precio);
+  return {
+    id:           p.id,
+    nombre:       p.nombre,
+    descripcion:  p.descripcion ?? null,
+    precio:       desde,
+    /** Precio de cada presentación ya resuelto (lista o excepción del perfume). */
+    precios,
+    /** true = sus presentaciones no valen todas lo mismo (la card muestra "desde"). */
+    varios_precios: precios.length > 1 && new Set(precios.map((x) => x.precio)).size > 1,
+    duracion:     p.duracion ?? null,
+    proyeccion:   p.proyeccion ?? null,
+    imagen_url:   p.imagen_url ?? null,
+    genero:       p.genero ?? null,
+    categoria:    p.categoria?.nombre ?? null,
+    categoria_id: p.categoria_id ?? null,
+    // % efectivo que consume todo el sistema (catálogo, carrito, cupones, SEO):
+    // el mayor entre el propio del perfume y el general de su categoría
+    descuento:        Math.max(p.descuento, p.categoria?.descuento ?? 0),
+    descuento_propio: p.descuento,
+    /** Contratipo de esencia premium: lleva distintivo y nunca entra en combos. */
+    esencia_premium:  p.esencia_premium,
+    agotado:      p.agotado,
+    es_nuevo:     esNuevo(p.created_at),
+    tipos_aroma:    p.tipos_aroma.map((r) => r.tipo_aroma.nombre),
+    ocasiones:      p.ocasiones.map((r) => r.ocasion.nombre),
+    presentaciones: p.presentaciones.map((r) => r.presentacion.nombre),
+  };
+};
 
 export const perfumeInclude = {
-  categoria:      true,
+  categoria:      { include: { precios: true } },
   tipos_aroma:    { include: { tipo_aroma: true } },
   ocasiones:      { include: { ocasion: true } },
   presentaciones: { include: { presentacion: true } },
@@ -94,6 +124,18 @@ export const selectParfumsPaginated = async (
   return paginatedResponse(rows.map(mapPerfume), total, page, limit);
 };
 
+/**
+ * Enlaces perfume→presentación con su precio propio cuando lo tienen.
+ * Sin precio propio quedan en null y heredan el de la lista de su categoría.
+ */
+const enlacesPresentacion = (data: CreatePerfumeDTO) => {
+  const propios = new Map((data.precios_propios ?? []).map((p) => [p.presentacion_id, p.precio]));
+  return (data.presentaciones ?? []).map((id) => ({
+    presentacion_id: id,
+    precio: propios.get(id) ?? null,
+  }));
+};
+
 export const createPerfume = async (data: CreatePerfumeDTO) => {
   const perfume = await prisma.perfume.create({
     data: {
@@ -107,15 +149,14 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       categoria_id: data.categoria_id ?? null,
       descuento:    data.descuento ?? 0,
       agotado:      data.agotado ?? false,
+      esencia_premium:  data.esencia_premium ?? false,
       tipos_aroma: {
         create: (data.tipos_aroma ?? []).map((id) => ({ tipo_aroma_id: id })),
       },
       ocasiones: {
         create: (data.ocasiones ?? []).map((id) => ({ ocasion_id: id })),
       },
-      presentaciones: {
-        create: (data.presentaciones ?? []).map((id) => ({ presentacion_id: id })),
-      },
+      presentaciones: { create: enlacesPresentacion(data) },
     },
   });
   return { id: perfume.id };
@@ -145,15 +186,14 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
         // El form de edición no envía descuento/agotado: no hay que resetearlos
         ...(data.descuento !== undefined ? { descuento: data.descuento } : {}),
         ...(data.agotado !== undefined ? { agotado: data.agotado } : {}),
+        ...(data.esencia_premium !== undefined ? { esencia_premium: data.esencia_premium } : {}),
         tipos_aroma: {
           create: (data.tipos_aroma ?? []).map((tid) => ({ tipo_aroma_id: tid })),
         },
         ocasiones: {
           create: (data.ocasiones ?? []).map((oid) => ({ ocasion_id: oid })),
         },
-        presentaciones: {
-          create: (data.presentaciones ?? []).map((pid) => ({ presentacion_id: pid })),
-        },
+        presentaciones: { create: enlacesPresentacion(data) },
       },
     }),
   ]);
@@ -178,6 +218,48 @@ export const patchDescuentoPorCategoria = async (categoriaId: number, descuento:
 
 export const patchAgotadoPerfume = (id: string, agotado: boolean) =>
   prisma.perfume.update({ where: { id: Number(id) }, data: { agotado } });
+
+// ── Lista de precios (categoría × presentación) ─────────────────────────────
+
+/** Toda la lista, para pintar la tabla de precios del dashboard. */
+export const selectPrecios = async () => {
+  const rows = await prisma.precioLista.findMany({
+    include: { categoria: true, presentacion: true },
+    orderBy: [{ categoria: { nombre: 'asc' } }, { presentacion: { nombre: 'asc' } }],
+  });
+  return rows.map((r) => ({
+    categoria_id:    r.categoria_id,
+    categoria:       r.categoria.nombre,
+    presentacion_id: r.presentacion_id,
+    presentacion:    r.presentacion.nombre,
+    precio:          Number(r.precio),
+  }));
+};
+
+/**
+ * Fija (o borra) el precio estándar de una categoría en una presentación.
+ * precio null = esa combinación deja de tener precio de lista.
+ */
+export const setPrecioLista = async (categoriaId: number, presentacionId: number, precio: number | null) => {
+  const where = { categoria_id_presentacion_id: { categoria_id: categoriaId, presentacion_id: presentacionId } };
+  if (precio == null) {
+    await prisma.precioLista.deleteMany({ where: { categoria_id: categoriaId, presentacion_id: presentacionId } });
+    return { borrado: true };
+  }
+  await prisma.precioLista.upsert({
+    where,
+    create: { categoria_id: categoriaId, presentacion_id: presentacionId, precio },
+    update: { precio },
+  });
+  // Cuántos perfumes quedan cobrando este precio (los que no tienen uno propio)
+  const afectados = await prisma.perfume.count({
+    where: {
+      categoria_id: categoriaId,
+      presentaciones: { some: { presentacion_id: presentacionId, precio: null } },
+    },
+  });
+  return { afectados };
+};
 
 export const findRelatedPerfumes = async (currentId: number, aromaNames: string[]) => {
   const candidates = await prisma.perfume.findMany({

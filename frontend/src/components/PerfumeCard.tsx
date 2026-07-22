@@ -93,7 +93,12 @@ export default function PerfumeCard({ perfume, vendidos }: Props) {
           <h3 className="line-clamp-2 font-display text-[17px] font-medium leading-snug text-ink">
             {perfume.nombre}
           </h3>
-          {perfume.categoria && (
+          {/* El distintivo de esencia premium reemplaza a la categoría: dice más */}
+          {perfume.esencia_premium ? (
+            <Badge className="shrink-0 rounded-full border-none bg-ink px-2 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-background">
+              Esencia premium
+            </Badge>
+          ) : perfume.categoria && (
             <Badge variant="outline" className="max-w-24 shrink-0 rounded-full text-[10.5px] font-medium text-muted-foreground">
               <span className="truncate">{perfume.categoria}</span>
             </Badge>
@@ -101,6 +106,10 @@ export default function PerfumeCard({ perfume, vendidos }: Props) {
         </div>
 
         <div className="flex items-baseline gap-2">
+          {/* Con varias tallas a distinto precio se anuncia el más barato */}
+          {perfume.varios_precios && (
+            <span className="text-[11.5px] text-muted-foreground">desde</span>
+          )}
           <span className="text-[15px] font-semibold tracking-tight text-primary">
             {formatPrice(precioFinal)}
           </span>
@@ -172,13 +181,15 @@ export default function PerfumeCard({ perfume, vendidos }: Props) {
       producto={{
         id: perfume.id,
         nombre: perfume.nombre,
-        precio: precioFinal,
+        precio: perfume.precio,
+        precios: perfume.precios,
         descuento: perfume.descuento,
         imagen_url: perfume.imagen_url,
         esCombo: false,
         categoria: perfume.categoria,
         genero: perfume.genero,
         presentaciones: perfume.presentaciones,
+        esenciaPremium: perfume.esencia_premium,
       }}
     />
     </>

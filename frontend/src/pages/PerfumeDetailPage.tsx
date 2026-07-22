@@ -91,6 +91,14 @@ export default function PerfumeDetailPage() {
                     {perfume.categoria}
                   </Badge>
                 )}
+                {perfume.esencia_premium && (
+                  <Badge
+                    className="rounded-full border-none bg-ink px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-background"
+                    title="Elaborado con la esencia de mayor calidad del laboratorio"
+                  >
+                    Esencia premium
+                  </Badge>
+                )}
               </div>
 
               <h1 className="font-display text-4xl font-light tracking-tight text-ink md:text-5xl">
@@ -98,6 +106,9 @@ export default function PerfumeDetailPage() {
               </h1>
 
               <div className="flex items-baseline gap-3">
+                {perfume.varios_precios && (
+                  <span className="text-[13px] text-muted-foreground">desde</span>
+                )}
                 <span className="font-display text-3xl font-medium text-primary">
                   {formatPrice(precioFinal)}
                 </span>
@@ -107,6 +118,22 @@ export default function PerfumeDetailPage() {
                   </span>
                 )}
               </div>
+
+              {/* Precio de cada talla: el cliente decide sin abrir el modal */}
+              {perfume.precios.length > 1 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {perfume.precios.map((pp) => (
+                    <span
+                      key={pp.presentacion}
+                      className="rounded-full border border-border bg-card px-3 py-1 text-[12.5px] text-ink"
+                    >
+                      {pp.presentacion} · <strong className="font-semibold text-primary">
+                        {formatPrice(finalPrice(pp.precio, perfume.descuento))}
+                      </strong>
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {perfume.descripcion && (
                 <p className="max-w-prose text-[15px] leading-relaxed text-muted-foreground">
@@ -227,13 +254,15 @@ export default function PerfumeDetailPage() {
           producto={{
             id: perfume.id,
             nombre: perfume.nombre,
-            precio: precioFinal,
+            precio: perfume.precio,
+            precios: perfume.precios,
             descuento: perfume.descuento,
             imagen_url: perfume.imagen_url,
             esCombo: false,
             categoria: perfume.categoria,
             genero: perfume.genero,
             presentaciones: perfume.presentaciones,
+            esenciaPremium: perfume.esencia_premium,
           }}
         />
       )}

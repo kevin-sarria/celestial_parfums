@@ -23,6 +23,7 @@ import type { Tab, Lookup } from './types';
 import BackupSeguridad from './BackupSeguridad';
 import { PerfumesTab } from './tabs/PerfumesTab';
 import { CombosTab } from './tabs/CombosTab';
+import { PreciosTab } from './tabs/PreciosTab';
 import { DescuentosTab } from './tabs/DescuentosTab';
 import { LookupTab } from './tabs/LookupTab';
 import { VentasTab } from './tabs/VentasTab';
@@ -41,6 +42,7 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   categorias: { label: 'Categorias', icon: Tags },
   presentaciones: { label: 'Presentaciones', icon: Ruler },
   combos: { label: 'Combos', icon: Gift },
+  precios: { label: 'Precios', icon: Tags },
   descuentos: { label: 'Descuentos', icon: BadgePercent },
   ventas: { label: 'Ventas', icon: CircleDollarSign },
   creditos: { label: 'Creditos', icon: ClipboardList },
@@ -52,7 +54,7 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
 
 // Menú del dashboard agrupado en secciones colapsables (drawer con burger)
 const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
-  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'descuentos'] },
+  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
   { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones'] },
   { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'pagos'] },
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'redes'] },
@@ -330,6 +332,12 @@ export default function DashboardPage() {
                 onPageSizeChange={s => { setCombosPageSize(s); loadCombos(1, s); }}
                 onSearch={t => { setCombosSearch(t); loadCombos(1, combosPageSize, t); }}
                 onMutate={refreshAll}
+              />
+            )}
+            {tab === 'precios' && (
+              <PreciosTab
+                guardedFetch={guardedFetch} categorias={categorias}
+                presentaciones={presentaciones} onMutate={refreshAll}
               />
             )}
             {tab === 'descuentos' && (

@@ -26,10 +26,12 @@ import {
   addPresentacion,
   removePresentacion,
   editPresentacion,
+  getPrecios,
+  putPrecio,
 } from '../controller/perfume.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { createPerfumeSchema, patchDescuentoSchema, patchDescuentoCategoriaSchema, patchAgotadoSchema, nombreSchema } from '../schemas/perfume.schema';
+import { createPerfumeSchema, patchDescuentoSchema, patchDescuentoCategoriaSchema, patchAgotadoSchema, nombreSchema, precioListaSchema } from '../schemas/perfume.schema';
 
 export const perfumeRouter = Router();
 
@@ -61,6 +63,10 @@ perfumeRouter.patch('/ocasiones/:id', requireAdmin, validate(nombreSchema), edit
 perfumeRouter.post('/categorias', requireAdmin, validate(nombreSchema), addCategoria);
 perfumeRouter.delete('/categorias/:id', requireAdmin, removeCategoria);
 perfumeRouter.patch('/categorias/:id', requireAdmin, validate(nombreSchema), editCategoria);
+
+// Lista de precios: qué vale cada presentación en cada categoría
+perfumeRouter.get('/precios', requireAdmin, getPrecios);
+perfumeRouter.patch('/precios', requireAdmin, validate(precioListaSchema), putPrecio);
 
 perfumeRouter.get('/presentaciones', getPresentaciones);
 perfumeRouter.post('/presentaciones', requireAdmin, validate(nombreSchema), addPresentacion);

@@ -14,6 +14,8 @@ export interface CartItem {
   descuento: number;
   imagen_url: string | null;
   esCombo: boolean;
+  /** Contratipo de esencia premium: nunca entra en el precio de combo. */
+  esenciaPremium?: boolean;
 }
 
 export interface CartContextType {

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pencil, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,9 +12,9 @@ import ExportButton from '../../../components/ExportButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { perfumesColumns } from '../columns';
-import { API, subirImagenAdmin } from '../helpers';
+import { API, formatPrice, subirImagenAdmin } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
-import type { GuardedFetch, Lookup, PerfumeForm } from '../types';
+import type { GuardedFetch, Lookup, PerfumeForm, PrecioLista } from '../types';
 import { emptyPerfumeForm } from '../types';
 
 interface PerfumesTabProps {
@@ -73,18 +73,46 @@ export function PerfumesTab({
   const [imgMode, setImgMode] = useState<'url' | 'file'>('url');
   const [uploading, setUploading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [precios, setPrecios] = useState<PrecioLista[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // La lista de precios se usa para mostrar qué cobra cada talla por defecto
+  const cargarPrecios = async () => {
+    try {
+      const res = await guardedFetch(`${API}/precios`);
+      const json = await res.json();
+      if (res.ok) setPrecios(json.data ?? []);
+    } catch { /* sin lista, el form pide precio propio */ }
+  };
+  useEffect(() => { cargarPrecios(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Precio estándar de una presentación para la categoría elegida en el form. */
+  const precioDeLista = (presentacionId: number) => {
+    if (form.categoria_id === '') return null;
+    return precios.find(
+      p => p.categoria_id === form.categoria_id && p.presentacion_id === presentacionId,
+    )?.precio ?? null;
+  };
 
   const openCreate = () => { setForm(emptyPerfumeForm()); setFormError(''); setImgMode('url'); setModal({ open: true, editId: null }); };
   const openEdit = (p: Perfume) => {
     const aromaIds = aromas.filter(a => p.tipos_aroma.includes(a.nombre)).map(a => a.id);
     const ocasionIds = ocasiones.filter(o => p.ocasiones.includes(o.nombre)).map(o => o.id);
     const presentacionIds = presentaciones.filter(pr => p.presentaciones.includes(pr.nombre)).map(pr => pr.id);
+    // Solo los precios marcados como propios vuelven al formulario: los demás
+    // se dejan vacíos para que sigan heredando de la lista.
+    const propios: Record<number, string> = {};
+    for (const pp of p.precios ?? []) {
+      if (!pp.propio) continue;
+      const pres = presentaciones.find(pr => pr.nombre === pp.presentacion);
+      if (pres) propios[pres.id] = String(pp.precio);
+    }
     setForm({
       nombre: p.nombre, descripcion: p.descripcion ?? '', precio: String(p.precio),
       duracion: p.duracion ?? '', proyeccion: p.proyeccion ?? '', imagen_url: p.imagen_url ?? '',
       genero: p.genero ?? '', categoria_id: p.categoria_id ?? '',
       tipos_aroma: aromaIds, ocasiones: ocasionIds, presentaciones: presentacionIds,
+      esencia_premium: p.esencia_premium ?? false, precios_propios: propios,
     });
     setFormError(''); setImgMode('url'); setModal({ open: true, editId: p.id });
   };
@@ -109,12 +137,17 @@ export function PerfumesTab({
     e.preventDefault();
     if (!form.nombre.trim() || !form.precio) { setFormError('Nombre y precio son obligatorios'); return; }
     setFormLoading(true); setFormError('');
+    // Solo viajan los precios propios de las presentaciones marcadas
+    const precios_propios = form.presentaciones
+      .filter(id => Number(form.precios_propios[id]) > 0)
+      .map(id => ({ presentacion_id: id, precio: Number(form.precios_propios[id]) }));
     const body = {
       nombre: form.nombre, descripcion: form.descripcion || null, precio: Number(form.precio),
       duracion: form.duracion || null, proyeccion: form.proyeccion || null,
       imagen_url: form.imagen_url || null, genero: form.genero || null,
       categoria_id: form.categoria_id !== '' ? Number(form.categoria_id) : null,
       tipos_aroma: form.tipos_aroma, ocasiones: form.ocasiones, presentaciones: form.presentaciones,
+      esencia_premium: form.esencia_premium, precios_propios,
     };
     try {
       const url = modal.editId ? `${API}/update/${modal.editId}` : `${API}/create`;
@@ -202,8 +235,11 @@ export function PerfumesTab({
           <Field label="Nombre *">
             <Input value={form.nombre} onChange={setF('nombre')} required maxLength={100} />
           </Field>
-          <Field label="Precio (COP) *">
+          <Field label="Precio de respaldo (COP) *">
             <Input type="number" min="0" value={form.precio} onChange={setF('precio')} required />
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Solo se usa si la talla no tiene precio abajo ni en la lista.
+            </p>
           </Field>
         </FieldRow>
         <Field label="Descripcion">
@@ -280,10 +316,65 @@ export function PerfumesTab({
               onToggle={id => setForm(f => ({ ...f, ocasiones: toggleId(f.ocasiones, id) }))} />
           </Field>
         </FieldRow>
-        <Field label="Presentaciones disponibles">
-          <CheckGroup items={presentaciones} selected={form.presentaciones}
-            onToggle={id => setForm(f => ({ ...f, presentaciones: toggleId(f.presentaciones, id) }))} />
+        <Field label="Presentaciones y precio">
+          <div className="space-y-1.5 rounded-lg border border-border bg-secondary/30 p-2.5">
+            <p className="text-[12px] text-muted-foreground">
+              Marca las tallas que vendes. Cada una cobra el precio de la lista de su
+              categoría; escribe un valor solo si ESTE perfume cuesta distinto.
+            </p>
+            {presentaciones.map(pr => {
+              const activa = form.presentaciones.includes(pr.id);
+              const deLista = precioDeLista(pr.id);
+              return (
+                <div key={pr.id} className="flex items-center gap-2">
+                  <label className="flex min-w-28 flex-1 cursor-pointer items-center gap-2 text-[13px] text-foreground">
+                    <input
+                      type="checkbox" className="size-4 accent-primary" checked={activa}
+                      onChange={() => setForm(f => ({ ...f, presentaciones: toggleId(f.presentaciones, pr.id) }))}
+                    />
+                    {pr.nombre}
+                  </label>
+                  {activa && (
+                    <>
+                      <Input
+                        type="number" min="0" className="h-8 max-w-32 text-[13px]"
+                        placeholder={deLista != null ? `Lista: ${deLista}` : 'Precio'}
+                        value={form.precios_propios[pr.id] ?? ''}
+                        onChange={e => setForm(f => ({
+                          ...f,
+                          precios_propios: { ...f.precios_propios, [pr.id]: e.target.value },
+                        }))}
+                      />
+                      <span className="w-28 shrink-0 text-[12px] text-muted-foreground">
+                        {form.precios_propios[pr.id]
+                          ? 'precio propio'
+                          : deLista != null
+                            ? formatPrice(deLista)
+                            : 'sin precio en lista'}
+                      </span>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </Field>
+
+        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 text-[13px] text-foreground">
+          <input
+            type="checkbox" className="mt-0.5 size-4 accent-primary"
+            checked={form.esencia_premium}
+            onChange={e => setForm(f => ({ ...f, esencia_premium: e.target.checked }))}
+          />
+          <span>
+            Esencia premium
+            <span className="block text-[12px] font-normal text-muted-foreground">
+              La esencia de mayor calidad del laboratorio. Lleva su distintivo en el
+              catálogo y NUNCA entra en el precio de combo (no se puede colar en un
+              combo por cantidad).
+            </span>
+          </span>
+        </label>
         <FormError>{formError}</FormError>
       </Modal>
     </>

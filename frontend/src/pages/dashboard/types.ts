@@ -89,13 +89,27 @@ export interface PerfumeForm {
   nombre: string; descripcion: string; precio: string; duracion: string;
   proyeccion: string; imagen_url: string; genero: 'dama' | 'caballero' | 'unisex' | '';
   categoria_id: number | ''; tipos_aroma: number[]; ocasiones: number[]; presentaciones: number[];
+  /** Contratipo hecho con la esencia de mayor calidad: distintivo y fuera de combos. */
+  esencia_premium: boolean;
+  /** Precio propio por presentación (id → texto); vacío = usa la lista de su categoría. */
+  precios_propios: Record<number, string>;
 }
 
 export const emptyPerfumeForm = (): PerfumeForm => ({
   nombre: '', descripcion: '', precio: '', duracion: '',
   proyeccion: '', imagen_url: '', genero: '', categoria_id: '',
   tipos_aroma: [], ocasiones: [], presentaciones: [],
+  esencia_premium: false, precios_propios: {},
 });
+
+/** Una fila de la lista de precios: lo que vale una presentación en una categoría. */
+export interface PrecioLista {
+  categoria_id: number;
+  categoria: string;
+  presentacion_id: number;
+  presentacion: string;
+  precio: number;
+}
 
 /**
  * Valor del desplegable de persona enlazada en ventas/créditos:
@@ -262,6 +276,6 @@ export interface CodigoValidado {
   venta?: { id: number; persona: string; dia: string } | null;
 }
 
-export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'redes';
+export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'redes';
 
 export type GuardedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

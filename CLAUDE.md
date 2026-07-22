@@ -38,6 +38,24 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 
 ## Reglas de negocio (decididas con el dueño; no cambiarlas sin preguntarle)
 
+### Precios por presentación (base de todo lo demás)
+- El precio NO vive en el perfume: sale de una **cascada** resuelta en `mapPerfume`:
+  1. `perfume_presentacion.precio` (excepción de ESE perfume en ESA talla)
+  2. `precios` (categoría × presentación) — la lista de precios del negocio
+  3. `perfumes.precio` (respaldo: perfumes sin categoría o sin lista)
+- Cambiar una casilla de la lista mueve a TODOS los perfumes de esa categoría de una
+  vez; los que tienen precio propio no se enteran. Editor: dashboard → Catálogo → Precios.
+- `mapPerfume` expone `precios[]` (talla + precio + `propio`), `precio` (el más barato,
+  para las cards) y `varios_precios` (dispara el "desde $X").
+- El carrito guarda el precio de LA talla elegida: `AddToCartModal` recibe precios de
+  lista y aplica `finalPrice` UNA sola vez (no pasarle precios ya descontados).
+- **Esencia premium** (`perfumes.esencia_premium`): contratipos con la esencia de mayor
+  calidad del laboratorio (ej: Ahli Octans, 60k los 30ml). Llevan distintivo en card y
+  detalle, y **NUNCA entran en el precio de combo** (`useComboDetector` los excluye del
+  agrupado). Ojo con el vocabulario: NO es perfumería "nicho" (Creed, MFK), que es otra
+  cosa; el adjetivo describe la esencia. Cuando el carrito sugiere completar un combo y
+  hay premium excluidos, el mensaje lo aclara (si no, el cliente reclama al pagar).
+
 ### Precios y descuentos (lo más delicado de la app)
 1. **Descuento de producto vs categoría**: el % efectivo es `max(propio, categoría)` —
    se calcula en `mapPerfume` (backend). El de categoría es UN registro en `categorias.descuento`,
@@ -100,7 +118,10 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   y sus ramas en `exportEntity`/`importEntity`. El router, la plantilla, el modal y el
   botón Exportar del frontend ya funcionan solos (`<ExportButton entity="..." />`).
 - Entidades: perfumes, aromas, ocasiones, categorias, presentaciones, combos, descuentos,
-  ventas, creditos, proveedores y **publicidad**.
+  ventas, creditos, proveedores, publicidad y **precios** (la lista categoría×presentación;
+  importar ACTUALIZA la combinación existente, sirve para subir precios en bloque).
+- La plantilla de perfumes lleva `precios_presentacion` (`30ML=60000, 100ML=150000`, solo
+  excepciones) y `esencia_premium` (si/no).
 - Publicidad: exporta/importa las CAMPAÑAS, nunca los códigos ya emitidos (son de cada
   persona). Importar siempre CREA (no actualiza): subir dos veces el archivo duplica.
   En anuncios que no son de tipo `descuento` las columnas de cupón se guardan en cero
@@ -184,6 +205,11 @@ Migraciones pendientes de aplicar en producción al escribir esto:
   largos tipo "1 de 30 ml y 2 de 60 ml"; el importador además recorta a 100)
 - `venta_perfume.cantidad` SMALLINT UNSIGNED NOT NULL DEFAULT 1 (unidades por
   fragancia dentro de una venta)
+- `20260722120000_precios_por_presentacion`: tabla `precios`, `perfume_presentacion.precio`
+  y `perfumes.esencia_premium`. La migración SIEMBRA la lista con el precio más común de
+  cada categoría+presentación y deja como excepción a los que no coincidan → **nadie
+  cambia de precio al aplicarla**. Después hay que corregir a mano en Catálogo → Precios
+  las tallas que hoy no tienen dato real (50ml = 45.000 y 100ml = 70.000).
 
 ## Cómo trabajamos (preferencias del dueño)
 

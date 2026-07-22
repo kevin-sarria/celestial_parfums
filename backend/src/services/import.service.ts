@@ -184,7 +184,25 @@ export const exportEntity = async (entity: string): Promise<Buffer> => {
       tipos_aroma: p.tipos_aroma.map(t => t.tipo_aroma.nombre).join(', '),
       ocasiones: p.ocasiones.map(o => o.ocasion.nombre).join(', '),
       presentaciones: p.presentaciones.map(pr => pr.presentacion.nombre).join(', '),
+      // Solo las tallas con precio propio (las demas heredan el de la lista)
+      precios_presentacion: p.presentaciones
+        .filter(pr => pr.precio != null)
+        .map(pr => `${pr.presentacion.nombre}=${Number(pr.precio)}`)
+        .join(', '),
+      esencia_premium: p.esencia_premium ? 'si' : 'no',
       descuento: p.descuento,
+    })));
+  }
+
+  if (entity === 'precios') {
+    const filas = await prisma.precioLista.findMany({
+      include: { categoria: true, presentacion: true },
+      orderBy: [{ categoria: { nombre: 'asc' } }, { presentacion: { nombre: 'asc' } }],
+    });
+    return sheetFromRows(entity, filas.map(f => ({
+      categoria: f.categoria.nombre,
+      presentacion: f.presentacion.nombre,
+      precio: Number(f.precio),
     })));
   }
 
@@ -343,6 +361,14 @@ export const importEntity = async (entity: string, buffer: Buffer): Promise<Enti
       // Acepta la terminologia nueva y traduce la antigua (hombre/mujer) por compatibilidad
       const generoRaw = toStr(r['genero']).toLowerCase();
       const generoStr = generoRaw === 'hombre' ? 'caballero' : generoRaw === 'mujer' ? 'dama' : generoRaw;
+      // Excepciones de precio por talla: "30ML=60000, 100ML=150000"
+      const propios = new Map<number, number>();
+      for (const parte of splitList(r['precios_presentacion'])) {
+        const [talla, valor] = parte.split('=').map(s => s.trim());
+        const presId = presMap.get((talla ?? '').toLowerCase());
+        const num = Number(valor);
+        if (presId != null && !isNaN(num) && num > 0) propios.set(presId, num);
+      }
       try {
         await prisma.perfume.create({
           data: {
@@ -355,9 +381,15 @@ export const importEntity = async (entity: string, buffer: Buffer): Promise<Enti
             genero: generoStr === 'dama' || generoStr === 'caballero' || generoStr === 'unisex' ? generoStr : null,
             categoria_id: catMap.get(toStr(r['categoria']).toLowerCase()) ?? null,
             descuento: clampPct(r['descuento']),
+            esencia_premium: toBool(r['esencia_premium'], false),
             tipos_aroma: { create: ids(r['tipos_aroma'], aromaMap).map(id => ({ tipo_aroma_id: id })) },
             ocasiones: { create: ids(r['ocasiones'], ocasionMap).map(id => ({ ocasion_id: id })) },
-            presentaciones: { create: ids(r['presentaciones'], presMap).map(id => ({ presentacion_id: id })) },
+            presentaciones: {
+              create: ids(r['presentaciones'], presMap).map(id => ({
+                presentacion_id: id,
+                precio: propios.get(id) ?? null,
+              })),
+            },
           },
         });
         result.insertados++;
@@ -400,6 +432,43 @@ export const importEntity = async (entity: string, buffer: Buffer): Promise<Enti
         result.insertados++;
       } catch (e: any) {
         result.errores.push(`Fila ${fila} (${nombre}): ${e.message}`);
+        result.omitidos++;
+      }
+    }
+    return result;
+  }
+
+  // ── Lista de precios (categoría × presentación) ─────────────────────────────
+  if (entity === 'precios') {
+    const [categorias, presentaciones] = await Promise.all([
+      prisma.categoria.findMany(), prisma.presentacion.findMany(),
+    ]);
+    const catMap = lowerMap(categorias);
+    const presMap = lowerMap(presentaciones);
+
+    for (const [i, r] of rows.entries()) {
+      const fila = i + 2;
+      const catNombre = toStr(r['categoria']);
+      const presNombre = toStr(r['presentacion']);
+      const categoriaId = catMap.get(catNombre.toLowerCase());
+      const presentacionId = presMap.get(presNombre.toLowerCase());
+      if (!categoriaId) { result.errores.push(`Fila ${fila}: no existe la categoria "${catNombre}"`); result.omitidos++; continue; }
+      if (!presentacionId) { result.errores.push(`Fila ${fila}: no existe la presentacion "${presNombre}"`); result.omitidos++; continue; }
+      const precio = toNum(r['precio']);
+      if (precio <= 0) { result.errores.push(`Fila ${fila} (${catNombre} ${presNombre}): el precio debe ser mayor a 0`); result.omitidos++; continue; }
+
+      try {
+        const previo = await prisma.precioLista.findUnique({
+          where: { categoria_id_presentacion_id: { categoria_id: categoriaId, presentacion_id: presentacionId } },
+        });
+        await prisma.precioLista.upsert({
+          where: { categoria_id_presentacion_id: { categoria_id: categoriaId, presentacion_id: presentacionId } },
+          create: { categoria_id: categoriaId, presentacion_id: presentacionId, precio },
+          update: { precio },
+        });
+        if (previo) result.actualizados++; else result.insertados++;
+      } catch (e: any) {
+        result.errores.push(`Fila ${fila} (${catNombre} ${presNombre}): ${e.message}`);
         result.omitidos++;
       }
     }

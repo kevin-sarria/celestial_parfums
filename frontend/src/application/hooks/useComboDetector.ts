@@ -26,6 +26,12 @@ export interface ComboSugerido {
   categoria: string;
   presentacion: string;
   faltan: number;
+  /**
+   * true = en el carrito hay perfumes de esencia premium de esa misma categoría
+   * y talla que NO cuentan para el combo. Hay que decirlo o el cliente cree que
+   * ya completó y reclama al pagar.
+   */
+  excluyePremium: boolean;
 }
 
 export interface DeteccionCombos {
@@ -47,11 +53,16 @@ export function detectarCombos(items: CartItem[], combos: Combo[]): DeteccionCom
   const consumidas = new Map<string, number>();
   const sugerencias: ComboSugerido[] = [];
 
-  // Perfumes sueltos sin descuento propio, agrupados por categoría+presentación
+  // Perfumes sueltos sin descuento propio, agrupados por categoría+presentación.
+  // Los esencia premium quedan FUERA: valen mucho más que el resto de su categoría
+  // y colarlos en un combo por cantidad regalaría la diferencia.
   const grupos = new Map<string, CartItem[]>();
+  // Grupos donde quedó algún premium afuera: la sugerencia debe aclararlo
+  const conPremium = new Set<string>();
   for (const item of items) {
     if (item.esCombo || item.descuento > 0) continue;
     const key = `${item.tipo}||${item.presentacion}`;
+    if (item.esenciaPremium) { conPremium.add(key); continue; }
     grupos.set(key, [...(grupos.get(key) ?? []), item]);
   }
 
@@ -113,6 +124,7 @@ export function detectarCombos(items: CartItem[], combos: Combo[]): DeteccionCom
           categoria,
           presentacion,
           faltan: alcanzable.cantidad - unidades.length,
+          excluyePremium: conPremium.has(key),
         });
       }
     }

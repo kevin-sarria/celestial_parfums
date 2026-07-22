@@ -210,6 +210,12 @@ export default function CartDrawer() {
                   Agrega {s.faltan === 1 ? 'un perfume más' : `${s.faltan} perfumes más`} de{' '}
                   {s.categoria}{s.presentacion ? ` (${s.presentacion})` : ''} y activas el precio
                   especial del combo "{s.nombre}".
+                  {/* Sin esta aclaración el cliente cree que ya completó el combo */}
+                  {s.excluyePremium && (
+                    <span className="mt-0.5 block opacity-80">
+                      Los de esencia premium no cuentan para este combo.
+                    </span>
+                  )}
                 </span>
               </p>
             ))}

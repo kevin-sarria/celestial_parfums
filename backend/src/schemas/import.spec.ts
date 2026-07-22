@@ -26,12 +26,29 @@ export const IMPORT_SPECS: Record<string, ImportSpec> = {
       { key: 'tipos_aroma', required: false, descripcion: 'Nombres separados por comas', ejemplo: 'Citrico, Amaderado' },
       { key: 'ocasiones', required: false, descripcion: 'Nombres separados por comas', ejemplo: 'Fiesta, Diario' },
       { key: 'presentaciones', required: false, descripcion: 'Nombres separados por comas', ejemplo: '30ML, 60ML' },
+      { key: 'precios_presentacion', required: false, descripcion: 'Precio propio por talla (solo si NO usa el de la lista)', ejemplo: '30ML=60000, 100ML=150000' },
+      { key: 'esencia_premium', required: false, descripcion: 'si o no: esencia de mayor calidad (nunca entra en combos)', ejemplo: 'no' },
       { key: 'descuento', required: false, descripcion: 'Porcentaje de descuento (0 a 100)', ejemplo: 0 },
     ],
     notas: [
       'tipos_aroma, ocasiones y presentaciones se escriben separados por comas. Si un valor no existe en la base de datos, esa relacion simplemente se omite (el perfume se crea igual).',
       'categoria debe coincidir con una categoria existente; si no existe, el perfume queda sin categoria.',
       'image_url puede quedar vacia sin problema.',
+      'El precio normal NO se escribe aqui: sale de la lista de precios (Catalogo > Precios) segun la categoria y la talla. La columna precio solo se usa de respaldo cuando no hay lista.',
+      'precios_presentacion es para las excepciones (ej: los de esencia premium): se escribe TALLA=VALOR separado por comas.',
+    ],
+  },
+  precios: {
+    titulo: 'Importar lista de precios',
+    columnas: [
+      { key: 'categoria', required: true, descripcion: 'Nombre de una categoria existente', ejemplo: 'Contratipo' },
+      { key: 'presentacion', required: true, descripcion: 'Nombre de una presentacion existente', ejemplo: '30ML' },
+      { key: 'precio', required: true, descripcion: 'Precio estandar en COP de esa talla en esa categoria', ejemplo: 22000 },
+    ],
+    notas: [
+      'Es la lista de precios del negocio: lo que vale cada talla en cada categoria.',
+      'Todos los perfumes de esa categoria cobran ese precio, salvo los que tengan precio propio en su ficha.',
+      'Si la combinacion ya existe se ACTUALIZA (no se duplica): sirve para subir precios en bloque.',
     ],
   },
   aromas: {

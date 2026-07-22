@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { formatPrice, finalPrice } from '@/lib/format';
 import { Chip } from './catalog/FilterChips';
 import { useCart } from '../application/context/useCart';
 
@@ -18,6 +19,8 @@ interface Props {
     id: number;
     nombre: string;
     precio: number;
+    /** Precio de cada presentación; sin él se usa `precio` para todas. */
+    precios?: { presentacion: string; precio: number }[];
     /** Descuento propio del producto (%): con él, los cupones no se acumulan. */
     descuento: number;
     imagen_url: string | null;
@@ -25,6 +28,8 @@ interface Props {
     categoria: string | null;
     genero: string | null;
     presentaciones: string[];
+    /** Contratipo esencia premium: nunca entra en el precio de combo. */
+    esenciaPremium?: boolean;
   };
 }
 
@@ -35,6 +40,11 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
 
   const tipo = producto.categoria ?? '';
   const presentaciones = producto.presentaciones ?? [];
+
+  // Cada presentación tiene su precio; si falta, se usa el de portada.
+  const precioDe = (p: string) =>
+    producto.precios?.find((x) => x.presentacion === p)?.precio ?? producto.precio;
+  const precioActual = presentacion ? precioDe(presentacion) : producto.precio;
 
   useEffect(() => {
     if (open) {
@@ -52,10 +62,12 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
       presentacion,
       genero: producto.genero,
       cantidad,
-      precio: producto.precio,
+      // El precio del carrito es el de LA presentación elegida
+      precio: finalPrice(precioActual, producto.descuento),
       descuento: producto.descuento,
       imagen_url: producto.imagen_url,
       esCombo: producto.esCombo,
+      esenciaPremium: producto.esenciaPremium ?? false,
     });
     setCantidad(1);
     onClose();
@@ -89,10 +101,11 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Presentación
             </p>
+            {/* Cada talla lleva su precio: el cliente ve qué cuesta antes de elegir */}
             <div className="flex flex-wrap gap-1.5">
               {presentaciones.map((p) => (
                 <Chip key={p} active={presentacion === p} onClick={() => setPresentacion(p)}>
-                  {p}
+                  {p} · {formatPrice(finalPrice(precioDe(p), producto.descuento))}
                 </Chip>
               ))}
             </div>
@@ -123,6 +136,13 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
               <Plus className="size-4" />
             </button>
           </div>
+        </div>
+
+        <div className="flex items-baseline justify-between rounded-xl bg-secondary/50 px-3.5 py-2.5">
+          <span className="text-[12.5px] text-muted-foreground">Total</span>
+          <span className="font-display text-lg font-medium text-ink">
+            {formatPrice(finalPrice(precioActual, producto.descuento) * cantidad)}
+          </span>
         </div>
 
         <DialogFooter className="gap-2">

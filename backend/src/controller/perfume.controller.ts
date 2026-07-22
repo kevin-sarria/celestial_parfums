@@ -222,6 +222,25 @@ export const editCategoria = async (req: Request, res: Response) => {
   }
 };
 
+export const getPrecios = async (_req: Request, res: Response) => {
+  try {
+    const data = await perfumeService.getPrecios();
+    res.status(200).json({ data });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const putPrecio = async (req: Request, res: Response) => {
+  try {
+    const { categoria_id, presentacion_id, precio } = req.body;
+    const data = await perfumeService.setPrecioLista(categoria_id, presentacion_id, precio ?? null);
+    res.status(200).json({ message: 'Precio actualizado', data });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const getPresentaciones = async (_req: Request, res: Response) => {
   try {
     const data = await perfumeService.getAllPresentaciones();

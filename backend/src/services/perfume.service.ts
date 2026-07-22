@@ -87,6 +87,19 @@ export const patchAgotadoPerfume = async (id: string, agotado: boolean) => {
   return result;
 };
 
+export const getPrecios = () => perfumeRepository.selectPrecios();
+
+/** Cambiar un precio de la lista mueve a todos los perfumes que lo heredan. */
+export const setPrecioLista = async (
+  categoriaId: number,
+  presentacionId: number,
+  precio: number | null,
+) => {
+  const result = await perfumeRepository.setPrecioLista(categoriaId, presentacionId, precio);
+  bustCatalogoCache();
+  return result;
+};
+
 export const getPerfumeBySlug = async (slug: string) => {
   const normalizedSlug = slug.toLowerCase().trim();
   const perfume = await perfumeRepository.findPerfumeBySlug(normalizedSlug);

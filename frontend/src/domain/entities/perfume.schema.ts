@@ -17,11 +17,27 @@ export const GENERO_SYMBOLS: Record<Genero, string> = {
   unisex: '⚥︎',
 };
 
+/** Lo que vale el perfume en una presentación concreta (ej: 30ml → 22.000). */
+export const precioPresentacionSchema = z.object({
+  presentacion: z.string(),
+  precio: z.number(),
+  /** true = precio exclusivo de este perfume, no el estándar de su categoría */
+  propio: z.boolean().default(false),
+});
+
+export type PrecioPresentacion = z.infer<typeof precioPresentacionSchema>;
+
 export const perfumeSchema = z.object({
   id: z.number(),
   nombre: z.string(),
   descripcion: z.string().nullable(),
+  /** El más barato de sus presentaciones (el "desde $X" de las cards). */
   precio: z.number(),
+  precios: z.array(precioPresentacionSchema).default([]),
+  /** true = sus presentaciones no valen lo mismo; la card muestra "desde". */
+  varios_precios: z.boolean().default(false),
+  /** Contratipo de esencia premium: distintivo propio y nunca entra en combos. */
+  esencia_premium: z.boolean().default(false),
   duracion: z.string().nullable(),
   proyeccion: z.string().nullable(),
   imagen_url: z.string().nullable(),

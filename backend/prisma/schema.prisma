@@ -117,8 +117,28 @@ model Categoria {
   perfumes   Perfume[]
   combos     Combo[]
   anuncios   AnuncioCategoria[]
+  precios    PrecioLista[]
 
   @@map("categorias")
+}
+
+/// Lista de precios del negocio: lo que vale UNA presentación dentro de UNA
+/// categoría (ej: Contratipo 30ML = 22.000). Es el precio estándar que heredan
+/// todos los perfumes de esa categoría; subirlo aquí los sube a todos de golpe.
+/// Un perfume puede salirse de la lista con su propio precio (PerfumePresentacion.precio).
+model PrecioLista {
+  id              Int          @id @default(autoincrement())
+  categoria_id    Int
+  presentacion_id Int
+  precio          Decimal      @db.Decimal(10, 2)
+  created_at      DateTime     @default(now())
+  updated_at      DateTime     @updatedAt
+  categoria       Categoria    @relation(fields: [categoria_id], references: [id], onDelete: Cascade)
+  presentacion    Presentacion @relation(fields: [presentacion_id], references: [id], onDelete: Cascade)
+
+  @@unique([categoria_id, presentacion_id])
+  @@index([presentacion_id])
+  @@map("precios")
 }
 
 // ── Publicidad: ventanas emergentes configurables del catálogo ──────────────
@@ -228,6 +248,9 @@ model Perfume {
   id           Int                @id @default(autoincrement())
   nombre       String             @db.VarChar(150)
   descripcion  String?            @db.Text
+  /// Precio de respaldo: se usa solo si la presentación no tiene precio propio
+  /// ni hay precio en la lista de su categoría. Los precios reales viven en
+  /// PrecioLista (por categoría) y PerfumePresentacion.precio (excepciones).
   precio       Decimal            @db.Decimal(10, 2)
   duracion     String?            @db.VarChar(50)
   proyeccion   String?            @db.VarChar(50)
@@ -235,6 +258,11 @@ model Perfume {
   genero       Genero?
   categoria_id Int?
   descuento    Int                @default(0) @db.UnsignedTinyInt
+  /// Contratipos hechos con la esencia de mayor calidad del laboratorio: valen
+  /// mucho más que el resto de su categoría (llevan precio propio) y NUNCA
+  /// entran en el precio de combo. Ojo: "premium" describe la ESENCIA, no es
+  /// perfumería nicho (Creed, MFK…), que es otra cosa.
+  esencia_premium Boolean         @default(false)
   agotado      Boolean            @default(false)
   created_at   DateTime           @default(now())
   updated_at   DateTime           @updatedAt
@@ -298,6 +326,7 @@ model Presentacion {
   updated_at DateTime              @updatedAt
   perfumes   PerfumePresentacion[]
   combos     Combo[]
+  precios    PrecioLista[]
 
   @@map("presentaciones")
 }
@@ -305,6 +334,9 @@ model Presentacion {
 model PerfumePresentacion {
   perfume_id      Int
   presentacion_id Int
+  /// Excepción a la lista de precios: lo que vale ESTE perfume en ESTA
+  /// presentación (los ultra nicho lo usan). null = precio de la lista.
+  precio          Decimal?     @db.Decimal(10, 2)
   perfume         Perfume      @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
   presentacion    Presentacion @relation(fields: [presentacion_id], references: [id], onDelete: Cascade)
 
