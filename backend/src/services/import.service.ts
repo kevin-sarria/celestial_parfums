@@ -2,7 +2,7 @@ import * as xlsx from 'xlsx';
 import crypto from 'crypto';
 import { prisma } from '../config/prisma';
 import { IMPORT_SPECS } from '../schemas/import.spec';
-import { buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
+import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
 import { cacheClear } from '../utils/cache';
 
 /** Toda importación puede tocar catálogo o ventas: se invalida el caché público. */
@@ -430,7 +430,7 @@ export const importEntity = async (entity: string, buffer: Buffer): Promise<Enti
     for (const { perfume_ids, ...venta } of data) {
       try {
         await prisma.venta.create({
-          data: { ...venta, perfumes: { create: perfume_ids.map((pid: number) => ({ perfume_id: pid })) } },
+          data: { ...venta, perfumes: { create: agruparEnlaces(perfume_ids) } },
         });
         result.insertados++;
       } catch (e: any) {
@@ -568,7 +568,7 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
     for (const { perfume_ids, ...venta } of data) {
       try {
         await prisma.venta.create({
-          data: { ...venta, perfumes: { create: perfume_ids.map((pid) => ({ perfume_id: pid })) } },
+          data: { ...venta, perfumes: { create: agruparEnlaces(perfume_ids) } },
         });
         result.ventas++;
       } catch (e: any) {

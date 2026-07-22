@@ -111,14 +111,26 @@ export const matchPerfumes = (referencia: string, index: PerfumeIndexEntry[]): n
     .filter(Boolean);
 
   if (partes.length > 1) {
-    const ids = new Set<number>();
+    // Un id repetido es información, no error: "360 Men, 360 Men, Eros" son
+    // 2 unidades del primero (agruparEnlaces las convierte en cantidad).
+    const ids: number[] = [];
     for (const parte of partes) {
       const id = matchPerfume(parte, index);
-      if (id != null) ids.add(id);
+      if (id != null) ids.push(id);
     }
-    if (ids.size > 0) return [...ids];
+    if (ids.length > 0) return ids;
   }
 
   const completo = matchPerfume(referencia, index);
   return completo != null ? [completo] : [];
+};
+
+/**
+ * Agrupa una lista de ids (con posibles repetidos) en enlaces venta→perfume
+ * con cantidad, listos para `perfumes: { create: ... }`.
+ */
+export const agruparEnlaces = (ids: number[]): { perfume_id: number; cantidad: number }[] => {
+  const conteo = new Map<number, number>();
+  for (const id of ids) conteo.set(id, (conteo.get(id) ?? 0) + 1);
+  return [...conteo].map(([perfume_id, cantidad]) => ({ perfume_id, cantidad }));
 };

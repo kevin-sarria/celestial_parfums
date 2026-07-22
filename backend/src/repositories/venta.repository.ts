@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma';
 import { CreateVentaDTO } from '../types/venta.type';
 import { paginatedResponse } from '../utils/pagination';
-import { buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
+import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
 import { aplicarCodigoAVenta, liberarCodigoDeVenta, validarCodigoParaVenta } from '../services/anuncio.service';
 
 const includeRel = {
@@ -22,7 +22,7 @@ const mapVenta = (v: any) => ({
   presentacion:       v.presentacion,
   referencia_perfume: v.referencia_perfume,
   // Una venta de combo puede llevar varios perfumes del catálogo enlazados
-  perfumes:           (v.perfumes ?? []).map((vp: any) => ({ id: vp.perfume.id, nombre: vp.perfume.nombre })),
+  perfumes:           (v.perfumes ?? []).map((vp: any) => ({ id: vp.perfume.id, nombre: vp.perfume.nombre, cantidad: vp.cantidad ?? 1 })),
   valor_venta:        Number(v.valor_venta),
   datos_adicionales:  v.datos_adicionales ?? null,
   pagada:             v.pagada,
@@ -59,17 +59,23 @@ export const getAllVentas = async (page: number, limit: number, search?: string)
   return paginatedResponse(rows.map(mapVenta), total, page, limit);
 };
 
-/** La referencia visible se construye con los nombres reales del catálogo. */
+/**
+ * La referencia visible se construye con los nombres reales del catálogo.
+ * Un id repetido significa varias unidades de la misma fragancia ("2× Eros").
+ */
 const referenciaFromIds = async (perfumeIds: number[]) => {
+  const enlaces = agruparEnlaces(perfumeIds);
   const perfumes = await prisma.perfume.findMany({
-    where: { id: { in: perfumeIds } },
+    where: { id: { in: enlaces.map((e) => e.perfume_id) } },
     select: { id: true, nombre: true },
   });
-  if (perfumes.length !== perfumeIds.length) {
+  if (perfumes.length !== enlaces.length) {
     throw new Error('Alguno de los perfumes seleccionados ya no existe en el catálogo');
   }
   const nombreById = new Map(perfumes.map((p) => [p.id, p.nombre]));
-  return perfumeIds.map((id) => nombreById.get(id)).join(', ');
+  return enlaces
+    .map((e) => (e.cantidad > 1 ? `${e.cantidad}× ${nombreById.get(e.perfume_id)}` : nombreById.get(e.perfume_id)))
+    .join(', ');
 };
 
 export const createVenta = async (data: CreateVentaDTO) => {
@@ -86,7 +92,7 @@ export const createVenta = async (data: CreateVentaDTO) => {
       cantidad_perfumes:  data.cantidad_perfumes,
       presentacion:       data.presentacion,
       referencia_perfume: referencia,
-      perfumes:           { create: data.perfume_ids.map((pid) => ({ perfume_id: pid })) },
+      perfumes:           { create: agruparEnlaces(data.perfume_ids) },
       valor_venta:        data.valor_venta,
       datos_adicionales:  data.datos_adicionales ?? null,
       pagada,
@@ -115,7 +121,7 @@ export const updateVenta = async (id: string, data: CreateVentaDTO) => {
       cantidad_perfumes:  data.cantidad_perfumes,
       presentacion:       data.presentacion,
       referencia_perfume: referencia,
-      perfumes:           { deleteMany: {}, create: data.perfume_ids.map((pid) => ({ perfume_id: pid })) },
+      perfumes:           { deleteMany: {}, create: agruparEnlaces(data.perfume_ids) },
       valor_venta:        data.valor_venta,
       datos_adicionales:  data.datos_adicionales ?? null,
       pagada,
@@ -145,7 +151,7 @@ export const relinkVentasPerfume = async () => {
     const ids = matchPerfumes(v.referencia_perfume, index);
     if (ids.length) {
       await prisma.ventaPerfume.createMany({
-        data: ids.map((pid) => ({ venta_id: v.id, perfume_id: pid })),
+        data: agruparEnlaces(ids).map((e) => ({ venta_id: v.id, ...e })),
         skipDuplicates: true,
       });
       enlazadas++;

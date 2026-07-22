@@ -44,7 +44,8 @@ export const ventasColumns: ColumnDef<Venta>[] = [
         {v.perfumes.length > 0 && (
           <SubText>
             <span className="inline-flex items-center gap-1 text-primary">
-              <LinkIcon className="size-3" /> {v.perfumes.map(p => p.nombre).join(' · ')}
+              <LinkIcon className="size-3" />{' '}
+              {v.perfumes.map(p => (p.cantidad > 1 ? `${p.cantidad}× ${p.nombre}` : p.nombre)).join(' · ')}
             </span>
           </SubText>
         )}

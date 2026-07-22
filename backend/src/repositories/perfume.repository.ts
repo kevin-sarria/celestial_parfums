@@ -209,19 +209,20 @@ export const findRelatedPerfumes = async (currentId: number, aromaNames: string[
 export const getDestacados = async (limitVendidos = 12) => {
   const desde = new Date(Date.now() - NUEVO_DIAS * 86400000);
 
-  // Una venta de combo enlaza varios perfumes: sus unidades se reparten
-  // (equitativamente) entre los perfumes detectados en esa venta.
+  // Una venta de combo enlaza varios perfumes, cada uno con su cantidad de
+  // unidades; el total de la venta se reparte proporcional a esas cantidades
+  // (los enlaces viejos, todos con cantidad 1, reparten en partes iguales).
   const enlaces = await prisma.ventaPerfume.findMany({
     include: { venta: { select: { cantidad_perfumes: true } } },
   });
-  const perfumesPorVenta = new Map<number, number>();
+  const unidadesPorVenta = new Map<number, number>();
   for (const e of enlaces) {
-    perfumesPorVenta.set(e.venta_id, (perfumesPorVenta.get(e.venta_id) ?? 0) + 1);
+    unidadesPorVenta.set(e.venta_id, (unidadesPorVenta.get(e.venta_id) ?? 0) + e.cantidad);
   }
   const vendidosMap = new Map<number, number>();
   for (const e of enlaces) {
-    const n = perfumesPorVenta.get(e.venta_id) ?? 1;
-    const unidades = Math.max(1, Math.round((e.venta.cantidad_perfumes || 1) / n));
+    const n = unidadesPorVenta.get(e.venta_id) ?? 1;
+    const unidades = Math.max(1, Math.round(((e.venta.cantidad_perfumes || 1) * e.cantidad) / n));
     vendidosMap.set(e.perfume_id, (vendidosMap.get(e.perfume_id) ?? 0) + unidades);
   }
 

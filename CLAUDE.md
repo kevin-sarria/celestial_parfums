@@ -67,12 +67,26 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 - Estadística "Ingresos este mes" = ventas de contado del mes + abonos del mes. La venta
   enlazada a crédito NUNCA suma ahí (su plata entra por abonos; evita doble conteo).
 
+### Unidades por perfume en una venta
+- `venta_perfume.cantidad` guarda cuántas unidades de ESA fragancia lleva la venta: un
+  combo de 3 puede ser 2× Eros + 1× Sauvage. Antes la PK (venta_id, perfume_id) solo
+  admitía el mismo perfume UNA vez y el repetido se perdía.
+- En el formulario de ventas se elige el mismo perfume varias veces y el chip muestra
+  `2× Nombre`; la "Cantidad" de la venta se sincroniza sola (sigue editable a mano).
+- `agruparEnlaces(ids)` (perfumeMatcher) convierte una lista con repetidos en
+  `{perfume_id, cantidad}`: úsala SIEMPRE antes de `perfumes: { create: ... }`.
+- "Los más vendidos" reparte `cantidad_perfumes` de la venta proporcional a esas
+  cantidades (los enlaces viejos, todos en 1, reparten en partes iguales como antes).
+- La referencia visible se escribe con el mismo formato (`2× Eros, Sauvage`).
+
 ### Matcher de perfumes (`backend/src/utils/perfumeMatcher.ts`)
 - Conservador: solo enlaza con candidato ÚNICO; ambigüedad = sin enlazar (fallo barato).
 - Alias (`one`→`1`, `aqua`→`acqua`) y tolerancia a typos de 1 letra SOLO en palabras de 5+.
 - Con separadores (,;+/" y ") se enlaza cada parte; el texto completo es plan B.
-- Tests de casos reales: correr el matcher contra "One Million" debe dar vacío (ambiguo),
-  nunca enlazar al Elixir.
+- `matchPerfumes` devuelve ids REPETIDOS a propósito ("Eros, Eros" = 2 unidades); no
+  deduplicar: quien consume usa `agruparEnlaces`.
+- Tests de casos reales: "One Million" solo enlaza si existe ese nombre exacto en el
+  catálogo; si solo hay variantes (Elixir, Parfum) debe dar vacío, nunca elegir una.
 
 ### Otros
 - "NUEVO" en cards: automático, perfumes con <30 días (`NUEVO_DIAS` en perfume.repository).
@@ -114,6 +128,11 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   imágenes. El backend fuerza `charset=utf-8` en JSON (app.ts).
 - **Puertos zombis locales**: si 4000/5173 quedan ocupados tras pruebas,
   `Get-NetTCPConnection -LocalPort N` → `Stop-Process`.
+- **`prisma generate` falla con EPERM** si el dev server (ts-node-dev) está corriendo:
+  tiene tomado `query_engine-windows.dll.node`. Detener node antes de compilar.
+- **Límite de 10 logins cada 15 min** (`authLimiter` en app.ts): las pruebas E2E que
+  hacen login repetido se bloquean. Reiniciar el backend limpia el contador (está en
+  memoria); mejor: un solo login por script y reusar la sesión.
 - **helmet** controla el CSP real (app.ts línea ~61), no solo nginx.
 - **La base de producción es MariaDB 10.11, NO MySQL** (VPS Ubuntu 24.04 en DonWeb; el
   servicio se llama `mariadb`, no `mysql`). JAMÁS instalar `mysql-client` en el servidor:
@@ -140,6 +159,8 @@ Migraciones pendientes de aplicar en producción al escribir esto:
 - `creditos.venta_id` (+ FK única a ventas)
 - `ventas.presentacion` VARCHAR(20)→VARCHAR(100) (los Excel reales traen textos
   largos tipo "1 de 30 ml y 2 de 60 ml"; el importador además recorta a 100)
+- `venta_perfume.cantidad` SMALLINT UNSIGNED NOT NULL DEFAULT 1 (unidades por
+  fragancia dentro de una venta)
 
 ## Cómo trabajamos (preferencias del dueño)
 

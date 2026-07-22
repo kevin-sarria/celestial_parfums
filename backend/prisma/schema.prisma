@@ -346,6 +346,9 @@ model Venta {
 model VentaPerfume {
   venta_id   Int
   perfume_id Int
+  // Unidades de ESTA fragancia dentro de la venta (un combo de 3 puede llevar
+  // 2 del mismo perfume); alimenta el conteo exacto de "los más vendidos".
+  cantidad   Int     @default(1) @db.UnsignedSmallInt
   venta      Venta   @relation(fields: [venta_id], references: [id], onDelete: Cascade)
   perfume    Perfume @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
 

@@ -88,7 +88,8 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
       dia: v.dia.slice(0, 10), persona: v.persona,
       user_id: v.user_id ?? '',
       cantidad_perfumes: String(v.cantidad_perfumes), presentacion: v.presentacion,
-      perfume_ids: v.perfumes.map(p => p.id),
+      // Un id repetido = varias unidades de la misma fragancia
+      perfume_ids: v.perfumes.flatMap(p => Array(p.cantidad ?? 1).fill(p.id) as number[]),
       valor_venta: String(v.valor_venta),
       datos_adicionales: v.datos_adicionales ?? '',
       pagada: v.pagada,
@@ -108,12 +109,28 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
     setChecking(false);
   };
 
+  // Elegir la misma fragancia otra vez suma una unidad (chip ×2, ×3…).
+  // La "Cantidad" se mantiene sola con lo elegido; sigue siendo editable a mano.
   const addPerfume = (id: number) => {
     if (!id) return;
-    setForm(f => (f.perfume_ids.includes(id) ? f : { ...f, perfume_ids: [...f.perfume_ids, id] }));
+    setForm(f => {
+      const perfume_ids = [...f.perfume_ids, id];
+      return { ...f, perfume_ids, cantidad_perfumes: String(perfume_ids.length) };
+    });
   };
+  // Quita UNA unidad; el chip desaparece cuando llega a cero
   const removePerfume = (id: number) =>
-    setForm(f => ({ ...f, perfume_ids: f.perfume_ids.filter(x => x !== id) }));
+    setForm(f => {
+      const i = f.perfume_ids.lastIndexOf(id);
+      if (i < 0) return f;
+      const perfume_ids = [...f.perfume_ids];
+      perfume_ids.splice(i, 1);
+      return {
+        ...f,
+        perfume_ids,
+        cantidad_perfumes: String(Math.max(1, perfume_ids.length)),
+      };
+    });
 
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault(); setLoading(true); setError('');
@@ -186,7 +203,17 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
     finally { setEnlazando(false); }
   };
 
-  const disponibles = perfumes.filter(p => !form.perfume_ids.includes(p.id));
+  // Todos siguen disponibles: repetir uno suma otra unidad de esa fragancia
+  const disponibles = perfumes;
+  // Unidades implícitas por los chips elegidos (para avisar si no cuadra con "Cantidad")
+  const unidadesElegidas = form.perfume_ids.length;
+  // Un chip por fragancia, con sus unidades, en el orden en que se fueron eligiendo
+  const chipsPerfumes = form.perfume_ids.reduce<{ id: number; nombre: string; cantidad: number }[]>((acc, id) => {
+    const ya = acc.find(c => c.id === id);
+    if (ya) ya.cantidad++;
+    else acc.push({ id, nombre: perfumes.find(p => p.id === id)?.nombre ?? `#${id}`, cantidad: 1 });
+    return acc;
+  }, []);
 
   return (
     <>
@@ -323,25 +350,24 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
             )}
             <BuscadorSelect
               opciones={disponibles}
-              placeholder="Buscar y agregar perfume…"
+              placeholder="Buscar y agregar perfume… (repite uno para sumar unidades)"
               onSelect={(id) => addPerfume(Number(id))}
             />
-            {/* Lo elegido se acumula debajo del control, como en cualquier multi-select */}
-            {form.perfume_ids.length > 0 && (
+            {/* Lo elegido se acumula debajo del control, como en cualquier multi-select.
+                Un perfume elegido varias veces se muestra una sola vez con su ×N. */}
+            {chipsPerfumes.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
-                {form.perfume_ids.map(id => {
-                  const p = perfumes.find(x => x.id === id);
-                  return (
-                    <span key={id} className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-[12.5px] font-medium text-primary">
-                      {p?.nombre ?? `#${id}`}
-                      <button type="button" aria-label={`Quitar ${p?.nombre ?? id}`}
-                        className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
-                        onClick={() => removePerfume(id)}>
-                        <X className="size-3" />
-                      </button>
-                    </span>
-                  );
-                })}
+                {chipsPerfumes.map(({ id, nombre, cantidad }) => (
+                  <span key={id} className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-[12.5px] font-medium text-primary">
+                    {cantidad > 1 && <strong className="tabular-nums">{cantidad}×</strong>}
+                    {nombre}
+                    <button type="button" aria-label={`Quitar una unidad de ${nombre}`}
+                      className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
+                      onClick={() => removePerfume(id)}>
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
               </div>
             )}
           </div>
@@ -351,6 +377,11 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
           <Field label="Cantidad *">
             <Input type="number" min="1" required value={form.cantidad_perfumes}
               onChange={e => setForm(f => ({ ...f, cantidad_perfumes: e.target.value }))} />
+            {unidadesElegidas > 0 && Number(form.cantidad_perfumes) !== unidadesElegidas && (
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Arriba elegiste {unidadesElegidas} {unidadesElegidas === 1 ? 'unidad' : 'unidades'}.
+              </p>
+            )}
           </Field>
           <Field label="Presentacion *">
             <NativeSelect value={form.presentacion}

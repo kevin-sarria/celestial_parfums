@@ -1,7 +1,7 @@
 import { prisma } from '../config/prisma';
 import { CreateCreditoDTO } from '../types/credito.type';
 import { paginatedResponse } from '../utils/pagination';
-import { buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
+import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
 
 const includeAll = {
   user: { select: { id: true, nombre: true, apellido: true, telefono: true, email: true, direccion: true, sin_cuenta: true } },
@@ -88,7 +88,7 @@ export const createCredito = async (data: CreateCreditoDTO) => {
         cantidad_perfumes:  Math.max(1, perfumeIds.length),
         presentacion:       '—',
         referencia_perfume: data.articulos,
-        perfumes:           { create: perfumeIds.map((pid) => ({ perfume_id: pid })) },
+        perfumes:           { create: agruparEnlaces(perfumeIds) },
         valor_venta:        data.deuda_inicial,
         datos_adicionales:  'Venta a crédito (se marca pagada al saldar el crédito)',
         pagada:             false,
