@@ -22,7 +22,8 @@ function AppLayout() {
         <AppRouter />
       </div>
       <CartDrawer />
-      <footer className="flex items-center justify-center gap-1.5 border-t border-border py-5 text-center text-[13px] text-muted-foreground">
+      {/* pb extra en móvil: los botones flotantes (WhatsApp/carrito) no deben taparlo */}
+      <footer className="flex flex-wrap items-center justify-center gap-1.5 border-t border-border px-5 pb-24 pt-5 text-center text-[13px] text-muted-foreground sm:pb-5">
         <BrandMark className="size-5" /> © {new Date().getFullYear()} Celestial Parfums. Todos los derechos reservados.
       </footer>
     </div>

@@ -147,7 +147,8 @@ export default function BackupSeguridad({ guardedFetch }: Props) {
               </p>
               <p className="text-[12.5px] leading-relaxed text-muted-foreground">
                 En tu app authenticator elige "Introducir clave de configuración", pega la
-                clave (cuenta: Celestial Parfums) — o si estás en el celular,{' '}
+                clave (cuenta: Celestial Parfums, tipo: <strong>basada en tiempo</strong>) —
+                o si estás en el celular,{' '}
                 <a href={setup.otpauth} className="font-medium text-primary underline">
                   tócala aquí para agregarla directo
                 </a>.

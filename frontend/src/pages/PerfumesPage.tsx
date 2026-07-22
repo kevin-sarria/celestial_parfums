@@ -29,7 +29,7 @@ export default function PerfumesPage() {
         subtitle={
           catalog.loading
             ? ''
-            : `${catalog.total} ${catalog.total === 1 ? 'perfume' : 'perfumes'} disponibles`
+            : `${catalog.total} ${catalog.total === 1 ? 'perfume disponible' : 'perfumes disponibles'}`
         }
         searchValue={catalog.search}
         searchPlaceholder="Buscar perfume..."

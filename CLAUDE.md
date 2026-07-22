@@ -115,6 +115,11 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 - **Puertos zombis locales**: si 4000/5173 quedan ocupados tras pruebas,
   `Get-NetTCPConnection -LocalPort N` → `Stop-Process`.
 - **helmet** controla el CSP real (app.ts línea ~61), no solo nginx.
+- **La base de producción es MariaDB 10.11, NO MySQL** (VPS Ubuntu 24.04 en DonWeb; el
+  servicio se llama `mariadb`, no `mysql`). JAMÁS instalar `mysql-client` en el servidor:
+  apt desinstala MariaDB server por conflicto de paquetes (pasó el 2026-07-21 y tumbó la
+  base en producción; los datos en /var/lib/mysql sobrevivieron). El mysqldump correcto es
+  el que trae `mariadb-client`.
 
 ## Deploy (runbook)
 

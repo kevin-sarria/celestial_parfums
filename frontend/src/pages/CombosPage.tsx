@@ -25,7 +25,7 @@ export default function CombosPage() {
         subtitle={
           catalog.loading
             ? ''
-            : `${catalog.filtered.length} ${catalog.filtered.length === 1 ? 'combo' : 'combos'} disponibles`
+            : `${catalog.filtered.length} ${catalog.filtered.length === 1 ? 'combo disponible' : 'combos disponibles'}`
         }
         searchValue={catalog.search}
         searchPlaceholder="Buscar combo..."
