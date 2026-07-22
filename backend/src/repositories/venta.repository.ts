@@ -161,11 +161,31 @@ export const deleteVenta = async (id: string) => {
 };
 
 export const getVentaTotales = async () => {
-  const agg = await prisma.venta.aggregate({
-    _sum: { cantidad_perfumes: true, valor_venta: true },
-  });
+  const inicioMes = new Date();
+  inicioMes.setDate(1);
+  inicioMes.setHours(0, 0, 0, 0);
+
+  // Ingresos del mes = plata que entró de verdad este mes:
+  //  - ventas de contado (sin crédito enlazado) pagadas, por su fecha de venta
+  //  - abonos de créditos, por su fecha de abono (así el crédito de un mes
+  //    pagado al siguiente cuenta en el mes en que se recibió el dinero)
+  // La venta enlazada a un crédito NUNCA suma aquí: su plata entra vía abonos.
+  const [agg, contadoMes, abonosMes] = await Promise.all([
+    prisma.venta.aggregate({ _sum: { cantidad_perfumes: true, valor_venta: true } }),
+    prisma.venta.aggregate({
+      _sum: { valor_venta: true },
+      where: { pagada: true, credito: null, dia: { gte: inicioMes } },
+    }),
+    prisma.creditoAbono.aggregate({
+      _sum: { monto: true },
+      where: { fecha: { gte: inicioMes } },
+    }),
+  ]);
+  const abonos = Number(abonosMes._sum.monto ?? 0);
   return {
     total_unidades: agg._sum.cantidad_perfumes ?? 0,
     total_dinero:   Number(agg._sum.valor_venta ?? 0),
+    ingresos_mes:   Number(contadoMes._sum.valor_venta ?? 0) + abonos,
+    abonos_mes:     abonos,
   };
 };

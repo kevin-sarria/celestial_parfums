@@ -72,6 +72,8 @@ export interface Credito {
   abonos: CreditoAbono[];
   total_abonado: number;
   total_en_deuda: number;
+  /** Venta enlazada: nace pendiente con el crédito y se paga al saldarlo. */
+  venta: { id: number; pagada: boolean } | null;
 }
 
 export interface Pago {

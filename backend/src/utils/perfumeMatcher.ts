@@ -13,6 +13,15 @@
 const STOPWORDS = new Set(['de', 'del', 'la', 'las', 'los', 'by', 'the', 'para', 'con', 'y', 'e', 'in', 'of']);
 const SIZE_RE = /^\d+\s*ml$/;
 
+// Grafías equivalentes vistas en el excel histórico. OJO: los alias generan MÁS
+// candidatos para una referencia ambigua, y más candidatos = "sin enlazar";
+// nunca producen un enlace al azar (la regla de candidato único sigue intacta).
+const ALIAS: Record<string, string> = {
+  one: '1',
+  uno: '1',
+  aqua: 'acqua',
+};
+
 /** minúsculas, sin tildes, solo letras/números separados por espacios */
 export const normalizeName = (s: string): string =>
   s
@@ -25,7 +34,28 @@ export const normalizeName = (s: string): string =>
 const tokenize = (s: string): string[] =>
   normalizeName(s)
     .split(' ')
-    .filter((t) => t && !STOPWORDS.has(t) && !SIZE_RE.test(t.replace(/\s/g, '')));
+    .filter((t) => t && !STOPWORDS.has(t) && !SIZE_RE.test(t.replace(/\s/g, '')))
+    .map((t) => ALIAS[t] ?? t);
+
+/** ¿Distancia Levenshtein ≤ 1? (una letra cambiada, sobrante o faltante) */
+const casiIgual = (a: string, b: string): boolean => {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1) return false;
+  let i = 0, j = 0, edits = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) { i++; j++; continue; }
+    if (++edits > 1) return false;
+    if (a.length > b.length) i++;
+    else if (b.length > a.length) j++;
+    else { i++; j++; }
+  }
+  return edits + (a.length - i) + (b.length - j) <= 1;
+};
+
+// Tolerancia a typos con cinturones: solo palabras largas (5+ letras, nunca
+// números ni "men"/"212") y máximo UNA letra de diferencia.
+const tokenMatch = (a: string, b: string): boolean =>
+  a === b || (a.length >= 5 && b.length >= 5 && casiIgual(a, b));
 
 export interface PerfumeIndexEntry {
   id: number;
@@ -40,7 +70,8 @@ export const buildPerfumeIndex = (perfumes: { id: number; nombre: string }[]): P
     tokens: new Set(tokenize(p.nombre)),
   }));
 
-const isSubset = (a: Set<string>, b: Set<string>) => [...a].every((t) => b.has(t));
+const isSubset = (a: Set<string>, b: Set<string>) =>
+  [...a].every((t) => b.has(t) || [...b].some((x) => tokenMatch(t, x)));
 
 /**
  * Devuelve el id del perfume que corresponde a la referencia, o null si no hay
@@ -68,24 +99,26 @@ export const matchPerfume = (referencia: string, index: PerfumeIndexEntry[]): nu
 
 /**
  * Una venta de combo referencia varios perfumes en un solo texto
- * ("invictus, sauvage y 1 million"). Primero se intenta el texto completo
- * (por si el nombre real contiene separadores) y, si no, se divide por
- * comas/;/+/" y " y se enlaza cada parte por separado.
+ * ("invictus, sauvage y 1 million"). Con separadores presentes se enlaza cada
+ * parte por su lado (si se probara primero el texto completo, un solo nombre
+ * reconocible se comería a los demás); el texto completo queda como plan B por
+ * si el nombre real del perfume contiene comas.
  */
 export const matchPerfumes = (referencia: string, index: PerfumeIndexEntry[]): number[] => {
-  const completo = matchPerfume(referencia, index);
-  if (completo != null) return [completo];
-
   const partes = referencia
     .split(/[,;+]|\sy\s/i)
     .map((s) => s.trim())
     .filter(Boolean);
-  if (partes.length <= 1) return [];
 
-  const ids = new Set<number>();
-  for (const parte of partes) {
-    const id = matchPerfume(parte, index);
-    if (id != null) ids.add(id);
+  if (partes.length > 1) {
+    const ids = new Set<number>();
+    for (const parte of partes) {
+      const id = matchPerfume(parte, index);
+      if (id != null) ids.add(id);
+    }
+    if (ids.size > 0) return [...ids];
   }
-  return [...ids];
+
+  const completo = matchPerfume(referencia, index);
+  return completo != null ? [completo] : [];
 };

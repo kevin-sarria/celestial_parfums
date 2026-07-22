@@ -29,7 +29,12 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [totales, setTotales] = useState<{ total_unidades: number; total_dinero: number } | null>(null);
+  const [totales, setTotales] = useState<{
+    total_unidades: number;
+    total_dinero: number;
+    ingresos_mes: number;
+    abonos_mes: number;
+  } | null>(null);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [perfumes, setPerfumes] = useState<PerfumeOption[]>([]);
 
@@ -208,6 +213,11 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
           <StatRow>
             <StatCard label="Total unidades vendidas" value={totales.total_unidades} />
             <StatCard label="Total en dinero" value={formatPrice(totales.total_dinero)} />
+            {/* Plata que entró de verdad este mes: contado + abonos de créditos */}
+            <StatCard
+              label={`Ingresos este mes${totales.abonos_mes > 0 ? ` (incluye ${formatPrice(totales.abonos_mes)} de créditos)` : ''}`}
+              value={formatPrice(totales.ingresos_mes)}
+            />
           </StatRow>
         )}
 

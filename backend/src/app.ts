@@ -25,6 +25,7 @@ import { usuarioRouter } from './routes/usuario.router';
 import { anuncioRouter } from './routes/anuncio.router';
 import { recomendacionRouter } from './routes/recomendacion.router';
 import { seoRouter } from './routes/seo.router';
+import { backupRouter } from './routes/backup.router';
 import { errorHandler } from './middleware/error.middleware';
 
 const app = express();
@@ -122,6 +123,7 @@ app.use('/api/portal', portalRouter);
 app.use('/api/usuarios', usuarioRouter);
 app.use('/api/anuncios', anuncioRouter);
 app.use('/api/recomendaciones', recomendacionRouter);
+app.use('/api/backup', backupRouter);
 
 // Middleware central de errores: HttpError responde con su status semántico
 // (404/409...), un Error de servicio mantiene el 400 histórico.

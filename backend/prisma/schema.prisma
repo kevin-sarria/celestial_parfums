@@ -333,6 +333,8 @@ model Venta {
   // Perfumes del catálogo detectados en la referencia (una venta de combo lleva varios).
   perfumes           VentaPerfume[]
   codigo             DescuentoCodigo?
+  // Crédito que generó esta venta (ventas a crédito nacen pendientes de pago)
+  credito            Credito?
 
   @@index([dia])
   @@index([user_id])
@@ -372,9 +374,12 @@ model Credito {
   user_id       Int
   articulos     String          @db.Text
   deuda_inicial Decimal         @db.Decimal(10, 2)
+  // Venta enlazada: nace pendiente con el crédito y se marca pagada al saldarlo
+  venta_id      Int?            @unique
   created_at    DateTime        @default(now())
   updated_at    DateTime        @updatedAt
   user          User            @relation(fields: [user_id], references: [id])
+  venta         Venta?          @relation(fields: [venta_id], references: [id], onDelete: SetNull)
   abonos        CreditoAbono[]
 
   @@index([user_id])

@@ -20,6 +20,7 @@ import { useGuardedFetch } from './useGuardedFetch';
 import { useSeo } from '../../application/hooks/useSeo';
 import { API, API_COMBOS, DEFAULT_PAGE_SIZE } from './helpers';
 import type { Tab, Lookup } from './types';
+import BackupSeguridad from './BackupSeguridad';
 import { PerfumesTab } from './tabs/PerfumesTab';
 import { CombosTab } from './tabs/CombosTab';
 import { DescuentosTab } from './tabs/DescuentosTab';
@@ -268,14 +269,18 @@ export default function DashboardPage() {
           </span>
         </div>
 
-        {/* En celular estas acciones viven dentro del drawer */}
-        <div className="hidden items-center gap-1.5 sm:flex">
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/catalog">Ver catalogo</Link>
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            Salir
-          </Button>
+        <div className="flex items-center gap-1.5">
+          {/* Respaldo de la base: visible en todos los tamaños */}
+          <BackupSeguridad guardedFetch={guardedFetch} />
+          {/* En celular estas acciones viven dentro del drawer */}
+          <div className="hidden items-center gap-1.5 sm:flex">
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/catalog">Ver catalogo</Link>
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              Salir
+            </Button>
+          </div>
         </div>
       </header>
 
