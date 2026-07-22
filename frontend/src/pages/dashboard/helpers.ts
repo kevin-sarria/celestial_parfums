@@ -17,7 +17,19 @@ export const API_UPLOAD   = `${BASE_URL}/api/upload`;
 
 export const DEFAULT_PAGE_SIZE = 10;
 
-export const fmtDate = (d: string) => new Date(d).toLocaleDateString('es-CO');
+/**
+ * Fechas de calendario (día de una venta, crédito, pago o vigencia de un anuncio):
+ * el backend las manda como AAAA-MM-DD y se leen tal cual. NO usar `new Date()`
+ * aquí: interpretaría el día como medianoche UTC y en Colombia (UTC-5) mostraría
+ * el día anterior (una venta del 22 aparecía como 21).
+ */
+export const fmtDate = (d: string) => {
+  const [y, m, dia] = d.slice(0, 10).split('-');
+  return `${Number(dia)}/${Number(m)}/${y}`;
+};
+
+/** Marcas de tiempo reales (registro de un usuario, emisión de un código): sí van a hora local. */
+export const fmtInstante = (d: string) => new Date(d).toLocaleDateString('es-CO');
 
 /** Interpreta el valor crudo del desplegable de persona enlazada. */
 export const parseClienteSeleccion = (val: string): ClienteSeleccion =>

@@ -89,6 +89,8 @@ export function RedesTab({ guardedFetch }: Props) {
   const [configError, setConfigError] = useState('');
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const avatarFileRef = useRef<HTMLInputElement>(null);
+  const [uploadingFondo, setUploadingFondo] = useState(false);
+  const fondoFileRef = useRef<HTMLInputElement>(null);
   const importFileRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
 
@@ -183,6 +185,21 @@ export function RedesTab({ guardedFetch }: Props) {
       setTimeout(() => setConfigMsg(''), 3000);
     } catch (err) { setConfigError(err instanceof Error ? err.message : 'No se pudo subir la imagen'); }
     finally { setUploadingAvatar(false); }
+  };
+
+  /** Sube la imagen de fondo; el backend la deja activa y borra la anterior del disco. */
+  const handleFondoFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploadingFondo(true); setConfigMsg(''); setConfigError('');
+    try {
+      const url = await subirImagenAdmin(guardedFetch, file, `${API_CONTACTO}/fondo`);
+      setForm(f => ({ ...f, fondo_tipo: 'imagen', fondo_imagen: url }));
+      setConfigMsg('Imagen de fondo subida y guardada ✓');
+      setTimeout(() => setConfigMsg(''), 3000);
+    } catch (err) { setConfigError(err instanceof Error ? err.message : 'No se pudo subir la imagen'); }
+    finally { setUploadingFondo(false); }
   };
 
   /** Descarga config + links como respaldo JSON re-importable. */
@@ -435,14 +452,34 @@ export function RedesTab({ guardedFetch }: Props) {
               <Field label="Tipo de fondo">
                 <NativeSelect value={form.fondo_tipo} onChange={e => set('fondo_tipo', e.target.value as 'color' | 'imagen')}>
                   <option value="color">Color sólido</option>
-                  <option value="imagen">Imagen (URL)</option>
+                  <option value="imagen">Imagen</option>
                 </NativeSelect>
               </Field>
               {form.fondo_tipo === 'color' ? (
                 <ColorField label="Color de fondo" value={form.fondo_color} onChange={v => set('fondo_color', v)} />
               ) : (
-                <Field label="Imagen de fondo (URL)">
-                  <Input value={form.fondo_imagen} placeholder="https://..." onChange={e => set('fondo_imagen', e.target.value)} />
+                <Field label="Imagen de fondo">
+                  <div className="flex gap-2">
+                    <Input
+                      value={form.fondo_imagen}
+                      placeholder="https://... o sube una imagen"
+                      onChange={e => set('fondo_imagen', e.target.value)}
+                    />
+                    <input
+                      ref={fondoFileRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp"
+                      className="hidden"
+                      onChange={handleFondoFile}
+                    />
+                    <Button
+                      type="button" variant="outline" className="h-9 shrink-0"
+                      disabled={uploadingFondo}
+                      onClick={() => fondoFileRef.current?.click()}
+                    >
+                      <Upload className="size-4" /> {uploadingFondo ? 'Subiendo...' : 'Subir'}
+                    </Button>
+                  </div>
                 </Field>
               )}
             </FieldRow>

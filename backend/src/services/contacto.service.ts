@@ -33,13 +33,21 @@ export const getAdminContacto = async () => {
   return { config, links };
 };
 
+/** La imagen de fondo solo es un archivo del servidor cuando el tipo es "imagen". */
+const fondoSubido = (c: { fondo_tipo: string; fondo_valor: string | null }) =>
+  c.fondo_tipo === 'imagen' ? c.fondo_valor : null;
+
 export const saveConfig = async (data: ContactoConfigInput) => {
-  // Si el avatar cambió y el anterior era un archivo subido, se elimina para no dejar basura.
+  // Si el avatar o el fondo cambiaron y el anterior era un archivo subido, se
+  // elimina para no dejar basura en el disco del servidor.
   const previous = await contactoRepo.selectConfig();
   await contactoRepo.upsertConfig(data);
   if (previous.avatar_url && previous.avatar_url !== (data.avatar_url || null)) {
     deleteLocalUpload(previous.avatar_url);
   }
+  const fondoAnterior = fondoSubido(previous);
+  const fondoNuevo = data.fondo_tipo === 'imagen' ? (data.fondo_valor || null) : null;
+  if (fondoAnterior && fondoAnterior !== fondoNuevo) deleteLocalUpload(fondoAnterior);
 };
 
 /**
@@ -54,6 +62,19 @@ export const updateAvatar = async (filename: string, baseUrl: string) => {
   if (previous.avatar_url && previous.avatar_url !== url) {
     deleteLocalUpload(previous.avatar_url);
   }
+  return url;
+};
+
+/**
+ * Sube una nueva imagen de fondo: la deja activa y borra la anterior del disco.
+ * Mismo criterio que el avatar (servidor pequeño, cero archivos huérfanos).
+ */
+export const updateFondo = async (filename: string, baseUrl: string) => {
+  const url = `${baseUrl}/api/uploads/${filename}`;
+  const previous = await contactoRepo.selectConfig();
+  await contactoRepo.updateFondoImagen(url);
+  const anterior = fondoSubido(previous);
+  if (anterior && anterior !== url) deleteLocalUpload(anterior);
   return url;
 };
 

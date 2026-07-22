@@ -7,7 +7,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import Modal from '../../../components/Modal';
 import { SmartTable } from '../../../components/table/SmartTable';
 import type { ColumnDef } from '../../../components/table/tableTypes';
-import { API_USUARIOS, fmtDate } from '../helpers';
+import { API_USUARIOS, fmtInstante } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import { useAuthContext } from '../../../application/context/useAuthContext';
 import type { GuardedFetch, Usuario, UsuarioForm } from '../types';
@@ -163,7 +163,7 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
         ),
       sortable: false, noTruncate: true },
     { key: 'created_at', header: 'Registrado', type: 'date',
-      getValue: u => u.created_at.slice(0, 10), render: u => fmtDate(u.created_at),
+      getValue: u => u.created_at.slice(0, 10), render: u => fmtInstante(u.created_at),
       className: 'whitespace-nowrap text-muted-foreground', noTruncate: true },
   ];
 

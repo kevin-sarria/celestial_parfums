@@ -4,6 +4,7 @@ import {
   getContactoAdmin,
   saveContactoConfig,
   uploadContactoAvatar,
+  uploadContactoFondo,
   addContactoLink,
   editContactoLink,
   removeContactoLink,
@@ -30,6 +31,7 @@ contactoRouter.get('/', getContacto);
 contactoRouter.get('/admin', requireAdmin, getContactoAdmin);
 contactoRouter.patch('/config', requireAdmin, validate(contactoConfigSchema), saveContactoConfig);
 contactoRouter.post('/avatar', requireAdmin, upload.single('image'), uploadContactoAvatar);
+contactoRouter.post('/fondo', requireAdmin, upload.single('image'), uploadContactoFondo);
 contactoRouter.get('/export', requireAdmin, exportContacto);
 contactoRouter.post('/import', requireAdmin, validate(contactoImportSchema), importContacto);
 contactoRouter.post('/links', requireAdmin, validate(createContactoLinkSchema), addContactoLink);

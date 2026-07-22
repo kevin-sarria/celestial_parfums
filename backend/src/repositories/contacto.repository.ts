@@ -85,6 +85,20 @@ export const updateAvatarUrl = async (url: string) => {
   }
 };
 
+/**
+ * Guarda la imagen de fondo recién subida. Cambia el tipo de fondo a "imagen"
+ * porque subirla es justamente la intención de usarla.
+ */
+export const updateFondoImagen = async (url: string) => {
+  const values = { fondo_tipo: 'imagen' as const, fondo_valor: url };
+  const existing = await prisma.contactoConfig.findFirst({ orderBy: { id: 'asc' } });
+  if (existing) {
+    await prisma.contactoConfig.update({ where: { id: existing.id }, data: values });
+  } else {
+    await prisma.contactoConfig.create({ data: values });
+  }
+};
+
 export const createLink = async (data: ContactoLinkInput) => {
   const max = await prisma.contactoLink.aggregate({ _max: { orden: true } });
   const link = await prisma.contactoLink.create({

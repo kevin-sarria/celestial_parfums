@@ -42,6 +42,19 @@ export const uploadContactoAvatar = async (req: Request, res: Response) => {
   }
 };
 
+export const uploadContactoFondo = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: 'No se recibió archivo' });
+      return;
+    }
+    const url = await contactoService.updateFondo(req.file.filename, getPublicBaseUrl(req));
+    res.json({ message: 'Imagen de fondo actualizada', data: { url } });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const addContactoLink = async (req: Request, res: Response) => {
   try {
     const id = await contactoService.createLink(req.body);

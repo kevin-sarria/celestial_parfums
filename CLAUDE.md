@@ -88,8 +88,31 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 - Tests de casos reales: "One Million" solo enlaza si existe ese nombre exacto en el
   catálogo; si solo hay variantes (Elixir, Parfum) debe dar vacío, nunca elegir una.
 
+### Fechas (bug ya corregido — no reintroducirlo)
+- Las fechas "de calendario" (`ventas.dia`, `creditos.fecha`, `pagos.dia`, `anuncios.inicio/fin`)
+  son `@db.Date`: el backend las manda como AAAA-MM-DD. Formatearlas con `new Date(s)`
+  las lee como medianoche UTC y en Colombia (UTC-5) mostraba **el día anterior**
+  (una venta del 22 salía como 21). Usar `fmtDate` de `dashboard/helpers.ts`, que parte
+  la cadena; para marcas de tiempo reales (`created_at`) usar `fmtInstante`.
+
+### Importadores/exportadores
+- Son genéricos por entidad: basta agregar la entidad a `IMPORT_SPECS` (columnas + notas)
+  y sus ramas en `exportEntity`/`importEntity`. El router, la plantilla, el modal y el
+  botón Exportar del frontend ya funcionan solos (`<ExportButton entity="..." />`).
+- Entidades: perfumes, aromas, ocasiones, categorias, presentaciones, combos, descuentos,
+  ventas, creditos, proveedores y **publicidad**.
+- Publicidad: exporta/importa las CAMPAÑAS, nunca los códigos ya emitidos (son de cada
+  persona). Importar siempre CREA (no actualiza): subir dos veces el archivo duplica.
+  En anuncios que no son de tipo `descuento` las columnas de cupón se guardan en cero
+  (un mensaje no puede colar un descuento).
+- `bustImportCache()` limpia `parfums:` y `anuncios:`.
+
 ### Otros
-- "NUEVO" en cards: automático, perfumes con <30 días (`NUEVO_DIAS` en perfume.repository).
+- Imagen de fondo de la página Contáctame: se sube con `POST /api/contacto/fondo`
+  (igual que el avatar); deja `fondo_tipo='imagen'` y borra del disco la imagen anterior.
+  `saveConfig` también borra el fondo viejo si cambió.
+- "NUEVO" en cards: automático, por antigüedad del registro (`NUEVO_DIAS` en
+  perfume.repository, hoy 7 días). El mismo valor decide qué sale en "Nuevos" del home.
 - Al borrar/reemplazar imagen de perfume/combo/anuncio se borra el archivo físico de
   uploads (`utils/imagenes.ts`) — servidor pequeño, cero huérfanos.
 - Respaldo de BD: botón "Respaldo" en el header del dashboard. Doble candado: admin + TOTP

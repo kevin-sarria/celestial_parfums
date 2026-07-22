@@ -9,8 +9,15 @@ import { usePortalCredito } from '../application/hooks/usePortalCredito';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
 
-const fmtFecha = (d: string) =>
-  new Date(d).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+/**
+ * Fechas de calendario (día del crédito o del abono): se construyen con los
+ * números del AAAA-MM-DD. Pasar la cadena a `new Date()` la leería como
+ * medianoche UTC y en Colombia mostraría el día anterior.
+ */
+const fmtFecha = (d: string) => {
+  const [y, m, dia] = d.slice(0, 10).split('-').map(Number);
+  return new Date(y, m - 1, dia).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
+};
 
 /**
  * Portal del cliente: consulta de SU crédito (deuda y cuotas pagadas).

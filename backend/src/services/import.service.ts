@@ -5,8 +5,11 @@ import { IMPORT_SPECS } from '../schemas/import.spec';
 import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
 import { cacheClear } from '../utils/cache';
 
-/** Toda importación puede tocar catálogo o ventas: se invalida el caché público. */
-export const bustImportCache = () => cacheClear('parfums:');
+/** Toda importación puede tocar catálogo, ventas o anuncios: se invalida el caché público. */
+export const bustImportCache = () => {
+  cacheClear('parfums:');
+  cacheClear('anuncios:');
+};
 
 /** Índice de perfumes para inferir el enlace venta→perfume por nombre. */
 async function loadPerfumeIndex() {
@@ -87,6 +90,13 @@ function clampPct(val: any): number {
 
 function lowerMap(items: { id: number; nombre: string }[]): Map<string, number> {
   return new Map(items.map(i => [i.nombre.toLowerCase(), i.id]));
+}
+
+/** Columnas de si/no: vacio cuenta como "si" (es el valor por defecto del sistema). */
+function toBool(val: any, porDefecto = true): boolean {
+  const s = toStr(val).toLowerCase();
+  if (s === '') return porDefecto;
+  return !['no', 'false', '0', 'n'].includes(s);
 }
 
 /** Lee la primera hoja del libro con encabezados normalizados (minusculas, sin espacios extra). */
@@ -201,6 +211,33 @@ export const exportEntity = async (entity: string): Promise<Buffer> => {
       ...perfumes.map(p => ({ tipo: 'perfume', nombre: p.nombre, descuento: p.descuento })),
       ...combos.map(c => ({ tipo: 'combo', nombre: c.nombre, descuento: c.descuento })),
     ]);
+  }
+
+  if (entity === 'publicidad') {
+    // Los códigos ya emitidos NO viajan en el archivo: son de cada persona.
+    const anuncios = await prisma.anuncio.findMany({
+      orderBy: [{ orden: 'asc' }, { id: 'asc' }],
+      include: { categorias: { include: { categoria: true } } },
+    });
+    return sheetFromRows(entity, anuncios.map(a => ({
+      titulo: a.titulo,
+      tipo: a.tipo,
+      mensaje: a.mensaje ?? '',
+      image_url: a.imagen_url ?? '',
+      audiencia: a.audiencia,
+      activo: a.activo ? 'si' : 'no',
+      una_vez: a.una_vez ? 'si' : 'no',
+      orden: a.orden,
+      inicio: a.inicio ? fmtDate(a.inicio) : '',
+      fin: a.fin ? fmtDate(a.fin) : '',
+      descuento_pct: a.descuento_pct,
+      categorias: a.categorias.map(c => c.categoria.nombre).join(', '),
+      aplica_combos: a.aplica_combos ? 'si' : 'no',
+      min_unidades: a.min_unidades,
+      min_monto: Number(a.min_monto),
+      max_descuento: Number(a.max_descuento),
+      max_canjes: a.max_canjes,
+    })));
   }
 
   if (entity === 'ventas') {
@@ -363,6 +400,71 @@ export const importEntity = async (entity: string, buffer: Buffer): Promise<Enti
         result.insertados++;
       } catch (e: any) {
         result.errores.push(`Fila ${fila} (${nombre}): ${e.message}`);
+        result.omitidos++;
+      }
+    }
+    return result;
+  }
+
+  // ── Publicidad (anuncios y cupones) ─────────────────────────────────────────
+  if (entity === 'publicidad') {
+    const categorias = await prisma.categoria.findMany();
+    const catMap = lowerMap(categorias);
+    const TIPOS = ['imagen', 'mensaje', 'descuento'];
+    const AUDIENCIAS = ['todos', 'no_registrados', 'registrados'];
+
+    for (const [i, r] of rows.entries()) {
+      const fila = i + 2;
+      const titulo = toStr(r['titulo']);
+      if (!titulo) { result.errores.push(`Fila ${fila}: el titulo es obligatorio`); result.omitidos++; continue; }
+
+      const tipo = toStr(r['tipo']).toLowerCase() || 'mensaje';
+      if (!TIPOS.includes(tipo)) {
+        result.errores.push(`Fila ${fila} (${titulo}): el tipo debe ser "mensaje", "imagen" o "descuento"`);
+        result.omitidos++; continue;
+      }
+      const audienciaRaw = toStr(r['audiencia']).toLowerCase() || 'todos';
+      if (!AUDIENCIAS.includes(audienciaRaw)) {
+        result.errores.push(`Fila ${fila} (${titulo}): la audiencia debe ser "todos", "registrados" o "no_registrados"`);
+        result.omitidos++; continue;
+      }
+      // Un anuncio de imagen sin imagen no se vería en el catálogo
+      const imagen = toNullStr(r['image_url']);
+      if (tipo === 'imagen' && !imagen) {
+        result.errores.push(`Fila ${fila} (${titulo}): un anuncio de tipo imagen necesita image_url`);
+        result.omitidos++; continue;
+      }
+      // Las reglas de cupón solo tienen sentido en los anuncios de descuento
+      const esCupon = tipo === 'descuento';
+      const catIds = esCupon
+        ? [...new Set(splitList(r['categorias']).map(n => catMap.get(n.toLowerCase())).filter((x): x is number => x != null))]
+        : [];
+
+      try {
+        await prisma.anuncio.create({
+          data: {
+            titulo,
+            mensaje: toNullStr(r['mensaje']),
+            imagen_url: imagen,
+            tipo: tipo as any,
+            audiencia: audienciaRaw as any,
+            una_vez: toBool(r['una_vez']),
+            activo: toBool(r['activo']),
+            orden: Math.max(0, Math.round(toNum(r['orden']))),
+            inicio: toDateOrNull(r['inicio']),
+            fin: toDateOrNull(r['fin']),
+            descuento_pct: esCupon ? clampPct(r['descuento_pct']) : 0,
+            aplica_combos: esCupon && toBool(r['aplica_combos'], false),
+            min_unidades: esCupon ? Math.max(0, Math.round(toNum(r['min_unidades']))) : 0,
+            min_monto: esCupon ? Math.max(0, toNum(r['min_monto'])) : 0,
+            max_descuento: esCupon ? Math.max(0, toNum(r['max_descuento'])) : 0,
+            max_canjes: esCupon ? Math.max(0, Math.round(toNum(r['max_canjes']))) : 0,
+            categorias: { create: catIds.map(id => ({ categoria_id: id })) },
+          },
+        });
+        result.insertados++;
+      } catch (e: any) {
+        result.errores.push(`Fila ${fila} (${titulo}): ${e.message}`);
         result.omitidos++;
       }
     }

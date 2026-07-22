@@ -6,8 +6,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { NativeSelect } from '@/components/ui/native-select';
 import Modal from '../../../components/Modal';
+import ExportButton from '../../../components/ExportButton';
+import ImportModal from '../../../components/ImportModal';
 import { Chip } from '../../../components/catalog/FilterChips';
-import { API_ANUNCIOS, fmtDate, formatPrice, subirImagenAdmin, validarCodigoDescuento } from '../helpers';
+import { API_ANUNCIOS, fmtDate, fmtInstante, formatPrice, subirImagenAdmin, validarCodigoDescuento } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { GuardedFetch, Anuncio, AnuncioForm, CodigoValidado, Lookup } from '../types';
 import { emptyAnuncioForm } from '../types';
@@ -33,6 +35,7 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [subiendo, setSubiendo] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -140,6 +143,10 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
         <Toolbar>
           <SectionTitle count={anuncios.length}>Publicidad</SectionTitle>
           <ToolbarActions>
+            <ExportButton entity="publicidad" guardedFetch={guardedFetch} />
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Upload className="size-4" /> Importar
+            </Button>
             <Button size="sm" onClick={openCreate}>+ Nuevo anuncio</Button>
           </ToolbarActions>
         </Toolbar>
@@ -188,7 +195,7 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
                   {resultado.cupon.min_monto > 0 && ` · Compra mínima ${formatPrice(resultado.cupon.min_monto)}`}
                   {resultado.cupon.max_descuento > 0 && ` · Tope ${formatPrice(resultado.cupon.max_descuento)}`}
                   <br />
-                  Emitido para: {resultado.persona}{resultado.emitido && ` · ${fmtDate(resultado.emitido)}`}
+                  Emitido para: {resultado.persona}{resultado.emitido && ` · ${fmtInstante(resultado.emitido)}`}
                   {resultado.venta && ` · Canjeado en la venta #${resultado.venta.id} (${resultado.venta.persona}, ${fmtDate(resultado.venta.dia)})`}
                 </p>
               )}
@@ -262,6 +269,14 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
           ))}
         </ul>
       </Section>
+
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        entity="publicidad"
+        guardedFetch={guardedFetch}
+        onImported={load}
+      />
 
       <Modal
         open={modal.open}
