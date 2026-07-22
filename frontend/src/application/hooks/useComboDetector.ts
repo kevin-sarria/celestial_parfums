@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { CartItem } from '../context/CartContext';
 import type { Combo } from '../../domain/entities/combo.schema';
 import { BASE_URL } from '../../infrastructure/api/client';
+import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
 import { finalPrice } from '@/lib/format';
 
 /** Un combo del catálogo armado automáticamente con los perfumes del carrito. */
@@ -131,12 +132,11 @@ export function useComboDetector(items: CartItem[], habilitado: boolean) {
 
   useEffect(() => {
     if (!habilitado || combos.length > 0) return;
-    const ac = new AbortController();
-    fetch(`${BASE_URL}/api/combos`, { signal: ac.signal })
-      .then((r) => r.json())
-      .then((json) => setCombos(((json.data ?? []) as Combo[]).filter((c) => c.activo)))
+    let vivo = true;
+    fetchJsonCached<{ data?: Combo[] }>(`${BASE_URL}/api/combos`)
+      .then((json) => { if (vivo) setCombos((json.data ?? []).filter((c) => c.activo)); })
       .catch(() => {}); // sin combos no hay detección, el carrito sigue normal
-    return () => ac.abort();
+    return () => { vivo = false; };
   }, [habilitado, combos.length]);
 
   return useMemo(() => detectarCombos(items, combos), [items, combos]);

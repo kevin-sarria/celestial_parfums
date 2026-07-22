@@ -3,8 +3,8 @@ import { Pencil, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { NativeSelect } from '@/components/ui/native-select';
 import Modal from '../../../components/Modal';
+import BuscadorSelect from '../../../components/BuscadorSelect';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
@@ -178,15 +178,19 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
           </Field>
         </FieldRow>
         <Field label="Empresa *">
-          <NativeSelect value={String(form.empresa_id)}
-            onChange={e => {
-              const val = e.target.value;
+          <BuscadorSelect
+            value={String(form.empresa_id)}
+            placeholder="— Selecciona una empresa —"
+            opciones={[
+              { id: '', nombre: '— Selecciona una empresa —' },
+              ...(!modal.editId ? [{ id: 'nuevo', nombre: '+ Registrar empresa nueva' }] : []),
+              ...empresas.map(em => ({ id: em.id, nombre: `${em.nombre}${em.nit ? ` · NIT: ${em.nit}` : ''}` })),
+            ]}
+            onSelect={id => {
+              const val = String(id);
               setForm(f => ({ ...f, empresa_id: val === '' ? '' : val === 'nuevo' ? 'nuevo' : Number(val) }));
-            }}>
-            <option value="">— Selecciona una empresa —</option>
-            {!modal.editId && <option value="nuevo">+ Registrar empresa nueva</option>}
-            {empresas.map(em => <option key={em.id} value={em.id}>{em.nombre}{em.nit ? ` · NIT: ${em.nit}` : ''}</option>)}
-          </NativeSelect>
+            }}
+          />
         </Field>
         {form.empresa_id === 'nuevo' && (
           <div className="space-y-3 rounded-xl border border-border bg-secondary/40 p-3.5">

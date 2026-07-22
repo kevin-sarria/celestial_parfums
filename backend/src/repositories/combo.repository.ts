@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma';
 import { Prisma } from '../generated/prisma';
 import { paginatedResponse } from '../utils/pagination';
 import { toSlug } from '../utils/slug';
+import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 
 type ComboRow = Prisma.ComboGetPayload<{ include: { categoria: true; presentacion: true } }>;
 import { CreateComboDTO } from '../types/combo.type';
@@ -69,8 +70,12 @@ export const createCombo = async (data: CreateComboDTO) => {
   return combo.id;
 };
 
-export const updateCombo = (id: string, data: CreateComboDTO) =>
-  prisma.combo.update({
+export const updateCombo = async (id: string, data: CreateComboDTO) => {
+  const previo = await prisma.combo.findUnique({
+    where: { id: Number(id) },
+    select: { imagen_url: true },
+  });
+  const combo = await prisma.combo.update({
     where: { id: Number(id) },
     data: {
       nombre:          data.nombre,
@@ -84,9 +89,15 @@ export const updateCombo = (id: string, data: CreateComboDTO) =>
       activo:          data.activo ?? true,
     },
   });
+  borrarImagenSiCambio(previo?.imagen_url, data.imagen_url);
+  return combo;
+};
 
-export const deleteCombo = (id: string) =>
-  prisma.combo.delete({ where: { id: Number(id) } });
+export const deleteCombo = async (id: string) => {
+  const borrado = await prisma.combo.delete({ where: { id: Number(id) } });
+  borrarImagenSubida(borrado.imagen_url);
+  return borrado;
+};
 
 export const patchComboDescuento = (id: string, descuento: number) =>
   prisma.combo.update({ where: { id: Number(id) }, data: { descuento } });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Perfume } from '../../domain/entities/perfume.schema';
 import { BASE_URL } from '../../infrastructure/api/client';
+import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
 
 export interface PerfumeVendido extends Perfume {
   unidades_vendidas: number;
@@ -15,15 +16,17 @@ export function useDestacados() {
   const [masVendidos, setMasVendidos] = useState<PerfumeVendido[]>([]);
 
   useEffect(() => {
-    const ac = new AbortController();
-    fetch(`${BASE_URL}/api/parfums/destacados`, { signal: ac.signal })
-      .then((r) => r.json())
+    let vivo = true;
+    fetchJsonCached<{ data?: { nuevos?: Perfume[]; mas_vendidos?: PerfumeVendido[] } }>(
+      `${BASE_URL}/api/parfums/destacados`,
+    )
       .then((json) => {
+        if (!vivo) return;
         setNuevos(json.data?.nuevos ?? []);
         setMasVendidos(json.data?.mas_vendidos ?? []);
       })
       .catch(() => {}); // sección opcional: si falla, el home sigue funcionando
-    return () => ac.abort();
+    return () => { vivo = false; };
   }, []);
 
   return { nuevos, masVendidos };

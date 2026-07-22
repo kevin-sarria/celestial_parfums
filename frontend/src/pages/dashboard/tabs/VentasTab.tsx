@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { NativeSelect } from '@/components/ui/native-select';
 import Modal from '../../../components/Modal';
+import BuscadorSelect from '../../../components/BuscadorSelect';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
@@ -261,14 +262,16 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
         </FieldRow>
 
         <Field label="Cliente enlazado (opcional)">
-          <NativeSelect value={String(form.user_id)}
-            onChange={e => setForm(f => ({ ...f, user_id: parseClienteSeleccion(e.target.value) }))}>
-            <option value="">— Sin cliente —</option>
-            <option value="nuevo">+ Registrar persona nueva</option>
-            {usuarios.map(u => (
-              <option key={u.id} value={u.id}>{personaLabel(u)}</option>
-            ))}
-          </NativeSelect>
+          <BuscadorSelect
+            value={String(form.user_id)}
+            placeholder="— Sin cliente —"
+            opciones={[
+              { id: '', nombre: '— Sin cliente —' },
+              { id: 'nuevo', nombre: '+ Registrar persona nueva' },
+              ...usuarios.map(u => ({ id: u.id, nombre: personaLabel(u) })),
+            ]}
+            onSelect={id => setForm(f => ({ ...f, user_id: parseClienteSeleccion(String(id)) }))}
+          />
         </Field>
         {form.user_id === 'nuevo' && (
           <div className="space-y-3 rounded-xl border border-border bg-secondary/40 p-3.5">
@@ -308,6 +311,12 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
                 datos; por favor selecciona uno o varios válidos.
               </p>
             )}
+            <BuscadorSelect
+              opciones={disponibles}
+              placeholder="Buscar y agregar perfume…"
+              onSelect={(id) => addPerfume(Number(id))}
+            />
+            {/* Lo elegido se acumula debajo del control, como en cualquier multi-select */}
             {form.perfume_ids.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
                 {form.perfume_ids.map(id => {
@@ -325,11 +334,6 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
                 })}
               </div>
             )}
-            <NativeSelect value=""
-              onChange={e => addPerfume(Number(e.target.value))}>
-              <option value="">+ Agregar perfume…</option>
-              {disponibles.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-            </NativeSelect>
           </div>
         </Field>
 

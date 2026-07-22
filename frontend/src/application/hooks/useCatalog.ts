@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Genero, Perfume } from '../../domain/entities/perfume.schema';
 import type { Combo } from '../../domain/entities/combo.schema';
 import { BASE_URL } from '../../infrastructure/api/client';
+import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
 
 const HOME_PREVIEW_SIZE = 12;
 
@@ -39,23 +40,24 @@ export function useCatalog() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Combos + opciones de filtros (una sola vez)
+  // Combos + opciones de filtros (con caché en memoria: al navegar no se repiten)
   useEffect(() => {
-    const ac = new AbortController();
+    let vivo = true;
     Promise.all([
-      fetch(`${BASE_URL}/api/parfums/categorias`, { signal: ac.signal }).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/parfums/tipos-aroma`, { signal: ac.signal }).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/parfums/ocasiones`, { signal: ac.signal }).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/combos`, { signal: ac.signal }).then((r) => r.json()),
+      fetchJsonCached<{ data?: Lookup[] }>(`${BASE_URL}/api/parfums/categorias`),
+      fetchJsonCached<{ data?: Lookup[] }>(`${BASE_URL}/api/parfums/tipos-aroma`),
+      fetchJsonCached<{ data?: Lookup[] }>(`${BASE_URL}/api/parfums/ocasiones`),
+      fetchJsonCached<{ data?: Combo[] }>(`${BASE_URL}/api/combos`),
     ])
       .then(([cats, aromas, ocasiones, combosJson]) => {
+        if (!vivo) return;
         setCategorias(cats.data ?? []);
-        setAllAromas(((aromas.data ?? []) as Lookup[]).map((a) => a.nombre).sort());
-        setAllOcasiones(((ocasiones.data ?? []) as Lookup[]).map((o) => o.nombre).sort());
+        setAllAromas((aromas.data ?? []).map((a) => a.nombre).sort());
+        setAllOcasiones((ocasiones.data ?? []).map((o) => o.nombre).sort());
         setCombos((combosJson.data ?? []).filter((c: Combo) => c.activo));
       })
-      .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar el catálogo'); });
-    return () => ac.abort();
+      .catch(() => { if (vivo) setError('No se pudo cargar el catálogo'); });
+    return () => { vivo = false; };
   }, []);
 
   // Vista previa de perfumes según filtros

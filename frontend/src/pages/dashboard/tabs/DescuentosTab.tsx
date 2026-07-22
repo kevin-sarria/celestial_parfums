@@ -8,6 +8,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import Modal from '../../../components/Modal';
+import BuscadorSelect from '../../../components/BuscadorSelect';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
@@ -372,18 +373,20 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
             )}
             {tipoSel && catInd && (
               <Field label={tipoSel === 'c' ? 'Combo' : 'Perfume'}>
-                <NativeSelect value={prodSel} onChange={e => setProdSel(e.target.value)}>
-                  <option value="">
-                    {candidatos.length === 0
+                <BuscadorSelect
+                  value={prodSel}
+                  placeholder={
+                    candidatos.length === 0
                       ? 'No hay productos sin descuento en esta categoría'
-                      : `— Elige un ${tipoSel === 'c' ? 'combo' : 'perfume'} (${candidatos.length}) —`}
-                  </option>
-                  {candidatos.map(c => (
-                    <option key={rowKey(c)} value={rowKey(c)}>
-                      {c.nombre} · {formatPrice(c.precio)}
-                    </option>
-                  ))}
-                </NativeSelect>
+                      : `— Elige un ${tipoSel === 'c' ? 'combo' : 'perfume'} (${candidatos.length}) —`
+                  }
+                  disabled={candidatos.length === 0}
+                  opciones={candidatos.map(c => ({
+                    id: rowKey(c),
+                    nombre: `${c.nombre} · ${formatPrice(c.precio)}`,
+                  }))}
+                  onSelect={id => setProdSel(String(id))}
+                />
               </Field>
             )}
             {prodSel && (

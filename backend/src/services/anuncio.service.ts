@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma';
 import { CreateAnuncioInput } from '../schemas/anuncio.schema';
 import { cacheClear, cacheGet, cacheSet } from '../utils/cache';
 import { generarCodigoDescuento } from '../utils/codigoDescuento';
+import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 import { conflict, notFound } from '../utils/httpError';
 
 const includeRel = {
@@ -131,6 +132,10 @@ export const createAnuncio = async (dto: CreateAnuncioInput) => {
 
 export const updateAnuncio = async (id: number, dto: CreateAnuncioInput) => {
   validar(dto);
+  const previo = await prisma.anuncio.findUnique({
+    where: { id },
+    select: { imagen_url: true },
+  });
   const row = await prisma.anuncio.update({
     where: { id },
     data: {
@@ -142,12 +147,14 @@ export const updateAnuncio = async (id: number, dto: CreateAnuncioInput) => {
     },
     include: includeRel,
   });
+  borrarImagenSiCambio(previo?.imagen_url, dto.imagen_url);
   cacheClear('anuncios:');
   return mapAnuncio(row);
 };
 
 export const deleteAnuncio = async (id: number) => {
-  await prisma.anuncio.delete({ where: { id } });
+  const borrado = await prisma.anuncio.delete({ where: { id } });
+  borrarImagenSubida(borrado.imagen_url);
   cacheClear('anuncios:');
 };
 

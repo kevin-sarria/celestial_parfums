@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { Genero, Perfume } from '../../domain/entities/perfume.schema';
 import { BASE_URL } from '../../infrastructure/api/client';
+import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
 
 export const PERFUMES_PAGE_SIZE = 24;
 
@@ -45,21 +46,22 @@ export function usePerfumes() {
     return () => clearTimeout(t);
   }, [search]);
 
-  // Opciones de los filtros (una sola vez)
+  // Opciones de los filtros (con caché en memoria: al navegar no se repiten)
   useEffect(() => {
-    const ac = new AbortController();
+    let vivo = true;
     Promise.all([
-      fetch(`${BASE_URL}/api/parfums/categorias`, { signal: ac.signal }).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/parfums/tipos-aroma`, { signal: ac.signal }).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/parfums/ocasiones`, { signal: ac.signal }).then((r) => r.json()),
+      fetchJsonCached<{ data?: Lookup[] }>(`${BASE_URL}/api/parfums/categorias`),
+      fetchJsonCached<{ data?: Lookup[] }>(`${BASE_URL}/api/parfums/tipos-aroma`),
+      fetchJsonCached<{ data?: Lookup[] }>(`${BASE_URL}/api/parfums/ocasiones`),
     ])
       .then(([cats, aromas, ocasiones]) => {
+        if (!vivo) return;
         setCategorias(cats.data ?? []);
-        setAllAromas(((aromas.data ?? []) as Lookup[]).map((a) => a.nombre).sort());
-        setAllOcasiones(((ocasiones.data ?? []) as Lookup[]).map((o) => o.nombre).sort());
+        setAllAromas((aromas.data ?? []).map((a) => a.nombre).sort());
+        setAllOcasiones((ocasiones.data ?? []).map((o) => o.nombre).sort());
       })
       .catch(() => {}); // sin lookups los filtros quedan vacíos, la lista sigue
-    return () => ac.abort();
+    return () => { vivo = false; };
   }, []);
 
   // Página actual según filtros

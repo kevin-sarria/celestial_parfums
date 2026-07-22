@@ -3,6 +3,7 @@ import { Prisma } from '../generated/prisma';
 import { CreatePerfumeDTO } from '../types/perfume.type';
 import { paginatedResponse } from '../utils/pagination';
 import { toSlug } from '../utils/slug';
+import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 
 type PerfumeRow = Prisma.PerfumeGetPayload<{
   include: {
@@ -122,6 +123,10 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
 
 export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
   const numId = Number(id);
+  const previo = await prisma.perfume.findUnique({
+    where: { id: numId },
+    select: { imagen_url: true },
+  });
   await prisma.$transaction([
     prisma.perfumeTipoAroma.deleteMany({ where: { perfume_id: numId } }),
     prisma.perfumeOcasion.deleteMany({ where: { perfume_id: numId } }),
@@ -152,11 +157,15 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
       },
     }),
   ]);
+  borrarImagenSiCambio(previo?.imagen_url, data.imagen_url);
   return { id };
 };
 
-export const deletePerfume = (id: string) =>
-  prisma.perfume.delete({ where: { id: Number(id) } });
+export const deletePerfume = async (id: string) => {
+  const borrado = await prisma.perfume.delete({ where: { id: Number(id) } });
+  borrarImagenSubida(borrado.imagen_url);
+  return borrado;
+};
 
 export const patchDescuentoPerfume = (id: string, descuento: number) =>
   prisma.perfume.update({ where: { id: Number(id) }, data: { descuento } });

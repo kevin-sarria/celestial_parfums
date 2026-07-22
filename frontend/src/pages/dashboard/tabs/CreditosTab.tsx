@@ -3,10 +3,10 @@ import { CircleDollarSign, Gauge, ShieldAlert, Trash2, TrendingDown, TrendingUp,
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { NativeSelect } from '@/components/ui/native-select';
 import { DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
+import BuscadorSelect from '../../../components/BuscadorSelect';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
@@ -219,12 +219,16 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
           </Field>
         </FieldRow>
         <Field label="Cliente *">
-          <NativeSelect value={String(form.user_id)}
-            onChange={e => setForm(f => ({ ...f, user_id: parseClienteSeleccion(e.target.value) }))}>
-            <option value="">— Selecciona una persona —</option>
-            <option value="nuevo">+ Registrar persona nueva</option>
-            {usuarios.map(u => <option key={u.id} value={u.id}>{personaLabel(u)}</option>)}
-          </NativeSelect>
+          <BuscadorSelect
+            value={String(form.user_id)}
+            placeholder="— Selecciona una persona —"
+            opciones={[
+              { id: '', nombre: '— Selecciona una persona —' },
+              { id: 'nuevo', nombre: '+ Registrar persona nueva' },
+              ...usuarios.map(u => ({ id: u.id, nombre: personaLabel(u) })),
+            ]}
+            onSelect={id => setForm(f => ({ ...f, user_id: parseClienteSeleccion(String(id)) }))}
+          />
         </Field>
         {form.user_id === 'nuevo' && (
           <div className="space-y-3 rounded-xl border border-border bg-secondary/40 p-3.5">

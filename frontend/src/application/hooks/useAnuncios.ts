@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
+import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
 import { useAuthContext } from '../context/useAuthContext';
 
 export interface Anuncio {
@@ -34,10 +35,10 @@ export function useAnuncios() {
 
   useEffect(() => {
     if (isAdmin) return;
-    const ac = new AbortController();
-    fetch(`${BASE_URL}/api/anuncios`, { signal: ac.signal })
-      .then((r) => r.json())
+    let vivo = true;
+    fetchJsonCached<{ data?: Anuncio[] }>(`${BASE_URL}/api/anuncios`)
       .then((json) => {
+        if (!vivo) return;
         const anuncios: Anuncio[] = json.data ?? [];
         setPendientes(
           anuncios.filter((a) => {
@@ -49,7 +50,7 @@ export function useAnuncios() {
         );
       })
       .catch(() => {}); // los popups son opcionales: si falla, la página sigue
-    return () => ac.abort();
+    return () => { vivo = false; };
   }, [user, isAdmin]);
 
   const marcarVisto = useCallback((a: Anuncio) => {
@@ -92,8 +93,7 @@ export function useCupones() {
         return;
       }
       // Sin cuenta: cupones de audiencia todos/no_registrados no usados en este navegador
-      const res = await fetch(`${BASE_URL}/api/anuncios`);
-      const json = await res.json();
+      const json = await fetchJsonCached<{ data?: Anuncio[] }>(`${BASE_URL}/api/anuncios`);
       setCupones(
         ((json.data ?? []) as Anuncio[]).filter(
           (a) =>
