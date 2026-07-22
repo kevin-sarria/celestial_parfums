@@ -15,7 +15,7 @@ type PerfumeRow = Prisma.PerfumeGetPayload<{
 }>;
 
 // Un perfume cuenta como "nuevo lanzamiento" durante sus primeros 30 días en el catálogo.
-const NUEVO_DIAS = 30;
+const NUEVO_DIAS = 7;
 const esNuevo = (created: Date) => Date.now() - created.getTime() < NUEVO_DIAS * 86400000;
 
 export const mapPerfume = (p: PerfumeRow) => ({
