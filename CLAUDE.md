@@ -138,6 +138,8 @@ npm run build               # nginx sirve frontend/dist directamente
 Migraciones pendientes de aplicar en producción al escribir esto:
 - `anuncios.max_descuento` + `anuncios.max_canjes`
 - `creditos.venta_id` (+ FK única a ventas)
+- `ventas.presentacion` VARCHAR(20)→VARCHAR(100) (los Excel reales traen textos
+  largos tipo "1 de 30 ml y 2 de 60 ml"; el importador además recorta a 100)
 
 ## Cómo trabajamos (preferencias del dueño)
 

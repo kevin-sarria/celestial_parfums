@@ -320,7 +320,7 @@ model Venta {
   // Enlace opcional con la persona (usuario/ficha) que compró.
   user_id            Int?
   cantidad_perfumes  Int
-  presentacion       String   @db.VarChar(20)
+  presentacion       String   @db.VarChar(100)
   referencia_perfume String   @db.Text
   valor_venta        Decimal  @db.Decimal(10, 2)
   datos_adicionales  String?  @db.Text

@@ -6,7 +6,7 @@ export const createVentaSchema = z.object({
   // Enlace opcional con la persona registrada (usuario o ficha)
   user_id: z.number().int().positive().nullable().optional(),
   cantidad_perfumes: z.number().int().min(1, 'La cantidad debe ser al menos 1'),
-  presentacion: z.string().min(1, 'La presentación es obligatoria').max(20),
+  presentacion: z.string().min(1, 'La presentación es obligatoria').max(100),
   // Solo perfumes del catálogo: al menos uno (una venta de combo lleva varios)
   perfume_ids: z.array(z.number().int().positive()).min(1, 'Selecciona al menos un perfume del catálogo'),
   valor_venta: z.number().positive('El valor debe ser mayor a 0'),
