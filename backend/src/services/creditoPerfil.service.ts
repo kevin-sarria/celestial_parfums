@@ -8,6 +8,9 @@ import { prisma } from '../config/prisma';
  *   $300.000 o más, el cupo sube 10% (una vez por crédito).
  * - PAGO LENTO: si con saldo pendiente pasan más de 30 días sin ningún abono,
  *   el cupo baja 10% (una vez por crédito).
+ * - CUPÓN VENCIDO: un crédito que usó cupón y sigue con saldo pasada su fecha
+ *   límite pactada castiga el DOBLE (-20%). El descuento + el plazo incumplido
+ *   no pueden salir gratis. Reemplaza al pago lento en ese crédito (no se suman).
  * - VETO: un crédito con saldo pendiente y más de 60 días sin movimiento veta
  *   al cliente para créditos directos (hasta que vuelva a abonar).
  *
@@ -24,7 +27,7 @@ const FACTOR_MIN = 0.5;
 const FACTOR_MAX = 2;
 
 export interface EventoCredito {
-  tipo: 'pago_rapido' | 'pago_lento' | 'veto';
+  tipo: 'pago_rapido' | 'pago_lento' | 'cupon_vencido' | 'veto';
   credito_id: number;
   detalle: string;
 }
@@ -35,7 +38,11 @@ export const getPerfilCrediticio = async (userId: number) => {
     include: {
       creditos: {
         orderBy: { fecha: 'asc' },
-        include: { abonos: { orderBy: { fecha: 'asc' } } },
+        include: {
+          abonos: { orderBy: { fecha: 'asc' } },
+          // Un crédito "con cupón" es el que tiene un código canjeado en su venta
+          venta: { select: { codigo: { select: { codigo: true } } } },
+        },
       },
     },
   });
@@ -79,7 +86,18 @@ export const getPerfilCrediticio = async (userId: number) => {
     const diasSinAbono = saldo > 0 ? (hoy - movimientos[movimientos.length - 1]) / DIA : 0;
     if (saldo > 0) mayorBrechaDias = Math.max(mayorBrechaDias, diasSinAbono);
 
-    if (mayorBrechaDias > PAGO_LENTO_DIAS) {
+    // Crédito con cupón + saldo pendiente pasada su fecha límite = castigo doble.
+    const conCupon = !!c.venta?.codigo;
+    const vencido = saldo > 0 && c.fecha_limite != null && hoy > c.fecha_limite.getTime();
+
+    if (conCupon && vencido) {
+      factor *= 0.8;
+      eventos.push({
+        tipo: 'cupon_vencido',
+        credito_id: c.id,
+        detalle: `Usó cupón y no saldó antes del ${c.fecha_limite!.toISOString().slice(0, 10)} (-20% cupo)`,
+      });
+    } else if (mayorBrechaDias > PAGO_LENTO_DIAS) {
       factor *= 0.9;
       eventos.push({
         tipo: 'pago_lento',

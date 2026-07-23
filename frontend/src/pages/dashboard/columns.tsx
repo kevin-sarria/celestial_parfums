@@ -84,7 +84,22 @@ export const creditosColumns: ColumnDef<Credito>[] = [
       </span>
     ), className: cellName },
   { key: 'telefono', header: 'Telefono', type: 'string', getValue: c => c.cliente.telefono ?? '', render: c => c.cliente.telefono ?? '—', className: cellMeta, noTruncate: true },
-  { key: 'articulos', header: 'Articulos', type: 'string', getValue: c => c.articulos },
+  { key: 'articulos', header: 'Articulos', type: 'string', getValue: c => c.articulos,
+    render: c => (
+      <span>
+        {c.articulos}
+        {c.codigo && <SubText>Cupón {c.codigo.codigo} (−{c.codigo.descuento_pct}%)</SubText>}
+      </span>
+    ) },
+  // Acuerdo de pago: se resalta en rojo cuando ya venció con saldo pendiente
+  { key: 'fecha_limite', header: 'Límite', type: 'date',
+    getValue: c => c.fecha_limite?.slice(0, 10) ?? '',
+    render: c => c.fecha_limite
+      ? (c.vencido
+          ? <Badge variant="outline" className="border-rose-300 bg-rose-50 text-rose-600">Vencido · {fmtDate(c.fecha_limite)}</Badge>
+          : <span className={cellMeta}>{fmtDate(c.fecha_limite)}</span>)
+      : <>—</>,
+    noTruncate: true },
   { key: 'deuda_inicial', header: 'Deuda inicial', type: 'currency', getValue: c => c.deuda_inicial, render: c => formatPrice(c.deuda_inicial), className: cellPrice, noTruncate: true },
   { key: 'total_abonado', header: 'Abonado', type: 'currency',
     getValue: c => c.total_abonado,

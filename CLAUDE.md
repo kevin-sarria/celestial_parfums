@@ -85,6 +85,37 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 - Estadística "Ingresos este mes" = ventas de contado del mes + abonos del mes. La venta
   enlazada a crédito NUNCA suma ahí (su plata entra por abonos; evita doble conteo).
 
+### Crédito itemizado (productos reales, no texto libre)
+- El formulario de crédito arma **líneas**: perfume del catálogo + su talla + cantidad.
+  El precio sale de la lista de precios (cascada de `mapPerfume`); el descuento de la
+  página se aplica por defecto pero cada línea tiene un check **"sin −X%"** para quitarlo
+  (a crédito no siempre aplica lo del contado). La suma = "valor de los productos".
+- **Interruptor "aplicar precio de combo"** (apagado por defecto): a crédito el mayoreo NO
+  se aplica solo; si se enciende, reutiliza `detectarCombos` (mismo motor del carrito) y
+  resta el ahorro. Los ítems con descuento propio o esencia premium no entran al combo.
+- El form manda `perfume_ids` (repetidos por cantidad), `presentacion` (resumen "30ml,
+  60ml") y `articulos` (texto generado). El backend usa los ids directo (sin matcher);
+  el importador de Excel sigue infiriéndolos del texto libre. `deuda_inicial` = valor de
+  los productos ANTES del cupón; se recalcula de las líneas salvo que se edite a mano.
+
+### Cupón sobre un crédito (crédito+descuento)
+- En crear crédito se puede canjear un código: el `deuda_inicial` que se teclea es el
+  valor ANTES del cupón; el backend aplica el % (con tope `max_descuento`) y guarda la
+  deuda ya descontada. El cupón se consume **al instante** (canjeado, un solo uso), NO
+  espera a que pague todo — a diferencia de una venta normal (`canjearCodigoEnCredito`).
+- Borrar el crédito **libera** el cupón (vuelve a activo): revierte la compra. Es el único
+  camino para "devolver" un cupón canjeado en crédito.
+- `creditos.fecha_limite` (`@db.Date`): acuerdo de pago, por defecto 1 mes desde `fecha`,
+  editable. El crédito sale "Vencido" en la tabla si sigue con saldo pasada esa fecha.
+
+### Motor de cupo (`creditoPerfil.service.ts`, solo admin)
+- Recalcula SIEMPRE desde el historial (no se guarda). Factor sobre `users.cupo_base`,
+  acotado 0.5–2.0. Pago rápido (≥300k en 14 días) ×1.1; pago lento (>30 días sin abonar
+  con saldo) ×0.9; veto a los 60 días sin mover.
+- **Cupón vencido**: un crédito que usó cupón y sigue con saldo pasada su `fecha_limite`
+  castiga el DOBLE (×0.8, evento `cupon_vencido`) y reemplaza al pago lento en ESE crédito
+  (no se suman). Es "el factor tiempo en contra": descuento + plazo incumplido no salen gratis.
+
 ### Unidades por perfume en una venta
 - `venta_perfume.cantidad` guarda cuántas unidades de ESA fragancia lleva la venta: un
   combo de 3 puede ser 2× Eros + 1× Sauvage. Antes la PK (venta_id, perfume_id) solo
@@ -210,6 +241,8 @@ Migraciones pendientes de aplicar en producción al escribir esto:
   cada categoría+presentación y deja como excepción a los que no coincidan → **nadie
   cambia de precio al aplicarla**. Después hay que corregir a mano en Catálogo → Precios
   las tallas que hoy no tienen dato real (50ml = 45.000 y 100ml = 70.000).
+- `20260722140000_credito_fecha_limite`: `creditos.fecha_limite` (acuerdo de pago). La
+  migración retro-completa los créditos existentes con fecha + 1 mes.
 
 ## Cómo trabajamos (preferencias del dueño)
 

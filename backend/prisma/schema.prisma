@@ -409,6 +409,10 @@ model Credito {
   user_id       Int
   articulos     String          @db.Text
   deuda_inicial Decimal         @db.Decimal(10, 2)
+  // Acuerdo de pago: fecha límite pactada (por defecto 1 mes desde `fecha`).
+  // Si un crédito con cupón sigue con saldo pasada esta fecha, el motor de cupo
+  // aplica un castigo extra (el "factor tiempo" jugando en contra del cliente).
+  fecha_limite  DateTime?       @db.Date
   // Venta enlazada: nace pendiente con el crédito y se marca pagada al saldarlo
   venta_id      Int?            @unique
   created_at    DateTime        @default(now())

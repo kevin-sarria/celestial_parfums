@@ -336,6 +336,34 @@ export const aplicarCodigoAVenta = async (codigoStr: string, ventaId: number, pa
   });
 };
 
+/** Datos del cupón para calcular su descuento sobre un monto (créditos). */
+export const getCuponParaCredito = async (codigoStr: string) => {
+  const row = await validarCodigoParaVenta(codigoStr, null);
+  const anuncio = await prisma.anuncio.findUnique({
+    where: { id: row.anuncio_id },
+    select: { descuento_pct: true, max_descuento: true },
+  });
+  return {
+    codigoId: row.id,
+    descuento_pct: anuncio?.descuento_pct ?? 0,
+    max_descuento: Number(anuncio?.max_descuento ?? 0),
+  };
+};
+
+/**
+ * Canje INMEDIATO de un código sobre la venta de un crédito. A diferencia de una
+ * venta normal (que canjea al pagarse), un crédito con cupón consume el código
+ * al instante: el cliente ya recibió el descuento, el cupón muere ahí (un solo
+ * uso, irreversible salvo que se borre el crédito, que lo libera).
+ */
+export const canjearCodigoEnCredito = async (codigoStr: string, ventaId: number) => {
+  const row = await validarCodigoParaVenta(codigoStr, ventaId);
+  await prisma.descuentoCodigo.update({
+    where: { id: row.id },
+    data: { venta_id: ventaId, estado: 'canjeado', canjeado_at: new Date() },
+  });
+};
+
 /**
  * Libera los códigos enlazados a una venta (editada sin código o eliminada):
  * vuelven a estar activos para que la persona pueda usarlos en otra compra.

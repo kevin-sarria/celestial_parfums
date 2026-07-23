@@ -16,7 +16,7 @@ export interface PerfilCredito {
   cupo_disponible: number;
   vetado: boolean;
   tiene_credito_activo: boolean;
-  eventos: { tipo: 'pago_rapido' | 'pago_lento' | 'veto'; credito_id: number; detalle: string }[];
+  eventos: { tipo: 'pago_rapido' | 'pago_lento' | 'cupon_vencido' | 'veto'; credito_id: number; detalle: string }[];
   creditos: {
     id: number; fecha: string; articulos: string; deuda_inicial: number;
     abonado: number; saldo: number; dias_sin_abono: number;
@@ -61,6 +61,8 @@ export interface CreditoAbono {
 export interface Credito {
   id: number;
   fecha: string;
+  /** Acuerdo de pago: fecha límite pactada (por defecto 1 mes desde la fecha). */
+  fecha_limite: string | null;
   /** La persona (usuario o ficha) dueña del crédito. */
   cliente: {
     id: number; nombre: string; apellido: string;
@@ -72,6 +74,10 @@ export interface Credito {
   abonos: CreditoAbono[];
   total_abonado: number;
   total_en_deuda: number;
+  /** true = sigue con saldo pasada la fecha límite. */
+  vencido: boolean;
+  /** Cupón canjeado en este crédito (si lo hubo). */
+  codigo: { codigo: string; descuento_pct: number; titulo: string } | null;
   /** Venta enlazada: nace pendiente con el crédito y se paga al saldarlo. */
   venta: { id: number; pagada: boolean } | null;
 }
@@ -144,20 +150,55 @@ export const emptyVentaForm = (): VentaForm => ({
   nuevo_telefono: '', nuevo_direccion: '',
 });
 
+/** Una línea del crédito: un perfume con su talla, cantidad y si lleva descuento. */
+export interface LineaCredito {
+  /** clave estable para React (varias líneas del mismo perfume son válidas) */
+  key: string;
+  perfume_id: number;
+  presentacion: string;
+  cantidad: number;
+  /** true = a este cliente NO se le aplica el descuento de la página en esta línea */
+  sin_descuento: boolean;
+}
+
 export interface CreditoForm {
   fecha: string; user_id: ClienteSeleccion;
   nuevo_nombre: string; nuevo_apellido: string; nuevo_correo: string;
   nuevo_telefono: string; nuevo_direccion: string;
+  /** Texto de artículos: se arma solo con las líneas (o se edita a mano). */
   articulos: string; deuda_inicial: string;
+  /** Productos del crédito (editor de líneas). */
+  lineas: LineaCredito[];
+  /** true = aplicar precio de combo (mayoreo) a este crédito. */
+  aplicar_combo: boolean;
+  /** true = la deuda se editó a mano; deja de recalcularse desde las líneas. */
+  deuda_manual: boolean;
+  /** Fecha límite pactada (por defecto 1 mes desde la fecha). */
+  fecha_limite: string;
+  /** Código de descuento a canjear en el crédito (opcional). */
+  codigo_descuento: string;
 }
 
-export const emptyCreditoForm = (): CreditoForm => ({
-  fecha: new Date().toISOString().slice(0, 10),
-  user_id: '',
-  nuevo_nombre: '', nuevo_apellido: '', nuevo_correo: '',
-  nuevo_telefono: '', nuevo_direccion: '',
-  articulos: '', deuda_inicial: '',
-});
+/** Fecha AAAA-MM-DD un mes después de la dada (por defecto del acuerdo de pago). */
+export const unMesDespues = (fecha: string) => {
+  const d = new Date(fecha);
+  d.setMonth(d.getMonth() + 1);
+  return d.toISOString().slice(0, 10);
+};
+
+export const emptyCreditoForm = (): CreditoForm => {
+  const hoy = new Date().toISOString().slice(0, 10);
+  return {
+    fecha: hoy,
+    user_id: '',
+    nuevo_nombre: '', nuevo_apellido: '', nuevo_correo: '',
+    nuevo_telefono: '', nuevo_direccion: '',
+    articulos: '', deuda_inicial: '',
+    lineas: [], aplicar_combo: false, deuda_manual: false,
+    fecha_limite: unMesDespues(hoy),
+    codigo_descuento: '',
+  };
+};
 
 export interface PagoForm {
   dia: string; empresa_id: number | 'nuevo' | '';
