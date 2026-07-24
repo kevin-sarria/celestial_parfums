@@ -2,7 +2,7 @@ import { prisma } from '../config/prisma';
 import { CreateCreditoDTO } from '../types/credito.type';
 import { paginatedResponse } from '../utils/pagination';
 import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
-import { canjearCodigoEnCredito, getCuponParaCredito, liberarCodigoDeVenta } from '../services/anuncio.service';
+import { canjearCodigoEnCredito, liberarCodigoDeVenta } from '../services/anuncio.service';
 
 const includeAll = {
   user: { select: { id: true, nombre: true, apellido: true, telefono: true, email: true, direccion: true, sin_cuenta: true } },
@@ -11,17 +11,13 @@ const includeAll = {
     select: {
       id: true,
       pagada: true,
-      codigo: { select: { codigo: true, estado: true, anuncio: { select: { titulo: true, descuento_pct: true } } } },
+      presentacion: true,
+      // Productos enlazados: para reconstruir las líneas al editar
+      perfumes: { select: { perfume_id: true, cantidad: true } },
+      codigo: { select: { codigo: true, estado: true, anuncio: { select: { titulo: true, descuento_pct: true, max_descuento: true } } } },
     },
   },
 } as const;
-
-/** Deuda con el cupón ya aplicado (descuento en %, con tope opcional en pesos). */
-const aplicarDescuento = (subtotal: number, pct: number, topePesos: number) => {
-  let descuento = Math.round((subtotal * pct) / 100);
-  if (topePesos > 0) descuento = Math.min(descuento, topePesos);
-  return { descuento, deuda: Math.max(0, subtotal - descuento) };
-};
 
 /** Fecha límite pactada: la que se envía, o 1 mes después de la fecha del crédito. */
 const calcularFechaLimite = (fecha: string, limite?: string | null) => {
@@ -67,10 +63,18 @@ const mapCredito = (c: any) => {
     total_abonado:  totalAbonado,
     total_en_deuda: saldo,
     vencido,
-    // Cupón usado en este crédito (ya canjeado): solo para mostrarlo en el panel
+    // Cupón usado en este crédito (ya canjeado): para mostrarlo y para editar
     codigo: codigo
-      ? { codigo: codigo.codigo, descuento_pct: codigo.anuncio?.descuento_pct ?? 0, titulo: codigo.anuncio?.titulo ?? '' }
+      ? {
+          codigo: codigo.codigo,
+          descuento_pct: codigo.anuncio?.descuento_pct ?? 0,
+          max_descuento: Number(codigo.anuncio?.max_descuento ?? 0),
+          titulo: codigo.anuncio?.titulo ?? '',
+        }
       : null,
+    // Presentación y productos de la venta enlazada (para reconstruir el editor)
+    presentacion: c.venta?.presentacion ?? '',
+    productos: (c.venta?.perfumes ?? []).map((p: any) => ({ perfume_id: p.perfume_id, cantidad: p.cantidad })),
     venta:          c.venta ? { id: c.venta.id, pagada: c.venta.pagada } : null,
     created_at:     c.created_at,
   };
@@ -118,14 +122,10 @@ export const createCredito = async (data: CreateCreditoDTO) => {
     : matchPerfumes(data.articulos, buildPerfumeIndex(catalogo));
   const presentacion = (data.presentacion?.trim() || '—').slice(0, 100);
   const codigo = data.codigo_descuento?.trim() || null;
-
-  // Con cupón: la deuda es el valor de los productos menos el descuento del código.
-  // El código se valida ANTES de crear nada, para no dejar un crédito a medias.
-  let deuda = data.deuda_inicial;
-  if (codigo) {
-    const cupon = await getCuponParaCredito(codigo);
-    deuda = aplicarDescuento(data.deuda_inicial, cupon.descuento_pct, cupon.max_descuento).deuda;
-  }
+  // `deuda_inicial` ya viene con el cupón aplicado (lo calcula el formulario);
+  // el backend solo la guarda y consume el código. Se valida el código ANTES de
+  // crear nada para no dejar un crédito a medias.
+  const deuda = data.deuda_inicial;
 
   const row = await prisma.$transaction(async (tx) => {
     const venta = await tx.venta.create({
@@ -161,6 +161,75 @@ export const createCredito = async (data: CreateCreditoDTO) => {
   return mapCredito(
     await prisma.credito.findUnique({ where: { id: row.id }, include: includeAll }),
   );
+};
+
+/**
+ * Edita un crédito y su venta enlazada CONSERVANDO los abonos. La deuda que
+ * llega ya trae el cupón aplicado (lo calcula el formulario). El estado de
+ * pago se recalcula contra los abonos existentes; el cupón se re-enlaza como
+ * en las ventas (si se quita el código, vuelve a estar activo para el cliente).
+ */
+export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
+  const numId = Number(id);
+  const existente = await prisma.credito.findUnique({
+    where: { id: numId },
+    include: { abonos: { select: { monto: true } }, venta: { select: { id: true } } },
+  });
+  if (!existente) throw new Error('Crédito no encontrado');
+
+  const [user, catalogo] = await Promise.all([
+    prisma.user.findUnique({ where: { id: data.user_id }, select: { nombre: true, apellido: true } }),
+    prisma.perfume.findMany({ select: { id: true, nombre: true } }),
+  ]);
+  if (!user) throw new Error('La persona del crédito no existe');
+
+  const perfumeIds = data.perfume_ids?.length
+    ? data.perfume_ids
+    : matchPerfumes(data.articulos, buildPerfumeIndex(catalogo));
+  const presentacion = (data.presentacion?.trim() || '—').slice(0, 100);
+  const codigo = data.codigo_descuento?.trim() || null;
+  const deuda = data.deuda_inicial;
+  const abonado = existente.abonos.reduce((s, a) => s + Number(a.monto), 0);
+  const pagada = abonado >= deuda;
+  const ventaId = existente.venta_id;
+
+  await prisma.$transaction(async (tx) => {
+    if (ventaId) {
+      await tx.venta.update({
+        where: { id: ventaId },
+        data: {
+          dia:                new Date(data.fecha),
+          persona:            `${user.nombre} ${user.apellido}`.trim(),
+          user_id:            data.user_id,
+          cantidad_perfumes:  Math.max(1, perfumeIds.length),
+          presentacion,
+          referencia_perfume: data.articulos,
+          perfumes:           { deleteMany: {}, create: agruparEnlaces(perfumeIds) },
+          valor_venta:        deuda,
+          pagada,
+        },
+      });
+    }
+    await tx.credito.update({
+      where: { id: numId },
+      data: {
+        fecha:         new Date(data.fecha),
+        fecha_limite:  calcularFechaLimite(data.fecha, data.fecha_limite),
+        user_id:       data.user_id,
+        articulos:     data.articulos,
+        deuda_inicial: deuda,
+      },
+    });
+  });
+
+  // Cupón: se libera el anterior (salvo que sea el mismo) y se re-canjea el nuevo.
+  // Quitar el código lo devuelve a "activo" para que el cliente lo use en otra compra.
+  if (ventaId) {
+    await liberarCodigoDeVenta(ventaId, codigo);
+    if (codigo) await canjearCodigoEnCredito(codigo, ventaId);
+  }
+
+  return mapCredito(await prisma.credito.findUnique({ where: { id: numId }, include: includeAll }));
 };
 
 /** La venta enlazada refleja el estado real de la deuda: pagada ⇔ saldada. */

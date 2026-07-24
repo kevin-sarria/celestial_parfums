@@ -21,6 +21,15 @@ export const addCredito = async (req: Request, res: Response) => {
   }
 };
 
+export const editCredito = async (req: Request, res: Response) => {
+  try {
+    const data = await creditoService.updateCredito(req.params.id as string, req.body);
+    res.json({ message: 'Crédito actualizado', data });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};
+
 export const addAbono = async (req: Request, res: Response) => {
   try {
     const data = await creditoService.addAbono(req.params.id as string, Number(req.body.monto));

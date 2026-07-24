@@ -1,22 +1,24 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CircleDollarSign, Gauge, ShieldAlert, Trash2, TrendingDown, TrendingUp, Upload, X } from 'lucide-react';
+import { CircleDollarSign, Gauge, Pencil, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { NativeSelect } from '@/components/ui/native-select';
 import { DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { finalPrice } from '@/lib/format';
 import Modal from '../../../components/Modal';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { detectarCombos } from '../../../application/hooks/useComboDetector';
-import type { CartItem } from '../../../application/context/CartContext';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
+import PerfilCreditoModal from './PerfilCreditoModal';
 import { creditosColumns } from '../columns';
+import {
+  precioUnitario, itemsDeLineas, articulosDeLineas, presentacionResumen, descuentoDeCupon,
+} from '../creditoLineas';
 import { API, API_COMBOS, API_CREDITOS, API_USUARIOS, DEFAULT_PAGE_SIZE, formatPrice, parseClienteSeleccion, personaLabel, validarCodigoDescuento } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { GuardedFetch, Credito, CreditoForm, LineaCredito, CodigoValidado, PerfilCredito, Usuario } from '../types';
@@ -33,6 +35,7 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
 
   const [modal, setModal] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
   const [form, setForm] = useState<CreditoForm>(emptyCreditoForm());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -40,6 +43,8 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   // Certificación del cupón que se canjeará en el crédito
   const [codigoCheck, setCodigoCheck] = useState<CodigoValidado | null>(null);
   const [checking, setChecking] = useState(false);
+  // Cupón ya canjeado que traía un crédito al editarlo (para el desglose)
+  const [cuponPrefill, setCuponPrefill] = useState<{ descuento_pct: number; max_descuento: number } | null>(null);
 
   const [abonoModal, setAbonoModal] = useState<{ open: boolean; creditoId: number | null }>({ open: false, creditoId: null });
   const [abonoMonto, setAbonoMonto] = useState('');
@@ -112,40 +117,9 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   // ── Editor de líneas: precios, descuentos y combo ─────────────────────────
   const perfumePorId = useMemo(() => new Map(catalogo.map(p => [p.id, p])), [catalogo]);
 
-  /** Precio de lista de una talla (o el de portada si no está desglosada). */
-  const precioLista = (p: Perfume, presentacion: string) =>
-    p.precios.find(x => x.presentacion === presentacion)?.precio ?? p.precio;
-
-  /** Precio unitario de una línea: con o sin el descuento de la página. */
-  const precioUnitario = (l: LineaCredito) => {
-    const p = perfumePorId.get(l.perfume_id);
-    if (!p) return 0;
-    const base = precioLista(p, l.presentacion);
-    return l.sin_descuento ? base : finalPrice(base, p.descuento);
-  };
-
-  // Líneas convertidas a items de carrito para reutilizar la detección de combos
-  const itemsCarrito: CartItem[] = form.lineas.map(l => {
-    const p = perfumePorId.get(l.perfume_id);
-    return {
-      id: l.key,
-      productoId: l.perfume_id,
-      nombre: p?.nombre ?? '',
-      tipo: p?.categoria ?? '',
-      presentacion: l.presentacion,
-      genero: p?.genero ?? null,
-      cantidad: l.cantidad,
-      precio: precioUnitario(l),
-      descuento: l.sin_descuento ? 0 : (p?.descuento ?? 0),
-      imagen_url: null,
-      esCombo: false,
-      esenciaPremium: p?.esencia_premium ?? false,
-    };
-  });
-
-  const rawSubtotal = itemsCarrito.reduce((s, i) => s + i.precio * i.cantidad, 0);
+  const rawSubtotal = form.lineas.reduce((s, l) => s + precioUnitario(l, perfumePorId) * l.cantidad, 0);
   const deteccionCombo = useMemo(
-    () => (form.aplicar_combo ? detectarCombos(itemsCarrito, combos) : null),
+    () => (form.aplicar_combo ? detectarCombos(itemsDeLineas(form.lineas, perfumePorId), combos) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [form.lineas, form.aplicar_combo, combos, catalogo],
   );
@@ -153,22 +127,25 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   // "Valor de los productos" = líneas − combo (antes del cupón)
   const productosSubtotal = Math.max(0, rawSubtotal - ahorroCombo);
 
-  // La deuda se sincroniza con las líneas mientras no se edite a mano
+  // Cupón activo: el recién validado, o el que ya traía el crédito al editar.
+  // El descuento se calcula en el FRONT y la deuda que se guarda ya viene neta.
+  const cuponActivo = codigoCheck?.valido ? (codigoCheck.cupon ?? null) : cuponPrefill;
+  const cuponPct = cuponActivo?.descuento_pct ?? 0;
+  const descuentoCupon = descuentoDeCupon(productosSubtotal, cuponPct, cuponActivo?.max_descuento ?? 0);
+  // Deuda calculada (final) desde las líneas y el cupón
+  const deudaCalculada = Math.max(0, productosSubtotal - descuentoCupon);
+
+  // La deuda (valor FINAL) se sincroniza con las líneas mientras no se edite a mano
   useEffect(() => {
     if (form.deuda_manual || form.lineas.length === 0) return;
-    const v = String(productosSubtotal);
+    const v = String(deudaCalculada);
     setForm(f => (f.deuda_inicial === v ? f : { ...f, deuda_inicial: v }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productosSubtotal, form.deuda_manual, form.lineas.length]);
+  }, [deudaCalculada, form.deuda_manual, form.lineas.length]);
 
-  /** Texto de artículos generado de las líneas (o el manual si no hay líneas). */
-  const articulosDeLineas = form.lineas
-    .map(l => {
-      const nombre = perfumePorId.get(l.perfume_id)?.nombre ?? `#${l.perfume_id}`;
-      return `${l.cantidad > 1 ? `${l.cantidad}× ` : ''}${nombre} (${l.presentacion})`;
-    })
-    .join(', ');
-  const presentacionResumen = [...new Set(form.lineas.map(l => l.presentacion))].join(', ');
+  // Texto de artículos y resumen de tallas generados de las líneas
+  const textoArticulos = articulosDeLineas(form.lineas, perfumePorId);
+  const resumenPresentacion = presentacionResumen(form.lineas);
 
   // Agregar un perfume: si ya existe esa fragancia+talla, suma cantidad
   const addPerfume = (id: number) => {
@@ -217,7 +194,7 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
     if (!userId) { setError('Selecciona o registra una persona'); setLoading(false); return; }
 
     // Productos: del editor de líneas (o del texto libre si no se usó)
-    const articulos = (form.lineas.length ? articulosDeLineas : form.articulos).trim();
+    const articulos = (form.lineas.length ? textoArticulos : form.articulos).trim();
     if (!articulos) { setError('Agrega al menos un producto o describe los artículos'); setLoading(false); return; }
     // ids REPETIDOS por cantidad (el backend usa agruparEnlaces)
     const perfume_ids = form.lineas.flatMap(l => Array(l.cantidad).fill(l.perfume_id) as number[]);
@@ -228,13 +205,14 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
         user_id: userId,
         articulos,
         perfume_ids,
-        presentacion: presentacionResumen || null,
-        // El backend aplica el cupón: aquí va el valor ANTES del descuento
+        presentacion: resumenPresentacion || null,
+        // Valor FINAL de la deuda (las líneas y el cupón ya se aplicaron aquí)
         deuda_inicial: Number(form.deuda_inicial),
         fecha_limite: form.fecha_limite || null,
         codigo_descuento: form.codigo_descuento.trim().toUpperCase() || null,
       };
-      const res = await guardedFetch(API_CREDITOS, { method: 'POST', body: JSON.stringify(body) });
+      const url = editId ? `${API_CREDITOS}/${editId}` : API_CREDITOS;
+      const res = await guardedFetch(url, { method: editId ? 'PATCH' : 'POST', body: JSON.stringify(body) });
       const json = await res.json();
       if (!res.ok) { setError(json.error ?? 'Error al guardar'); return; }
       setModal(false); load();
@@ -250,17 +228,34 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
     setChecking(false);
   };
 
-  // Desglose en vivo: cuánto descuenta el cupón validado sobre lo que se teclea
-  const subtotal = Number(form.deuda_inicial) || 0;
-  const cuponPct = codigoCheck?.valido ? (codigoCheck.cupon?.descuento_pct ?? 0) : 0;
-  const cuponTope = codigoCheck?.cupon?.max_descuento ?? 0;
-  const descuentoCupon = cuponPct > 0
-    ? Math.min(Math.round((subtotal * cuponPct) / 100), cuponTope > 0 ? cuponTope : Infinity)
-    : 0;
-  const deudaFinal = Math.max(0, subtotal - descuentoCupon);
-
   const abrirNuevo = () => {
-    setForm(emptyCreditoForm()); setError(''); setCodigoCheck(null); setModal(true);
+    setEditId(null); setForm(emptyCreditoForm());
+    setError(''); setCodigoCheck(null); setCuponPrefill(null); setModal(true);
+  };
+
+  // Reconstruye el formulario desde un crédito existente para editarlo
+  const abrirEditar = (c: Credito) => {
+    const lineas: LineaCredito[] = c.productos.map((prod, i) => {
+      const p = perfumePorId.get(prod.perfume_id);
+      // Talla: si el resumen del crédito es una sola conocida, se usa; si no, la primera
+      const tallas = p?.presentaciones ?? [];
+      const presentacion = tallas.includes(c.presentacion) ? c.presentacion : (tallas[0] ?? (c.presentacion || '30ML'));
+      return { key: `${prod.perfume_id}-${i}-${Date.now()}`, perfume_id: prod.perfume_id, presentacion, cantidad: prod.cantidad, sin_descuento: false };
+    });
+    setEditId(c.id);
+    setForm({
+      fecha: c.fecha.slice(0, 10),
+      user_id: c.cliente.id,
+      nuevo_nombre: '', nuevo_apellido: '', nuevo_correo: '', nuevo_telefono: '', nuevo_direccion: '',
+      articulos: c.articulos,
+      // La deuda guardada YA es el valor final; se preserva (manual) hasta tocar líneas
+      deuda_inicial: String(c.deuda_inicial),
+      lineas, aplicar_combo: false, deuda_manual: true,
+      fecha_limite: c.fecha_limite ? c.fecha_limite.slice(0, 10) : unMesDespues(c.fecha.slice(0, 10)),
+      codigo_descuento: c.codigo?.codigo ?? '',
+    });
+    setCuponPrefill(c.codigo ? { descuento_pct: c.codigo.descuento_pct, max_descuento: c.codigo.max_descuento } : null);
+    setCodigoCheck(null); setError(''); setModal(true);
   };
 
   const handleAbono = async () => {
@@ -320,6 +315,13 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
               >
                 <CircleDollarSign className="size-4" />
               </Button>
+              <Button
+                variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground"
+                title="Editar crédito"
+                onClick={() => abrirEditar(c)}
+              >
+                <Pencil className="size-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(c.id)} title="Eliminar">
                 <Trash2 className="size-4" />
               </Button>
@@ -339,9 +341,9 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
       <Modal
         open={modal}
         onClose={() => setModal(false)}
-        title="Nuevo credito"
+        title={editId ? 'Editar crédito' : 'Nuevo credito'}
         onSubmit={handleSubmit}
-        submitLabel={loading ? 'Guardando...' : 'Registrar credito'}
+        submitLabel={loading ? 'Guardando...' : editId ? 'Guardar cambios' : 'Registrar credito'}
         loading={loading}
       >
         <FieldRow>
@@ -438,7 +440,7 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
                       </label>
                     )}
                     <span className="w-24 text-right text-[12.5px] font-semibold text-foreground tabular-nums">
-                      {formatPrice(precioUnitario(l) * l.cantidad)}
+                      {formatPrice(precioUnitario(l, perfumePorId) * l.cantidad)}
                     </span>
                     <button type="button" aria-label="Quitar" className="rounded p-1 text-muted-foreground hover:text-destructive"
                       onClick={() => removeLinea(l.key)}>
@@ -470,7 +472,7 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
         {/* Texto de artículos: generado de las líneas, o manual si no hay líneas */}
         {form.lineas.length > 0 ? (
           <p className="rounded-lg bg-secondary/40 px-3 py-2 text-[12.5px] text-muted-foreground">
-            {articulosDeLineas}
+            {textoArticulos}
           </p>
         ) : (
           <Field label="Artículos (texto libre) *">
@@ -480,13 +482,13 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
         )}
 
         {/* ── Deuda y cupón ── */}
-        <Field label={form.codigo_descuento.trim() ? 'Valor de los productos, antes del cupón (COP) *' : 'Deuda inicial (COP) *'}>
+        <Field label="Deuda del crédito (COP) *">
           <Input type="number" min="1" required value={form.deuda_inicial}
             onChange={e => setForm(f => ({ ...f, deuda_inicial: e.target.value, deuda_manual: true }))} />
-          {form.lineas.length > 0 && form.deuda_manual && String(productosSubtotal) !== form.deuda_inicial && (
+          {form.lineas.length > 0 && form.deuda_manual && String(deudaCalculada) !== form.deuda_inicial && (
             <button type="button" className="mt-1 text-[12px] text-primary underline"
-              onClick={() => setForm(f => ({ ...f, deuda_inicial: String(productosSubtotal), deuda_manual: false }))}>
-              Usar el calculado de las líneas ({formatPrice(productosSubtotal)})
+              onClick={() => setForm(f => ({ ...f, deuda_inicial: String(deudaCalculada), deuda_manual: false }))}>
+              Usar el calculado ({formatPrice(deudaCalculada)})
             </button>
           )}
         </Field>
@@ -497,7 +499,7 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
               value={form.codigo_descuento}
               placeholder="Ej: CP-7XK2M9"
               className="uppercase"
-              onChange={e => { setForm(f => ({ ...f, codigo_descuento: e.target.value })); setCodigoCheck(null); }}
+              onChange={e => { setForm(f => ({ ...f, codigo_descuento: e.target.value })); setCodigoCheck(null); setCuponPrefill(null); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); validarCodigo(); } }}
             />
             <Button type="button" variant="outline" className="shrink-0"
@@ -510,11 +512,16 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
               {codigoCheck.codigo}: {codigoCheck.motivo}
             </p>
           )}
-          {codigoCheck?.valido && subtotal > 0 && (
+          {cuponPrefill && !codigoCheck && (
+            <p className="mt-1.5 text-[12.5px] text-muted-foreground">
+              Este crédito ya usó el cupón {form.codigo_descuento} (−{cuponPrefill.descuento_pct}%). Bórralo si quieres quitarlo.
+            </p>
+          )}
+          {cuponPct > 0 && productosSubtotal > 0 && (
             <div className="mt-2 space-y-0.5 rounded-lg border border-primary/25 bg-brand-soft/60 px-3 py-2 text-[12.5px] text-primary">
-              <div className="flex justify-between"><span>Productos</span><span>{formatPrice(subtotal)}</span></div>
+              <div className="flex justify-between"><span>Productos</span><span>{formatPrice(productosSubtotal)}</span></div>
               <div className="flex justify-between"><span>Cupón −{cuponPct}%</span><span>−{formatPrice(descuentoCupon)}</span></div>
-              <div className="flex justify-between font-semibold"><span>Deuda del crédito</span><span>{formatPrice(deudaFinal)}</span></div>
+              <div className="flex justify-between font-semibold"><span>Deuda del crédito</span><span>{formatPrice(deudaCalculada)}</span></div>
               <p className="pt-1 text-[11.5px] font-normal opacity-80">
                 El cupón queda usado para siempre. Si no salda antes del {form.fecha_limite}, el cupo baja el doble.
               </p>
@@ -544,92 +551,15 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
         </Field>
       </Modal>
 
-      {/* Perfil crediticio interno: cupo, comportamiento de pago y veto (solo admin) */}
-      <Modal
+      <PerfilCreditoModal
         open={perfilOpen}
         onClose={() => setPerfilOpen(false)}
-        title={perfil ? `Perfil crediticio · ${perfil.nombre}` : 'Perfil crediticio'}
-        maxWidth={520}
-        footer={
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setPerfilOpen(false)}>Cerrar</Button>
-          </DialogFooter>
-        }
-      >
-        {!perfil && <p className="py-6 text-center text-sm text-muted-foreground">Calculando perfil…</p>}
-
-        {perfil && (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap gap-2">
-              {perfil.vetado && (
-                <span className="flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[12px] font-semibold text-rose-600">
-                  <ShieldAlert className="size-3.5" /> VETADO para credito directo
-                </span>
-              )}
-              <span
-                className={cn(
-                  'rounded-full border px-3 py-1 text-[12px] font-semibold',
-                  perfil.tiene_credito_activo
-                    ? 'border-amber-200 bg-amber-50 text-amber-600'
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-600',
-                )}
-              >
-                {perfil.tiene_credito_activo ? 'Credito activo' : 'Sin deudas'}
-              </span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-xl border border-border bg-secondary/40 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Cupo actual</p>
-                <p className="mt-0.5 text-[17px] font-semibold text-foreground">{formatPrice(perfil.cupo)}</p>
-                <p className="text-[11.5px] text-muted-foreground">
-                  Factor {perfil.factor}x sobre el cupo base
-                </p>
-              </div>
-              <div className="rounded-xl border border-border bg-secondary/40 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Disponible</p>
-                <p className="mt-0.5 text-[17px] font-semibold text-primary">{formatPrice(perfil.cupo_disponible)}</p>
-                <p className="text-[11.5px] text-muted-foreground">Deuda actual: {formatPrice(perfil.deuda_total)}</p>
-              </div>
-            </div>
-
-            <Field label="Cupo base (COP) — lo defines tu, el factor lo ajusta solo">
-              <div className="flex gap-2">
-                <Input type="number" min="0" value={cupoEdit} onChange={e => setCupoEdit(e.target.value)} />
-                <Button onClick={saveCupo} disabled={cupoSaving}>
-                  {cupoSaving ? 'Guardando…' : 'Guardar'}
-                </Button>
-              </div>
-            </Field>
-
-            {perfil.eventos.length > 0 && (
-              <div>
-                <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Comportamiento de pago
-                </p>
-                <ul className="flex flex-col gap-1.5">
-                  {perfil.eventos.map((ev, i) => (
-                    <li key={i} className="flex items-start gap-2 text-[13px]">
-                      {ev.tipo === 'pago_rapido' && <TrendingUp className="mt-0.5 size-3.5 shrink-0 text-emerald-600" />}
-                      {ev.tipo === 'pago_lento' && <TrendingDown className="mt-0.5 size-3.5 shrink-0 text-amber-600" />}
-                      {ev.tipo === 'cupon_vencido' && <TrendingDown className="mt-0.5 size-3.5 shrink-0 text-rose-600" />}
-                      {ev.tipo === 'veto' && <ShieldAlert className="mt-0.5 size-3.5 shrink-0 text-rose-600" />}
-                      <span className="text-muted-foreground">
-                        <span className="font-medium text-foreground">Credito #{ev.credito_id}:</span> {ev.detalle}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {perfil.eventos.length === 0 && (
-              <p className="text-[13px] text-muted-foreground">
-                Sin eventos de comportamiento todavia (pagos rapidos suben el cupo, moras lo bajan).
-              </p>
-            )}
-          </div>
-        )}
-      </Modal>
+        perfil={perfil}
+        cupoEdit={cupoEdit}
+        onCupoEdit={setCupoEdit}
+        onGuardarCupo={saveCupo}
+        guardando={cupoSaving}
+      />
     </>
   );
 }

@@ -1,5 +1,5 @@
 ﻿import { Router } from 'express';
-import { getCreditos, addCredito, addAbono, removeAbono, removeCredito } from '../controller/credito.controller';
+import { getCreditos, addCredito, editCredito, addAbono, removeAbono, removeCredito } from '../controller/credito.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { createCreditoSchema, addAbonoSchema } from '../schemas/credito.schema';
@@ -11,5 +11,6 @@ creditoRouter.use(requireAdmin);
 creditoRouter.get('/', getCreditos);
 creditoRouter.post('/', validate(createCreditoSchema), addCredito);
 creditoRouter.patch('/:id/abono', validate(addAbonoSchema), addAbono);
+creditoRouter.patch('/:id', validate(createCreditoSchema), editCredito);
 creditoRouter.delete('/:id/abono/:abonoId', removeAbono);
 creditoRouter.delete('/:id', removeCredito);

@@ -7,6 +7,14 @@ Dueño: Kevin — no técnico; explícale en español claro, sin jerga, y dale l
 negocio, migración, convención nueva, gotcha descubierto) agrégalo aquí en la sección
 que corresponda. Este documento es la memoria del proyecto entre sesiones y modelos.
 
+## Reglas inquebrantables de código
+
+- **Refactoriza SIEMPRE que se pueda**: extrae helpers, reutiliza lógica existente (no
+  dupliques), y deja el código más limpio que como lo encontraste tras cada cambio.
+- **Ningún archivo debería superar ~500 líneas** idealmente. Si un archivo crece de más,
+  pártelo en piezas con una sola responsabilidad (hooks, componentes, helpers, servicios)
+  antes de seguir agregándole. Evita la sobrecarga de código en un mismo archivo.
+
 ## Stack y estructura
 
 - `backend/`: Express + TypeScript + Prisma 6 + MySQL. Cliente Prisma generado en
@@ -95,16 +103,22 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   resta el ahorro. Los ítems con descuento propio o esencia premium no entran al combo.
 - El form manda `perfume_ids` (repetidos por cantidad), `presentacion` (resumen "30ml,
   60ml") y `articulos` (texto generado). El backend usa los ids directo (sin matcher);
-  el importador de Excel sigue infiriéndolos del texto libre. `deuda_inicial` = valor de
-  los productos ANTES del cupón; se recalcula de las líneas salvo que se edite a mano.
+  el importador de Excel sigue infiriéndolos del texto libre.
+- **La deuda que se manda ya es el valor FINAL** (líneas − combo − cupón): el cálculo del
+  cupón vive en el FRONT (`creditoLineas.ts`); el backend la guarda tal cual y solo consume
+  el código. Así editar no aplica el descuento dos veces. Campo editable a mano.
+- **Editar crédito** (`updateCredito`, PATCH `/creditos/:id`): conserva los abonos,
+  recalcula pagada contra ellos, reconstruye las líneas desde `venta.perfumes` (talla
+  best-effort) y re-enlaza el cupón como en ventas. Quitar el código en el editor lo
+  libera (vuelve a activo). Piezas extraídas: `PerfilCreditoModal.tsx` y `creditoLineas.ts`.
 
 ### Cupón sobre un crédito (crédito+descuento)
-- En crear crédito se puede canjear un código: el `deuda_inicial` que se teclea es el
-  valor ANTES del cupón; el backend aplica el % (con tope `max_descuento`) y guarda la
-  deuda ya descontada. El cupón se consume **al instante** (canjeado, un solo uso), NO
-  espera a que pague todo — a diferencia de una venta normal (`canjearCodigoEnCredito`).
-- Borrar el crédito **libera** el cupón (vuelve a activo): revierte la compra. Es el único
-  camino para "devolver" un cupón canjeado en crédito.
+- Al crear o editar un crédito se puede canjear un código: el descuento se calcula en el
+  form y se guarda la deuda ya neta. El cupón se consume **al instante** (canjeado, un solo
+  uso), NO espera a que pague todo — a diferencia de una venta normal
+  (`canjearCodigoEnCredito`; editar usa `liberarCodigoDeVenta` + re-canje como en ventas).
+- Borrar el crédito (o quitar el código al editar) **libera** el cupón (vuelve a activo):
+  revierte la compra. Es el único camino para "devolver" un cupón canjeado en crédito.
 - `creditos.fecha_limite` (`@db.Date`): acuerdo de pago, por defecto 1 mes desde `fecha`,
   editable. El crédito sale "Vencido" en la tabla si sigue con saldo pasada esa fecha.
 

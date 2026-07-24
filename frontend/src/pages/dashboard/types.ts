@@ -77,7 +77,11 @@ export interface Credito {
   /** true = sigue con saldo pasada la fecha límite. */
   vencido: boolean;
   /** Cupón canjeado en este crédito (si lo hubo). */
-  codigo: { codigo: string; descuento_pct: number; titulo: string } | null;
+  codigo: { codigo: string; descuento_pct: number; max_descuento: number; titulo: string } | null;
+  /** Resumen de presentaciones de la venta enlazada (para reconstruir el editor). */
+  presentacion: string;
+  /** Perfumes enlazados con su cantidad (para reconstruir las líneas al editar). */
+  productos: { perfume_id: number; cantidad: number }[];
   /** Venta enlazada: nace pendiente con el crédito y se paga al saldarlo. */
   venta: { id: number; pagada: boolean } | null;
 }
