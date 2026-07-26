@@ -12,6 +12,8 @@ import PerfumeSpinner from '../components/PerfumeSpinner';
 import AddToCartModal from '../components/AddToCartModal';
 import CartFab from '../components/CartFab';
 import CatalogHeader from '../components/CatalogHeader';
+import Estrellas from '../components/Estrellas';
+import ResenasProducto from '../components/resenas/ResenasProducto';
 import { usePerfumeDetail } from '../application/hooks/usePerfumeDetail';
 import { GENERO_LABELS } from '../domain/entities/perfume.schema';
 import { aromaColor } from '../domain/entities/aroma.colors';
@@ -27,6 +29,7 @@ export default function PerfumeDetailPage() {
   const navigate = useNavigate();
   const { perfume, related, loading, error } = usePerfumeDetail(slug);
   const [cartModal, setCartModal] = useState(false);
+  const [resenasOpen, setResenasOpen] = useState(false);
   useSeo(perfume?.nombre, perfume?.descripcion ?? undefined);
 
   const precioFinal = perfume ? finalPrice(perfume.precio, perfume.descuento) : 0;
@@ -54,16 +57,21 @@ export default function PerfumeDetailPage() {
 
       {!loading && perfume && (
         <>
-          <main className="mx-auto grid w-full max-w-6xl gap-10 px-5 pb-28 pt-6 md:px-8 md:pb-16 lg:grid-cols-2 lg:gap-14 animate-fade-up">
-            <div className="relative overflow-hidden rounded-3xl border border-border bg-secondary">
+          <main className="mx-auto grid w-full max-w-6xl gap-10 px-5 pb-28 pt-6 md:grid-cols-2 md:px-8 md:pb-16 lg:gap-14 animate-fade-up">
+            <div className="relative overflow-hidden rounded-3xl border border-border bg-white">
               {perfume.imagen_url ? (
                 <img
                   src={perfume.imagen_url}
                   alt={perfume.nombre}
-                  className="aspect-4/5 h-full w-full object-cover"
+                  // Imagen principal (arriba del pliegue): carga con prioridad alta
+                  decoding="async"
+                  fetchPriority="high"
+                  // Marco cuadrado + fondo blanco + contain (estilo Mercado Libre): la
+                  // foto se ve grande y completa, sin recortes ni márgenes feos.
+                  className="aspect-square h-full w-full object-contain p-4 md:p-6"
                 />
               ) : (
-                <div className="flex aspect-4/5 items-center justify-center">
+                <div className="flex aspect-square items-center justify-center">
                   <span className="font-display text-7xl italic text-muted-foreground/40">𝒫</span>
                 </div>
               )}
@@ -104,6 +112,14 @@ export default function PerfumeDetailPage() {
               <h1 className="font-display text-4xl font-light tracking-tight text-ink md:text-5xl">
                 {perfume.nombre}
               </h1>
+
+              {perfume.rating_total > 0 && (
+                <button type="button" onClick={() => setResenasOpen(true)}
+                  className="w-fit rounded-md transition-opacity hover:opacity-70"
+                  title="Ver opiniones">
+                  <Estrellas valor={perfume.rating_promedio} total={perfume.rating_total} size={16} />
+                </button>
+              )}
 
               <div className="flex items-baseline gap-3">
                 {perfume.varios_precios && (
@@ -205,6 +221,9 @@ export default function PerfumeDetailPage() {
               )}
             </div>
           </main>
+
+          <ResenasProducto perfumeId={perfume.id} nombre={perfume.nombre} promedio={perfume.rating_promedio}
+            total={perfume.rating_total} open={resenasOpen} onOpenChange={setResenasOpen} />
 
           {related.length > 0 && (
             <section className="border-t border-border/70 bg-secondary/40 py-14">

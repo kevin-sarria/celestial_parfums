@@ -10,7 +10,7 @@ import Modal from '../../../components/Modal';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { ContactoLinktree } from '../../../components/contacto/ContactoLinktree';
 import { RED_OPTIONS, getRedIcon, getRedLabel } from '../../../components/contacto/redIcons';
-import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
+import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, ColorField } from '../ui';
 import { API_CONTACTO, subirImagenAdmin } from '../helpers';
 import type { GuardedFetch } from '../types';
 import type { ContactoConfig, ContactoForma, ContactoLink } from '../../../domain/entities/contacto.schema';
@@ -54,29 +54,6 @@ interface LinkForm {
   color_fondo: string;
   color_texto: string;
   activo: boolean;
-}
-
-/** Campo de color: swatch nativo + hex editable. */
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
-  return (
-    <Field label={label}>
-      <div className="flex items-center gap-2">
-        <input
-          type="color"
-          value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : '#ffffff'}
-          onChange={e => onChange(e.target.value)}
-          className="size-9 shrink-0 cursor-pointer rounded-md border border-input bg-card p-1"
-          aria-label={label}
-        />
-        <Input
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          maxLength={7}
-          className="max-w-28 font-mono text-[13px]"
-        />
-      </div>
-    </Field>
-  );
 }
 
 export function RedesTab({ guardedFetch }: Props) {

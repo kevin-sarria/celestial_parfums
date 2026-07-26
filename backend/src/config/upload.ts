@@ -26,3 +26,16 @@ export const upload = multer({
     cb(null, true);
   },
 });
+
+/**
+ * Subida EN MEMORIA (no a disco): las fotos se procesan con sharp → WebP antes
+ * de guardarlas. Se usa para reseñas y pruebas de premio (varias fotos livianas).
+ */
+export const uploadMemoria = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB de origen; sharp la deja livianísima
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) return cb(new Error('Solo se permiten imágenes'));
+    cb(null, true);
+  },
+});

@@ -81,6 +81,29 @@ export function FieldRow({ children, className }: SectionProps) {
   return <div className={cn('grid gap-3 sm:grid-cols-2', className)}>{children}</div>;
 }
 
+/** Selector de color: muestra el swatch nativo + el hex editable. */
+export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <Field label={label}>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : '#ffffff'}
+          onChange={e => onChange(e.target.value)}
+          className="size-9 shrink-0 cursor-pointer rounded-md border border-input bg-card p-1"
+          aria-label={label as string}
+        />
+        <input
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          maxLength={7}
+          className="h-9 w-full max-w-28 rounded-md border border-input bg-card px-3 font-mono text-[13px] shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        />
+      </div>
+    </Field>
+  );
+}
+
 /** Mensaje de error de formulario. */
 export function FormError({ children }: { children: ReactNode }) {
   if (!children) return null;

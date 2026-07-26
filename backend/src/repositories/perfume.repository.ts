@@ -4,6 +4,7 @@ import { CreatePerfumeDTO } from '../types/perfume.type';
 import { paginatedResponse } from '../utils/pagination';
 import { toSlug } from '../utils/slug';
 import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
+import { resumenRatings } from './resena.repository';
 
 type PerfumeRow = Prisma.PerfumeGetPayload<{
   include: {
@@ -67,6 +68,9 @@ export const mapPerfume = (p: PerfumeRow) => {
     tipos_aroma:    p.tipos_aroma.map((r) => r.tipo_aroma.nombre),
     ocasiones:      p.ocasiones.map((r) => r.ocasion.nombre),
     presentaciones: p.presentaciones.map((r) => r.presentacion.nombre),
+    // Promedio de reseñas aprobadas (se rellena con `conRatings`)
+    rating_promedio: 0,
+    rating_total:    0,
   };
 };
 
@@ -77,12 +81,21 @@ export const perfumeInclude = {
   presentaciones: { include: { presentacion: true } },
 } as const;
 
+/** Rellena el promedio/total de reseñas aprobadas de una lista ya mapeada. */
+export const conRatings = async <T extends { id: number }>(perfumes: T[]): Promise<T[]> => {
+  const resumen = await resumenRatings(perfumes.map((p) => p.id));
+  return perfumes.map((p) => {
+    const r = resumen.get(p.id);
+    return r ? { ...p, rating_promedio: r.promedio, rating_total: r.total } : p;
+  });
+};
+
 export const selectAllParfums = async () => {
   const perfumes = await prisma.perfume.findMany({
     include: perfumeInclude,
     orderBy: { nombre: 'asc' },
   });
-  return { data: perfumes.map(mapPerfume) };
+  return { data: await conRatings(perfumes.map(mapPerfume)) };
 };
 
 /** Filtros del catálogo público (por nombre, tal como los muestra el frontend). */
@@ -121,7 +134,7 @@ export const selectParfumsPaginated = async (
     prisma.perfume.findMany({ where, include: perfumeInclude, orderBy: { nombre: 'asc' }, skip, take: limit }),
     prisma.perfume.count({ where }),
   ]);
-  return paginatedResponse(rows.map(mapPerfume), total, page, limit);
+  return paginatedResponse(await conRatings(rows.map(mapPerfume)), total, page, limit);
 };
 
 /**
@@ -332,11 +345,11 @@ export const getDestacados = async (limitVendidos = 12) => {
 
   return {
     // Tope de 40 para acotar el payload del home (ya vienen ordenados)
-    nuevos: nuevosOrdenados.slice(0, 40).map(mapPerfume),
-    mas_vendidos: topIds
+    nuevos: await conRatings(nuevosOrdenados.slice(0, 40).map(mapPerfume)),
+    mas_vendidos: await conRatings(topIds
       .map((id) => byId.get(id))
       .filter((p): p is NonNullable<typeof p> => p != null)
-      .map((p) => ({ ...mapPerfume(p), unidades_vendidas: vendidosMap.get(p.id) ?? 0 })),
+      .map((p) => ({ ...mapPerfume(p), unidades_vendidas: vendidosMap.get(p.id) ?? 0 }))),
   };
 };
 
@@ -351,7 +364,7 @@ export const findPerfumeBySlug = async (slug: string) => {
     include: perfumeInclude,
   });
   if (!perfume) return null;
-  return mapPerfume(perfume);
+  return (await conRatings([mapPerfume(perfume)]))[0];
 };
 
 // ── Aromas ──────────────────────────────────────────────────────────────────

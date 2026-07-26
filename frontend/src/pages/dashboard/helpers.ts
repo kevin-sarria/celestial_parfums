@@ -13,6 +13,7 @@ export const API_IMPORT   = `${BASE_URL}/api/import`;
 export const API_CONTACTO = `${BASE_URL}/api/contacto`;
 export const API_USUARIOS = `${BASE_URL}/api/usuarios`;
 export const API_ANUNCIOS = `${BASE_URL}/api/anuncios`;
+export const API_RECOMPENSAS = `${BASE_URL}/api/recompensas`;
 export const API_UPLOAD   = `${BASE_URL}/api/upload`;
 
 export const DEFAULT_PAGE_SIZE = 10;

@@ -130,6 +130,61 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   castiga el DOBLE (×0.8, evento `cupon_vencido`) y reemplaza al pago lento en ESE crédito
   (no se suman). Es "el factor tiempo en contra": descuento + plazo incumplido no salen gratis.
 
+### Tarjeta de recompensas (fidelidad, tipo "junta 5 sellos")
+- **Los sellos NO se guardan**: se recalculan del historial (como el motor de cupo).
+  Un sello = una venta con `user_id`, `pagada=true` y `valor_venta ≥ min_compra`. Editar o
+  borrar ventas ajusta los sellos solos. Solo se guarda `sellos_consumidos` (por premios
+  entregados) en `recompensa_usuario`.
+- Config GLOBAL en `recompensa_config` (fila única, tipo ContactoConfig): `sellos_objetivo`,
+  `premio`, `min_compra`, `activo`. Cada cliente puede tener **override** propio
+  (`objetivo_override`, `premio_override`, `min_compra_override`; null = usa la global).
+- Al llenar la tarjeta el admin "entrega premio" (`sellos_consumidos += objetivo`,
+  `premios_entregados++`) y la tarjeta se **reinicia** (programa repetible). El backend
+  recalcula, nunca confía en el cliente. Lógica en `recompensa.repository.ts`.
+- **Colores configurables** en `recompensa_config` (`color_fondo`, `color_lineas`,
+  `color_texto`); son GLOBALES (no por cliente) y viajan en `calcularTarjeta().colores`.
+- Portal: `/mis-recompensas` (enlace en el menú solo para logueados). La tarjeta es GRANDE
+  (`max-w-2xl`, ~mitad de pantalla en escritorio) y escala su contenido con `cqw`+`em`.
+- Admin: pestaña Recompensas = **tabla** (SmartTable) de clientes con progreso + botón
+  "Configurar tarjeta" en el header que abre un **modal con previsualización en vivo**
+  (`RecompensaConfigModal.tsx`) y selectores de color. `ColorField` vive en `dashboard/ui.tsx`
+  (reusado por RedesTab). Entregar premio y regla especial (override) por cliente.
+- **Tarjeta 3D**: CSS puro (`TarjetaRecompensas3D.tsx`) para TODOS — se inclina, voltea y
+  brilla con transform 3D, escala con `cqw`+`em` (contenedor con `container-type: inline-size`),
+  acepta `colores`. Estética negro+dorado de la tarjeta física. (Se probó una capa premium
+  con Three.js pero se descartó: pesaba mucho para el público de gama baja y el render no
+  igualaba los trazos de la CSS. NO reintroducir Three.js sin buena razón.)
+
+### Reseñas de productos (compra verificada + moderación)
+- Solo puede reseñar quien **compró ese perfume** en una venta con `user_id` y `pagada=true`
+  (`resena.repository.ts` → `haComprado`). El portal `/mis-compras` lista los productos que
+  la persona compró (`productosComprados`) y por cada uno un formulario (estrellas 1-5,
+  comentario, **máx 3 fotos**). Enlace "Mis compras" en el menú del logueado.
+- **Moderación primero**: la reseña nace `pendiente` y NO se ve en público hasta que el
+  admin la aprueba (pestaña **Reseñas** del dashboard → `ResenasTab.tsx`, filtro por estado,
+  aprobar/rechazar/eliminar). Enum `ContenidoEstado` (pendiente/aprobada/rechazada).
+- **Promedio de estrellas**: NO se guarda, se recalcula con `groupBy` (`resumenRatings`).
+  `mapPerfume` expone `rating_promedio` + `rating_total`; el helper `conRatings()` los inyecta
+  en TODOS los endpoints de catálogo (una sola query por llamada cacheada). Se muestran en
+  las cards (`PerfumeCard` → `Estrellas.tsx`) y en el detalle (con la lista de reseñas,
+  `ResenasProducto.tsx`). `@@unique([user_id, perfume_id])`: una reseña por persona y producto
+  (el POST hace upsert). Router `/api/resenas`.
+
+### Galería de ganadores (publicidad social gratis)
+- Al **entregar un premio** de fidelidad, `entregarPremio` crea (en `$transaction`) un registro
+  `RecompensaEntrega` (estado `pendiente`, premio congelado). Sobre él se suben las FOTOS de la
+  entrega: el propio cliente desde `/mis-recompensas` (`SubirFotosEntrega.tsx`, máx 3) o el admin
+  desde la pestaña Recompensas (`EntregasModeracion.tsx`, también modera).
+- **Moderación primero** igual que reseñas: si el cliente sube fotos vuelve a `pendiente`. La
+  **galería pública** (`GaleriaGanadores.tsx`, endpoint `/api/recompensas/ganadores`, cacheado)
+  muestra solo entregas `aprobada` con foto; sale en la Home (bajo destacados) y en el portal.
+
+### Imágenes → WebP (servidor liviano)
+- Dependencia **`sharp`** (`utils/imagenWebp.ts`): `guardarWebp` redimensiona (máx 1400px, `fit:
+  inside`) y comprime a WebP calidad 78. Reseñas y fotos de premio lo usan vía `uploadMemoria`
+  (multer memoryStorage, 10MB, solo imágenes). En el deploy del frontend NO cambia nada; en el
+  **backend hay que correr `npm install`** (nueva dependencia `sharp`).
+
 ### Unidades por perfume en una venta
 - `venta_perfume.cantidad` guarda cuántas unidades de ESA fragancia lleva la venta: un
   combo de 3 puede ser 2× Eros + 1× Sauvage. Antes la PK (venta_id, perfume_id) solo
@@ -185,9 +240,15 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   (RFC 6238 casero en `utils/totp.ts`, secreto en `backend/backups/totp.json`, fuera de
   git). Resetear TOTP = borrar ese archivo por SSH (a propósito: la web no puede).
   Recordatorio con punto rojo a los 7 días sin copia. mysqldump vía `MYSQLDUMP_PATH` o PATH.
-- Catálogo PDF (`utils/catalogoPdf.ts`, jsPDF lazy-loaded): solo usuarios registrados,
-  marca de agua, notas con colores. SEO: slugs generados de nombre (`toSlug`), no hay
+- Catálogo PDF (`utils/catalogoPdf.ts`, jsPDF lazy-loaded): botón "Descargar catálogo PDF"
+  **solo admin**, en el dashboard → pestaña Perfumes (toolbar, `DescargarCatalogoButton`).
+  Antes era beneficio público para registrados; se movió a herramienta interna del admin.
+  Marca de agua, notas con colores. SEO: slugs generados de nombre (`toSlug`), no hay
   columna slug — se compara contra slug generado.
+- Reseñas públicas (`components/resenas/`): sección "Opiniones del producto" con resumen +
+  distribución por estrellas + modal (`ResenasModal`) que filtra por estrellas y visor de
+  fotos tipo carrusel (`VisorImagenes`, montado sobre el `Dialog` de shadcn para que el
+  clic afuera cierre solo el visor y no el modal; flechas AFUERA de la imagen estilo ML).
 
 ## Rendimiento (servidor económico: ahorrar llamadas y recursos)
 
@@ -198,6 +259,13 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   compression activo; imágenes con caché 30d immutable.
 - Al agregar features: preguntar siempre "¿esto puede servirse del caché o generar en el
   navegador?" antes de crear endpoints nuevos.
+- **Bundle**: code-splitting por página (React.lazy en `AppRouter`). Lo pesado ya es lazy:
+  catálogo PDF (jsPDF+html2canvas ~600 kB) solo al generarlo, Dashboard (~180 kB) solo admin.
+  Bundle principal ~76 kB gzip. Imágenes con `loading="lazy"` + `decoding="async"`; la foto
+  del detalle además `fetchPriority="high"` (LCP). Preconnect a `fimgs.net` en `index.html`.
+- **Medición (2026-07-25)**: en producción el catálogo re-maqueta al redimensionar en
+  ~0.7 ms y 0 long-tasks; la sensación de "pesado al redimensionar" es SOLO el dev server
+  (Vite sin minificar + React dev con doble render). No perseguir ese fantasma en dev.
 
 ## Gotchas (dolores ya vividos — no repetirlos)
 
@@ -257,6 +325,13 @@ Migraciones pendientes de aplicar en producción al escribir esto:
   las tallas que hoy no tienen dato real (50ml = 45.000 y 100ml = 70.000).
 - `20260722140000_credito_fecha_limite`: `creditos.fecha_limite` (acuerdo de pago). La
   migración retro-completa los créditos existentes con fecha + 1 mes.
+- `20260723120000_recompensas`: tablas `recompensa_config` (siembra la config por defecto:
+  5 sellos, perfume 10ml gratis) y `recompensa_usuario`.
+- `20260723140000_recompensa_colores`: `recompensa_config.color_fondo/color_lineas/color_texto`
+  (colores de la tarjeta, con defaults negro+dorado).
+- `20260724120000_resenas_ganadores`: tablas `resenas` (reseñas con estado de moderación) y
+  `recompensa_entrega` (fotos de premios entregados para la galería). El **backend suma la
+  dependencia `sharp`** → en el deploy del backend correr `npm install` antes del build.
 
 ## Cómo trabajamos (preferencias del dueño)
 

@@ -10,6 +10,7 @@ import CartFab from '../components/CartFab';
 import WhatsAppFab from '../components/WhatsAppFab';
 import AnunciosPopups from '../components/AnunciosPopups';
 import ComoFunciona from '../components/ComoFunciona';
+import GaleriaGanadores from '../components/recompensas/GaleriaGanadores';
 import CatalogHeader from '../components/CatalogHeader';
 import CatalogHero from '../components/catalog/CatalogHero';
 import EmptyState from '../components/catalog/EmptyState';
@@ -242,6 +243,12 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
                   <ComboCard key={c.id} combo={c} />
                 ))}
               </div>
+            </section>
+          )}
+
+          {mostrarDestacados && (
+            <section className="mt-14 animate-fade-up">
+              <GaleriaGanadores />
             </section>
           )}
 

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
+import DescargarCatalogoButton from '../../../components/DescargarCatalogoButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { perfumesColumns } from '../columns';
@@ -177,6 +178,7 @@ export function PerfumesTab({
         <Toolbar>
           <SectionTitle count={perfumes.length}>Perfumes</SectionTitle>
           <ToolbarActions>
+            <DescargarCatalogoButton />
             <ExportButton entity="perfumes" guardedFetch={guardedFetch} />
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Upload className="size-4" /> Importar

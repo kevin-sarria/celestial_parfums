@@ -4,6 +4,7 @@ import { Clock, ShoppingCart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatPrice, finalPrice } from '@/lib/format';
+import Estrellas from './Estrellas';
 import AddToCartModal from './AddToCartModal';
 import type { Perfume } from '../domain/entities/perfume.schema';
 import { GENERO_SYMBOLS } from '../domain/entities/perfume.schema';
@@ -49,6 +50,7 @@ export default function PerfumeCard({ perfume, vendidos }: Props) {
             src={perfume.imagen_url}
             alt={perfume.nombre}
             loading="lazy"
+            decoding="async"
             className={cn(
               'h-full w-full object-contain transition-transform duration-700 ease-out group-hover:scale-[1.04]',
               perfume.agotado && 'grayscale',
@@ -119,6 +121,11 @@ export default function PerfumeCard({ perfume, vendidos }: Props) {
             </span>
           )}
         </div>
+
+        {/* Estrellas promedio (solo si ya tiene reseñas aprobadas) */}
+        {perfume.rating_total > 0 && (
+          <Estrellas valor={perfume.rating_promedio} total={perfume.rating_total} size={13} />
+        )}
 
         {/* Sin datos la fila se colapsa: el footer ancla abajo y las cards de la
             fila siguen alineadas por el h-full del article */}

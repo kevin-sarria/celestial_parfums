@@ -54,6 +54,9 @@ export const perfumeSchema = z.object({
   tipos_aroma: z.array(z.string()),
   ocasiones: z.array(z.string()),
   presentaciones: z.array(z.string()),
+  /** Promedio (0-5) y total de reseñas aprobadas. */
+  rating_promedio: z.number().default(0),
+  rating_total: z.number().default(0),
 });
 
 export type Perfume = z.infer<typeof perfumeSchema>;

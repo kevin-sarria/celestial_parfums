@@ -102,8 +102,55 @@ model User {
   creditos           Credito[]
   codigos_descuento  DescuentoCodigo[]
   recomendacion      Recomendacion?
+  recompensa         RecompensaUsuario?
+  resenas            Resena[]
+  entregas           RecompensaEntrega[]
 
   @@map("users")
+}
+
+/// Estado de moderación de contenido generado por el cliente (reseñas, fotos).
+enum ContenidoEstado {
+  pendiente
+  aprobada
+  rechazada
+}
+
+/// Reseña de un perfume por un cliente que lo compró (compra verificada).
+/// Aparece pública solo si el admin la aprueba. Una por (cliente, perfume).
+model Resena {
+  id         Int             @id @default(autoincrement())
+  user_id    Int
+  perfume_id Int
+  rating     Int             @db.UnsignedTinyInt
+  comentario String?         @db.Text
+  // URLs de las fotos WebP (máximo 3)
+  imagenes   Json
+  estado     ContenidoEstado @default(pendiente)
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+  user       User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  perfume    Perfume         @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, perfume_id])
+  @@index([perfume_id, estado])
+  @@map("resenas")
+}
+
+/// Registro de un premio de fidelidad entregado, con fotos de la entrega para la
+/// galería pública de ganadores (aparece solo si el admin la aprueba).
+model RecompensaEntrega {
+  id         Int             @id @default(autoincrement())
+  user_id    Int
+  premio     String          @db.VarChar(200)
+  imagenes   Json
+  estado     ContenidoEstado @default(pendiente)
+  created_at DateTime        @default(now())
+  updated_at DateTime        @updatedAt
+  user       User            @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([estado])
+  @@map("recompensa_entrega")
 }
 
 model Categoria {
@@ -272,6 +319,7 @@ model Perfume {
   presentaciones PerfumePresentacion[]
   ventas         VentaPerfume[]
   recomendado_en RecomendacionItem[]
+  resenas        Resena[]
 
   @@index([categoria_id])
   @@index([genero])
@@ -455,6 +503,46 @@ model PagoProveedor {
 }
 
 // Configuración única (fila id=1) de la página pública "Contáctame" estilo linktree.
+/// Tarjeta de recompensas (fidelidad): configuración GLOBAL. Fila única, como
+/// ContactoConfig. Cada compra pagada del cliente ≥ `min_compra` suma un sello;
+/// al juntar `sellos_objetivo` gana el `premio`. El admin puede darle a un
+/// cliente su propia meta/premio en RecompensaUsuario (override).
+model RecompensaConfig {
+  id              Int      @id @default(autoincrement())
+  activo          Boolean  @default(true)
+  sellos_objetivo Int      @default(5)
+  premio          String   @default("Un perfume de 10ml GRATIS") @db.VarChar(200)
+  // Compra mínima (COP) que da un sello (0 = cualquier compra)
+  min_compra      Decimal  @default(0) @db.Decimal(10, 2)
+  // Colores de la tarjeta (hex). Personalizables desde el admin.
+  color_fondo     String   @default("#141119") @db.VarChar(20)
+  color_lineas    String   @default("#d9b45a") @db.VarChar(20)
+  color_texto     String   @default("#ffffff") @db.VarChar(20)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@map("recompensa_config")
+}
+
+/// Progreso y override por cliente. Los sellos NO se guardan (se recalculan de
+/// las ventas pagadas); solo se guarda cuántos se han consumido en premios ya
+/// entregados. Los campos *_override, si no son null, reemplazan a la config global.
+model RecompensaUsuario {
+  user_id            Int      @id
+  // Sellos ya gastados en premios entregados (el admin lo sube al entregar).
+  sellos_consumidos  Int      @default(0)
+  premios_entregados Int      @default(0)
+  // Regla especial para ESTE cliente (null = usa la global)
+  objetivo_override  Int?
+  premio_override    String?  @db.VarChar(200)
+  min_compra_override Decimal? @db.Decimal(10, 2)
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  user               User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("recompensa_usuario")
+}
+
 model ContactoConfig {
   id                Int               @id @default(autoincrement())
   avatar_url        String?           @db.Text

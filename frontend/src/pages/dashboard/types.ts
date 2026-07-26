@@ -321,6 +321,41 @@ export interface CodigoValidado {
   venta?: { id: number; persona: string; dia: string } | null;
 }
 
-export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'redes';
+export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'recompensas' | 'resenas' | 'redes';
+
+/** Tarjeta de recompensas de un cliente (calculada del historial). */
+export interface TarjetaRecompensa {
+  activo: boolean;
+  objetivo: number;
+  premio: string;
+  min_compra: number;
+  tiene_override: boolean;
+  sellos: number;
+  faltan: number;
+  premio_listo: boolean;
+  premios_listos: number;
+  premios_entregados: number;
+  sellos_historicos: number;
+  colores: { fondo: string; lineas: string; texto: string };
+}
+
+export interface RecompensaConfig {
+  activo: boolean;
+  sellos_objetivo: number;
+  premio: string;
+  min_compra: number;
+  color_fondo: string;
+  color_lineas: string;
+  color_texto: string;
+}
+
+export interface RecompensaClienteRow {
+  id: number;
+  nombre: string;
+  apellido: string;
+  correo: string | null;
+  telefono: string | null;
+  tarjeta: TarjetaRecompensa;
+}
 
 export type GuardedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;

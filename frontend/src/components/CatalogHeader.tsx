@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, type LucideIcon } from 'lucide-react';
+import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, Star, ShoppingBag, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -26,11 +26,16 @@ interface NavItem {
   end?: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
+// El menú se agrupa en 3 bloques a propósito (neuromarketing):
+//  1) TIENDA: el camino de compra va PRIMERO (efecto de primacía) y en orden de
+//     embudo: descubrir → explorar → agrupar → decidir.
+//  2) MI CUENTA: lo personal junto (chunking = menos carga mental).
+//  3) CONTACTO: cierre al FINAL (efecto de recencia) = el CTA de WhatsApp que
+//     queremos que recuerden justo cuando están listos para pedir.
+const NAV_TIENDA: NavItem[] = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
   { to: '/perfumes', label: 'Perfumes', icon: SprayCan },
   { to: '/combos', label: 'Combos', icon: Gift },
-  { to: '/contactame', label: 'Contáctame', icon: Mail },
 ];
 
 export default function CatalogHeader({ isHome = false }: Props) {
@@ -39,14 +44,25 @@ export default function CatalogHeader({ isHome = false }: Props) {
   const [drawerOpen, setDrawerOpen] = useState(false);
   // "Mi crédito" solo aparece si el cliente tiene un crédito activo con el negocio
   const { data: portalCredito } = usePortalCredito();
-  const navItems: NavItem[] = [
-    ...NAV_ITEMS,
-    // "Tu perfume ideal" es exclusivo de cuentas registradas
+  // Grupo TIENDA: "Tu perfume ideal" (quiz que ayuda a decidir) cierra el embudo,
+  // solo para registrados.
+  const grupoTienda: NavItem[] = [
+    ...NAV_TIENDA,
     ...(user ? [{ to: '/perfume-ideal', label: 'Tu perfume ideal', icon: Sparkles }] : []),
-    ...(portalCredito?.tiene_credito_activo
-      ? [{ to: '/mi-credito', label: 'Mi crédito', icon: HandCoins }]
-      : []),
   ];
+  // Grupo MI CUENTA: exclusivo de registrados (recompensas, compras y crédito activo).
+  const grupoCuenta: NavItem[] = user
+    ? [
+        { to: '/mis-recompensas', label: 'Mis recompensas', icon: Star },
+        { to: '/mis-compras', label: 'Mis compras', icon: ShoppingBag },
+        ...(portalCredito?.tiene_credito_activo
+          ? [{ to: '/mi-credito', label: 'Mi crédito', icon: HandCoins }]
+          : []),
+      ]
+    : [];
+  // Grupo CONTACTO: el CTA de cierre.
+  const grupoContacto: NavItem[] = [{ to: '/contactame', label: 'Contáctame', icon: Mail }];
+  const grupos = [grupoTienda, grupoCuenta, grupoContacto].filter((g) => g.length > 0);
 
   const handleLogout = () => {
     setDrawerOpen(false);
@@ -101,25 +117,31 @@ export default function CatalogHeader({ isHome = false }: Props) {
                 </div>
               )}
 
-              <nav className="flex flex-col gap-1 p-3">
-                {navItems.map(({ to, label, icon: Icon, end }) => (
-                  <NavLink
-                    key={to}
-                    to={to}
-                    end={end}
-                    onClick={() => setDrawerOpen(false)}
-                    className={({ isActive }) =>
-                      cn(
-                        'flex items-center gap-3 rounded-xl px-3.5 py-3 text-[14.5px] font-medium transition-colors',
-                        isActive
-                          ? 'bg-brand-soft text-primary'
-                          : 'text-foreground hover:bg-secondary',
-                      )
-                    }
-                  >
-                    <Icon className="size-4.5 shrink-0" />
-                    {label}
-                  </NavLink>
+              <nav className="flex flex-col p-3">
+                {grupos.map((grupo, gi) => (
+                  <div key={gi} className="flex flex-col gap-1">
+                    {/* Separador entre grupos = da la agrupación visual sin recargar */}
+                    {gi > 0 && <Separator className="my-2" />}
+                    {grupo.map(({ to, label, icon: Icon, end }) => (
+                      <NavLink
+                        key={to}
+                        to={to}
+                        end={end}
+                        onClick={() => setDrawerOpen(false)}
+                        className={({ isActive }) =>
+                          cn(
+                            'flex items-center gap-3 rounded-xl px-3.5 py-3 text-[14.5px] font-medium transition-colors',
+                            isActive
+                              ? 'bg-brand-soft text-primary'
+                              : 'text-foreground hover:bg-secondary',
+                          )
+                        }
+                      >
+                        <Icon className="size-4.5 shrink-0" />
+                        {label}
+                      </NavLink>
+                    ))}
+                  </div>
                 ))}
               </nav>
 
