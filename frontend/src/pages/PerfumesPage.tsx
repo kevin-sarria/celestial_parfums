@@ -9,6 +9,7 @@ import CatalogHero from '../components/catalog/CatalogHero';
 import EmptyState from '../components/catalog/EmptyState';
 import { Chip, FilterGroup } from '../components/catalog/FilterChips';
 import { FilterSidebar, FilterToggleBar } from '../components/catalog/FilterSidebar';
+import { NativeSelect } from '@/components/ui/native-select';
 import { usePerfumes, PERFUMES_PAGE_SIZE } from '../application/hooks/usePerfumes';
 import { GENEROS, GENERO_LABELS } from '../domain/entities/perfume.schema';
 
@@ -98,6 +99,22 @@ export default function PerfumesPage() {
         </FilterSidebar>
 
         <main className="min-w-0 flex-1">
+          {/* Barra de orden */}
+          <div className="mb-4 flex items-center justify-end gap-2">
+            <label htmlFor="orden" className="text-[13px] text-muted-foreground">Ordenar por</label>
+            <NativeSelect
+              id="orden"
+              value={catalog.orden}
+              onChange={(e) => catalog.onOrdenChange(e.target.value)}
+              className="w-52"
+            >
+              <option value="destacados">Destacados</option>
+              <option value="precio_asc">Precio: menor a mayor</option>
+              <option value="precio_desc">Precio: mayor a menor</option>
+              <option value="nombre">Nombre (A-Z)</option>
+            </NativeSelect>
+          </div>
+
           {catalog.error && <p className="py-6 text-center text-sm text-destructive">{catalog.error}</p>}
 
           {!catalog.loading && !catalog.error && catalog.total === 0 && <EmptyState />}

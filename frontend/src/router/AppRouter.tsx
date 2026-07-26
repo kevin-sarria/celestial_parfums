@@ -12,8 +12,13 @@ const ContactPage = lazy(() => import('../pages/ContactPage'));
 const MiCreditoPage = lazy(() => import('../pages/MiCreditoPage'));
 const MisRecompensasPage = lazy(() => import('../pages/MisRecompensasPage'));
 const MisComprasPage = lazy(() => import('../pages/MisComprasPage'));
+const MisFavoritosPage = lazy(() => import('../pages/MisFavoritosPage'));
 const PerfumeIdealPage = lazy(() => import('../pages/PerfumeIdealPage'));
 const LegalPage = lazy(() => import('../pages/LegalPage'));
+const SobreNosotrosPage = lazy(() => import('../pages/SobreNosotrosPage'));
+const BlogPage = lazy(() => import('../pages/BlogPage'));
+const BlogPostPage = lazy(() => import('../pages/BlogPostPage'));
+const InvitaPage = lazy(() => import('../pages/InvitaPage'));
 const LoginPage = lazy(() => import('../pages/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/RegisterPage'));
 const VerifyPage = lazy(() => import('../pages/VerifyPage'));
@@ -34,8 +39,13 @@ export default function AppRouter() {
         <Route path="/mi-credito" element={<MiCreditoPage />} />
         <Route path="/mis-recompensas" element={<MisRecompensasPage />} />
         <Route path="/mis-compras" element={<MisComprasPage />} />
+        <Route path="/mis-favoritos" element={<MisFavoritosPage />} />
         <Route path="/perfume-ideal" element={<PerfumeIdealPage />} />
         <Route path="/legal" element={<LegalPage />} />
+        <Route path="/nosotros" element={<SobreNosotrosPage />} />
+        <Route path="/blog" element={<BlogPage />} />
+        <Route path="/blog/:slug" element={<BlogPostPage />} />
+        <Route path="/invita" element={<InvitaPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify" element={<VerifyPage />} />

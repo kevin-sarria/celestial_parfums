@@ -12,6 +12,7 @@ import {
   claimFichaUser,
 } from '../repositories/auth.repository';
 import type { LoginDTO, RegisterDTO } from '../types/auth.type';
+import { vincularReferido } from '../repositories/referido.repository';
 import { transporter } from '../config/mailer';
 import logger from '../config/logger';
 
@@ -204,8 +205,11 @@ export const registerAdminService = async (dto: RegisterDTO) => {
   return doRegister(dto);
 };
 
-export const registerClientService = async (dto: Omit<RegisterDTO, 'rol_id'>) => {
-  return doRegister({ ...dto, rol_id: 2 });
+export const registerClientService = async (dto: Omit<RegisterDTO, 'rol_id'>, ref?: string) => {
+  const result = await doRegister({ ...dto, rol_id: 2 });
+  // Programa de referidos: vincula al nuevo cliente con quien lo invitó (si aplica).
+  if (ref) await vincularReferido(result.id, ref).catch(() => {});
+  return result;
 };
 
 export const verifyEmailService = async (token: string) => {

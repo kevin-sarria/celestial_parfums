@@ -4,6 +4,7 @@ import * as entregaRepo from '../repositories/recompensaEntrega.repository';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { uploadMemoria } from '../config/upload';
+import { uploadLimiter } from '../middleware/limiters';
 import { h } from '../middleware/error.middleware';
 import { badRequest } from '../utils/httpError';
 import { parsePagination, parseSearch } from '../utils/pagination';
@@ -49,7 +50,7 @@ recompensaRouter.get('/mis-entregas', requireAuth, h(async (req, res) => {
 }));
 
 // El cliente sube fotos de SU premio (quedan pendientes de aprobación)
-recompensaRouter.post('/entregas/:id/fotos', requireAuth, uploadMemoria.array('imagenes', 3), h(async (req, res) => {
+recompensaRouter.post('/entregas/:id/fotos', requireAuth, uploadLimiter, uploadMemoria.array('imagenes', 3), h(async (req, res) => {
   const imagenes = await fotosDeEntrega(req);
   if (!imagenes.length) throw badRequest('Adjunta al menos una foto');
   const data = await entregaRepo.subirFotosEntrega(Number(req.params.id), imagenes, req.jwtUser!.id);

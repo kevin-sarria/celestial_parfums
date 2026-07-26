@@ -1,6 +1,7 @@
 import { useLocation } from 'react-router-dom';
 import { AuthProvider } from './application/context/AuthProvider';
 import { CartProvider } from './application/context/CartProvider';
+import { ListasProvider } from './application/context/ListasProvider';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppRouter from './router/AppRouter';
 import ScrollToTop from './router/ScrollToTop';
@@ -31,10 +32,12 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <CartProvider>
-          <ScrollToTop />
-          <AppLayout />
-        </CartProvider>
+        <ListasProvider>
+          <CartProvider>
+            <ScrollToTop />
+            <AppLayout />
+          </CartProvider>
+        </ListasProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

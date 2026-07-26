@@ -95,9 +95,14 @@ model User {
   cupo_base          Decimal   @default(0) @db.Decimal(10, 2)
   // true = ficha creada por el admin, sin acceso a la web todavía.
   sin_cuenta         Boolean   @default(false)
+  // Programa de referidos: código propio para invitar y quién lo invitó a él.
+  codigo_referido    String?   @unique @db.VarChar(20)
+  referido_por       Int?
   created_at         DateTime  @default(now())
   updated_at         DateTime  @updatedAt
   rol                Role      @relation(fields: [rol_id], references: [id])
+  referidor          User?     @relation("Referidos", fields: [referido_por], references: [id], onDelete: SetNull)
+  referidos          User[]    @relation("Referidos")
   ventas             Venta[]
   creditos           Credito[]
   codigos_descuento  DescuentoCodigo[]
@@ -105,6 +110,8 @@ model User {
   recompensa         RecompensaUsuario?
   resenas            Resena[]
   entregas           RecompensaEntrega[]
+  favoritos          Favorito[]
+  avisos_stock       AvisoStock[]
 
   @@map("users")
 }
@@ -320,6 +327,8 @@ model Perfume {
   ventas         VentaPerfume[]
   recomendado_en RecomendacionItem[]
   resenas        Resena[]
+  favoritos      Favorito[]
+  avisos_stock   AvisoStock[]
 
   @@index([categoria_id])
   @@index([genero])
@@ -609,4 +618,61 @@ model Combo {
   @@index([presentacion_id])
   @@index([activo])
   @@map("combos")
+}
+
+// Perfumes guardados por un cliente (favoritos / lista de deseos).
+model Favorito {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  perfume_id Int
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  perfume    Perfume  @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, perfume_id])
+  @@index([user_id])
+  @@map("favoritos")
+}
+
+// "Avísame cuando vuelva": interés en un perfume agotado. El admin ve la demanda.
+model AvisoStock {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  perfume_id Int
+  notificado Boolean  @default(false)
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  perfume    Perfume  @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, perfume_id])
+  @@index([perfume_id, notificado])
+  @@map("avisos_stock")
+}
+
+// Blog: contenido HTML SANEADO en el backend antes de guardar (anti-XSS).
+model Post {
+  id         Int      @id @default(autoincrement())
+  titulo     String   @db.VarChar(200)
+  slug       String   @unique @db.VarChar(220)
+  resumen    String?  @db.VarChar(300)
+  contenido  String   @db.Text
+  portada    String?  @db.VarChar(255)
+  publicado  Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([publicado, created_at])
+  @@map("posts")
+}
+
+// Config de "Sobre nosotros" (fila única, patrón ContactoConfig).
+model SobreNosotrosConfig {
+  id         Int      @id @default(autoincrement())
+  titulo     String   @default("Sobre nosotros") @db.VarChar(200)
+  historia   String   @default("") @db.Text
+  imagen     String?  @db.VarChar(255)
+  activo     Boolean  @default(true)
+  updated_at DateTime @updatedAt
+
+  @@map("sobre_nosotros_config")
 }

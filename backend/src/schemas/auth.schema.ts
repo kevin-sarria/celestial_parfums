@@ -11,6 +11,8 @@ export const registerSchema = z.object({
   email: z.email('Correo inválido'),
   password: z.string().min(6, 'La contraseña debe tener al menos 6 caracteres').max(255),
   rol_id: z.number().int().positive().optional(),
+  // Código de invitación del programa de referidos (opcional).
+  ref: z.string().max(20).optional(),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

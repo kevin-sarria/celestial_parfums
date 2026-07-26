@@ -7,6 +7,8 @@ const explorar = [
   { to: '/', label: 'Inicio' },
   { to: '/perfumes', label: 'Perfumes' },
   { to: '/combos', label: 'Combos' },
+  { to: '/blog', label: 'Blog' },
+  { to: '/nosotros', label: 'Sobre nosotros' },
   { to: '/contactame', label: 'Contáctame' },
 ];
 

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Menu, ChevronDown, SprayCan, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
-  CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText, Store, LogOut, type LucideIcon,
+  CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText, Store, LogOut,
+  BellRing, Info, Newspaper, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -33,6 +34,9 @@ import { UsuariosTab } from './tabs/UsuariosTab';
 import { PublicidadTab } from './tabs/PublicidadTab';
 import { RecompensasTab } from './tabs/RecompensasTab';
 import { ResenasTab } from './tabs/ResenasTab';
+import { AvisosTab } from './tabs/AvisosTab';
+import { SobreNosotrosTab } from './tabs/SobreNosotrosTab';
+import { BlogTab } from './tabs/BlogTab';
 import { RedesTab } from './tabs/RedesTab';
 import PerfumeSpinner from '../../components/PerfumeSpinner';
 import { BrandMark } from '../../components/BrandMark';
@@ -53,6 +57,9 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   publicidad: { label: 'Publicidad', icon: Megaphone },
   recompensas: { label: 'Recompensas', icon: Star },
   resenas: { label: 'Reseñas', icon: MessageSquareText },
+  avisos: { label: 'Reposiciones', icon: BellRing },
+  nosotros: { label: 'Sobre nosotros', icon: Info },
+  blog: { label: 'Blog', icon: Newspaper },
   redes: { label: 'Redes sociales', icon: Share2 },
 };
 
@@ -61,7 +68,7 @@ const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
   { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones'] },
   { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'pagos'] },
-  { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'redes'] },
+  { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
 ];
 
 const sectionOfTab = (tab: Tab) =>
@@ -354,6 +361,9 @@ export default function DashboardPage() {
             {tab === 'publicidad' && <PublicidadTab guardedFetch={guardedFetch} categorias={categorias} />}
             {tab === 'recompensas' && <RecompensasTab guardedFetch={guardedFetch} />}
             {tab === 'resenas' && <ResenasTab guardedFetch={guardedFetch} />}
+            {tab === 'avisos' && <AvisosTab guardedFetch={guardedFetch} />}
+            {tab === 'nosotros' && <SobreNosotrosTab guardedFetch={guardedFetch} />}
+            {tab === 'blog' && <BlogTab guardedFetch={guardedFetch} />}
             {tab === 'redes' && <RedesTab guardedFetch={guardedFetch} />}
           </>
         )}

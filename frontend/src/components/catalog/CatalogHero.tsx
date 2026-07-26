@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { FormEvent, ReactNode } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -9,6 +9,8 @@ interface CatalogHeroProps {
   searchValue: string;
   searchPlaceholder: string;
   onSearchChange: (value: string) => void;
+  /** Si se pasa, la búsqueda se comporta como formulario (Enter navega, p. ej. al catálogo). */
+  onSubmit?: () => void;
 }
 
 /** Encabezado editorial de las páginas del catálogo: kicker + título display + búsqueda. */
@@ -19,7 +21,9 @@ export default function CatalogHero({
   searchValue,
   searchPlaceholder,
   onSearchChange,
+  onSubmit,
 }: CatalogHeroProps) {
+  const Contenedor = onSubmit ? 'form' : 'div';
   return (
     <section className="mx-auto w-full max-w-7xl px-5 pb-8 pt-12 text-center md:px-8 md:pt-16 animate-fade-up">
       <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-primary">{kicker}</p>
@@ -31,7 +35,10 @@ export default function CatalogHero({
           {subtitle}
         </p>
       )}
-      <div className="relative mx-auto mt-7 max-w-md">
+      <Contenedor
+        className="relative mx-auto mt-7 max-w-md"
+        {...(onSubmit ? { onSubmit: (e: FormEvent) => { e.preventDefault(); onSubmit(); } } : {})}
+      >
         <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
         {/* text-base en móvil: con fuente <16px iOS hace zoom a toda la página al
             enfocar el input y no lo revierte (queda "agrandada" y descuadrada). */}
@@ -42,7 +49,7 @@ export default function CatalogHero({
           onChange={(e) => onSearchChange(e.target.value)}
           className="h-11 rounded-full border-border bg-card pl-11 pr-5 text-base shadow-none transition-shadow duration-300 focus-visible:shadow-[0_8px_30px_-12px_rgb(0_0_0/0.2)] md:text-sm"
         />
-      </div>
+      </Contenedor>
     </section>
   );
 }

@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, ShoppingCart } from 'lucide-react';
+import { Clock, Heart, ShoppingCart } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatPrice, finalPrice } from '@/lib/format';
 import Estrellas from './Estrellas';
 import AddToCartModal from './AddToCartModal';
+import { useAuthContext } from '../application/context/useAuthContext';
+import { useListas } from '../application/context/ListasContext';
 import type { Perfume } from '../domain/entities/perfume.schema';
 import { GENERO_SYMBOLS } from '../domain/entities/perfume.schema';
 import { toSlug } from '../utils/slug';
@@ -24,6 +26,9 @@ const GENERO_LABEL: Record<string, string> = {
 
 export default function PerfumeCard({ perfume, vendidos }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuthContext();
+  const { favoritos, toggleFavorito } = useListas();
+  const esFavorito = favoritos.has(perfume.id);
   const [cartModal, setCartModal] = useState(false);
   const goToDetail = () => navigate(`/perfume/${toSlug(perfume.nombre)}`);
   const precioFinal = finalPrice(perfume.precio, perfume.descuento);
@@ -69,8 +74,20 @@ export default function PerfumeCard({ perfume, vendidos }: Props) {
           </span>
         )}
 
-        {perfume.descuento > 0 && (
-          <Badge className="absolute right-3 top-3 rounded-full border border-border bg-background/90 px-2 text-[11px] font-semibold text-ink shadow-sm backdrop-blur-sm">
+        {/* Favorito (corazón) — solo para clientes con sesión */}
+        {user && (
+          <button
+            type="button"
+            aria-label={esFavorito ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+            onClick={(e) => { e.stopPropagation(); toggleFavorito(perfume.id); }}
+            className="absolute right-3 top-3 flex size-8 items-center justify-center rounded-full border border-border bg-background/90 shadow-sm backdrop-blur-sm transition-colors hover:border-primary active:scale-95"
+          >
+            <Heart className={cn('size-4', esFavorito ? 'fill-primary text-primary' : 'text-muted-foreground')} strokeWidth={1.75} />
+          </button>
+        )}
+
+        {perfume.descuento > 0 && !perfume.agotado && (
+          <Badge className="absolute bottom-3 left-3 rounded-full border border-border bg-background/90 px-2 text-[11px] font-semibold text-ink shadow-sm backdrop-blur-sm">
             -{perfume.descuento}%
           </Badge>
         )}

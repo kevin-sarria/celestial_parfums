@@ -175,7 +175,7 @@ export const sitemap = async (baseUrl: string) => {
   ]);
   const urlTag = (loc: string, lastmod?: Date) =>
     `  <url><loc>${escapeHtml(loc)}</loc>${lastmod ? `<lastmod>${lastmod.toISOString().slice(0, 10)}</lastmod>` : ''}</url>`;
-  const fijas = ['', '/perfumes', '/combos', '/contactame', '/legal'].map((r) => urlTag(`${baseUrl}${r}`));
+  const fijas = ['', '/perfumes', '/combos', '/contactame', '/legal', '/nosotros', '/blog'].map((r) => urlTag(`${baseUrl}${r}`));
   const productos = [
     ...perfumes.map((p) => urlTag(`${baseUrl}/perfume/${toSlug(p.nombre)}`, p.updated_at)),
     ...combos.map((c) => urlTag(`${baseUrl}/combo/${toSlug(c.nombre)}`, c.updated_at)),

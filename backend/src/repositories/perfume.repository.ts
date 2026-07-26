@@ -99,12 +99,25 @@ export const selectAllParfums = async () => {
 };
 
 /** Filtros del catálogo público (por nombre, tal como los muestra el frontend). */
+export type OrdenCatalogo = 'destacados' | 'precio_asc' | 'precio_desc' | 'nombre';
+
 export interface CatalogoFiltros {
   genero?: 'dama' | 'caballero' | 'unisex';
   categorias?: string[];
   aromas?: string[];
   ocasiones?: string[];
+  orden?: OrdenCatalogo;
 }
+
+// Ojo: el precio "efectivo" sale de la cascada (mapPerfume), no de una columna.
+// Ordenamos por `perfumes.precio` (respaldo), suficiente porque casi todos los
+// perfumes comparten precio; si se quisiera exacto habría que denormalizar.
+const ORDEN_CATALOGO: Record<OrdenCatalogo, Prisma.PerfumeOrderByWithRelationInput> = {
+  destacados: { created_at: 'desc' }, // lo más nuevo primero
+  precio_asc: { precio: 'asc' },
+  precio_desc: { precio: 'desc' },
+  nombre: { nombre: 'asc' },
+};
 
 export const selectParfumsPaginated = async (
   page: number,
@@ -130,11 +143,21 @@ export const selectParfumsPaginated = async (
   if (filtros?.ocasiones?.length)
     and.push({ ocasiones: { some: { ocasion: { nombre: { in: filtros.ocasiones } } } } });
   const where: Prisma.PerfumeWhereInput | undefined = and.length ? { AND: and } : undefined;
+  const orderBy = ORDEN_CATALOGO[filtros?.orden ?? 'destacados'];
   const [rows, total] = await Promise.all([
-    prisma.perfume.findMany({ where, include: perfumeInclude, orderBy: { nombre: 'asc' }, skip, take: limit }),
+    prisma.perfume.findMany({ where, include: perfumeInclude, orderBy, skip, take: limit }),
     prisma.perfume.count({ where }),
   ]);
   return paginatedResponse(await conRatings(rows.map(mapPerfume)), total, page, limit);
+};
+
+/** Perfumes por lista de ids, preservando el orden dado (favoritos, etc.). */
+export const selectPerfumesByIds = async (ids: number[]) => {
+  if (!ids.length) return [];
+  const rows = await prisma.perfume.findMany({ where: { id: { in: ids } }, include: perfumeInclude });
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const ordenados = ids.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => p != null);
+  return conRatings(ordenados.map(mapPerfume));
 };
 
 /**

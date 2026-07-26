@@ -85,7 +85,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
 
 export const registerClient = async (req: Request, res: Response) => {
   try {
-    const data = await registerClientService(req.body);
+    const data = await registerClientService(req.body, typeof req.body.ref === 'string' ? req.body.ref : undefined);
     res.status(201).json({
       message: 'Registro exitoso. Revisa tu correo para activar tu cuenta.',
       data,

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, Star, ShoppingBag, type LucideIcon } from 'lucide-react';
+import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, Star, ShoppingBag, Heart, Newspaper, Info, Share2, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -36,6 +36,7 @@ const NAV_TIENDA: NavItem[] = [
   { to: '/', label: 'Inicio', icon: Home, end: true },
   { to: '/perfumes', label: 'Perfumes', icon: SprayCan },
   { to: '/combos', label: 'Combos', icon: Gift },
+  { to: '/blog', label: 'Blog', icon: Newspaper },
 ];
 
 export default function CatalogHeader({ isHome = false }: Props) {
@@ -53,15 +54,20 @@ export default function CatalogHeader({ isHome = false }: Props) {
   // Grupo MI CUENTA: exclusivo de registrados (recompensas, compras y crédito activo).
   const grupoCuenta: NavItem[] = user
     ? [
+        { to: '/mis-favoritos', label: 'Mis favoritos', icon: Heart },
         { to: '/mis-recompensas', label: 'Mis recompensas', icon: Star },
         { to: '/mis-compras', label: 'Mis compras', icon: ShoppingBag },
+        { to: '/invita', label: 'Invita y gana', icon: Share2 },
         ...(portalCredito?.tiene_credito_activo
           ? [{ to: '/mi-credito', label: 'Mi crédito', icon: HandCoins }]
           : []),
       ]
     : [];
-  // Grupo CONTACTO: el CTA de cierre.
-  const grupoContacto: NavItem[] = [{ to: '/contactame', label: 'Contáctame', icon: Mail }];
+  // Grupo CONTACTO: nosotros + el CTA de cierre.
+  const grupoContacto: NavItem[] = [
+    { to: '/nosotros', label: 'Sobre nosotros', icon: Info },
+    { to: '/contactame', label: 'Contáctame', icon: Mail },
+  ];
   const grupos = [grupoTienda, grupoCuenta, grupoContacto].filter((g) => g.length > 0);
 
   const handleLogout = () => {

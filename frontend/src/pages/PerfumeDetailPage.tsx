@@ -1,7 +1,7 @@
 import { useSeo } from '../application/hooks/useSeo';
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, ShoppingCart, Wind } from 'lucide-react';
+import { ArrowLeft, Bell, BellRing, Clock, Heart, ShoppingCart, Wind } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -15,6 +15,8 @@ import CatalogHeader from '../components/CatalogHeader';
 import Estrellas from '../components/Estrellas';
 import ResenasProducto from '../components/resenas/ResenasProducto';
 import { usePerfumeDetail } from '../application/hooks/usePerfumeDetail';
+import { useAuthContext } from '../application/context/useAuthContext';
+import { useListas } from '../application/context/ListasContext';
 import { GENERO_LABELS } from '../domain/entities/perfume.schema';
 import { aromaColor } from '../domain/entities/aroma.colors';
 
@@ -30,6 +32,8 @@ export default function PerfumeDetailPage() {
   const { perfume, related, loading, error } = usePerfumeDetail(slug);
   const [cartModal, setCartModal] = useState(false);
   const [resenasOpen, setResenasOpen] = useState(false);
+  const { user } = useAuthContext();
+  const { favoritos, avisos, toggleFavorito, toggleAviso } = useListas();
   useSeo(perfume?.nombre, perfume?.descripcion ?? undefined);
 
   const precioFinal = perfume ? finalPrice(perfume.precio, perfume.descuento) : 0;
@@ -109,9 +113,21 @@ export default function PerfumeDetailPage() {
                 )}
               </div>
 
-              <h1 className="font-display text-4xl font-light tracking-tight text-ink md:text-5xl">
-                {perfume.nombre}
-              </h1>
+              <div className="flex items-start justify-between gap-3">
+                <h1 className="font-display text-4xl font-light tracking-tight text-ink md:text-5xl">
+                  {perfume.nombre}
+                </h1>
+                {user && (
+                  <button
+                    type="button"
+                    aria-label={favoritos.has(perfume.id) ? 'Quitar de favoritos' : 'Guardar en favoritos'}
+                    onClick={() => toggleFavorito(perfume.id)}
+                    className="mt-1 flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-card transition-colors hover:border-primary active:scale-95"
+                  >
+                    <Heart className={cn('size-5', favoritos.has(perfume.id) ? 'fill-primary text-primary' : 'text-muted-foreground')} strokeWidth={1.75} />
+                  </button>
+                )}
+              </div>
 
               {perfume.rating_total > 0 && (
                 <button type="button" onClick={() => setResenasOpen(true)}
@@ -209,7 +225,7 @@ export default function PerfumeDetailPage() {
                 </div>
               )}
 
-              {!perfume.agotado && (
+              {!perfume.agotado ? (
                 <Button
                   size="lg"
                   className="mt-2 h-12 w-fit rounded-full px-8 text-[14px] shadow-[0_12px_30px_-12px] shadow-primary/50 transition-all duration-300 hover:shadow-[0_16px_36px_-12px] hover:shadow-primary/60"
@@ -218,6 +234,27 @@ export default function PerfumeDetailPage() {
                   <ShoppingCart className="size-4" />
                   Agregar al carrito
                 </Button>
+              ) : user ? (
+                <Button
+                  size="lg"
+                  variant={avisos.has(perfume.id) ? 'outline' : 'default'}
+                  className="mt-2 h-12 w-fit rounded-full px-8 text-[14px]"
+                  onClick={() => toggleAviso(perfume.id)}
+                >
+                  {avisos.has(perfume.id) ? (
+                    <><BellRing className="size-4" /> Te avisaremos cuando vuelva</>
+                  ) : (
+                    <><Bell className="size-4" /> Avísame cuando vuelva</>
+                  )}
+                </Button>
+              ) : (
+                <p className="mt-2 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-[13.5px] text-muted-foreground">
+                  Agotado por ahora.{' '}
+                  <button type="button" onClick={() => navigate('/login')} className="font-medium text-primary underline underline-offset-2">
+                    Inicia sesión
+                  </button>{' '}
+                  y te avisamos cuando vuelva.
+                </p>
               )}
             </div>
           </main>

@@ -41,11 +41,14 @@ export const selectAllPerfumes = async (req: Request, res: Response) => {
     if (req.query.page) {
       const { page, limit } = parsePagination(req.query as any);
       const generoRaw = typeof req.query.genero === 'string' ? req.query.genero : '';
+      const ordenRaw = typeof req.query.sort === 'string' ? req.query.sort : '';
+      const ordenes = ['destacados', 'precio_asc', 'precio_desc', 'nombre'];
       const result = await perfumeService.allPerfumesPaginated(page, limit, parseSearch(req.query as any), {
         genero: ['dama', 'caballero', 'unisex'].includes(generoRaw) ? (generoRaw as 'dama' | 'caballero' | 'unisex') : undefined,
         categorias: parseLista(req.query.categorias),
         aromas: parseLista(req.query.aromas),
         ocasiones: parseLista(req.query.ocasiones),
+        orden: ordenes.includes(ordenRaw) ? (ordenRaw as any) : undefined,
       });
       res.json(result);
     } else {

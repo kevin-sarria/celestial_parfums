@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Trophy } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { BASE_URL } from '../../infrastructure/api/client';
 import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
 
@@ -15,7 +16,7 @@ interface Ganador {
  * Galería pública de "ganadores": fotos de premios entregados (aprobadas por el
  * admin). Publicidad social gratis. Se puede poner en el home y en el portal.
  */
-export default function GaleriaGanadores({ titulo = 'Nuestros ganadores' }: { titulo?: string }) {
+export default function GaleriaGanadores({ titulo = 'Nuestros ganadores', className }: { titulo?: string; className?: string }) {
   const [ganadores, setGanadores] = useState<Ganador[]>([]);
   const [amplia, setAmplia] = useState<string | null>(null);
 
@@ -32,7 +33,7 @@ export default function GaleriaGanadores({ titulo = 'Nuestros ganadores' }: { ti
   if (fotos.length === 0) return null;
 
   return (
-    <section className="w-full">
+    <section className={cn('w-full', className)}>
       <div className="mb-4 flex items-center justify-center gap-2 text-center">
         <Trophy className="size-5" style={{ color: '#d9b45a' }} />
         <h2 className="font-display text-2xl font-light text-ink">{titulo}</h2>
@@ -43,7 +44,7 @@ export default function GaleriaGanadores({ titulo = 'Nuestros ganadores' }: { ti
             className="group relative overflow-hidden rounded-xl border border-border">
             <img src={f.url} alt={`Premio de ${f.cliente}`} loading="lazy"
               className="aspect-square w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-            <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-left text-[11px] font-medium text-white">
+            <span className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/70 to-transparent p-2 text-left text-[11px] font-medium text-white">
               {f.cliente.split(' ')[0]} 🎁
             </span>
           </button>

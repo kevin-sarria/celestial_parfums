@@ -145,3 +145,17 @@
     }
   }
 }
+
+/* Contenido del blog (HTML saneado) y del editor */
+.blog-contenido { color: var(--foreground); }
+.blog-contenido h2 { font-family: var(--font-display, inherit); font-size: 1.6rem; font-weight: 400; line-height: 1.25; margin: 1.6rem 0 0.6rem; color: var(--ink, inherit); }
+.blog-contenido h3 { font-size: 1.2rem; font-weight: 600; margin: 1.2rem 0 0.4rem; }
+.blog-contenido p { margin: 0.7rem 0; line-height: 1.75; }
+.blog-contenido ul, .blog-contenido ol { margin: 0.7rem 0 0.7rem 1.4rem; line-height: 1.7; }
+.blog-contenido ul { list-style: disc; }
+.blog-contenido ol { list-style: decimal; }
+.blog-contenido li { margin: 0.25rem 0; }
+.blog-contenido a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.blog-contenido blockquote { border-left: 3px solid var(--primary); padding-left: 1rem; margin: 1rem 0; color: var(--muted-foreground); font-style: italic; }
+.blog-contenido img { max-width: 100%; border-radius: 0.75rem; margin: 1rem 0; }
+.blog-contenido:empty::before { content: attr(data-placeholder); color: var(--muted-foreground); }

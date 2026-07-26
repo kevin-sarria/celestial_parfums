@@ -6,6 +6,7 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { slowDown } from 'express-slow-down';
 import path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import logger from './config/logger';
@@ -26,6 +27,10 @@ import { anuncioRouter } from './routes/anuncio.router';
 import { recomendacionRouter } from './routes/recomendacion.router';
 import { recompensaRouter } from './routes/recompensa.router';
 import { resenaRouter } from './routes/resena.router';
+import { favoritoRouter } from './routes/favorito.router';
+import { avisoRouter } from './routes/avisoStock.router';
+import { nosotrosRouter } from './routes/sobreNosotros.router';
+import { blogRouter } from './routes/blog.router';
 import { seoRouter } from './routes/seo.router';
 import { backupRouter } from './routes/backup.router';
 import { errorHandler } from './middleware/error.middleware';
@@ -78,6 +83,17 @@ app.use(cors({
 const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false });
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Demasiados intentos, intenta de nuevo en 15 minutos' } });
 
+// Anti-flood suave: al que dispara muchas peticiones lo va RALENTIZANDO (no lo
+// corta en seco) para frustrar bots/scrapers sin molestar a un cliente real.
+// Un navegante normal casi nunca pasa de 150 peticiones API en 15 min (las
+// imágenes se sirven ANTES y no cuentan aquí).
+const speedLimiter = slowDown({
+  windowMs: 15 * 60 * 1000,
+  delayAfter: 150,
+  delayMs: (hits) => (hits - 150) * 250, // +250ms por cada petición extra
+  maxDelayMs: 5000,
+});
+
 // Comprime las respuestas JSON (el catálogo completo pasa de cientos de KB a decenas)
 app.use(compression());
 
@@ -98,6 +114,7 @@ app.use('/uploads', uploadsStatic);
 app.use(seoRouter);
 
 app.use(globalLimiter);
+app.use(speedLimiter);
 app.use(cookieParser());
 app.use(express.json({ limit: '2mb' }));
 
@@ -133,6 +150,10 @@ app.use('/api/anuncios', anuncioRouter);
 app.use('/api/recomendaciones', recomendacionRouter);
 app.use('/api/recompensas', recompensaRouter);
 app.use('/api/resenas', resenaRouter);
+app.use('/api/favoritos', favoritoRouter);
+app.use('/api/avisos', avisoRouter);
+app.use('/api/nosotros', nosotrosRouter);
+app.use('/api/blog', blogRouter);
 app.use('/api/backup', backupRouter);
 
 // Middleware central de errores: HttpError responde con su status semántico

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,6 +15,8 @@ import { useSeo } from '../application/hooks/useSeo';
 export default function RegisterPage() {
   useSeo('Crear cuenta');
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const ref = searchParams.get('ref'); // código de referido en la URL
   const [form, setForm] = useState({
     nombre: '',
     apellido: '',
@@ -57,6 +59,7 @@ export default function RegisterPage() {
           email: parsed.data.email,
           password: parsed.data.password,
           captcha,
+          ...(ref ? { ref } : {}),
         }),
       });
 

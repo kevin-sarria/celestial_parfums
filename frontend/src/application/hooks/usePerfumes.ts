@@ -25,12 +25,13 @@ export function usePerfumes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const [search, setSearch] = useState('');
-  // La búsqueda va al servidor con un pequeño debounce para no disparar una
-  // petición por tecla
-  const [searchQuery, setSearchQuery] = useState('');
+  // ?q=... preselecciona la búsqueda (la manda el buscador del landing);
   // ?categoria=X preselecciona el filtro (lo usa "Elegir mis perfumes" de un combo)
   const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
+  // La búsqueda va al servidor con un pequeño debounce para no disparar una
+  // petición por tecla
+  const [searchQuery, setSearchQuery] = useState(() => (searchParams.get('q') ?? '').trim());
   const [activeAromas, setActiveAromas] = useState<Set<string>>(new Set());
   const [activeOcasiones, setActiveOcasiones] = useState<Set<string>>(new Set());
   const [activeGenero, setActiveGenero] = useState<Genero | ''>('');
@@ -39,6 +40,7 @@ export function usePerfumes() {
     return c ? new Set([c]) : new Set();
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [orden, setOrden] = useState('destacados');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -74,6 +76,7 @@ export function usePerfumes() {
     if (activeCategorias.size) params.set('categorias', [...activeCategorias].join(','));
     if (activeAromas.size) params.set('aromas', [...activeAromas].join(','));
     if (activeOcasiones.size) params.set('ocasiones', [...activeOcasiones].join(','));
+    if (orden) params.set('sort', orden);
     fetch(`${BASE_URL}/api/parfums/?${params}`, { signal: ac.signal })
       .then((r) => r.json())
       .then((json) => {
@@ -84,7 +87,9 @@ export function usePerfumes() {
       .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar los perfumes'); })
       .finally(() => { if (!ac.signal.aborted) setLoading(false); });
     return () => ac.abort();
-  }, [page, searchQuery, activeGenero, activeCategorias, activeAromas, activeOcasiones]);
+  }, [page, searchQuery, activeGenero, activeCategorias, activeAromas, activeOcasiones, orden]);
+
+  const onOrdenChange = (value: string) => { setOrden(value); setPage(1); };
 
   const hasActiveFilters =
     search.trim() !== '' ||
@@ -137,8 +142,10 @@ export function usePerfumes() {
     activeGenero,
     activeCategorias,
     showFilters,
+    orden,
     page,
     hasActiveFilters,
+    onOrdenChange,
     onSearchChange,
     onGeneroToggle,
     toggleStringSet,

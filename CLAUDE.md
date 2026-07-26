@@ -26,6 +26,25 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 - Local: MySQL de XAMPP (`C:\xampp\mysql\bin\mysql.exe`, base `perfumes_db`, user root sin
   password). Arrancar si no responde el puerto 3306. Producción: base `celestial_db`.
 
+## Arquitectura de páginas (landing vs catálogo)
+
+- **`/` = Landing de marketing** (`HomePage.tsx`), diseñada para CONVERTIR (embudo):
+  `LandingHero.tsx` (propuesta de valor "las fragancias que amas, sin pagar de más" +
+  buscador con ejemplos que NAVEGA a `/perfumes?q=` + micro-confianza) → **más vendidos**
+  (prueba social primero) → nuevos → **combos con descuento** (sube el ticket) →
+  `EnvioPagos.tsx` (reaseguro) → galería de ganadores → "cómo funciona" → **cierre con CTA
+  de WhatsApp**. NO lleva sidebar de filtros ni grilla paginada. `/catalog` (solo admin) es
+  su vista previa (`adminPreview`).
+- **Muestras de regalo = INTERNO, NO se muestran en la web** (`MUESTRAS_INTERNO` en
+  `config/negocio.ts`, solo referencia). Son un detalle interno según disponibilidad de
+  envases, no una promesa pública. En la web se promete envío + pago + asesoría por WhatsApp.
+- **`/perfumes` = Catálogo completo** (`PerfumesPage.tsx` + hook `usePerfumes`): filtros +
+  paginación + búsqueda server-side. Lee `?q=` (búsqueda del landing) y `?categoria=` (de
+  "elegir mis perfumes" de un combo). Aquí vive la grilla pesada.
+- **`/legal`** = información legal (ver más abajo).
+- Datos operativos del negocio (transportadoras, tiempos, métodos de pago, muestras) en
+  `config/negocio.ts` — editar ahí (candidato a volverse configurable desde el dashboard).
+
 ## Diseño (respetar SIEMPRE)
 
 - Design system: shadcn/Tailwind, paleta marfil + iris (`bg-card`, `text-primary`,
@@ -261,8 +280,44 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   `/uploads` (evita inyectar URLs externas y host-poisoning; reconstruye con la baseUrl). Los
   endpoints de moderación validan `estado` (400 si es inválido). En producción, si falta
   `BACKEND_URL`, el arranque avisa (las URLs de /uploads no deben depender del header Host).
+- **Anti-abuso / costos (capas)**: (1) `express-rate-limit` global 300/15min + auth 10/15min;
+  (2) `express-slow-down` (`speedLimiter` en app.ts) ralentiza progresivamente tras 150
+  peticiones/15min; (3) `uploadLimiter` (`middleware/limiters.ts`, 25/15min) en las subidas
+  de fotos (reseñas/premios) que consumen `sharp`/CPU. OJO: el rate limiting de la app NO
+  frena un DDoS real (el tráfico ya llegó); la defensa de verdad es **Cloudflare** delante
+  del dominio (cachea imágenes, absorbe floods, oculta la IP) + `limit_req`/`fail2ban` en
+  nginx. Con Cloudflare, nginx DEBE usar `CF-Connecting-IP` como IP real o el limiter
+  agrupa a todos en un solo cubo. Deploy: el **backend suma `express-slow-down`** → `npm install`.
 - **Rendimiento**: el spinner (`PerfumeSpinner.css`) anima con `transform`/`opacity`
   (compositado en GPU), no `clip-path`/`filter`. Ver sección Rendimiento para el resto.
+- **Ordenamiento del catálogo** (`/perfumes`): `?sort=` → `destacados` (nuevos primero,
+  default), `precio_asc`, `precio_desc`, `nombre`. Ojo: el precio efectivo sale de la
+  cascada, no de una columna; se ordena por `perfumes.precio` (respaldo), aceptable porque
+  casi todo cuesta lo mismo. Mapeo en `perfume.repository.ts` (`ORDEN_CATALOGO`).
+- **Favoritos** (`favoritos`): corazón en cards y detalle (solo logueados). Contexto
+  `ListasProvider`/`useListas` (carga ids una vez, toggle optimista). Página `/mis-favoritos`.
+  Endpoints `/api/favoritos` (ids), `/detalle` (perfumes), `POST /:id` (toggle).
+- **Avísame cuando vuelva** (`avisos_stock`): en el detalle de un perfume AGOTADO el cliente
+  logueado pide aviso. NO hay correos automáticos: el admin ve la demanda con el contacto
+  (pestaña **Reposiciones**, `AvisosTab`, botón WhatsApp por persona + "marcar avisados").
+  Endpoints `/api/avisos`. `useListas` también trae los ids de avisos.
+- **Sobre nosotros** (`sobre_nosotros_config`, fila única): página pública `/nosotros`
+  configurable desde el dashboard (pestaña **Sobre nosotros**, `SobreNosotrosTab`: título,
+  historia, imagen, activo). Endpoint público `/api/nosotros` (solo si `activo`).
+- **Blog** (`posts`): público `/blog` + `/blog/:slug`; admin en pestaña **Blog** (`BlogTab`)
+  con editor de texto propio (`EditorHtml.tsx`, contentEditable + toolbar, sin dependencia
+  pesada). El HTML **SIEMPRE se sanea en el backend** con `sanitize-html` (`blog.repository.ts`
+  → `sanearHtml`): solo etiquetas de formato seguras, sin scripts/estilos/on*. Nunca se
+  confía en el cliente. Estilos del contenido: `.blog-contenido` en `index.css`. Deploy:
+  el **backend suma `sanitize-html`** → `npm install` antes del build.
+- **Referidos** (`users.codigo_referido` + `referido_por`, self-relation): portal `/invita`
+  (link + amigos invitados y si compraron), registro con `?ref=CODIGO` (`RegisterPage` →
+  `vincularReferido`). **Anti-trampa ("gente viva")**: `referido_por` es INMUTABLE y solo se
+  fija AL REGISTRARSE → dos amigos con cuenta ya creada nunca pueden referirse entre sí (el
+  recíproco es imposible); no se permite auto-referido (mismo id/correo); y el PREMIO NO es
+  automático ni al registrarse: se gana solo cuando el amigo hace su **primera compra
+  pagada** (venta real que el admin procesa) → crear cuentas falsas no da nada gratis. El
+  admin premia manualmente viendo la lista (sin recompensa automática = sin exploit).
 
 ## Rendimiento (servidor económico: ahorrar llamadas y recursos)
 
@@ -297,6 +352,22 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   principal es el server de 443 sin www). Ya tiene `client_max_body_size 10m` (sin eso los
   uploads >1MB devolvían HTML 413 y el frontend explotaba parseando JSON) y CSP para
   imágenes. El backend fuerza `charset=utf-8` en JSON (app.ts).
+- **Cloudflare (2026-07-26)**: el dominio vive detrás de Cloudflare (proxied, DNS gestionado
+  ahí — el registrador Namecheap solo apunta los nameservers). SSL/TLS en modo **Full
+  (strict)**, Always Use HTTPS y Bot Fight Mode activos. `nginx.conf` (bloque `http {}`,
+  ANTES de los `server {}`) tiene `real_ip_header CF-Connecting-IP` + `set_real_ip_from`
+  con los rangos de Cloudflare (IPv4 e IPv6) — sin esto, todo el tráfico se ve como si
+  viniera de la IP de Cloudflare y el rate limiting agrupa a todos los visitantes en un
+  solo cubo. `limit_req_zone`/`limit_conn_zone` (10r/s, zona `api`) definidos ahí mismo;
+  se aplican con `limit_req`/`limit_conn` dentro de `location /api/` del sitio. Si
+  Cloudflare rota sus rangos de IP, hay que actualizar `set_real_ip_from` (lista oficial:
+  cloudflare.com/ips-v4 y /ips-v6). Pendiente opcional: firewall del VPS restringido a
+  solo IPs de Cloudflare en 80/443 (mayor protección, no aplicado aún).
+- **Anti-abuso en la app** (`backend/src/app.ts` + `middleware/limiters.ts`): además del
+  rate-limit de auth, `speedLimiter` (`express-slow-down`) ralentiza progresivamente tras
+  150 peticiones/15min por IP (no corta, frustra bots sin afectar clientes reales); y
+  `uploadLimiter` (25/15min) protege los endpoints de subida de fotos (reseñas, premios)
+  que gastan CPU con `sharp`. Deploy: el backend suma `express-slow-down` → `npm install`.
 - **Puertos zombis locales**: si 4000/5173 quedan ocupados tras pruebas,
   `Get-NetTCPConnection -LocalPort N` → `Stop-Process`.
 - **`prisma generate` falla con EPERM** si el dev server (ts-node-dev) está corriendo:

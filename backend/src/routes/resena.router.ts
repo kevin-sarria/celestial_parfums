@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as repo from '../repositories/resena.repository';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
 import { uploadMemoria } from '../config/upload';
+import { uploadLimiter } from '../middleware/limiters';
 import { h } from '../middleware/error.middleware';
 import { badRequest } from '../utils/httpError';
 import { parsePagination } from '../utils/pagination';
@@ -30,7 +31,7 @@ resenaRouter.get('/mis-compras', requireAuth, h(async (req, res) => {
 }));
 
 // Crea/actualiza reseña con hasta 3 fotos (se convierten a WebP livianas)
-resenaRouter.post('/', requireAuth, uploadMemoria.array('imagenes', 3), h(async (req, res) => {
+resenaRouter.post('/', requireAuth, uploadLimiter, uploadMemoria.array('imagenes', 3), h(async (req, res) => {
   const perfumeId = Number(req.body.perfume_id);
   const rating = Number(req.body.rating);
   const comentario = (req.body.comentario ?? '').toString().trim().slice(0, 2000) || null;
