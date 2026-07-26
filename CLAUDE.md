@@ -249,6 +249,20 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   distribución por estrellas + modal (`ResenasModal`) que filtra por estrellas y visor de
   fotos tipo carrusel (`VisorImagenes`, montado sobre el `Dialog` de shadcn para que el
   clic afuera cierre solo el visor y no el modal; flechas AFUERA de la imagen estilo ML).
+- **Footer** (`components/Footer.tsx`, en `App.tsx`, oculto en dashboard/contactame) con
+  navegación, enlaces legales y CTA de WhatsApp. **Página legal** (`/legal`, `LegalPage.tsx`,
+  lazy): 3 secciones con ancla (`#terminos`, `#datos`, `#marcas`). El aviso de **marcas e
+  imágenes** es clave: las fotos de producto son REFERENCIALES (sacadas de otras webs), las
+  marcas son de sus titulares, muchos productos son contratipos, y el negocio no está
+  afiliado. Datos de datos personales: Ley 1581/2012, contacto por WhatsApp (NO se inventó
+  NIT/dirección/razón social: agregar solo si el dueño los tiene). `/legal` va en el sitemap.
+- **Seguridad (auditoría 2026-07-25)**: `utils/uploadsUrl.ts` → `sanearUploadsConservados`
+  filtra las URLs `conservar[]` de reseñas/premios para aceptar SOLO archivos de nuestro
+  `/uploads` (evita inyectar URLs externas y host-poisoning; reconstruye con la baseUrl). Los
+  endpoints de moderación validan `estado` (400 si es inválido). En producción, si falta
+  `BACKEND_URL`, el arranque avisa (las URLs de /uploads no deben depender del header Host).
+- **Rendimiento**: el spinner (`PerfumeSpinner.css`) anima con `transform`/`opacity`
+  (compositado en GPU), no `clip-path`/`filter`. Ver sección Rendimiento para el resto.
 
 ## Rendimiento (servidor económico: ahorrar llamadas y recursos)
 

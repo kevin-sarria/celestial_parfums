@@ -67,7 +67,14 @@
       "Bash(rm -rf .playwright-mcp frontend/.playwright-mcp)",
       "Bash(rm -f detalle-movil.png carrusel-movil.png visor-x.png)",
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('react', p.dependencies.react, '| react-dom', p.dependencies['react-dom']\\)\")",
-      "Bash(rm -f menu-publico.png)"
+      "Bash(rm -f menu-publico.png)",
+      "Bash(curl -s -m 2 -o /dev/null -w \"preview 4173: %{http_code}\\\\n\" http://localhost:4173)",
+      "Bash(curl -s -m 2 -o /dev/null -w \"preview 4174: %{http_code}\\\\n\" http://localhost:4174)",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__navigate_page",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__lighthouse_audit",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_console_messages",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__performance_start_trace",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__performance_analyze_insight"
     ]
   }
 }

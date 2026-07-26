@@ -13,6 +13,7 @@ const MiCreditoPage = lazy(() => import('../pages/MiCreditoPage'));
 const MisRecompensasPage = lazy(() => import('../pages/MisRecompensasPage'));
 const MisComprasPage = lazy(() => import('../pages/MisComprasPage'));
 const PerfumeIdealPage = lazy(() => import('../pages/PerfumeIdealPage'));
+const LegalPage = lazy(() => import('../pages/LegalPage'));
 const LoginPage = lazy(() => import('../pages/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/RegisterPage'));
 const VerifyPage = lazy(() => import('../pages/VerifyPage'));
@@ -34,6 +35,7 @@ export default function AppRouter() {
         <Route path="/mis-recompensas" element={<MisRecompensasPage />} />
         <Route path="/mis-compras" element={<MisComprasPage />} />
         <Route path="/perfume-ideal" element={<PerfumeIdealPage />} />
+        <Route path="/legal" element={<LegalPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify" element={<VerifyPage />} />

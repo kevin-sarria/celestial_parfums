@@ -9,16 +9,28 @@ import { badRequest } from '../utils/httpError';
 import { parsePagination, parseSearch } from '../utils/pagination';
 import { guardarVariasWebp } from '../utils/imagenWebp';
 import { getPublicBaseUrl } from '../utils/publicUrl';
+import { sanearUploadsConservados } from '../utils/uploadsUrl';
 import { recompensaConfigSchema, recompensaOverrideSchema } from '../schemas/recompensa.schema';
 
 export const recompensaRouter = Router();
 
+const ESTADOS_ENTREGA = ['pendiente', 'aprobada', 'rechazada'] as const;
+const parseEstadoEntrega = (v: unknown) => {
+  if (typeof v === 'string' && (ESTADOS_ENTREGA as readonly string[]).includes(v)) {
+    return v as (typeof ESTADOS_ENTREGA)[number];
+  }
+  throw badRequest('Estado inválido');
+};
+
 /** Fotos de una entrega desde un multipart (máx 3, convertidas a WebP). */
 const fotosDeEntrega = async (req: any) => {
+  const baseUrl = getPublicBaseUrl(req);
   const files = (req.files as Express.Multer.File[]) ?? [];
-  const conservar: string[] = req.body?.conservar
+  const conservarRaw: string[] = req.body?.conservar
     ? (Array.isArray(req.body.conservar) ? req.body.conservar : [req.body.conservar]) : [];
-  const nuevas = files.length ? await guardarVariasWebp(files.map((f) => f.buffer), getPublicBaseUrl(req)) : [];
+  // Solo URLs de nuestro /uploads (nada externo ni inyectado)
+  const conservar = sanearUploadsConservados(conservarRaw, baseUrl);
+  const nuevas = files.length ? await guardarVariasWebp(files.map((f) => f.buffer), baseUrl) : [];
   return [...conservar, ...nuevas].slice(0, 3);
 };
 
@@ -79,7 +91,8 @@ recompensaRouter.post('/admin/entregas/:id/fotos', requireAdmin, uploadMemoria.a
 }));
 
 recompensaRouter.patch('/admin/entregas/:id', requireAdmin, h(async (req, res) => {
-  res.json({ message: 'Entrega actualizada', data: await entregaRepo.moderarEntrega(Number(req.params.id), req.body.estado) });
+  const estado = parseEstadoEntrega(req.body.estado);
+  res.json({ message: 'Entrega actualizada', data: await entregaRepo.moderarEntrega(Number(req.params.id), estado) });
 }));
 
 recompensaRouter.delete('/admin/entregas/:id', requireAdmin, h(async (req, res) => {

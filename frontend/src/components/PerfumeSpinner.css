@@ -12,8 +12,11 @@
 .perfume-spinner-svg {
   width: 52px;
   height: 78px;
+  /* drop-shadow estático (no animado): el pulso ahora va por opacity, que
+     compone en GPU y no repinta en el hilo principal (mejor CLS/rendimiento) */
   filter: drop-shadow(0 0 12px rgba(201, 163, 79, 0.3));
   animation: spinner-glow 2.5s ease-in-out infinite;
+  will-change: opacity;
 }
 
 /* ─── Bottle parts ─── */
@@ -46,6 +49,7 @@
   fill: rgba(201, 163, 79, 0.2);
   animation: liquid-rise 2.8s ease-in-out infinite;
   transform-origin: bottom;
+  will-change: transform;
 }
 
 /* ─── Flower inside bottle ─── */
@@ -96,25 +100,15 @@
 .perfume-spinner-dot:nth-child(2) { animation-delay: 0.2s; }
 .perfume-spinner-dot:nth-child(3) { animation-delay: 0.4s; }
 
-/* ─── Animations ─── */
+/* ─── Animations (compositadas en GPU: transform + opacity) ─── */
 @keyframes liquid-rise {
-  0%, 100% {
-    clip-path: inset(90% 0 0 0 round 0 0 3px 3px);
-  }
-  45%, 55% {
-    clip-path: inset(10% 0 0 0 round 0 0 3px 3px);
-  }
+  0%, 100% { transform: scaleY(0.12); }
+  45%, 55% { transform: scaleY(0.9); }
 }
 
 @keyframes spinner-glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 8px rgba(201, 163, 79, 0.2));
-    opacity: 0.85;
-  }
-  50% {
-    filter: drop-shadow(0 0 18px rgba(201, 163, 79, 0.45));
-    opacity: 1;
-  }
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
 }
 
 @keyframes dot-bounce {

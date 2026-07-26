@@ -7,9 +7,17 @@ import { badRequest } from '../utils/httpError';
 import { parsePagination } from '../utils/pagination';
 import { guardarVariasWebp } from '../utils/imagenWebp';
 import { getPublicBaseUrl } from '../utils/publicUrl';
+import { sanearUploadsConservados } from '../utils/uploadsUrl';
 import { cacheClear } from '../utils/cache';
 
 export const resenaRouter = Router();
+
+const ESTADOS = ['pendiente', 'aprobada', 'rechazada'] as const;
+type Estado = (typeof ESTADOS)[number];
+const parseEstado = (v: unknown): Estado => {
+  if (typeof v === 'string' && (ESTADOS as readonly string[]).includes(v)) return v as Estado;
+  throw badRequest('Estado inválido');
+};
 
 // ── Público ──────────────────────────────────────────────────────────────────
 resenaRouter.get('/producto/:id', h(async (req, res) => {
@@ -26,14 +34,17 @@ resenaRouter.post('/', requireAuth, uploadMemoria.array('imagenes', 3), h(async 
   const perfumeId = Number(req.body.perfume_id);
   const rating = Number(req.body.rating);
   const comentario = (req.body.comentario ?? '').toString().trim().slice(0, 2000) || null;
-  const conservar: string[] = req.body.conservar
+  const baseUrl = getPublicBaseUrl(req);
+  const conservarRaw: string[] = req.body.conservar
     ? (Array.isArray(req.body.conservar) ? req.body.conservar : [req.body.conservar])
     : [];
+  // Solo se conservan URLs de NUESTRO /uploads (nada externo ni inyectado)
+  const conservar = sanearUploadsConservados(conservarRaw, baseUrl);
   if (!perfumeId) throw badRequest('Falta el producto');
   if (!(rating >= 1 && rating <= 5)) throw badRequest('La calificación debe ser de 1 a 5 estrellas');
 
   const files = (req.files as Express.Multer.File[]) ?? [];
-  const nuevas = files.length ? await guardarVariasWebp(files.map((f) => f.buffer), getPublicBaseUrl(req)) : [];
+  const nuevas = files.length ? await guardarVariasWebp(files.map((f) => f.buffer), baseUrl) : [];
   const imagenes = [...conservar, ...nuevas].slice(0, 3);
 
   const data = await repo.guardarResena(req.jwtUser!.id, perfumeId, rating, comentario, imagenes);
@@ -48,7 +59,7 @@ resenaRouter.get('/admin', requireAdmin, h(async (req, res) => {
 }));
 
 resenaRouter.patch('/admin/:id', requireAdmin, h(async (req, res) => {
-  const data = await repo.moderarResena(Number(req.params.id), req.body.estado);
+  const data = await repo.moderarResena(Number(req.params.id), parseEstado(req.body.estado));
   cacheClear('parfums:');
   res.json({ message: 'Reseña actualizada', data });
 }));

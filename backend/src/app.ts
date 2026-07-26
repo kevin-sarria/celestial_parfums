@@ -38,6 +38,12 @@ const isProduction = process.env.NODE_ENV === 'production';
 // req.protocol sea 'https' y las URLs de /uploads se construyan correctamente.
 if (isProduction) app.set('trust proxy', true);
 
+// Sin BACKEND_URL en producción, las URLs de /uploads se derivan del header Host
+// (falsificable). Fijarla es lo seguro y determinista.
+if (isProduction && !process.env.BACKEND_URL?.trim()) {
+  logger.warn('BACKEND_URL no está definida: las URLs de imágenes se derivarán del header Host. Fíjala en el .env de producción.');
+}
+
 // Orígenes permitidos: FRONTEND_URL admite varios separados por coma
 // (ej: https://www.celestialparfums.com,https://celestialparfums.com).
 const allowedOrigins = (process.env.FRONTEND_URL ?? 'http://localhost:5173')
