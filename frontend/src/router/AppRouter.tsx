@@ -49,7 +49,10 @@ export default function AppRouter() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/verify" element={<VerifyPage />} />
+        {/* La pestaña activa viaja en la URL: recargar o volver atrás conserva
+            el sitio donde estabas (/dashboard redirige a la primera pestaña). */}
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard/:tab" element={<DashboardPage />} />
         {isAdmin && <Route path="/catalog" element={<HomePage adminPreview />} />}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

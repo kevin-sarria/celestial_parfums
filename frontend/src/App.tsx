@@ -2,6 +2,7 @@ import { useLocation } from 'react-router-dom';
 import { AuthProvider } from './application/context/AuthProvider';
 import { CartProvider } from './application/context/CartProvider';
 import { ListasProvider } from './application/context/ListasProvider';
+import { Toaster } from '@/components/ui/sonner';
 import ErrorBoundary from './components/ErrorBoundary';
 import AppRouter from './router/AppRouter';
 import ScrollToTop from './router/ScrollToTop';
@@ -36,6 +37,9 @@ export default function App() {
           <CartProvider>
             <ScrollToTop />
             <AppLayout />
+            {/* Único punto de montaje de los avisos: sirve a toda la app,
+                dashboard incluido (se avisa con `toast` de sonner). */}
+            <Toaster />
           </CartProvider>
         </ListasProvider>
       </AuthProvider>

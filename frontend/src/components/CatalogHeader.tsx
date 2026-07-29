@@ -103,14 +103,17 @@ export default function CatalogHeader({ isHome = false }: Props) {
             </button>
           </SheetTrigger>
 
-          <SheetContent side="right" className="w-72 gap-0 p-0">
-              <SheetHeader className="border-b border-border/70 p-5">
+          <SheetContent side="right" className="w-72 gap-0 overflow-hidden p-0">
+              <SheetHeader className="shrink-0 border-b border-border/70 p-5">
                 <SheetTitle className="flex items-center text-left font-display text-[17px] font-medium tracking-wide text-ink">
                   <BrandMark className="mr-2 size-7" />
                   Celestial Parfums
                 </SheetTitle>
               </SheetHeader>
 
+              {/* Zona scrolleable: con muchos enlaces (o pantallas cortas) el menú
+                  debe poder desplazarse; si no, los últimos quedan inalcanzables. */}
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
               {/* Sesión iniciada: saludo */}
               {user && (
                 <div className="px-5 pt-4 pb-1">
@@ -150,9 +153,14 @@ export default function CatalogHeader({ isHome = false }: Props) {
                   </div>
                 ))}
               </nav>
+              </div>
 
-              <div className="mt-auto p-5">
-                <Separator className="mb-4" />
+              {/* Pie fijo: el botón de sesión SIEMPRE visible. El padding extra
+                  respeta la barra de gestos del iPhone y del navegador. */}
+              <div
+                className="shrink-0 border-t border-border/70 p-5"
+                style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+              >
                 {user ? (
                   <Button variant="outline" className="w-full" onClick={handleLogout}>
                     <LogOut className="size-4" />

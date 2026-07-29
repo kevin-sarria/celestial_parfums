@@ -44,6 +44,22 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction): vo
   }
 };
 
+/**
+ * ¿La petición viene de un ADMIN autenticado? No corta la cadena: sirve para
+ * decidir cosas como eximirlo de los límites anti-abuso (esos existen para
+ * frenar visitantes anónimos, no al dueño trabajando en su tienda).
+ * Requiere que cookieParser haya corrido antes.
+ */
+export const esAdminRequest = (req: Request): boolean => {
+  const token = extractToken(req);
+  if (!token) return false;
+  try {
+    return (jwt.verify(token, JWT_SECRET) as JWTPayload).rol_id === 1;
+  } catch {
+    return false;
+  }
+};
+
 export const requireAdmin = (req: Request, res: Response, next: NextFunction): void => {
   requireAuth(req, res, () => {
     if (req.jwtUser?.rol_id !== 1) {

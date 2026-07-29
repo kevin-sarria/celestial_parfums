@@ -65,6 +65,44 @@ enum CodigoEstado {
   anulado
 }
 
+// ── Cotizaciones mayoristas (B2B) ───────────────────────────────────────────
+
+// Qué es un insumo dentro del costeo de producción.
+enum InsumoTipo {
+  materia_prima
+  envase
+  accesorio
+}
+
+// Cómo se cobra el insumo: por mililitro (esencias, diluyente…) o por pieza.
+enum InsumoUnidad {
+  ml
+  unidad
+}
+
+// A qué se le carga el costo del insumo:
+//  - unidad: uno por cada perfume (bolsa, perfumero, tarjeta, etiqueta)
+//  - pedido: uno por envío completo, sin importar cuántos perfumes lleve
+//    (caja de envío, papel burbuja). Multiplicarlo por unidad inflaría el costo.
+// Los gastos fijos (impresora, herramientas) NO van aquí: no son costo directo.
+enum InsumoAlcance {
+  unidad
+  pedido
+}
+
+enum CotizacionEstado {
+  borrador
+  enviada
+}
+
+// Para qué sirve la cotización:
+//  - general:   lista de precios por cantidad (sin decir qué fragancias)
+//  - detallada: los productos concretos que se va a llevar el cliente
+enum CotizacionTipo {
+  general
+  detallada
+}
+
 // ── Models ──────────────────────────────────────────────────────────────────
 
 model Role {
@@ -329,6 +367,7 @@ model Perfume {
   resenas        Resena[]
   favoritos      Favorito[]
   avisos_stock   AvisoStock[]
+  cotizado_en    CotizacionItem[]
 
   @@index([categoria_id])
   @@index([genero])
@@ -675,4 +714,192 @@ model SobreNosotrosConfig {
   updated_at DateTime @updatedAt
 
   @@map("sobre_nosotros_config")
+}
+
+// ── Cotizaciones mayoristas (B2B) — módulo 100% interno (solo admin) ────────
+// Diseñado independiente del catálogo público y del (inexistente) inventario:
+// los costos los teclea el admin y viven aquí, listos para conectarse a un
+// módulo de inventario/compras el día que exista, sin rehacer nada.
+
+// Insumo con su costo actual: esencias, diluyente, envases, bolsas, etiquetas…
+// Catálogo abierto: el admin agrega los que necesite sin tocar el código.
+model InsumoCosto {
+  id         Int          @id @default(autoincrement())
+  nombre     String       @db.VarChar(120)
+  tipo       InsumoTipo
+  unidad     InsumoUnidad @default(unidad)
+  /// Se cobra por cada perfume o una sola vez por pedido.
+  alcance    InsumoAlcance @default(unidad)
+  /// Costo actual: por ml (materias primas) o por pieza (envases/accesorios).
+  precio     Decimal      @db.Decimal(10, 2)
+  activo     Boolean      @default(true)
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+  /// Fórmulas que usan este insumo como envase (impide borrarlo si está en uso).
+  envase_de  FormulaVolumen[] @relation("EnvaseDeFormula")
+  /// Fórmulas que usan este insumo como esencia (normal, premium…).
+  esencia_de FormulaVolumen[] @relation("EsenciaDeFormula")
+  /// Tamaños que lo incluyen por defecto (bolsa, perfumero…).
+  incluido_en FormulaAccesorio[]
+
+  @@index([tipo, activo])
+  @@map("insumos_costo")
+}
+
+// Accesorios que un tamaño incluye POR DEFECTO. Al cotizar vienen marcados y se
+// pueden quitar o agregar otros para ese cliente: el set es un punto de partida,
+// no una regla fija (mañana puede ser una tarjeta personalizada en vez de bolsa).
+model FormulaAccesorio {
+  formula_volumen_id Int
+  insumo_id          Int
+  formula            FormulaVolumen @relation(fields: [formula_volumen_id], references: [id], onDelete: Cascade)
+  insumo             InsumoCosto    @relation(fields: [insumo_id], references: [id], onDelete: Cascade)
+
+  @@id([formula_volumen_id, insumo_id])
+  @@index([insumo_id])
+  @@map("formula_accesorios")
+}
+
+// Tamaño fabricable (30/50/100 ml…) con su fórmula. El diluyente NO se guarda:
+// siempre se calcula como ml_total − esencia − sellador − feromonas, para que no
+// pueda quedar desincronizado si se edita el volumen total.
+model FormulaVolumen {
+  id               Int      @id @default(autoincrement())
+  nombre           String   @db.VarChar(60)
+  ml_total         Int
+  esencia_ml       Decimal  @db.Decimal(6, 2)
+  sellador_ml      Decimal  @default(0) @db.Decimal(6, 2)
+  feromonas_ml     Decimal  @default(0) @db.Decimal(6, 2)
+  /// Envase que usa este tamaño (un InsumoCosto de tipo envase).
+  envase_insumo_id Int?
+  /// Esencia concreta de esta receta (normal, premium…). Sin ella el costeo
+  /// tendría que adivinar cuál usar cuando hay varias esencias cargadas.
+  esencia_insumo_id Int?
+  activo           Boolean  @default(true)
+  orden            Int      @default(0)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  envase           InsumoCosto?    @relation("EnvaseDeFormula", fields: [envase_insumo_id], references: [id], onDelete: SetNull)
+  esencia          InsumoCosto?    @relation("EsenciaDeFormula", fields: [esencia_insumo_id], references: [id], onDelete: SetNull)
+  escalas          EscalaPrecio[]
+  items            CotizacionItem[]
+  accesorios       FormulaAccesorio[]
+
+  @@index([activo])
+  @@map("formulas_volumen")
+}
+
+// Precio mayorista por rango de cantidad, para un tamaño concreto.
+// El rango se evalúa por LÍNEA de la cotización (cada producto según SU cantidad).
+model EscalaPrecio {
+  id                 Int            @id @default(autoincrement())
+  formula_volumen_id Int
+  cantidad_min       Int
+  /// null = sin tope superior (el clásico "100+").
+  cantidad_max       Int?
+  precio             Decimal        @db.Decimal(10, 2)
+  formula            FormulaVolumen @relation(fields: [formula_volumen_id], references: [id], onDelete: Cascade)
+
+  @@index([formula_volumen_id, cantidad_min])
+  @@map("escalas_precio")
+}
+
+// Textos y valores por defecto de las cotizaciones (fila única).
+model CotizacionConfig {
+  id                     Int      @id @default(autoincrement())
+  vigencia_dias_default  Int      @default(15)
+  /// Objeto con pedido_minimo, tiempo_preparacion, tiempo_despacho, forma_pago,
+  /// condiciones_pago, costos_envio, garantias, politica_cambios.
+  condiciones_comerciales Json
+  /// Array de strings: bloque "¿Por qué elegir Celestial Parfums?".
+  beneficios_items       Json
+  /// Array de strings: cláusulas legales del pie del PDF.
+  avisos_legales         Json
+  updated_at             DateTime @updatedAt
+
+  @@map("cotizacion_config")
+}
+
+// Plantilla comercial reutilizable (Mayorista, Distribuidor, Premium…).
+// El nombre es libre: no es un enum fijo, el admin crea las que quiera.
+model PlantillaCotizacion {
+  id                      Int           @id @default(autoincrement())
+  nombre                  String        @db.VarChar(80)
+  descuento_pct           Decimal       @default(0) @db.Decimal(5, 2)
+  /// Mismo shape que CotizacionConfig.condiciones_comerciales; sobreescribe el default.
+  condiciones_comerciales Json?
+  observaciones_default   String?       @db.Text
+  activo                  Boolean       @default(true)
+  created_at              DateTime      @default(now())
+  updated_at              DateTime      @updatedAt
+  cotizaciones            Cotizacion[]
+
+  @@map("plantillas_cotizacion")
+}
+
+// Cabecera de la cotización. Los datos del cliente van en texto libre a
+// propósito: un prospecto mayorista no es un User del sitio ni una Empresa
+// (que en este proyecto son PROVEEDORES, tabla pagos_proveedor).
+model Cotizacion {
+  id                      Int              @id @default(autoincrement())
+  numero                  String           @unique @db.VarChar(20)
+  tipo                    CotizacionTipo   @default(detallada)
+  /// Solo en las GENERALES: lista de precios congelada
+  /// [{volumen, escalas:[{desde, hasta, precio}]}]. Se guarda tal cual para que
+  /// la cotización enviada no cambie si mañana se ajustan los precios.
+  lista_precios           Json?
+  cliente_nombre          String           @db.VarChar(150)
+  cliente_empresa         String?          @db.VarChar(150)
+  cliente_telefono        String?          @db.VarChar(30)
+  cliente_email           String?          @db.VarChar(150)
+  cliente_nit             String?          @db.VarChar(50)
+  plantilla_id            Int?
+  subtotal                Decimal          @default(0) @db.Decimal(10, 2)
+  descuento_pct           Decimal          @default(0) @db.Decimal(5, 2)
+  total                   Decimal          @default(0) @db.Decimal(10, 2)
+  vigencia_dias           Int              @default(15)
+  fecha_vigencia          DateTime         @db.Date
+  /// Snapshot editable: se copia del config/plantilla al crear.
+  condiciones_comerciales Json
+  /// Insumos de alcance "pedido" cargados a ESTA cotización (caja de envío…),
+  /// congelados: [{insumo_id, nombre, precio}]. Van una vez, no por unidad.
+  extras_pedido           Json?
+  observaciones           String?          @db.Text
+  estado                  CotizacionEstado @default(borrador)
+  created_at              DateTime         @default(now())
+  updated_at              DateTime         @updatedAt
+  plantilla               PlantillaCotizacion? @relation(fields: [plantilla_id], references: [id], onDelete: SetNull)
+  items                   CotizacionItem[]
+
+  @@index([estado, created_at])
+  @@map("cotizaciones")
+}
+
+// Línea de la cotización. Congela nombre, accesorios y desglose de costo: si
+// mañana sube el precio de la esencia, una cotización vieja NO debe cambiar su
+// rentabilidad histórica (mismo criterio que la deuda de un crédito).
+model CotizacionItem {
+  id                      Int            @id @default(autoincrement())
+  cotizacion_id           Int
+  perfume_id              Int?
+  /// Nombre congelado del perfume (sobrevive a renombres o borrados).
+  perfume_nombre          String         @db.VarChar(150)
+  formula_volumen_id      Int?
+  /// Nombre congelado del tamaño (ej: "30 ml").
+  volumen_nombre          String         @db.VarChar(60)
+  cantidad                Int
+  /// Accesorios incluidos en ESTA línea: [{insumo_id, nombre, precio}].
+  accesorios_seleccionados Json
+  /// SOLO ADMIN — nunca viaja al PDF del cliente:
+  /// {esencia, diluyente, sellador, feromonas, envase, accesorios, costo_unitario}.
+  desglose_costo          Json
+  precio_unitario         Decimal        @db.Decimal(10, 2)
+  subtotal                Decimal        @db.Decimal(10, 2)
+  orden                   Int            @default(0)
+  cotizacion              Cotizacion     @relation(fields: [cotizacion_id], references: [id], onDelete: Cascade)
+  perfume                 Perfume?       @relation(fields: [perfume_id], references: [id], onDelete: SetNull)
+  formula                 FormulaVolumen? @relation(fields: [formula_volumen_id], references: [id], onDelete: SetNull)
+
+  @@index([cotizacion_id])
+  @@map("cotizacion_items")
 }

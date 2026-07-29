@@ -31,9 +31,12 @@ import { favoritoRouter } from './routes/favorito.router';
 import { avisoRouter } from './routes/avisoStock.router';
 import { nosotrosRouter } from './routes/sobreNosotros.router';
 import { blogRouter } from './routes/blog.router';
+import { costeoRouter } from './routes/costeo.router';
+import { cotizacionRouter } from './routes/cotizacion.router';
 import { seoRouter } from './routes/seo.router';
 import { backupRouter } from './routes/backup.router';
 import { errorHandler } from './middleware/error.middleware';
+import { esAdminRequest } from './middleware/auth.middleware';
 
 const app = express();
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
@@ -80,18 +83,38 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-import-key'],
 }));
 
-const globalLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false });
+/** ¿Trae sesión iniciada? (barato: no valida el token, solo distingue anónimo). */
+const conSesion = (req: express.Request) => Boolean(req.cookies?.access_token || req.headers.authorization);
+
+/**
+ * Los límites anti-abuso existen para frenar VISITANTES ANÓNIMOS (scrapers,
+ * bots, floods). El ADMIN queda EXENTO por completo: importaciones masivas,
+ * respaldos o una jornada larga en el dashboard nunca deben dejarlo fuera de su
+ * propia tienda. Un cliente con sesión tiene un techo alto; el anónimo, el bajo.
+ */
+const eximir = (req: express.Request) => esAdminRequest(req);
+
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: (req) => (conSesion(req) ? 1200 : 300),
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: eximir,
+});
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, message: { error: 'Demasiados intentos, intenta de nuevo en 15 minutos' } });
 
-// Anti-flood suave: al que dispara muchas peticiones lo va RALENTIZANDO (no lo
-// corta en seco) para frustrar bots/scrapers sin molestar a un cliente real.
-// Un navegante normal casi nunca pasa de 150 peticiones API en 15 min (las
-// imágenes se sirven ANTES y no cuentan aquí).
+/**
+ * Anti-flood suave: al anónimo que dispara muchísimas peticiones lo va
+ * ralentizando (no lo corta) para frustrar scrapers. No aplica en desarrollo
+ * (todo sale de la misma IP y estorbaría al trabajar) ni a quien tiene sesión.
+ * Umbral alto y retraso corto: 2s bastan para frustrar un bot.
+ */
 const speedLimiter = slowDown({
   windowMs: 15 * 60 * 1000,
-  delayAfter: 150,
-  delayMs: (hits) => (hits - 150) * 250, // +250ms por cada petición extra
-  maxDelayMs: 5000,
+  delayAfter: 600,
+  delayMs: (hits) => (hits - 600) * 100,
+  maxDelayMs: 2000,
+  skip: (req) => !isProduction || conSesion(req),
 });
 
 // Comprime las respuestas JSON (el catálogo completo pasa de cientos de KB a decenas)
@@ -113,9 +136,11 @@ app.use('/uploads', uploadsStatic);
 // aquí). Antes del limiter: los rastreadores no gastan el cupo de la API.
 app.use(seoRouter);
 
+// cookieParser va ANTES de los límites: sin él no se puede leer la sesión y el
+// admin no sería reconocido (quedaría sujeto a los topes de un anónimo).
+app.use(cookieParser());
 app.use(globalLimiter);
 app.use(speedLimiter);
-app.use(cookieParser());
 app.use(express.json({ limit: '2mb' }));
 
 // Fuerza UTF-8 en todas las respuestas JSON
@@ -154,6 +179,8 @@ app.use('/api/favoritos', favoritoRouter);
 app.use('/api/avisos', avisoRouter);
 app.use('/api/nosotros', nosotrosRouter);
 app.use('/api/blog', blogRouter);
+app.use('/api/costeo', costeoRouter);
+app.use('/api/cotizaciones', cotizacionRouter);
 app.use('/api/backup', backupRouter);
 
 // Middleware central de errores: HttpError responde con su status semántico

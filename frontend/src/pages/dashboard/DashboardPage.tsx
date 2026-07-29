@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useEffect, useRef, useState } from 'react';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   Menu, ChevronDown, SprayCan, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText, Store, LogOut,
-  BellRing, Info, Newspaper, type LucideIcon,
+  BellRing, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -37,6 +37,10 @@ import { ResenasTab } from './tabs/ResenasTab';
 import { AvisosTab } from './tabs/AvisosTab';
 import { SobreNosotrosTab } from './tabs/SobreNosotrosTab';
 import { BlogTab } from './tabs/BlogTab';
+import { CotizacionesTab } from './tabs/CotizacionesTab';
+import { InsumosCostoTab } from './tabs/InsumosCostoTab';
+import { FormulasVolumenTab } from './tabs/FormulasVolumenTab';
+import { CostosProduccionTab } from './tabs/CostosProduccionTab';
 import { RedesTab } from './tabs/RedesTab';
 import PerfumeSpinner from '../../components/PerfumeSpinner';
 import { BrandMark } from '../../components/BrandMark';
@@ -61,6 +65,10 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   nosotros: { label: 'Sobre nosotros', icon: Info },
   blog: { label: 'Blog', icon: Newspaper },
   redes: { label: 'Redes sociales', icon: Share2 },
+  cotizaciones: { label: 'Cotizaciones', icon: FileText },
+  insumos: { label: 'Insumos y precios', icon: Boxes },
+  formulas: { label: 'Tamaños y fórmulas', icon: FlaskConical },
+  costos: { label: 'Costos de producción', icon: Calculator },
 };
 
 // Menú del dashboard agrupado en secciones colapsables (drawer con burger)
@@ -68,23 +76,31 @@ const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
   { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones'] },
   { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'pagos'] },
+  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'insumos', 'formulas', 'costos'] },
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
 ];
 
 const sectionOfTab = (tab: Tab) =>
   NAV_SECTIONS.find(s => s.tabs.includes(tab))?.id ?? NAV_SECTIONS[0].id;
 
+const TAB_POR_DEFECTO: Tab = 'perfumes';
+const esTabValido = (t?: string): t is Tab => !!t && Object.prototype.hasOwnProperty.call(TAB_META, t);
+
 export default function DashboardPage() {
-  useSeo('Dashboard');
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuthContext();
   const guardedFetch = useGuardedFetch();
 
-  const [tab, setTab] = useState<Tab>('perfumes');
+  // La pestaña vive en la URL (/dashboard/ventas): al recargar o usar el botón
+  // "atrás" del navegador se conserva dónde estabas.
+  const { tab: tabParam } = useParams<{ tab?: string }>();
+  const tab: Tab = esTabValido(tabParam) ? tabParam : TAB_POR_DEFECTO;
+  useSeo(`${TAB_META[tab].label} — Dashboard`);
+
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
   // Secciones desplegadas del menú; la de la pestaña activa arranca abierta
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set([sectionOfTab('perfumes')]));
+  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set([sectionOfTab(tab)]));
   const toggleSection = (id: string) =>
     setOpenSections(prev => {
       const next = new Set(prev);
@@ -110,6 +126,12 @@ export default function DashboardPage() {
   const [presentaciones, setPresentaciones] = useState<Lookup[]>([]);
 
   useEffect(() => { if (!user || !isAdmin) navigate('/'); }, [user, isAdmin, navigate]);
+
+  // /dashboard (o una pestaña inexistente en la URL) → pestaña por defecto.
+  // `replace` para no ensuciar el historial del navegador.
+  useEffect(() => {
+    if (!esTabValido(tabParam)) navigate(`/dashboard/${TAB_POR_DEFECTO}`, { replace: true });
+  }, [tabParam, navigate]);
 
   const loadLookups = async () => {
     const [aRes, oRes, cRes, pRes] = await Promise.all([
@@ -154,12 +176,22 @@ export default function DashboardPage() {
   }, [guardedFetch]);
 
   const handleTabChange = (t: Tab) => {
-    setTab(t);
+    navigate(`/dashboard/${t}`);
     setDrawerOpen(false);
-    setOpenSections(prev => new Set(prev).add(sectionOfTab(t)));
-    if (t === 'perfumes') loadPerfumes(1);
-    if (t === 'combos') loadCombos(1);
   };
+
+  /**
+   * Reacciona al cambio de pestaña venga de donde venga (clic en el menú o
+   * botón atrás/adelante del navegador). En el primer render no recarga: los
+   * datos ya los trae el efecto de carga inicial.
+   */
+  const primerRender = useRef(true);
+  useEffect(() => {
+    setOpenSections(prev => new Set(prev).add(sectionOfTab(tab)));
+    if (primerRender.current) { primerRender.current = false; return; }
+    if (tab === 'perfumes') loadPerfumes(1);
+    if (tab === 'combos') loadCombos(1);
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -364,6 +396,10 @@ export default function DashboardPage() {
             {tab === 'avisos' && <AvisosTab guardedFetch={guardedFetch} />}
             {tab === 'nosotros' && <SobreNosotrosTab guardedFetch={guardedFetch} />}
             {tab === 'blog' && <BlogTab guardedFetch={guardedFetch} />}
+            {tab === 'cotizaciones' && <CotizacionesTab guardedFetch={guardedFetch} />}
+            {tab === 'insumos' && <InsumosCostoTab guardedFetch={guardedFetch} />}
+            {tab === 'formulas' && <FormulasVolumenTab guardedFetch={guardedFetch} />}
+            {tab === 'costos' && <CostosProduccionTab guardedFetch={guardedFetch} />}
             {tab === 'redes' && <RedesTab guardedFetch={guardedFetch} />}
           </>
         )}

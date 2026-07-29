@@ -45,6 +45,43 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 - Datos operativos del negocio (transportadoras, tiempos, métodos de pago, muestras) en
   `config/negocio.ts` — editar ahí (candidato a volverse configurable desde el dashboard).
 
+## Dashboard: la pestaña vive en la URL
+
+- Ruta `/dashboard/:tab` (ej. `/dashboard/cotizaciones`). `/dashboard` o una pestaña
+  inexistente redirigen a `/dashboard/perfumes` con `replace` (no ensucia el historial).
+  Así recargar, usar atrás/adelante o guardar un marcador conserva dónde estabas.
+- La pestaña activa se lee de `useParams`, NO de `useState`: la fuente de verdad es la URL.
+  Un efecto sobre `tab` recarga los datos de perfumes/combos y expande la sección del menú
+  correspondiente, funcione el cambio por clic o por el botón atrás del navegador. Ese
+  efecto se salta el primer render (`primerRender` ref) porque la carga inicial ya trae
+  esos datos — si no, se pedirían dos veces al entrar.
+- Al agregar una pestaña nueva basta con sumarla al union `Tab`, a `TAB_META` y a
+  `NAV_SECTIONS`; el enrutado la reconoce sola (`esTabValido` valida contra `TAB_META`).
+
+## Avisos al usuario (toasts)
+
+- Se usa **sonner**, el toast oficial de shadcn (`components/ui/sonner.tsx` con el `<Toaster/>`
+  montado UNA vez en `App.tsx`). En cualquier vista: `import { toast } from 'sonner'` →
+  `toast.error(msg)` / `toast.success(msg)`. **No inventar un toast propio**: sonner ya
+  resuelve apilado, colapso, deslizar para descartar, accesibilidad y animaciones (se probó
+  una implementación casera y se descartó: apilaba avisos duplicados y en móvil se montaba
+  sobre el formulario). `richColors` activo para que el error se vea rojo de un vistazo.
+- **Deduplicar los avisos repetibles**: `toast.error(msg, { id: msg })` — si el usuario
+  pulsa el botón varias veces, el aviso se reemplaza en vez de apilarse (probado: 6 clics
+  seguidos = 1 solo aviso).
+- **Regla: una acción que falla SIEMPRE avisa.** Nada de `if (!res.ok) return;` mudo ni de
+  dejar el error solo en la consola (el dueño no la mira). Patrón:
+  ```ts
+  const res = await guardedFetch(url, {...});
+  if (!res.ok) { const j = await res.json().catch(() => null);
+                 toast(j?.error ?? 'No se pudo guardar'); return; }
+  ```
+  Mostrar el mensaje que manda el backend: ya viene redactado en español y explica la causa.
+- Validar en el front ANTES de llamar (y avisar con toast) para que el usuario sepa qué
+  corregir sin esperar al servidor. Al fallar, **no borrar lo que el usuario escribió**.
+- `window.alert()` queda deprecado en el dashboard: usar toast. `window.confirm()` sí sigue
+  para confirmar borrados.
+
 ## Diseño (respetar SIEMPRE)
 
 - Design system: shadcn/Tailwind, paleta marfil + iris (`bg-card`, `text-primary`,
@@ -140,6 +177,89 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   revierte la compra. Es el único camino para "devolver" un cupón canjeado en crédito.
 - `creditos.fecha_limite` (`@db.Date`): acuerdo de pago, por defecto 1 mes desde `fecha`,
   editable. El crédito sale "Vencido" en la tabla si sigue con saldo pasada esa fecha.
+
+### Cotizaciones mayoristas B2B (módulo interno, 100% solo admin)
+- Sirve para cotizarle a quien quiere **revender** los perfumes. Vive en el dashboard,
+  sección **Mayoreo B2B** (4 pestañas: Cotizaciones, Insumos y precios, Tamaños y fórmulas,
+  **Costos de producción**).
+- **DOS TIPOS de cotización** (`cotizaciones.tipo`):
+  - `detallada`: los productos concretos que se lleva el cliente (con total).
+  - `general`: **lista de precios por cantidad, SIN decir qué fragancias** — para que el
+    cliente vea cuánto le sale según el volumen y arme su pedido. No tiene total; la lista
+    se congela en `cotizaciones.lista_precios` (JSON) al guardar, así no cambia si mañana
+    se ajustan los precios. El PDF y el mensaje de WhatsApp cambian según el tipo.
+- **NADA de costos va quemado en código**: el admin teclea sus insumos (`insumos_costo`:
+  materia_prima/envase/accesorio, con precio por `ml` o por `unidad`) y sus tamaños
+  (`formulas_volumen`: ml_total + esencia/sellador/feromonas + envase). El **diluyente NUNCA
+  se guarda**: es siempre `ml_total − esencia − sellador − feromonas` (así no se desincroniza
+  si se edita el volumen). Zod rechaza fórmulas cuya suma supere el total.
+- **Cada tamaño elige SU esencia** (`formulas_volumen.esencia_insumo_id`): hay varias
+  cargadas (normal, premium…) y adivinar por nombre daba costos equivocados. El motor usa
+  `formula.esencia_precio`; solo si no hay ninguna asignada cae al matcher por nombre.
+- **Si falta un insumo, se avisa**: una materia prima no registrada cuenta $0 y la ganancia
+  saldría inflada; la pestaña de tamaños lo advierte en amarillo. Igual, **sin precio de
+  venta NO se muestra "utilidad negativa"** (comparar costo contra cero no significa nada):
+  se dice "falta ponerle precio". Un número alarmante sin explicación solo confunde.
+- **Costo de producción por presentación** (pestaña propia `CostosProduccionTab.tsx` +
+  `cotizacion/CostoDeProduccion.tsx`): cada tamaño muestra "producir uno te cuesta $X" con el
+  desglose insumo por insumo y **la ganancia de cada rango de precio** (utilidad y margen %).
+  Sale del mismo motor puro, así que al subir el precio de una materia prima TODO se
+  recalcula solo. Es la entrada natural del futuro módulo de inventario: ahí ya está el costo
+  unitario por presentación.
+- **Accesorios: NADA estático** (el dueño lo pidió explícito — "que tal que mañana no sea el
+  perfumero sino una tarjeta personalizada"). Son `insumos_costo` de tipo `accesorio` y su
+  columna `alcance` decide dónde pesan:
+  - `unidad` (perfumero recargable, bolsa de organza, tarjeta): cuesta por CADA perfume.
+    Cada tamaño guarda los suyos por defecto en `formula_accesorios` (tabla puente,
+    `PATCH /costeo/formulas/:id/accesorios`); al agregar una línea a la cotización vienen ya
+    marcados y se pueden ajustar para ese cliente. La marca es **optimista** (el costo y los
+    márgenes cambian al instante) y se revierte sola con un toast si el guardado falla.
+  - `pedido` (caja de envío, un obsequio único): se cobra UNA vez por cotización completa.
+    Vive en `cotizaciones.extras_pedido` (JSON) y NO entra en el costo unitario — meterlo ahí
+    distorsionaría el costo por perfume.
+  - La impresora y demás equipo NO se costean aquí: amortizar activos fijos en el costo
+    unitario da un número que no sirve para fijar precios.
+- **El cliente sí ve lo que incluye**: el PDF lista los accesorios bajo cada producto y
+  además cierra con un bloque **"Tu pedido incluye"** (unión de accesorios por línea +
+  extras del pedido). Solo nombres, nunca precios de costo.
+- **Motor de costeo desacoplado**: `frontend/src/application/costeoCotizacion.ts`, funciones
+  PURAS (`calcularDesgloseCosto`, `sugerirPrecio`, `rentabilidadLinea/Total`). No hacen fetch
+  ni tocan estado → el día que exista inventario solo hay que alimentarlas desde ahí. Las
+  materias primas se ubican por NOMBRE normalizado (contiene "esencia"/"diluyente"/
+  "sellador"/"feromonas"); si falta una, cuenta 0 y no revienta.
+- **Escalas de precio** (`escalas_precio`, por tamaño): el rango se evalúa **por línea**
+  (cada producto según SU cantidad), no por el total de la cotización. `cantidad_max` null
+  = "100+". Ante rangos solapados gana el de mínimo más alto. Se pueden **editar** (lápiz,
+  `PATCH /costeo/escalas/:id`), no solo borrar y recrear.
+- **El editor de rangos se redacta como una FRASE** ("Si el cliente lleva desde [10] u hasta
+  [19] u, le cobras $[19000] por cada uno"), con vista previa en palabras y una alerta si
+  el "desde" es ≥ 1000 (suele ser el precio tecleado en la casilla de cantidad). Nació de un
+  caso real: tres casillas numéricas con etiquetas escuetas y el dueño metió el precio donde
+  iba la cantidad. **Un formulario de números sin contexto se malinterpreta**: etiquetar con
+  unidades ("u", "$") y confirmar en lenguaje natural evita datos basura.
+- **Las cifras se congelan** en la cotización (`cotizacion_items.desglose_costo` y
+  `accesorios_seleccionados` en JSON): si mañana sube la esencia, una cotización vieja NO
+  cambia su rentabilidad histórica. Mismo criterio que la deuda de un crédito. El frontend
+  calcula y manda; el backend valida con Zod y guarda tal cual (nunca recalcula la fórmula).
+- **REGLA DE ORO**: el desglose de costo, la utilidad y el margen son SOLO del admin.
+  `utils/cotizacionPdf.ts` jamás los imprime — el cliente ve producto, cantidad, precio
+  unitario, subtotal, descuento y total. Verificado en pruebas: ninguna cifra de costo
+  aparece en el PDF.
+- PDF con jsPDF crudo (sin dependencias nuevas), calcado de `catalogoPdf.ts`: marfil+iris,
+  marca de agua, encabezado con número (`COT-AAAA-0001`, consecutivo por año) y vigencia,
+  cliente, tabla, resumen, bloque "¿Por qué elegir…", condiciones comerciales y avisos
+  legales en letra pequeña. En los avisos, `{{vigencia}}` se reemplaza por los días reales.
+  Ojo: usa Helvetica (fuente nativa); el "menos" tipográfico `−` (U+2212) NO existe ahí y
+  descuadra el texto — usar guion normal.
+- Textos configurables en `cotizacion_config` (fila única, patrón `SobreNosotrosConfig`):
+  condiciones comerciales, beneficios y avisos legales. Se siembran con los textos que
+  escribió el dueño y son editables. `plantillas_cotizacion` existe en el modelo para la
+  Fase 2 (plantillas Mayorista/Distribuidor con descuento y condiciones propias).
+- Los datos del cliente van en **texto libre** en `cotizaciones`: un prospecto mayorista no
+  es un `User` del sitio ni una `Empresa` (que en este proyecto son PROVEEDORES).
+- Gotcha: `GET /api/parfums` sin paginar responde `{ data: { data: [...] } }` (anidado);
+  con `?page=` responde `{ data: [...], total }` y **limit tope 100**. Para listas completas
+  (ej. el selector de productos) usar el no paginado y desenvolver ambas formas.
 
 ### Motor de cupo (`creditoPerfil.service.ts`, solo admin)
 - Recalcula SIEMPRE desde el historial (no se guarda). Factor sobre `users.cupo_base`,
@@ -363,11 +483,36 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   Cloudflare rota sus rangos de IP, hay que actualizar `set_real_ip_from` (lista oficial:
   cloudflare.com/ips-v4 y /ips-v6). Pendiente opcional: firewall del VPS restringido a
   solo IPs de Cloudflare en 80/443 (mayor protección, no aplicado aún).
-- **Anti-abuso en la app** (`backend/src/app.ts` + `middleware/limiters.ts`): además del
-  rate-limit de auth, `speedLimiter` (`express-slow-down`) ralentiza progresivamente tras
-  150 peticiones/15min por IP (no corta, frustra bots sin afectar clientes reales); y
-  `uploadLimiter` (25/15min) protege los endpoints de subida de fotos (reseñas, premios)
-  que gastan CPU con `sharp`. Deploy: el backend suma `express-slow-down` → `npm install`.
+- **Anti-abuso en la app** (`backend/src/app.ts` + `middleware/limiters.ts`). Regla de oro:
+  **los límites son para VISITANTES ANÓNIMOS, nunca para el admin.**
+  - `globalLimiter`: corte duro por IP — 300/15min anónimo, 1200 con sesión, y **el ADMIN
+    queda EXENTO** (`skip: esAdminRequest`). Así una importación masiva, un respaldo o una
+    jornada larga en el dashboard jamás lo dejan fuera de su propia tienda.
+  - `speedLimiter` (`express-slow-down`): solo anónimos en producción, tras 600 peticiones,
+    máx 2s de retraso.
+  - `authLimiter` (10/15min en login/registro) y `uploadLimiter` (25/15min en subidas con
+    `sharp`) siguen aplicando a todos: son la puerta de entrada y el gasto de CPU.
+  - **`cookieParser()` va ANTES de los limitadores** en `app.ts`; si se mueve después, no se
+    puede leer la sesión y el admin volvería a contar como anónimo.
+  Deploy: el backend suma `express-slow-down` → `npm install`.
+- **GOTCHA ya sufrido (2026-07-28): un limitador mal calibrado se siente como "la web está
+  lentísima"**. La primera versión del `speedLimiter` (150 peticiones/15min, hasta 5s de
+  retraso) castigaba al propio dueño: una sesión de dashboard hace decenas de llamadas y
+  todas salían de la misma IP → cada respuesta tardaba **5 segundos exactos**. Síntoma
+  delator: TODOS los endpoints tardan lo mismo y ese tiempo es justo el `maxDelayMs`;
+  confirmarlo mirando el header `RateLimit-Remaining`. Por eso ahora el slow-down **NO
+  aplica en desarrollo ni a usuarios con sesión** (`skip`), y quien tiene sesión tiene un
+  techo mucho más alto. Al tocar límites, pensar SIEMPRE en el admin trabajando, no solo
+  en el bot. **Y toda vista que cargue datos debe usar try/catch/finally**: si la petición
+  falla (429, sin conexión…), el `finally` apaga el spinner y se muestra un error con botón
+  de reintentar. Sin eso la pantalla se queda "Cargando…" para siempre y parece que la app
+  se colgó (pasó en las pestañas del módulo de cotizaciones).
+- **NADA de `PUT`**: el CORS del backend (`app.ts`) solo permite
+  `['GET','POST','PATCH','DELETE']`. Un `PUT` desde el navegador muere en el **preflight**
+  (`Method PUT is not allowed by Access-Control-Allow-Methods`) y el botón "no hace nada"
+  — con `curl` sí funciona (curl no hace preflight), así que probar solo por consola NO
+  detecta el fallo. Para reemplazar un conjunto completo, usar `PATCH`. Pasó con
+  `/costeo/formulas/:id/accesorios`.
 - **Puertos zombis locales**: si 4000/5173 quedan ocupados tras pruebas,
   `Get-NetTCPConnection -LocalPort N` → `Stop-Process`.
 - **`prisma generate` falla con EPERM** si el dev server (ts-node-dev) está corriendo:
@@ -417,6 +562,18 @@ Migraciones pendientes de aplicar en producción al escribir esto:
 - `20260724120000_resenas_ganadores`: tablas `resenas` (reseñas con estado de moderación) y
   `recompensa_entrega` (fotos de premios entregados para la galería). El **backend suma la
   dependencia `sharp`** → en el deploy del backend correr `npm install` antes del build.
+- `20260726120000_favoritos_avisos_blog_nosotros_referidos`: tablas `favoritos`,
+  `avisos_stock`, `posts`, `sobre_nosotros_config` + columnas `users.codigo_referido` y
+  `users.referido_por`. El backend suma `sanitize-html` y `express-slow-down` → `npm install`.
+- `20260727120000_cotizaciones_mayoristas`: tablas `insumos_costo`, `formulas_volumen`,
+  `escalas_precio`, `cotizacion_config`, `plantillas_cotizacion`, `cotizaciones` y
+  `cotizacion_items` (módulo B2B). Sin migraciones extra, pero el **frontend suma `sonner`**
+  (toasts) → en el deploy del frontend correr `npm install` antes del build.
+- `20260729120000_cotizacion_esencia_y_tipo`: `formulas_volumen.esencia_insumo_id` (cada
+  tamaño elige su esencia) + `cotizaciones.tipo` y `cotizaciones.lista_precios`.
+- `20260730120000_cotizacion_accesorios`: `insumos_costo.alcance` (unidad|pedido), tabla
+  puente `formula_accesorios` (accesorios por defecto de cada tamaño) y
+  `cotizaciones.extras_pedido` (JSON).
 
 ## Cómo trabajamos (preferencias del dueño)
 
