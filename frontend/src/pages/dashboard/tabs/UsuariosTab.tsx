@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { KeyRound, Pencil, Trash2, UserPlus } from 'lucide-react';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +9,7 @@ import Modal from '../../../components/Modal';
 import { SmartTable } from '../../../components/table/SmartTable';
 import type { ColumnDef } from '../../../components/table/tableTypes';
 import { API_USUARIOS, fmtInstante } from '../helpers';
-import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
+import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, BloqueCampos } from '../ui';
 import { useAuthContext } from '../../../application/context/useAuthContext';
 import type { GuardedFetch, Usuario, UsuarioForm } from '../types';
 
@@ -100,7 +101,11 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
   const handleDelete = async (u: Usuario) => {
     if (!window.confirm(`¿Eliminar a ${u.nombre} ${u.apellido}? Sus ventas quedan registradas (sin enlace); si tiene créditos no se podrá eliminar.`)) return;
     const res = await guardedFetch(`${API_USUARIOS}/${u.id}`, { method: 'DELETE' });
-    if (!res.ok) { const j = await res.json(); alert(j.error ?? 'Error al eliminar'); return; }
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      toast.error(j?.error ?? 'No se pudo eliminar', { id: 'usuarios' });
+      return;
+    }
     load();
   };
 
@@ -116,7 +121,7 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
           </div>
         </span>
       ),
-      className: 'whitespace-nowrap font-medium text-foreground' },
+      className: 'whitespace-nowrap font-medium text-foreground', movil: 'titulo' },
     { key: 'tipo', header: 'Tipo', type: 'enum', enumOptions: ['ADMIN', 'Cuenta web', 'Ficha'],
       getValue: u => (u.rol_id === 1 ? 'ADMIN' : u.sin_cuenta ? 'Ficha' : 'Cuenta web'),
       render: u => (
@@ -132,7 +137,7 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
         >
           {u.rol_id === 1 ? 'ADMIN' : u.sin_cuenta ? 'Ficha' : 'Cuenta web'}
         </Badge>
-      ), noTruncate: true },
+      ), noTruncate: true, movil: 'estado' },
     { key: 'activo', header: 'Estado', type: 'enum', enumOptions: ['activo', 'pendiente'],
       getValue: u => (u.activo ? 'activo' : 'pendiente'),
       render: u => u.sin_cuenta
@@ -141,7 +146,7 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
           <Badge variant="outline" className={u.activo ? 'border-emerald-300 bg-emerald-50 text-emerald-600' : 'border-amber-300 bg-amber-50 text-amber-600'}>
             {u.activo ? 'Activo' : 'Pendiente'}
           </Badge>
-        ), noTruncate: true },
+        ), noTruncate: true, movil: 'estado' },
     { key: 'telefono', header: 'Telefono', type: 'string',
       getValue: u => u.telefono ?? '', render: u => u.telefono ?? '—',
       className: 'whitespace-nowrap text-muted-foreground', noTruncate: true },
@@ -164,8 +169,35 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
       sortable: false, noTruncate: true },
     { key: 'created_at', header: 'Registrado', type: 'date',
       getValue: u => u.created_at.slice(0, 10), render: u => fmtInstante(u.created_at),
-      className: 'whitespace-nowrap text-muted-foreground', noTruncate: true },
+      className: 'whitespace-nowrap text-muted-foreground', noTruncate: true, movil: 'meta' },
   ];
+
+  /** Mismas acciones en dos tamaños: icono en la fila, con texto en la tarjeta. */
+  const accionesFila = (u: Usuario, conTexto: boolean) => (
+    <>
+      <Button
+        variant={conTexto ? 'outline' : 'ghost'}
+        size={conTexto ? 'sm' : 'icon'}
+        className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-foreground'}
+        onClick={() => openEdit(u)}
+        title="Editar"
+      >
+        <Pencil className="size-4" />{conTexto && ' Editar'}
+      </Button>
+      <Button
+        variant={conTexto ? 'outline' : 'ghost'}
+        size={conTexto ? 'sm' : 'icon'}
+        className={conTexto
+          ? 'text-destructive disabled:opacity-30'
+          : 'size-8 text-muted-foreground hover:text-destructive disabled:opacity-30'}
+        disabled={u.id === adminUser?.id}
+        onClick={() => handleDelete(u)}
+        title={u.id === adminUser?.id ? 'No puedes eliminar tu propia cuenta' : 'Eliminar'}
+      >
+        <Trash2 className="size-4" />{conTexto && ' Borrar'}
+      </Button>
+    </>
+  );
 
   return (
     <>
@@ -183,23 +215,12 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
           columns={columns}
           rows={usuarios}
           rowKey={u => u.id}
+          numerada
+          paginadoLocal
+          tarjetaMovil
           emptyText="Aún no hay personas registradas"
-          renderActions={u => (
-            <>
-              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => openEdit(u)} title="Editar">
-                <Pencil className="size-4" />
-              </Button>
-              <Button
-                variant="ghost" size="icon"
-                className="size-8 text-muted-foreground hover:text-destructive disabled:opacity-30"
-                disabled={u.id === adminUser?.id}
-                onClick={() => handleDelete(u)}
-                title={u.id === adminUser?.id ? 'No puedes eliminar tu propia cuenta' : 'Eliminar'}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </>
-          )}
+          renderActions={u => accionesFila(u, false)}
+          accionesMovil={u => accionesFila(u, true)}
         />
       </Section>
 
@@ -211,36 +232,38 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
         submitLabel={loading ? 'Guardando...' : modal.editId == null ? 'Registrar' : 'Guardar cambios'}
         loading={loading}
       >
-        <FieldRow>
-          <Field label="Nombre *">
-            <Input required maxLength={100} value={form.nombre}
-              onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
+        <BloqueCampos titulo="Datos de contacto">
+          <FieldRow>
+            <Field label="Nombre *">
+              <Input required maxLength={100} value={form.nombre}
+                onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
+            </Field>
+            <Field label="Apellido *">
+              <Input required maxLength={100} value={form.apellido}
+                onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))} />
+            </Field>
+          </FieldRow>
+          <FieldRow>
+            <Field label={modal.editId == null || editando?.sin_cuenta ? 'Correo (si se registra con él, hereda su historial)' : 'Correo *'}>
+              <Input type="email" maxLength={150} value={form.email}
+                required={modal.editId != null && !editando?.sin_cuenta}
+                placeholder={editando?.sin_cuenta || modal.editId == null ? 'Opcional' : ''}
+                onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+            </Field>
+            <Field label="Telefono">
+              <Input maxLength={20} value={form.telefono}
+                onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} />
+            </Field>
+          </FieldRow>
+          <Field label="Direccion">
+            <Input maxLength={255} value={form.direccion}
+              onChange={e => setForm(f => ({ ...f, direccion: e.target.value }))} />
           </Field>
-          <Field label="Apellido *">
-            <Input required maxLength={100} value={form.apellido}
-              onChange={e => setForm(f => ({ ...f, apellido: e.target.value }))} />
-          </Field>
-        </FieldRow>
-        <FieldRow>
-          <Field label={modal.editId == null || editando?.sin_cuenta ? 'Correo (si se registra con él, hereda su historial)' : 'Correo *'}>
-            <Input type="email" maxLength={150} value={form.email}
-              required={modal.editId != null && !editando?.sin_cuenta}
-              placeholder={editando?.sin_cuenta || modal.editId == null ? 'Opcional' : ''}
-              onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
-          </Field>
-          <Field label="Telefono">
-            <Input maxLength={20} value={form.telefono}
-              onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} />
-          </Field>
-        </FieldRow>
-        <Field label="Direccion">
-          <Input maxLength={255} value={form.direccion}
-            onChange={e => setForm(f => ({ ...f, direccion: e.target.value }))} />
-        </Field>
+        </BloqueCampos>
 
         {/* Estado y contraseña solo aplican a cuentas web reales */}
         {modal.editId != null && !editando?.sin_cuenta && (
-          <>
+          <BloqueCampos titulo="Cuenta web" descripcion="Solo aplica a quien se registró en la página.">
             <Field label="Estado">
               <NativeSelect
                 value={form.activo ? 'activo' : 'pendiente'}
@@ -259,7 +282,7 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
                   onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
               </div>
             </Field>
-          </>
+          </BloqueCampos>
         )}
 
         {(modal.editId == null || editando?.sin_cuenta) && (
