@@ -210,8 +210,14 @@ export const addCategoria = async (req: Request, res: Response) => {
 
 export const removeCategoria = async (req: Request, res: Response) => {
   try {
-    await perfumeService.deleteCategoria(req.params.id as string);
-    res.status(200).json({ message: 'Categoría eliminada' });
+    // ?mover_a=<id> — a dónde pasan sus perfumes (obligatorio si la usa alguno)
+    const destino = req.query.mover_a as string | undefined;
+    const { movidos } = await perfumeService.deleteCategoria(req.params.id as string, destino);
+    res.status(200).json({
+      message: movidos > 0
+        ? `Categoría eliminada y ${movidos} perfume(s) movidos`
+        : 'Categoría eliminada',
+    });
   } catch (error: any) {
     res.status(400).json({ error: mensajeSeguro(error) });
   }

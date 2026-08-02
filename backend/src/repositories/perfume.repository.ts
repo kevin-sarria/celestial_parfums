@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma';
-import { Prisma } from '../generated/prisma';
+import { Prisma } from '@prisma/client';
 import { CreatePerfumeDTO } from '../types/perfume.type';
 import { paginatedResponse } from '../utils/pagination';
 import { toSlug } from '../utils/slug';
@@ -453,11 +453,43 @@ export const updateOcasion = (id: string, nombre: string) =>
 
 // ── Categorías ──────────────────────────────────────────────────────────────
 
-export const getAllCategorias = () =>
-  prisma.categoria.findMany({
-    select: { id: true, nombre: true, descuento: true },
+/**
+ * `usos` = cuántos perfumes la tienen. El dashboard lo necesita porque borrar
+ * una categoría en uso NO falla (la FK es SET NULL): dejaría esos perfumes sin
+ * categoría y, como el precio sale de la lista categoría × talla, les cambiaría
+ * el precio al de respaldo. Con el conteo, la interfaz obliga a mudarlos antes.
+ */
+export const getAllCategorias = async () => {
+  const rows = await prisma.categoria.findMany({
+    select: { id: true, nombre: true, descuento: true, _count: { select: { perfumes: true } } },
     orderBy: { nombre: 'asc' },
   });
+  return rows.map(({ _count, ...c }) => ({ ...c, usos: _count.perfumes }));
+};
+
+/**
+ * Borra la categoría mudando antes sus perfumes a `destinoId`.
+ * Va en una transacción: si la mudanza falla, la categoría no se borra y nadie
+ * queda huérfano. Sin destino solo se permite si no la usa ningún perfume.
+ */
+export const deleteCategoriaConMudanza = async (id: number, destinoId: number | null) => {
+  const usos = await prisma.perfume.count({ where: { categoria_id: id } });
+  if (usos > 0 && destinoId == null) {
+    throw new Error(
+      `${usos} perfume(s) usan esta categoría. Elige a cuál moverlos antes de eliminarla.`,
+    );
+  }
+  if (destinoId === id) throw new Error('No puedes mover los perfumes a la categoría que vas a eliminar.');
+  return prisma.$transaction(async (tx) => {
+    if (usos > 0 && destinoId != null) {
+      const destino = await tx.categoria.findUnique({ where: { id: destinoId } });
+      if (!destino) throw new Error('La categoría de destino ya no existe.');
+      await tx.perfume.updateMany({ where: { categoria_id: id }, data: { categoria_id: destinoId } });
+    }
+    await tx.categoria.delete({ where: { id } });
+    return { movidos: destinoId != null ? usos : 0 };
+  });
+};
 
 export const createCategoria = async (nombre: string) => {
   const row = await prisma.categoria.create({ data: { nombre } });

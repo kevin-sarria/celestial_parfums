@@ -223,7 +223,8 @@ export default function DashboardPage() {
       const json = await res.json().catch(() => null);
       if (!res.ok) return { ok: false, error: json?.error ?? fallback };
       refreshAll();
-      return { ok: true };
+      // El id vuelve al crear: sirve para elegir de una lo recién creado
+      return { ok: true, id: json?.data?.id };
     } catch {
       return { ok: false, error: 'No se pudo conectar con el servidor' };
     }
@@ -243,6 +244,17 @@ export default function DashboardPage() {
       'No se pudo eliminar',
     );
   };
+
+  /**
+   * Borra una categoría mudando antes sus perfumes. Es obligatorio: la FK es
+   * SET NULL, así que sin destino quedarían sin categoría y su precio caería
+   * al de respaldo (el de la lista sale de categoría × talla).
+   */
+  const moverYEliminarCategoria = (id: number, destinoId: number) =>
+    mutarLookup(
+      () => guardedFetch(`${API}/categorias/${id}?mover_a=${destinoId}`, { method: 'DELETE' }),
+      'No se pudo eliminar',
+    );
 
   const handleLookupEdit = (endpoint: string) => (id: number, name: string) =>
     mutarLookup(
@@ -401,6 +413,11 @@ export default function DashboardPage() {
             {tab === 'categorias' && (
               <LookupTab title="Categorias" nuevo="Nueva categoría" editar="Editar categoría"
                 ejemplo="Ej: Árabes, Diseñador, Nicho" items={categorias}
+                mudanza={{
+                  etiqueta: { uno: 'perfume', varios: 'perfumes' },
+                  advertencia: 'Esos productos pasarán a costar lo que diga la lista de precios de la categoría que elijas.',
+                  onMoverYEliminar: moverYEliminarCategoria,
+                }}
                 onAdd={handleLookupAdd('categorias')} onDelete={handleLookupDelete('categorias', '¿Eliminar esta categoría? OJO: los perfumes que la usan quedarán SIN categoría, y como el precio sale de la lista categoría × talla, pasarán a costar su precio de respaldo. Esto puede cambiar el precio de muchos productos de una vez.')} onEdit={handleLookupEdit('categorias')}
                 importEntity="categorias" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}

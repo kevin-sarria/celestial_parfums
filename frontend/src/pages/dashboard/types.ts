@@ -3,6 +3,8 @@ export interface Lookup {
   nombre: string;
   /** Solo categorías: % de descuento general que heredan sus perfumes. */
   descuento?: number;
+  /** Solo categorías: cuántos perfumes la usan (0 = se puede borrar sin mudar). */
+  usos?: number;
 }
 
 /** Perfil crediticio interno calculado por el backend (SOLO admin). */

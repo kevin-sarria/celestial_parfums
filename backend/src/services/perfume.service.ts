@@ -160,8 +160,15 @@ export const createCategoria = async (nombre: string) => {
   return await perfumeRepository.createCategoria(nombre.trim());
 };
 
-export const deleteCategoria = async (id: string) => {
-  return await perfumeRepository.deleteCategoria(id);
+/**
+ * @param destino a qué categoría se mudan sus perfumes. Es OBLIGATORIO si la
+ * categoría está en uso: sin él quedarían sin categoría y perderían el precio
+ * de la lista (categoría × talla), que es de donde sale lo que cuestan.
+ */
+export const deleteCategoria = async (id: string, destino?: string) => {
+  const destinoId = destino ? Number(destino) : null;
+  if (destino && !Number.isInteger(destinoId)) throw new Error('Categoría de destino inválida');
+  return await perfumeRepository.deleteCategoriaConMudanza(Number(id), destinoId);
 };
 
 export const updateCategoria = async (id: string, nombre: string) => {
