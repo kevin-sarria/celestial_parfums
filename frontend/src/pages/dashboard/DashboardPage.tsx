@@ -209,35 +209,46 @@ export default function DashboardPage() {
   // Devuelven { ok, error } para que la pestaña pueda avisar cuando el backend
   // rechaza (nombre repetido, elemento en uso). Antes se ignoraba la respuesta
   // y el fallo era invisible: el elemento no se agregaba y nadie sabía por qué.
-  const handleLookupAdd = (endpoint: string) => async (name: string): Promise<ResultadoLookup> => {
-    const res = await guardedFetch(`${API}/${endpoint}`, {
-      method: 'POST', body: JSON.stringify({ nombre: name }),
-    });
-    const json = await res.json().catch(() => null);
-    if (!res.ok) return { ok: false, error: json?.error ?? 'No se pudo guardar' };
-    refreshAll();
-    return { ok: true };
+  /**
+   * Envoltorio de las mutaciones de clasificación. El try/catch NO es adorno:
+   * sin conexión, `guardedFetch` lanza y la excepción se comía el aviso, así que
+   * el fallo volvía a ser invisible — justo lo que se estaba corrigiendo.
+   */
+  const mutarLookup = async (
+    peticion: () => Promise<Response>,
+    fallback: string,
+  ): Promise<ResultadoLookup> => {
+    try {
+      const res = await peticion();
+      const json = await res.json().catch(() => null);
+      if (!res.ok) return { ok: false, error: json?.error ?? fallback };
+      refreshAll();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'No se pudo conectar con el servidor' };
+    }
   };
 
-  const handleLookupDelete = (endpoint: string) => async (id: number): Promise<ResultadoLookup> => {
+  const handleLookupAdd = (endpoint: string) => (name: string) =>
+    mutarLookup(
+      () => guardedFetch(`${API}/${endpoint}`, { method: 'POST', body: JSON.stringify({ nombre: name }) }),
+      'No se pudo guardar',
+    );
+
+  const handleLookupDelete = (endpoint: string, aviso: string) => async (id: number): Promise<ResultadoLookup> => {
     // Cancelar no es un error: se responde ok para que no salte ningún aviso.
-    if (!window.confirm('¿Eliminar este elemento?')) return { ok: true };
-    const res = await guardedFetch(`${API}/${endpoint}/${id}`, { method: 'DELETE' });
-    const json = await res.json().catch(() => null);
-    if (!res.ok) return { ok: false, error: json?.error ?? 'No se pudo eliminar' };
-    refreshAll();
-    return { ok: true };
+    if (!window.confirm(aviso)) return { ok: true };
+    return mutarLookup(
+      () => guardedFetch(`${API}/${endpoint}/${id}`, { method: 'DELETE' }),
+      'No se pudo eliminar',
+    );
   };
 
-  const handleLookupEdit = (endpoint: string) => async (id: number, name: string): Promise<ResultadoLookup> => {
-    const res = await guardedFetch(`${API}/${endpoint}/${id}`, {
-      method: 'PATCH', body: JSON.stringify({ nombre: name }),
-    });
-    const json = await res.json().catch(() => null);
-    if (!res.ok) return { ok: false, error: json?.error ?? 'No se pudo guardar' };
-    refreshAll();
-    return { ok: true };
-  };
+  const handleLookupEdit = (endpoint: string) => (id: number, name: string) =>
+    mutarLookup(
+      () => guardedFetch(`${API}/${endpoint}/${id}`, { method: 'PATCH', body: JSON.stringify({ nombre: name }) }),
+      'No se pudo guardar',
+    );
 
   const ActiveIcon = TAB_META[tab].icon;
 
@@ -378,25 +389,25 @@ export default function DashboardPage() {
             {tab === 'aromas' && (
               <LookupTab title="Tipos de Aroma" nuevo="Nuevo aroma" editar="Editar aroma"
                 ejemplo="Ej: Amaderado, Cítrico, Oriental" items={aromas}
-                onAdd={handleLookupAdd('tipos-aroma')} onDelete={handleLookupDelete('tipos-aroma')} onEdit={handleLookupEdit('tipos-aroma')}
+                onAdd={handleLookupAdd('tipos-aroma')} onDelete={handleLookupDelete('tipos-aroma', '¿Eliminar este aroma? Los perfumes que lo tengan simplemente dejarán de mostrarlo.')} onEdit={handleLookupEdit('tipos-aroma')}
                 importEntity="aromas" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
             {tab === 'ocasiones' && (
               <LookupTab title="Ocasiones" nuevo="Nueva ocasión" editar="Editar ocasión"
                 ejemplo="Ej: Diario, Noche, Oficina" items={ocasiones}
-                onAdd={handleLookupAdd('ocasiones')} onDelete={handleLookupDelete('ocasiones')} onEdit={handleLookupEdit('ocasiones')}
+                onAdd={handleLookupAdd('ocasiones')} onDelete={handleLookupDelete('ocasiones', '¿Eliminar esta ocasión? Los perfumes que la tengan simplemente dejarán de mostrarla.')} onEdit={handleLookupEdit('ocasiones')}
                 importEntity="ocasiones" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
             {tab === 'categorias' && (
               <LookupTab title="Categorias" nuevo="Nueva categoría" editar="Editar categoría"
                 ejemplo="Ej: Árabes, Diseñador, Nicho" items={categorias}
-                onAdd={handleLookupAdd('categorias')} onDelete={handleLookupDelete('categorias')} onEdit={handleLookupEdit('categorias')}
+                onAdd={handleLookupAdd('categorias')} onDelete={handleLookupDelete('categorias', '¿Eliminar esta categoría? OJO: los perfumes que la usan quedarán SIN categoría, y como el precio sale de la lista categoría × talla, pasarán a costar su precio de respaldo. Esto puede cambiar el precio de muchos productos de una vez.')} onEdit={handleLookupEdit('categorias')}
                 importEntity="categorias" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
             {tab === 'presentaciones' && (
               <LookupTab title="Presentaciones" nuevo="Nueva presentación" editar="Editar presentación"
                 ejemplo="Ej: 30ML, 50 ml, 100 ml" items={presentaciones}
-                onAdd={handleLookupAdd('presentaciones')} onDelete={handleLookupDelete('presentaciones')} onEdit={handleLookupEdit('presentaciones')}
+                onAdd={handleLookupAdd('presentaciones')} onDelete={handleLookupDelete('presentaciones', '¿Eliminar esta talla? Los perfumes que la ofrezcan dejarán de tenerla, junto con su precio para esa talla.')} onEdit={handleLookupEdit('presentaciones')}
                 importEntity="presentaciones" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
             {tab === 'combos' && (
