@@ -23,6 +23,9 @@ export const precioPresentacionSchema = z.object({
   precio: z.number(),
   /** true = precio exclusivo de este perfume, no el estándar de su categoría */
   propio: z.boolean().default(false),
+      presentacion_id: z.number().default(0),
+      envase_insumo_id: z.number().nullable().default(null),
+      accesorios: z.array(z.number()).default([]),
 });
 
 export type PrecioPresentacion = z.infer<typeof precioPresentacionSchema>;
@@ -38,6 +41,13 @@ export const perfumeSchema = z.object({
   varios_precios: z.boolean().default(false),
   /** Contratipo de esencia premium: distintivo propio y nunca entra en combos. */
   esencia_premium: z.boolean().default(false),
+  /** Esencia concreta del perfume y su costo real por ml (solo admin lo usa). */
+  insumo_esencia_id: z.number().nullable().default(null),
+  insumo_esencia_nombre: z.string().nullable().default(null),
+  insumo_esencia_precio: z.number().nullable().default(null),
+  tipo_producto: z.enum(['fabricado', 'comprado', 'fraccionado']).default('fabricado'),
+  insumo_producto_id: z.number().nullable().default(null),
+  ml_utiles: z.number().nullable().default(null),
   duracion: z.string().nullable(),
   proyeccion: z.string().nullable(),
   imagen_url: z.string().nullable(),

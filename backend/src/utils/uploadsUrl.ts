@@ -8,19 +8,27 @@
  *   - path traversal (el nombre no puede contener "/").
  */
 const NOMBRE_OK = /^[A-Za-z0-9._-]+\.(webp|jpe?g|png|gif)$/i;
+/** Los soportes de compras además admiten PDF (facturas de las distribuidoras). */
+const NOMBRE_OK_SOPORTE = /^[A-Za-z0-9._-]+\.(webp|jpe?g|png|gif|pdf)$/i;
 
-const nombreDeUpload = (url: string): string | null => {
+const nombreDeUpload = (url: string, patron: RegExp): string | null => {
   let ruta = url;
   if (/^https?:\/\//i.test(url)) {
     try { ruta = new URL(url).pathname; } catch { return null; }
   }
   const m = ruta.match(/^\/(?:api\/)?uploads\/([^/?#]+)$/);
-  return m && NOMBRE_OK.test(m[1]) ? m[1] : null;
+  return m && patron.test(m[1]) ? m[1] : null;
 };
 
-/** Devuelve solo las URLs que apuntan a nuestro /uploads, normalizadas a baseUrl. */
-export const sanearUploadsConservados = (urls: string[], baseUrl: string): string[] =>
+/**
+ * Devuelve solo las URLs que apuntan a nuestro /uploads, normalizadas a baseUrl.
+ * `conPdf` solo se activa donde de verdad hacen falta (soportes de compra):
+ * en reseñas y fotos de premio el PDF no pinta nada y sería superficie de más.
+ */
+export const sanearUploadsConservados = (
+  urls: string[], baseUrl: string, conPdf = false,
+): string[] =>
   urls
-    .map(nombreDeUpload)
+    .map((u) => nombreDeUpload(u, conPdf ? NOMBRE_OK_SOPORTE : NOMBRE_OK))
     .filter((n): n is string => n !== null)
     .map((n) => `${baseUrl}/api/uploads/${n}`);

@@ -14,11 +14,30 @@ export const createPerfumeSchema = z.object({
   agotado: z.boolean().optional(),
   // Contratipo de esencia premium: distintivo propio y fuera de los combos
   esencia_premium: z.boolean().optional(),
-  tipos_aroma: z.array(z.number().int().positive()).min(1, 'Debe tener al menos un aroma'),
-  ocasiones: z.array(z.number().int().positive()).min(1, 'Debe tener al menos una ocasión'),
+  /// Esencia concreta con la que se hace (Eternity, Khamrah…). Null = sin asignar.
+  insumo_esencia_id: z.number().int().positive().nullish(),
+  /// Cómo se abastece: fabricado (receta), comprado (reventa) o fraccionado (decants).
+  tipo_producto: z.enum(['fabricado','comprado','fraccionado']).optional(),
+  /// El insumo que ES el producto (comprado) o del que sale (fraccionado).
+  insumo_producto_id: z.number().int().positive().nullish(),
+  /// Solo fraccionado: ml que de verdad se aprovechan de la botella.
+  ml_utiles: z.number().int().positive().nullish(),
+  /**
+   * Aromas y ocasiones dejaron de ser obligatorios: el catálogo ya no es solo
+   * perfumes (una gorra no tiene notas olfativas ni ocasión de uso), y al crear
+   * un producto al vuelo desde una venta se completan después con calma.
+   */
+  tipos_aroma: z.array(z.number().int().positive()).default([]),
+  ocasiones: z.array(z.number().int().positive()).default([]),
   presentaciones: z.array(z.number().int().positive()).default([]),
   // Excepciones a la lista de precios: solo las presentaciones que NO usan el
   // precio estándar de su categoría (los de esencia premium suelen llevar una por talla)
+  /// Frasco y accesorios propios por talla: [{presentacion_id, envase_insumo_id, accesorios}]
+  envases_talla: z.array(z.object({
+    presentacion_id: z.number().int().positive(),
+    envase_insumo_id: z.number().int().positive().nullish(),
+    accesorios: z.array(z.number().int().positive()).default([]),
+  })).optional(),
   precios_propios: z
     .array(
       z.object({

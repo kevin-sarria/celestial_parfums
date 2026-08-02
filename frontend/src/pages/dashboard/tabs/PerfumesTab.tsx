@@ -12,6 +12,9 @@ import ExportButton from '../../../components/ExportButton';
 import DescargarCatalogoButton from '../../../components/DescargarCatalogoButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import { SmartTable } from '../../../components/table/SmartTable';
+import BuscadorSelect from '../../../components/BuscadorSelect';
+import { BASE_URL } from '../../../infrastructure/api/client';
+import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { perfumesColumns } from '../columns';
 import { API, formatPrice, subirImagenAdmin } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
@@ -70,6 +73,21 @@ export function PerfumesTab({
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<PerfumeForm>(emptyPerfumeForm());
   const [formLoading, setFormLoading] = useState(false);
+  // Esencias disponibles: una por fragancia, cada una con su costo real por ml
+  const [esencias, setEsencias] = useState<Insumo[]>([]);
+  const [insumosProducto, setInsumosProducto] = useState<Insumo[]>([]);
+  const [envases, setEnvases] = useState<Insumo[]>([]);
+  useEffect(() => {
+    (async () => {
+      const r = await guardedFetch(`${BASE_URL}/api/costeo/insumos`);
+      if (!r.ok) return;
+      const todos: Insumo[] = (await r.json()).data ?? [];
+      setEsencias(todos.filter(i => i.tipo === 'materia_prima' && /esencia/i.test(i.nombre)));
+      // Para comprados/fraccionados: cualquier insumo puede SER el producto
+      setInsumosProducto(todos);
+      setEnvases(todos.filter(i => i.tipo === 'envase'));
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [formError, setFormError] = useState('');
   const [imgMode, setImgMode] = useState<'url' | 'file'>('url');
   const [uploading, setUploading] = useState(false);
@@ -114,6 +132,14 @@ export function PerfumesTab({
       genero: p.genero ?? '', categoria_id: p.categoria_id ?? '',
       tipos_aroma: aromaIds, ocasiones: ocasionIds, presentaciones: presentacionIds,
       esencia_premium: p.esencia_premium ?? false, precios_propios: propios,
+      insumo_esencia_id: p.insumo_esencia_id ?? '',
+      tipo_producto: p.tipo_producto ?? 'fabricado',
+      insumo_producto_id: p.insumo_producto_id ?? '',
+      ml_utiles: p.ml_utiles ? String(p.ml_utiles) : '',
+      envases_talla: Object.fromEntries(
+        (p.precios ?? []).filter(pr => pr.envase_insumo_id)
+          .map(pr => [pr.presentacion_id, pr.envase_insumo_id as number]),
+      ),
     });
     setFormError(''); setImgMode('url'); setModal({ open: true, editId: p.id });
   };
@@ -149,6 +175,15 @@ export function PerfumesTab({
       categoria_id: form.categoria_id !== '' ? Number(form.categoria_id) : null,
       tipos_aroma: form.tipos_aroma, ocasiones: form.ocasiones, presentaciones: form.presentaciones,
       esencia_premium: form.esencia_premium, precios_propios,
+      insumo_esencia_id: form.insumo_esencia_id === '' ? null : form.insumo_esencia_id,
+      tipo_producto: form.tipo_producto,
+      insumo_producto_id: form.insumo_producto_id === '' ? null : form.insumo_producto_id,
+      ml_utiles: Number(form.ml_utiles) || null,
+      envases_talla: form.presentaciones.map(id => ({
+        presentacion_id: id,
+        envase_insumo_id: form.envases_talla[id] || null,
+        accesorios: [],
+      })),
     };
     try {
       const url = modal.editId ? `${API}/update/${modal.editId}` : `${API}/create`;
@@ -347,19 +382,99 @@ export function PerfumesTab({
                           precios_propios: { ...f.precios_propios, [pr.id]: e.target.value },
                         }))}
                       />
-                      <span className="w-28 shrink-0 text-[12px] text-muted-foreground">
+                      <span className="w-24 shrink-0 text-[12px] text-muted-foreground">
                         {form.precios_propios[pr.id]
                           ? 'precio propio'
                           : deLista != null
                             ? formatPrice(deLista)
-                            : 'sin precio en lista'}
+                            : 'sin precio'}
                       </span>
+                      {/* El frasco cambia según la referencia: un 1.1 de Sauvage
+                          no usa el mismo que uno de Bleu. Vacío = el del tamaño. */}
+                      {form.tipo_producto !== 'comprado' && (
+                        <NativeSelect
+                          className="h-8 max-w-40 text-[12.5px]"
+                          value={form.envases_talla[pr.id] ?? ''}
+                          onChange={e => setForm(f => ({
+                            ...f,
+                            envases_talla: { ...f.envases_talla, [pr.id]: Number(e.target.value) || '' },
+                          }))}
+                        >
+                          <option value="">Frasco del tamaño</option>
+                          {envases.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
+                        </NativeSelect>
+                      )}
                     </>
                   )}
                 </div>
               );
             })}
           </div>
+        </Field>
+
+        {/* Cómo se abastece: define con qué motor se costea */}
+        <Field label="¿Cómo consigues este producto?">
+          <NativeSelect value={form.tipo_producto}
+            onChange={e => setForm(f => ({ ...f, tipo_producto: e.target.value as PerfumeForm['tipo_producto'] }))}>
+            <option value="fabricado">Lo fabrico yo (contratipo, 1.1)</option>
+            <option value="comprado">Lo compro hecho y lo revendo (splash, gorra, perfumero vacío)</option>
+            <option value="fraccionado">Compro una botella y saco decants</option>
+          </NativeSelect>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            {form.tipo_producto === 'fabricado'
+              ? 'Se costea con la receta del tamaño: esencia, diluyente, sellador, feromonas y envase.'
+              : form.tipo_producto === 'comprado'
+                ? 'No tiene receta: cuesta lo que pagaste por él. No necesita talla.'
+                : 'El costo sale de la botella: (lo que pagaste ÷ ml aprovechables) × ml del decant.'}
+          </p>
+        </Field>
+
+        {form.tipo_producto !== 'fabricado' && (
+          <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3">
+            <Field label={form.tipo_producto === 'comprado' ? '¿Qué insumo ES este producto?' : '¿De qué botella sale?'}>
+              <BuscadorSelect
+                value={form.insumo_producto_id}
+                placeholder="— Elige el insumo —"
+                opciones={[
+                  { id: '', nombre: '— Sin asignar —' },
+                  ...insumosProducto.map(i => ({ id: i.id, nombre: `${i.nombre} · ${formatPrice(i.precio)}` })),
+                ]}
+                onSelect={id => setForm(f => ({ ...f, insumo_producto_id: id === '' ? '' : Number(id) }))}
+              />
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Ahí vive su stock y su costo real. Créalo primero en Insumos y precios.
+              </p>
+            </Field>
+
+            {form.tipo_producto === 'fraccionado' && (
+              <Field label="¿Cuántos ml aprovechas de la botella?">
+                <Input type="number" min="1" value={form.ml_utiles} placeholder="Ej: 95 de una de 100"
+                  onChange={e => setForm(f => ({ ...f, ml_utiles: e.target.value }))} />
+                <p className="mt-1 text-[12px] text-muted-foreground">
+                  Menos que el volumen nominal: al trasvasar siempre queda producto en el frasco
+                  y en la jeringa. Si pones el nominal, cada decant te saldrá más barato de lo real.
+                </p>
+              </Field>
+            )}
+          </div>
+        )}
+
+        {/* Esencia concreta: cada fragancia tiene su propio costo por ml */}
+        <Field label="¿Con qué esencia se hace? (para el costeo)">
+          <BuscadorSelect
+            value={form.insumo_esencia_id}
+            placeholder="— Sin asignar —"
+            opciones={[
+              { id: '', nombre: '— Sin asignar —' },
+              ...esencias.map(e => ({ id: e.id, nombre: `${e.nombre} · ${formatPrice(e.precio)}/ml` })),
+            ]}
+            onSelect={id => setForm(f => ({ ...f, insumo_esencia_id: id === '' ? '' : Number(id) }))}
+          />
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Cada fragancia cuesta distinto por ml, así que el costo de producirla depende de
+            esto. Si lo dejas sin asignar, se usa la esencia por defecto del tamaño y el
+            costo será aproximado.
+          </p>
         </Field>
 
         <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 text-[13px] text-foreground">

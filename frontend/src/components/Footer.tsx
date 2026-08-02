@@ -14,6 +14,7 @@ const explorar = [
 
 const legales = [
   { to: '/legal#terminos', label: 'Términos y condiciones' },
+  { to: '/legal#devoluciones', label: 'Garantía y devoluciones' },
   { to: '/legal#datos', label: 'Tratamiento de datos' },
   { to: '/legal#marcas', label: 'Marcas e imágenes' },
 ];

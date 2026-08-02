@@ -37,7 +37,13 @@ export default function LineasCotizacion({
   const recalcular = (linea: CotizacionItem, mantenerPrecio: boolean): CotizacionItem => {
     const formula = formulas.find((f) => f.id === linea.formula_volumen_id);
     if (!formula) return linea;
-    const desglose = calcularDesgloseCosto(formula, insumos, linea.accesorios_seleccionados);
+    // El costo depende de la ESENCIA DE ESA FRAGANCIA: Khamrah cuesta el triple
+    // que Mandarin Sky por ml. Costear con la esencia genérica del tamaño daría
+    // un margen falso, y en mayoreo son cientos de unidades.
+    const perfume = perfumes.find((p) => p.id === linea.perfume_id);
+    const desglose = calcularDesgloseCosto(
+      formula, insumos, linea.accesorios_seleccionados, perfume?.insumo_esencia_precio ?? null,
+    );
     const sugerido = sugerirPrecio(formula.escalas, linea.cantidad);
     const precio = mantenerPrecio ? linea.precio_unitario : (sugerido ?? linea.precio_unitario);
     return {
@@ -161,6 +167,15 @@ export default function LineasCotizacion({
                     onClick={() => actualizar(idx, { precio_unitario: sugerido })}>
                     Precio sugerido para {l.cantidad} u: {formatPrice(sugerido)} — aplicar
                   </button>
+                )}
+
+                {/* Sin esencia asignada el costo sale de la genérica del tamaño:
+                    en mayoreo eso son cientos de unidades mal costeadas. */}
+                {!perfumes.find((p) => p.id === l.perfume_id)?.insumo_esencia_precio && (
+                  <p className="mt-1.5 text-[12px] font-medium text-amber-700">
+                    Este producto no tiene su esencia asignada, así que el costo es aproximado.
+                    Ponsela en su ficha del catálogo antes de cotizar en volumen.
+                  </p>
                 )}
 
                 {/* Accesorios incluidos en esta línea */}

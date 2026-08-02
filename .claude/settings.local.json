@@ -137,7 +137,32 @@
       "Bash(curl -s -X PUT http://localhost:4000/api/costeo/formulas/2/accesorios -H 'Content-Type: application/json' -b access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJjYW1pbG8uYnJhdm8uMjA1MEBnbWFpbC5jb20iLCJyb2xfaWQiOjEsImlhdCI6MTc4NTI5MDY2NiwiZXhwIjoxNzg1Mjk3ODY2fQ.D_dBaMboul88DVOhg2t10twovRW_lhTXnMvCt9WxcbA -d '{\"insumo_ids\":[10]}')",
       "Bash(node -e \"let s='';process.stdin.on\\('data',d=>s+=d\\).on\\('end',\\(\\)=>{const j=JSON.parse\\(s\\);console.log\\('keys:',Object.keys\\(j.data\\)\\);console.log\\('acc:',JSON.stringify\\(j.data.accesorios_default\\)\\)}\\)\")",
       "Bash(TK=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJjYW1pbG8uYnJhdm8uMjA1MEBnbWFpbC5jb20iLCJyb2xfaWQiOjEsImlhdCI6MTc4NTI5MDY2NiwiZXhwIjoxNzg1Mjk3ODY2fQ.D_dBaMboul88DVOhg2t10twovRW_lhTXnMvCt9WxcbA\" node click-acc.mjs)",
-      "Bash(curl -s -X PATCH http://localhost:4000/api/costeo/formulas/2/accesorios -H 'Content-Type: application/json' -b access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJjYW1pbG8uYnJhdm8uMjA1MEBnbWFpbC5jb20iLCJyb2xfaWQiOjEsImlhdCI6MTc4NTI5MDY2NiwiZXhwIjoxNzg1Mjk3ODY2fQ.D_dBaMboul88DVOhg2t10twovRW_lhTXnMvCt9WxcbA -d '{\"insumo_ids\":[]}' -o /dev/null -w 'limpieza=%{http_code}\\\\n')"
+      "Bash(curl -s -X PATCH http://localhost:4000/api/costeo/formulas/2/accesorios -H 'Content-Type: application/json' -b access_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZW1haWwiOiJjYW1pbG8uYnJhdm8uMjA1MEBnbWFpbC5jb20iLCJyb2xfaWQiOjEsImlhdCI6MTc4NTI5MDY2NiwiZXhwIjoxNzg1Mjk3ODY2fQ.D_dBaMboul88DVOhg2t10twovRW_lhTXnMvCt9WxcbA -d '{\"insumo_ids\":[]}' -o /dev/null -w 'limpieza=%{http_code}\\\\n')",
+      "Bash(node -e \"console.log\\('LegalPage lineas:',require\\('fs'\\).readFileSync\\('src/pages/LegalPage.tsx','utf8'\\).split\\('\\\\n'\\).length\\)\")",
+      "Bash(node ver-legal.mjs)",
+      "Bash(curl -s http://localhost:5173/legal)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:5173/src/main.tsx)",
+      "PowerShell(Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -ge 3000 -and $_.LocalPort -le 5200 } | Select-Object -Unique LocalPort | Sort-Object LocalPort)",
+      "Bash(npx vite *)",
+      "Bash(curl -s -o /dev/null -w \"5199=%{http_code}\\\\n\" http://localhost:5199/)",
+      "PowerShell($c = Get-NetTCPConnection -LocalPort 5199 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { Stop-Process -Id $c.OwningProcess -Force; \"detenido\" } else { \"no estaba\" })",
+      "WebFetch(domain:www.funcionpublica.gov.co)",
+      "WebFetch(domain:www.secretariasenado.gov.co)",
+      "WebFetch(domain:www.wipo.int)",
+      "Bash(\"/c/xampp/mysql/bin/mysql.exe\" -u root -e \"SELECT COUNT\\(*\\) AS usuarios FROM users;\" perfumes_db)",
+      "PowerShell(Get-NetTCPConnection -LocalPort 3306 -ErrorAction SilentlyContinue)",
+      "PowerShell(Get-Process mysqld -ErrorAction SilentlyContinue)",
+      "PowerShell(\"--- procesos mysqld ---\")",
+      "Read(//c/xampp/mysql/data/**)",
+      "Bash(\"/c/xampp/mysql/bin/mysqld.exe\" --defaults-file=/c/xampp/mysql/bin/my.ini --console)",
+      "Bash(exit 0)",
+      "Bash(curl -s -o /dev/null -w \"backend=%{http_code}\\\\n\" --max-time 5 http://localhost:4000/api/parfums?limit=1)",
+      "Bash(curl -s -X POST http://localhost:4000/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"noexiste@test.com\",\"password\":\"x\"}' --max-time 8)",
+      "Bash(echo \"TSC=$?\")",
+      "Bash(curl -s -X POST http://localhost:4000/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"camilo.bravo.2050@gmail.com\",\"password\":\"claveMala\",\"recaptchaToken\":\"x\"}' --max-time 8)",
+      "PowerShell(Stop-Process -Force)",
+      "PowerShell(\"mysql detenido\")",
+      "Bash(curl -s -w \"\\\\nHTTP=%{http_code}\\\\n\" --max-time 15 \"http://localhost:4000/api/parfums?page=1&limit=1\")"
     ]
   }
 }

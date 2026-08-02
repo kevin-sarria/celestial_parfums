@@ -33,3 +33,8 @@ export const relinkPerfumes = h(async (_req, res) => {
   const data = await ventaService.relinkVentasPerfume();
   res.json({ message: `${data.enlazadas} de ${data.revisadas} ventas enlazadas a un perfume`, data });
 });
+
+/** Serie de los últimos 12 meses para el gráfico del dashboard. */
+export const getPorMes = h(async (_req, res) => {
+  res.json({ data: await ventaService.getVentasPorMes() });
+});

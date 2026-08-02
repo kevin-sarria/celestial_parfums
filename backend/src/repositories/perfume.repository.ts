@@ -12,6 +12,7 @@ type PerfumeRow = Prisma.PerfumeGetPayload<{
     tipos_aroma:    { include: { tipo_aroma: true } };
     ocasiones:      { include: { ocasion: true } };
     presentaciones: { include: { presentacion: true } };
+    insumo_esencia: true;
   };
 }>;
 
@@ -34,6 +35,10 @@ const resolverPrecios = (p: PerfumeRow) => {
     precio: Number(r.precio ?? lista.get(r.presentacion_id) ?? p.precio),
     /** true = ese precio es exclusivo del perfume, no viene de la lista */
     propio: r.precio != null,
+    presentacion_id: r.presentacion_id,
+    /** Frasco propio de esta combinación; null = el de la receta del tamaño. */
+    envase_insumo_id: (r as any).envase_insumo_id ?? null,
+    accesorios: ((r as any).accesorios as number[] | null) ?? [],
   }));
 };
 
@@ -63,6 +68,13 @@ export const mapPerfume = (p: PerfumeRow) => {
     descuento_propio: p.descuento,
     /** Contratipo de esencia premium: lleva distintivo y nunca entra en combos. */
     esencia_premium:  p.esencia_premium,
+    insumo_esencia_id: p.insumo_esencia_id ?? null,
+    tipo_producto: p.tipo_producto ?? 'fabricado',
+    insumo_producto_id: p.insumo_producto_id ?? null,
+    ml_utiles: p.ml_utiles ?? null,
+    insumo_esencia_nombre: p.insumo_esencia?.nombre ?? null,
+    /// Costo real por ml de SU esencia (cada fragancia tiene la suya).
+    insumo_esencia_precio: p.insumo_esencia ? Number(p.insumo_esencia.precio) : null,
     agotado:      p.agotado,
     es_nuevo:     esNuevo(p.created_at),
     tipos_aroma:    p.tipos_aroma.map((r) => r.tipo_aroma.nombre),
@@ -79,6 +91,8 @@ export const perfumeInclude = {
   tipos_aroma:    { include: { tipo_aroma: true } },
   ocasiones:      { include: { ocasion: true } },
   presentaciones: { include: { presentacion: true } },
+  // Esencia concreta del perfume: su costo real por ml (cada fragancia la suya)
+  insumo_esencia: true,
 } as const;
 
 /** Rellena el promedio/total de reseñas aprobadas de una lista ya mapeada. */
@@ -166,10 +180,17 @@ export const selectPerfumesByIds = async (ids: number[]) => {
  */
 const enlacesPresentacion = (data: CreatePerfumeDTO) => {
   const propios = new Map((data.precios_propios ?? []).map((p) => [p.presentacion_id, p.precio]));
-  return (data.presentaciones ?? []).map((id) => ({
-    presentacion_id: id,
-    precio: propios.get(id) ?? null,
-  }));
+  // Frasco y accesorios de ESTE perfume en ESTA talla (mandan sobre la receta)
+  const envases = new Map((data.envases_talla ?? []).map((e) => [e.presentacion_id, e]));
+  return (data.presentaciones ?? []).map((id) => {
+    const e = envases.get(id);
+    return {
+      presentacion_id: id,
+      precio: propios.get(id) ?? null,
+      envase_insumo_id: e?.envase_insumo_id ?? null,
+      accesorios: e?.accesorios?.length ? e.accesorios : undefined,
+    };
+  });
 };
 
 export const createPerfume = async (data: CreatePerfumeDTO) => {
@@ -186,6 +207,10 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       descuento:    data.descuento ?? 0,
       agotado:      data.agotado ?? false,
       esencia_premium:  data.esencia_premium ?? false,
+      insumo_esencia_id: data.insumo_esencia_id ?? null,
+      tipo_producto: data.tipo_producto ?? 'fabricado',
+      insumo_producto_id: data.insumo_producto_id ?? null,
+      ml_utiles: data.ml_utiles ?? null,
       tipos_aroma: {
         create: (data.tipos_aroma ?? []).map((id) => ({ tipo_aroma_id: id })),
       },
@@ -223,6 +248,10 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
         ...(data.descuento !== undefined ? { descuento: data.descuento } : {}),
         ...(data.agotado !== undefined ? { agotado: data.agotado } : {}),
         ...(data.esencia_premium !== undefined ? { esencia_premium: data.esencia_premium } : {}),
+        ...(data.insumo_esencia_id !== undefined ? { insumo_esencia_id: data.insumo_esencia_id ?? null } : {}),
+        ...(data.tipo_producto !== undefined ? { tipo_producto: data.tipo_producto } : {}),
+        ...(data.insumo_producto_id !== undefined ? { insumo_producto_id: data.insumo_producto_id ?? null } : {}),
+        ...(data.ml_utiles !== undefined ? { ml_utiles: data.ml_utiles ?? null } : {}),
         tipos_aroma: {
           create: (data.tipos_aroma ?? []).map((tid) => ({ tipo_aroma_id: tid })),
         },

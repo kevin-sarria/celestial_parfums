@@ -57,6 +57,10 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   esos datos — si no, se pedirían dos veces al entrar.
 - Al agregar una pestaña nueva basta con sumarla al union `Tab`, a `TAB_META` y a
   `NAV_SECTIONS`; el enrutado la reconoce sola (`esTabValido` valida contra `TAB_META`).
+- **El footer público NO va en el dashboard**: `App.tsx` compara con
+  `pathname.startsWith('/dashboard/')`, no por igualdad. Comparar `=== '/dashboard'` dejaba
+  el footer de la tienda colgando debajo de TODAS las pestañas (la ruta real es
+  `/dashboard/:tab`); solo se notaba al mirar la página completa, no la primera pantalla.
 
 ## Avisos al usuario (toasts)
 
@@ -137,6 +141,16 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
      (cupo total; agotado = deja de anunciarse y no emite más).
    - Flujo: popup → carrito aplica solo → pedido WhatsApp lleva el código → admin lo
      verifica en Publicidad → lo enlaza a la venta → al pagarla queda canjeado.
+   - **En el formulario de ventas el `valor_venta` SIEMPRE se teclea ya con el descuento
+     restado** (es la plata que entró de verdad); la casilla del código solo verifica y
+     enlaza, nunca recalcula. Al validar el código aparece una **ayuda de cálculo** que
+     propone el valor final (reusa `descuentoDeCupon` de `creditoLineas.ts`, con el tope
+     `max_descuento` de la campaña) y un botón "Aplicar" — sugiere, no impone.
+     **Guardarraíl anti doble descuento**: si se está EDITANDO una venta cuyo código no
+     cambió (`codigoOriginal`), el valor guardado ya trae el descuento y en vez de la
+     sugerencia sale un aviso ("no lo vuelvas a descontar"). Igual tras pulsar "Aplicar"
+     (`cuponAplicado`), que se resetea si se vuelve a teclear el valor. Esto importa porque
+     todas las ventas históricas se registraron con el descuento ya aplicado a mano.
    - Patrón de 2 anuncios: gancho (imagen/mensaje, audiencia "no_registrados") + cupón real
      (descuento, audiencia "registrados").
 4. **Los descuentos nunca se acumulan entre sí** salvo cupón sobre precio de combo (regla 3).
@@ -177,6 +191,317 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   revierte la compra. Es el único camino para "devolver" un cupón canjeado en crédito.
 - `creditos.fecha_limite` (`@db.Date`): acuerdo de pago, por defecto 1 mes desde `fecha`,
   editable. El crédito sale "Vencido" en la tabla si sigue con saldo pasada esa fecha.
+
+### Devoluciones y garantías (dashboard → Ventas y créditos → Devoluciones)
+- **Toda devolución cuelga de una VENTA** (`devoluciones.venta_id`). Sin ese enlace la plata
+  devuelta no se puede descontar de ningún lado y los ingresos quedan inflados para siempre
+  (mismo criterio que créditos ↔ ventas).
+- **La plata devuelta sale de los ingresos**: `getVentaTotales` resta `monto_devuelto` de las
+  devoluciones `resuelta` **por `fecha_resolucion`** (criterio de caja, igual que los abonos):
+  una venta de marzo devuelta en julio afecta a julio, que es cuando salió el dinero.
+  `total_dinero` resta el histórico completo. Expone además `devoluciones_mes`.
+- **Guardarraíl**: no se puede devolver más de lo que costó la venta, contando las
+  devoluciones anteriores de esa misma venta (`validarContraVenta`). Sin eso los ingresos
+  podrían quedar en negativo.
+- Zod exige coherencia: `resuelta` obliga a decir la `solucion`; solo hay `monto_devuelto`
+  si la solución es `devolucion_dinero`. Un caso cerrado sin decir qué se hizo deja el
+  histórico inservible.
+- **Reloj del plazo legal**: la tarjeta avisa en ámbar a los 23 días hábiles y en rojo
+  pasados los **30 hábiles** (Decreto 735/2013). Se cuentan HÁBILES (`diasHabilesDesde` en
+  `devoluciones/etiquetas.ts`), no corridos: contar corridos daría una alarma prematura.
+- **Portal del cliente** (`/mis-compras` → sección "Garantía de mis pedidos",
+  `components/devoluciones/MisPedidos.tsx`): el cliente ve sus compras PAGADAS y abre un
+  reclamo con motivo, texto y hasta 3 fotos (WebP vía `sharp`, igual que reseñas). Reglas:
+  - Nace `pendiente`, `origen: 'cliente'` y **con `monto_devuelto` en 0**: cuánto se
+    devuelve lo decide el admin, nunca el cliente (el endpoint ni lo acepta).
+  - Solo sobre ventas con `venta.user_id === req.jwtUser.id`; si no, responde
+    "No encontramos esa compra en tu cuenta" (mismo mensaje que si no existe: no se
+    filtra qué ventas hay).
+  - **Un solo reclamo abierto por compra** (evita que se dupliquen a punta de clics).
+  - Si el reclamo se rechaza DESPUÉS de subir la foto, el router borra los archivos ya
+    guardados: si no, quedarían huérfanos en el disco para siempre.
+  - Las rutas de cliente van ANTES de `devolucionRouter.use(requireAdmin)` en el router.
+- Los textos (motivos, estados, soluciones, colores) viven en
+  `domain/entities/devolucion.labels.ts` (NO en `pages/dashboard`, para que el portal
+  público no arrastre código del dashboard). Hay **dos juegos de soluciones**: `SOLUCIONES`
+  en voz del admin ("Le repuse el producto") y `etiquetaSolucionCliente` en voz del cliente
+  ("Te repusimos el producto") — usar la que corresponda o el texto suena absurdo.
+
+### Inventario y costo promedio (base del futuro POS) — EN CONSTRUCCIÓN
+- **El precio de un insumo ya NO se teclea**: es el **costo promedio ponderado** que sale
+  de las compras. `insumos_costo.precio` y `.stock` son una PROYECCIÓN del libro
+  `movimientos_inventario`; la verdad auditable es el libro.
+  Fórmula (en `inventario.repository.ts` → `aplicarMovimiento`):
+  `(stock × promedio + cantidad × costo) / (stock + cantidad)`. Una salida (producción,
+  garantía, merma) se valora al promedio vigente y **NO** lo modifica.
+- **El flete de la compra se reparte entre las líneas** (`costosConFlete`), proporcional al
+  subtotal de cada una. El transporte ES parte de lo que costó el material: ignorarlo infla
+  los márgenes de las cotizaciones. Se congela en `compra_items.costo_unitario_final`.
+- **La compra vive sobre `pagos_proveedor`** (que ya existía), no en una tabla paralela: se
+  le agregaron `numero_factura`, `archivos` (JSON) y las líneas `compra_items`. Un pago sin
+  líneas sigue siendo válido (los históricos no las tienen) y no mueve inventario.
+- **Editar o borrar una compra revierte sus movimientos** (`revertirMovimientos`) y los
+  vuelve a aplicar. Sin eso el stock se contaría dos veces. `recalcularPromedio` reconstruye
+  todo desde el libro y es la red de seguridad si algo se descuadra.
+- **Unidades de compra** (`UnidadCompra`): **ml y gramos van 1 a 1** (así factura el sector);
+  NO meter densidades para "arreglarlo", descuadraría contra la factura del proveedor.
+  Los **litros SÍ multiplican ×1000** (`FACTOR_UNIDAD` / `aBase`): sin eso, teclear "20 L"
+  de alcohol entraba como 20 ml y el costo por ml quedaba **mil veces inflado** — con el
+  diluyente siendo casi la mitad del frasco, eso solo da costos de producción absurdos.
+  El inventario SIEMPRE guarda la unidad base (ml o piezas).
+- **UNA ESENCIA POR FRAGANCIA, no una "Esencia" genérica** (`perfumes.insumo_esencia_id`):
+  Eternity, Khamrah y Mandarin Sky cuestan distinto por ml (verificado: 1.233 / 1.850 / 617).
+  Promediarlas en un solo insumo daba un costo que no era el de ninguna y la esencia barata
+  comprada en volumen se comía el promedio → se cotizaría a pérdida. Cada esencia es su
+  propio `insumos_costo` con su stock. La fórmula del tamaño es solo la RECETA de
+  proporciones; la esencia sale del perfume (con la del tamaño como respaldo).
+- **PRECIO DE VENTA PAREJO, COSTO DISTINTO** (decisión del dueño): todas las no premium se
+  venden al mismo precio de lista aunque Khamrah cueste más que Eternity — se renuncia a la
+  ganancia extra de la esencia barata por tener un precio reglamentario. **Por eso NO hay
+  que poner precio por fragancia**; lo que hace falta es VER el margen de cada una
+  (`cotizacion/MargenPorFragancia.tsx`, dentro de Costos de producción): tabla ordenada de
+  la que menos deja a la que más, con aviso ámbar bajo 35% y rojo si el costo supera al
+  precio. Sin eso, una esencia que sube de precio deja de rendir y nadie se entera, porque
+  el precio de venta no se mueve. `calcularDesgloseCosto` acepta un 4º parámetro opcional
+  con el costo por ml de la esencia del perfume (prioridad: perfume → receta → por nombre).
+- **El envase también varía dentro del mismo tamaño** (normal vs luxury): se elige al
+  producir, con el de la fórmula por defecto.
+- **Salidas sin venta** (`POST /inventario/salidas`): `muestra` (rolones del mostrario,
+  minis de regalo) es **costo de marketing**, `merma` (derrame, frasco roto) es **pérdida**.
+  Van separadas a propósito: mezclarlas oculta cuánto cuesta dar a probar. El resumen del
+  mes las muestra aparte (`salidasDelMes`).
+- **El desperdicio pequeño del día a día NO se anota uno por uno** (los 1,6-3 g que se van
+  de más al servir): lo absorbe el **conteo físico**. La diferencia entre el stock teórico y
+  el real ES el desperdicio, y queda registrada como `ajuste`. Pedirle al dueño que anote
+  cada gramo garantiza que deje de usar el módulo en una semana.
+- **Soportes de compra** (`utils/soporteArchivo.ts`): imágenes → WebP como el resto; **PDF
+  se guarda tal cual**. `uploadSoportes` valida mimetype **y** extensión (con solo uno, un
+  `.pdf` con otro contenido pasaría) y rechaza SVG (admite scripts). `sanearUploadsConservados`
+  acepta PDF solo con `conPdf = true` — en reseñas y premios sigue sin admitirlos.
+- Verificado numéricamente (`aplicarMovimiento`, prorrateo, reversión de edición y borrado):
+  200 ml a $380 + 500 ml a $420 = $408,57 promedio; salida de 150 ml no mueve el promedio.
+- **Pestaña Inventario** (`InventarioTab.tsx`, sección Ventas y créditos): existencias, costo
+  promedio y valor por insumo, más el valor total de la bodega. El botón **Ajustar** es un
+  conteo físico ("tengo X") — con él se siembra el stock inicial; el costo solo pesa si el
+  ajuste SUMA material.
+- **Producción** (`POST /inventario/producciones`): "armé N de 30 ml" descuenta esencia,
+  diluyente, sellador, feromonas, envase y accesorios por defecto. **El frontend calcula qué
+  se consume** con el mismo motor puro de las cotizaciones y lo manda; el backend valida y
+  aplica (no se reimplementa la fórmula en dos lenguajes). El modal avisa si no alcanza el
+  stock. Borrar un lote devuelve los insumos.
+- **Garantías al costo real** (`devoluciones.costo_reposicion` + `costo_envio`): al marcar
+  "le repuse el producto" se elige el tamaño y las unidades, y se valora al **costo de
+  producción**, NUNCA al precio de venta — esa plata ya se cobró en la venta original y
+  contarla otra vez duplicaría la pérdida. El costo se congela al guardar.
+  **La reposición NO descuenta inventario**: el material ya salió cuando se registró la
+  producción de ese frasco; descontarlo de nuevo sería doble conteo.
+  La pestaña Devoluciones suma "las garantías te han costado X" (devuelto + producto + envíos).
+- **Punto de pedido** (`insumos_costo.stock_minimo`, 0 = alerta apagada): la pestaña muestra
+  arriba una **lista de compras** con qué pedir y cuánto (`sugerido` = volver al doble del
+  mínimo). Se fija desde el modal Ajustar y se guarda aunque no cambie la cantidad.
+- **Orden importante al arrancar**: sembrar primero el stock inicial y DESPUÉS registrar
+  compras. Al revés, el promedio se calcula contra stock cero y la primera compra manda sola.
+
+
+### Inventario fase 2 — DISEÑO ACORDADO CON EL DUEÑO (pendiente de construir)
+
+Decidido el 2026-08-01. **No cambiar sin volver a preguntarle.**
+
+1. **Arma CONTRA PEDIDO, no por lotes.** Por eso NO se lleva stock de "producto
+   terminado" como concepto central: **la VENTA es la que consume los insumos**
+   (esencia + frasco + caja + diluyente…). De ahí sale el **costo de mercancía
+   vendida** y, con él, la ganancia real del mes (hoy "Ingresos" es facturación).
+   - Regla para que nunca se cuente doble: al vender, si hay producto terminado
+     armado se descuenta ESE primero; si no hay, se consumen los insumos.
+   - La `Produccion` manual queda para lo que arme adelantado; ahí sí suma
+     producto terminado.
+   - **El descuento arranca desde que se active, NUNCA retroactivo**: las ~261
+     ventas históricas no tienen que mover inventario.
+2. **El frasco y la caja se definen por PERFUME Y TAMAÑO**, no solo por perfume:
+   Sauvage 1.1 en 30 ml usa otro frasco que en 100 ml. Sitio natural:
+   `perfume_presentacion` (ya tiene perfume+presentación+precio) sumándole
+   `envase_insumo_id` y sus accesorios.
+   - **OJO — punto delicado**: `PerfumePresentacion` usa `presentaciones` (catálogo
+     público, texto libre: "30ml", "100 ml") y el costeo usa `formulas_volumen`
+     ("30 ml"). Son tablas distintas y hoy solo coinciden por nombre. Hay que
+     enlazarlas de verdad antes de construir esto o el costo se irá al insumo
+     equivocado.
+   - La fórmula del tamaño queda SOLO como la receta de proporciones (ml de
+     esencia, diluyente, sellador, feromonas). El envase sale del perfume.
+3. **Merchandising CON inventario** (gorras y demás): `perfumes.tipo_producto` =
+   `fabricado` | `comprado` | `merchandising`. Los que no se fabrican no tienen
+   fórmula: su costo es lo que se pagó por ellos y su stock se lleva igual que
+   un insumo. Meterlos como "perfume fabricado" haría que el costeo intente
+   aplicarles una receta y dé números sin sentido.
+4. **Originales: las dos cosas.** Botella completa para revender (`comprado`) y
+   botella para sacar decants (`fraccionado`): costo del decant =
+   (precio botella ÷ ml útiles) × ml + envase. **Falta decidir con el dueño
+   cuántos ml se pierden al trasvasar** (merma de fraccionamiento).
+
+5. **Cuándo descuenta**: al REGISTRAR la venta, no al marcarla pagada. El perfume
+   ya salió físicamente aunque sea a crédito; si esperara al pago, el sistema
+   creería tener frascos que ya no están y se prometerían dos veces.
+6. **Si no alcanza el stock: deja pasar y AVISA.** La venta ya ocurrió en la vida
+   real y bloquearla no la deshace, solo impide registrarla. El stock queda en
+   negativo con alerta visible para que se cuadre con un conteo. Nunca en
+   silencio: el descuadre crecería sin que nadie se entere.
+7. **Perfume sin insumos configurados: NO descuenta y se lista aparte.** Son 200+
+   perfumes; obligar a configurarlos antes de vender frenaría el mostrador, y
+   usar la esencia genérica descuadraría ese insumo y daría un costo falso. La
+   venta se registra normal y el perfume aparece en "pendientes por configurar".
+
+**BLOQUEANTE Nº1 — la venta no guarda la talla POR PRODUCTO.** `venta_perfume` es
+solo (venta_id, perfume_id, cantidad); la talla es UN campo de texto libre para
+toda la venta (`ventas.presentacion`, ej: "1 de 30 ml y 2 de 60 ml"). Como la
+fórmula es la receta de UNA unidad de UNA talla, sin saber qué talla llevó cada
+perfume es IMPOSIBLE descontar bien: no se sabe qué receta aplicar. Hay que
+sumarle la talla a `venta_perfume` y pasar el formulario de ventas a líneas
+(perfume + talla + cantidad), como YA lo hace el de créditos (`LineaCredito`).
+Las ventas históricas se quedan sin talla por línea y no mueven inventario — el
+consumo arranca desde que se active, nunca hacia atrás.
+
+**LA VENTA PASA A SER UNA LISTA DE ÍTEMS** (decidido con el dueño el 2026-08-01,
+él mismo lo propuso). En vez de un solo campo de texto para toda la venta, el
+formulario pregunta qué se vendió: producto + talla + cantidad, una línea por
+REFERENCIA DISTINTA. Dos Khamrah de 30 ml = una línea con cantidad 2, no dos
+registros. Un Khamrah de 30 y otro de 100 = dos líneas.
+- **Consecuencia técnica ineludible**: hoy `venta_perfume` tiene PK
+  (venta_id, perfume_id), así que el MISMO perfume en dos tallas no cabe. Hay que
+  meter la talla en la PK o darle id propio.
+- `ventas.presentacion` deja de ser la fuente de verdad y pasa a ser un resumen
+  derivado (igual que `referencia_perfume`).
+- Las líneas deben admitir productos SIN talla (una gorra no tiene ml).
+- Esto elimina la necesidad de "Combo Personalizado", que era el apaño para
+  registrar varias tallas en una sola venta.
+
+**Tallas reales (producción, 2026-08-01)** y qué es cada una:
+- 30 / 50 / 100 ml → fabricados, ya tienen fórmula.
+- **RECETAS CONFIRMADAS POR EL DUEÑO** (el diluyente es SIEMPRE el resto, nunca
+  se guarda). Todas llevan esencia al 50% del volumen:
+
+  | Talla | Esencia | Sellador | Feromonas | Diluyente |
+  |---|---|---|---|---|
+  | 30 ml | 15 | 0,40 | 0,30 | 14,30 |
+  | 50 ml | 25 | 0,50 | 0,30 | 24,20 |
+  | 75 ml | 37,5 | 0,80 | 0,30 | 36,40 |
+  | 100 ml | 50 | 0,80 | 0,30 | 48,90 |
+  | 6 ml (lleno) | 3 | 0,20 | 0,15 | 2,65 |
+
+  El 75 ml usa el mismo sellador y feromonas que el 100 ml (no escalados).
+  Faltan crear en base las de **75 ml** y **6 ml**; las otras tres ya existen.
+- **6 ml** → el perfumero recargable. **SON DOS PRODUCTOS DISTINTOS**: el vacío
+  es comprado/reventa (sin fórmula) y el lleno es fabricado (esencia al 50% = 3 ml).
+- **200 y 250 ml** → **splash COMPRADOS ya hechos, sin fórmula**. El "200/250ML"
+  del catálogo era un apaño para marcarlos como splash: la talla debe ser el
+  número real y "splash" va como categoría/tipo, no como talla.
+- "Combo Personalizado" NO es una talla: se elimina al pasar a líneas.
+
+**Diluyente ≠ alcohol a secas**: es alcohol de papa con exaltante, ya balanceado.
+Por eso el insumo se llama "Diluyente" en todo el módulo y tiene costo propio.
+No renombrarlo a "alcohol".
+
+**PASO 2 — BACKEND HECHO (2026-08-01)**: `venta_perfume` tiene id propio, columna
+`ml` y UNIQUE(venta, perfume, ml). Las 205 líneas existentes se conservaron.
+`createVentaSchema` acepta las DOS formas: `lineas[]` (nueva, con talla) y
+`perfume_ids[]` (vieja, sin talla) — `lineasDeVenta()` las normaliza y agrupa por
+producto+talla. `ventas.presentacion` dejó de ser obligatorio: se DERIVA de las
+líneas si llega vacío (pasó a ser resumen, no fuente de verdad). Probado: una venta
+con el mismo perfume en 30ml y 100ml, antes imposible.
+Migración: `20260801150000_lineas_de_venta`.
+**PASO 9 COMPLETO (2026-08-01) — IMPORT/EXPORT DE TODO**: `import/resto.ts` suma
+formulas (import+export), y producciones, cotizaciones, usuarios, blog y avisos.
+**Criterio de qué se puede IMPORTAR**: solo configuración y datos que el dueño
+tecleó. El HISTÓRICO CONTABLE (producciones, cotizaciones emitidas, movimientos)
+se exporta pero se rechaza al importar — reescribirlo rompería la trazabilidad.
+El blog tampoco se importa: su HTML se sanea en el servidor y meterlo por Excel se
+saltaría ese filtro. Las cotizaciones exportan UNA FILA POR LÍNEA y **nunca**
+costos ni márgenes. Verificado: los 24 exportadores responden 200; reimportar
+formulas actualizó las 5 recetas; producciones rechaza con su motivo.
+
+**PASO 8 COMPLETO (2026-08-01) — GRÁFICOS**: `GraficoMeses.tsx` (barras apiladas,
+SVG/CSS puro, sin dependencias nuevas) en la pestaña Ventas, con endpoint
+`GET /ventas/por-mes`. Ganancia + costo de lo vendido apilados (misma escala: NUNCA
+dos ejes), leyenda siempre visible, tooltip al pasar el mouse y tabla equivalente
+plegable. **La paleta se validó con el script del design system**: el iris de marca
+(#524276) FALLA como color de barra (muy oscuro, croma bajo); los que pasan las seis
+comprobaciones son #8661cc y #c78200 (ΔE 28 protan, contraste ≥3:1). No cambiarlos
+por el color de marca.
+
+**PASO 7 COMPLETO (2026-08-01) — COTIZACIONES CON LA ESENCIA REAL**:
+`LineasCotizacion` pasa `perfume.insumo_esencia_precio` como 4º parámetro de
+`calcularDesgloseCosto`, así que cada línea se costea con SU fragancia. Verificado:
+mismo tamaño, 1 Million (Khamrah 1.800/ml) cuesta 5.488 y 1 Million Lucky
+(Mandarin Sky 617/ml) cuesta 1.939 — casi el triple. En 500 unidades son 1,7
+millones de diferencia que antes no se veían. Si el perfume no tiene esencia
+asignada sale un aviso ámbar en la línea: el costo es aproximado y en mayoreo eso
+son cientos de unidades mal costeadas.
+
+**PASO 6 COMPLETO (2026-08-01) — FRASCO Y CAJA POR PERFUME + TALLA**:
+`perfume_presentacion` suma `envase_insumo_id` y `accesorios` (JSON de ids). Lo que
+se define ahí MANDA sobre el envase/accesorios de la receta del tamaño, que pasan a
+ser el valor por defecto. La receta queda como lo que es: las PROPORCIONES.
+Verificado: dos perfumes de 100 ml con la misma esencia pero frascos distintos
+descontaron cada uno el SUYO (Frasco Sauvage 50→49 y Frasco Bleu 50→49).
+En la ficha del perfume: selector "¿Cómo consigues este producto?" (fabricado /
+comprado / fraccionado), el insumo que ES el producto, los ml aprovechables del
+decant, y un selector de frasco por cada talla marcada.
+Migración: `20260801180000_envase_por_perfume_talla`.
+
+**PASO 5 COMPLETO (2026-08-01) — TIPOS DE PRODUCTO**: `perfumes.tipo_producto`
+(fabricado | comprado | fraccionado) + `insumo_producto_id` + `ml_utiles`.
+`recetaDe` se bifurca: fabricado usa la receta de la talla; **comprado** descuenta
+UNA unidad del insumo que ES el producto (y NO exige talla: una gorra no tiene ml);
+**fraccionado** descuenta los ml del decant de la botella origen + su envase.
+Verificado: venta de 1 gorra + 2 decants de 10 ml → gorra 20→19, botella 95→75,
+costo 144.320 (126.320 de líquido + 18.000 de la gorra).
+**GOTCHA que costó un ciclo**: `consumirPorVenta` saltaba toda línea sin `ml`, así
+que los comprados nunca descontaban. Solo los fabricados y fraccionados necesitan
+talla. Migración: `20260801170000_tipos_de_producto`.
+
+**PASO 4 COMPLETO (2026-08-01)**: **crear producto al vuelo desde la venta**. El
+buscador del formulario trae "+ Crear producto nuevo" y abre un mini-form con lo
+mínimo (nombre + precio); al crearlo se agrega como línea sin salir de la venta.
+Mismo patrón que "+ Registrar persona nueva".
+**Aroma y ocasión dejaron de ser obligatorios** al crear un producto (Zod y el
+service): el catálogo ya no es solo perfumes — una gorra no tiene notas olfativas
+— y exigirlos frenaba el mostrador. Verificado: CREATE 201 desde el formulario.
+
+**PASO 3 COMPLETO (2026-08-01) — LA VENTA CONSUME INVENTARIO**: `consumirPorVenta`
+descuenta esencia (la DEL PERFUME), diluyente, sellador, feromonas, envase y
+accesorios según la receta de la talla × unidades, y congela el costo en
+`ventas.costo_mercancia`. `getVentaTotales` expone `costo_mercancia_mes` y
+**`ganancia_mes`** = ingresos − devoluciones − costo. Editar o borrar una venta
+revierte el consumo (`revertirVenta`). Verificado con números: 3× 30ml descontaron
+45 ml de esencia, 42,9 de diluyente, 1,2 de sellador, 0,9 de feromonas y 3 envases;
+costo 27.768 (3 × 9.256); ganancia 196.000 − 27.768 = 168.232. Al borrar, todo volvió
+exacto. Migración: `20260801160000_consumo_por_venta`.
+
+**PASO 2 COMPLETO (2026-08-01)**: el formulario del dashboard ya es un editor de
+LÍNEAS (producto + talla + cantidad). `agregarLinea` suma unidades si el producto
+ya está sin talla; `actualizarLinea` FUSIONA dos líneas si al cambiar la talla
+quedan idénticas (evita duplicados de la misma referencia). El campo suelto de
+"Presentacion" se eliminó: la talla vive en cada línea y `ventas.presentacion` se
+deriva. Probado con clics reales: venta con dos productos en 30ml y 100ml → guardó
+"1 Million 30ml, 1 Million Lucky 100ml" con sus dos líneas correctas.
+
+**PASO 1 — HECHO (2026-08-01)**: `presentaciones.ml` (número) + `formula_volumen_id`.
+La talla dejó de ser texto: el número sale del propio nombre con REGEXP, y el enlace
+catálogo↔receta se hace POR NÚMERO. Probado con "30ml", "50 ml" y "100 ml" (tres
+escrituras distintas) → las tres enlazan bien. Las que NO son talla ("200/250ML",
+"Combo Personalizado") quedan con ml NULL a propósito y no se costean. Creadas las
+recetas de 75 ml y 6 ml, y corregidas las feromonas del 100 ml (0.40 → 0.30).
+Migración: `20260801140000_tallas_en_ml`.
+
+~~BLOQUEANTE Nº2~~: unificar las tallas. Hoy hay TRES listas que no
+coinciden — `presentaciones` (30ml, 50 ml, 100 ml), `formulas_volumen` (30 ml,
+50 ml, 100 ml) y el texto libre de `ventas.presentacion` (30 ML, 100 ML, 80 ML,
+"6 ML - Perfumero Rec", 60ML). Falta que el dueño dé la lista definitiva y la
+escritura canónica. Sin eso, el enlace frasco↔talla busca el insumo equivocado.
+
+Orden acordado: (0) unificar tallas → (1) consumo por venta + ganancia real →
+(2) crear producto al vuelo desde la venta → (3) tipos de producto →
+(4) cotizaciones B2B con la esencia del perfume → (5) gráficos →
+(6) import/export de lo que falta.
 
 ### Cotizaciones mayoristas B2B (módulo interno, 100% solo admin)
 - Sirve para cotizarle a quien quiere **revender** los perfumes. Vive en el dashboard,
@@ -345,7 +670,27 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 - Tests de casos reales: "One Million" solo enlaza si existe ese nombre exacto en el
   catálogo; si solo hay variantes (Elixir, Parfum) debe dar vacío, nunca elegir una.
 
+### Subir fotos desde el navegador (bug ya corregido — no reintroducirlo)
+- `e.target.files` es un **FileList VIVO** del input. El patrón
+  `setFotos(f => [...f, ...Array.from(files)]); input.value = ''` **pierde las fotos**: el
+  updater de React se ejecuta después, y para entonces limpiar el input ya vació la lista.
+  Hay que **copiar el array ANTES** de llamar a `setState`. Estaba en los 3 subidores
+  (reseñas, fotos de premio y devoluciones); síntoma: se elige la foto, a veces se ve la
+  miniatura, pero el POST viaja sin el campo `imagenes`.
+
+### Selects con valores libres (bug ya corregido — no reintroducirlo)
+- `ventas.presentacion` es TEXTO LIBRE (los Excel reales traen "30 ML" con espacio, "80 ML",
+  "6 ML - Perfumero Rec", "1 de 30 ml y 2 de 60 ml"). Estaba pintado con un `<select>` de
+  lista quemada: cuando el valor guardado no está entre las opciones, **el navegador muestra
+  la PRIMERA y al guardar pisa el dato original en silencio** — así se dañaron muchos
+  registros. Ahora es `<input list=…>` con `<datalist>`: sugiere sin encerrar.
+  **Regla: un `<select>` solo sirve si el dato guardado SIEMPRE está entre sus opciones.**
+
 ### Fechas (bug ya corregido — no reintroducirlo)
+- **Inicio de mes en las estadísticas**: las columnas `@db.Date` se leen como medianoche
+  **UTC**. Armar el corte con `setHours(0,0,0,0)` da medianoche LOCAL (05:00 UTC en
+  Colombia) y **todo lo del día 1 queda fuera del mes** (ventas, abonos y devoluciones).
+  En `getVentaTotales` se construye con `new Date(Date.UTC(a, m, 1))`.
 - Las fechas "de calendario" (`ventas.dia`, `creditos.fecha`, `pagos.dia`, `anuncios.inicio/fin`)
   son `@db.Date`: el backend las manda como AAAA-MM-DD. Formatearlas con `new Date(s)`
   las lee como medianoche UTC y en Colombia (UTC-5) mostraba **el día anterior**
@@ -356,8 +701,10 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 - Son genéricos por entidad: basta agregar la entidad a `IMPORT_SPECS` (columnas + notas)
   y sus ramas en `exportEntity`/`importEntity`. El router, la plantilla, el modal y el
   botón Exportar del frontend ya funcionan solos (`<ExportButton entity="..." />`).
-- Entidades: perfumes, aromas, ocasiones, categorias, presentaciones, combos, descuentos,
-  ventas, creditos, proveedores, publicidad y **precios** (la lista categoría×presentación;
+- **24 entidades** con export (y con import las que son configuración): perfumes, precios,
+  aromas, ocasiones, categorias, presentaciones, combos, descuentos, publicidad, ventas,
+  creditos, proveedores, insumos, inventario, movimientos, devoluciones, resenas, entregas,
+  formulas, producciones, cotizaciones, usuarios, blog y avisos (la lista categoría×presentación;
   importar ACTUALIZA la combinación existente, sirve para subir precios en bloque).
 - La plantilla de perfumes lleva `precios_presentacion` (`30ML=60000, 100ML=150000`, solo
   excepciones) y `esencia_premium` (si/no).
@@ -365,6 +712,29 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   persona). Importar siempre CREA (no actualiza): subir dos veces el archivo duplica.
   En anuncios que no son de tipo `descuento` las columnas de cupón se guardan en cero
   (un mensaje no puede colar un descuento).
+- **El servicio está partido por dominio** (era un archivo de ~830 líneas):
+  `services/import.service.ts` es solo el REPARTIDOR (~78 líneas) y los dominios viven en
+  `services/import/`: `core.ts` (helpers, plantillas, `sheetFromRows`, `entityRows`),
+  `lookups.ts` (aromas/ocasiones/categorías/presentaciones), `catalogo.ts` (perfumes,
+  precios, combos, descuentos), `ventas.ts` (publicidad, ventas, créditos, proveedores),
+  `inventario.ts` (insumos, conteo, movimientos, devoluciones) y `legacy.ts` (el importador
+  histórico de un Excel con varias hojas). Para una entidad nueva: spec en `IMPORT_SPECS` +
+  rama en el módulo de su dominio. Ninguno pasa de 290 líneas. `inventario` es la **hoja de conteo físico**: se exporta con lo que
+  el sistema cree que hay, se escribe lo real en `cantidad_real` y al subirla cada fila pasa
+  por `ajustarStock` (queda su movimiento auditable). Es la forma cómoda de sembrar el stock
+  inicial. `movimientos` es **solo exportación**: importarlo descuadraría el stock, que es una
+  proyección de ese libro.
+- **Contenido de clientes (reseñas, fotos de premios): se EXPORTA todo, se IMPORTA solo la
+  moderación** (`import/contenido.ts`). El importador exige el `id` de un registro existente
+  y solo cambia `estado`; una fila sin id se rechaza con el motivo. Razón: una reseña solo
+  existe si esa persona COMPRÓ el perfume, y un importador que las cree se salta esa barrera
+  — sería publicidad engañosa (Ley 1480, sancionable por la SIC) y además las estrellas
+  dejarían de decirle al dueño qué fragancia gustó de verdad. El **exportador sí hace falta**:
+  es el respaldo del contenido y la forma de responder un derecho de acceso a datos
+  (Ley 1581). Verificado: aprobar en lote funciona; crear una reseña desde archivo se rechaza.
+- **Redes sociales va en JSON, no Excel** (`/api/contacto/export` e `/import`): su estructura
+  (config + links con overrides de estilo) es irregular y en una hoja quedaría ilegible. El
+  resto del sistema sí es parametrizado y va en Excel.
 - `bustImportCache()` limpia `parfums:` y `anuncios:`.
 
 ### Otros
@@ -375,6 +745,23 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   perfume.repository, hoy 7 días). El mismo valor decide qué sale en "Nuevos" del home.
 - Al borrar/reemplazar imagen de perfume/combo/anuncio se borra el archivo físico de
   uploads (`utils/imagenes.ts`) — servidor pequeño, cero huérfanos.
+- **BUG GRAVE ya corregido (2026-08-01): el respaldo bajaba VACÍO — DOS causas.**
+  **Causa raíz**: se escuchaba `req.on('close')` para matar mysqldump si el cliente
+  cancelaba, pero la PETICIÓN emite 'close' en cuanto termina de leerse su cuerpo (a los
+  milisegundos). Se mataba el dump antes de que escribiera nada → salía por señal (código
+  `null` en los logs de pm2, señal delatora) y el gzip se cerraba vacío. Ahora se escucha
+  `res.on('close')` y solo se mata si `!res.writableEnded` (el cliente se fue de verdad).
+  **Diagnóstico**: si `mysqldump` a mano funciona y el botón no, mirar el CÓDIGO en los
+  logs — `null` = lo mataron, no falló.
+  **Segunda causa (defensa en profundidad)**: la respuesta
+  empezaba a enviarse en el evento `spawn`, antes de saber si mysqldump iba a
+  funcionar. Cuando fallaba (binario ausente, credenciales malas), no escribía
+  nada pero el gzip se cerraba solo y el navegador recibía un `.gz` **válido y
+  vacío de 20 bytes** — se ve como un respaldo y no tiene ni una tabla. Ahora
+  **no se manda un solo byte hasta que mysqldump escupa el primero**, y si no
+  produce datos responde 500 con el stderr real. Un respaldo que miente es peor
+  que no tener respaldo. **Verificar en producción que el archivo pese MB, no
+  bytes**, y que `MYSQLDUMP_PATH` apunte al de `mariadb-client`.
 - Respaldo de BD: botón "Respaldo" en el header del dashboard. Doble candado: admin + TOTP
   (RFC 6238 casero en `utils/totp.ts`, secreto en `backend/backups/totp.json`, fuera de
   git). Resetear TOTP = borrar ese archivo por SSH (a propósito: la web no puede).
@@ -395,11 +782,37 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   marcas son de sus titulares, muchos productos son contratipos, y el negocio no está
   afiliado. Datos de datos personales: Ley 1581/2012, contacto por WhatsApp (NO se inventó
   NIT/dirección/razón social: agregar solo si el dueño los tiene). `/legal` va en el sitemap.
+- **Devoluciones (`/legal#devoluciones`)** — investigado, NO improvisar:
+  - **Garantía legal** (Ley 1480/2011, arts. 7-8-11): cubre producto equivocado,
+    dañado/derramado/incompleto, envase o atomizador defectuoso, no entregado. Solución:
+    reposición o devolución del dinero. **Los costos de transporte de la garantía los asume el
+    vendedor** (art. 11). Plazo legal máximo para hacerla efectiva: 30 días hábiles
+    (Decreto 735/2013).
+  - **Término anunciado: 90 días** (`GARANTIA` en `config/negocio.ts`, editar ahí). El art. 8
+    deja que el vendedor ANUNCIE el término y solo a falta de anuncio son 12 meses. Se eligió
+    90 porque es **el mismo piso que la ley fija para productos usados** — número defendible,
+    no inventado. Bajarlo a ~30 días se acerca a "limitar la responsabilidad legal", que el
+    **art. 43 numerales 1 y 2 declara ineficaz de pleno derecho**; el ahorro no compensa el
+    riesgo. `avisoEntregaDias` (5 hábiles) es OTRO plazo: avisar que el pedido llegó mal para
+    poder reclamarle a la transportadora — NO recorta la garantía por defecto de fábrica.
+  - **El retracto (art. 47) NO aplica a perfumes**: el numeral 7 exceptúa los "bienes de uso
+    personal" y la SIC clasificó ahí los cosméticos (concepto rad. 12-27958). Por eso la página
+    dice que no se aceptan devoluciones por cambio de opinión — y aclara que eso **no toca la
+    garantía legal** (que es irrenunciable). No suavizar esto sin hablarlo con el dueño: es la
+    diferencia entre una política defendible y una promesa que cuesta plata.
+  - Se menciona la reversión del pago (art. 51) y la SIC como autoridad.
 - **Seguridad (auditoría 2026-07-25)**: `utils/uploadsUrl.ts` → `sanearUploadsConservados`
   filtra las URLs `conservar[]` de reseñas/premios para aceptar SOLO archivos de nuestro
   `/uploads` (evita inyectar URLs externas y host-poisoning; reconstruye con la baseUrl). Los
   endpoints de moderación validan `estado` (400 si es inválido). En producción, si falta
   `BACKEND_URL`, el arranque avisa (las URLs de /uploads no deben depender del header Host).
+- **Los errores internos NUNCA salen al navegador** (`utils/errorSeguro.ts`): un error de
+  Prisma trae la ruta del archivo, el fragmento de código y el host de la base. Con MySQL
+  apagado, el login mostraba en pantalla `auth.repository.ts:8:15` y `localhost:3306`.
+  `mensajeSeguro(err)` distingue el mensaje de negocio (escrito por nosotros, se muestra tal
+  cual) del interno (Prisma, `E*` de red → se registra en el log y afuera va un texto
+  genérico). Lo usan `error.middleware.ts` y los 7 controladores con try/catch propio.
+  **Regla: jamás `res.json({ error: err.message })` directo.**
 - **Anti-abuso / costos (capas)**: (1) `express-rate-limit` global 300/15min + auth 10/15min;
   (2) `express-slow-down` (`speedLimiter` en app.ts) ralentiza progresivamente tras 150
   peticiones/15min; (3) `uploadLimiter` (`middleware/limiters.ts`, 25/15min) en las subidas
@@ -571,9 +984,73 @@ Migraciones pendientes de aplicar en producción al escribir esto:
   (toasts) → en el deploy del frontend correr `npm install` antes del build.
 - `20260729120000_cotizacion_esencia_y_tipo`: `formulas_volumen.esencia_insumo_id` (cada
   tamaño elige su esencia) + `cotizaciones.tipo` y `cotizaciones.lista_precios`.
-- `20260730120000_cotizacion_accesorios`: `insumos_costo.alcance` (unidad|pedido), tabla
-  puente `formula_accesorios` (accesorios por defecto de cada tamaño) y
-  `cotizaciones.extras_pedido` (JSON).
+- ~~`20260730120000_cotizacion_accesorios`~~: **YA APLICADA en producción** (verificado el
+  2026-08-01 contra el dump del servidor: `insumos_costo.alcance`, `formula_accesorios` y
+  `cotizaciones.extras_pedido` ya existen). Quedan pendientes solo las 7 de abajo.
+- `20260731120000_devoluciones`: tablas `devoluciones` y `devolucion_perfume`. Ya incluye las
+  columnas de la fase C (`origen`, `user_id`, `imagenes`), así que el portal del cliente no
+  necesitará otra migración. Sin dependencias nuevas.
+- `20260801120000_inventario_compras`: `insumos_costo.precio` pasa a DECIMAL(12,4) y suma
+  `stock`; `pagos_proveedor` suma `numero_factura` y `archivos`; tablas nuevas
+  `compra_items`, `movimientos_inventario` y `producciones`; `devoluciones` suma
+  `reposicion_formula_id`, `reposicion_cantidad`, `costo_reposicion` y `costo_envio`;
+  `compra_items.unidad_compra` suma `l` (litros), `movimientos_inventario.tipo` suma
+  `muestra`, `perfumes.insumo_esencia_id` y `producciones.perfume_id/envase_insumo_id`.
+  Sin dependencias nuevas.
+- `20260801140000_tallas_en_ml`: `presentaciones.ml` + `presentaciones.formula_volumen_id`
+  (la talla pasa a ser un NÚMERO; el `nombre` queda como etiqueta), siembra el envase y la
+  fórmula de 75 ml y 6 ml, y enlaza cada talla con su receta por número.
+- `20260801150000_lineas_de_venta`: `venta_perfume` cambia de clave — `id` autoincremental,
+  `ml` y única `(venta_id, perfume_id, ml)`. Conserva las filas.
+- `20260801160000_consumo_por_venta`: `ventas.costo_mercancia`.
+- `20260801170000_tipos_de_producto`: `perfumes.tipo_producto` (fabricado|comprado|
+  fraccionado), `insumo_producto_id` y `ml_utiles`.
+- `20260801180000_envase_por_perfume_talla`: `perfume_presentacion.envase_insumo_id` y
+  `accesorios` (el frasco de un 1.1 cambia según la referencia).
+- `20260801190000_rellenar_talla_historica`: copia la talla desde el texto de la venta
+  (`ventas.presentacion`) a cada línea. **La talla histórica NUNCA se perdió**: estaba en un
+  texto para toda la venta, no por producto. Solo rellena cuando el texto es inequívoco;
+  `200/250 ML` y `Combo Personalizado` se quedan en NULL a propósito (adivinar metería un
+  dato falso). Verificado sobre producción: 426 de 434 líneas quedaron con talla, 8 sin
+  ella, y ni el dinero ni el número de líneas se movieron.
+
+**Verificado el 2026-08-01**: la base local se reemplazó por el dump real de producción y
+las 8 migraciones pendientes se aplicaron EN ORDEN sobre esos datos, sin perder una fila
+(212 perfumes, 261 ventas, 434 líneas, 22 usuarios). Después `prisma db push` respondió
+"in sync" sin cambios → las migraciones producen exactamente el esquema de Prisma. Ese es
+el orden exacto del deploy.
+
+**GOTCHA de migraciones (2026-08-01)**: `INSERT ... SELECT * FROM (SELECT 'a','b',…) AS t`
+usa los LITERALES como nombres de columna de la tabla derivada. Si un valor se repite
+(pasó con `'unidad'` en unidad y en alcance) MySQL corta con **"Duplicate column name"** y
+la migración no corre. **Aliasea siempre cada columna** (`SELECT 'x' AS n, …`). Este fallo
+NO se ve con `prisma db push` (nunca ejecuta los .sql): solo aparece corriendo las
+migraciones de verdad — por eso vale la pena probarlas contra una copia de producción antes
+de subir.
+
+## Reportes (dashboard → sección Reportes)
+
+- **Tres pestañas, no una** (`rep_ventas`, `rep_compras`, `rep_clientes`): son preguntas
+  distintas — cuánto vendí, cuánto gasté y quién me compra. Endpoints `/api/reportes/:tipo`
+  (`reporte.repository.ts` + `reporte.router.ts`, todo `requireAdmin`: llevan costos, deudas
+  y ranking de clientes).
+- **Nada se guarda**: todo se recalcula del historial en cada llamada, como el motor de cupo
+  y la tarjeta de recompensas. Un acumulado guardado se desincroniza el primer día que el
+  dueño corrija una venta vieja.
+- `GraficoBarras.tsx` es el gráfico REUTILIZABLE (barras por mes, apiladas si hay 2+ series).
+  Reglas que NO se negocian: **un solo eje** (dos medidas de escala distinta = dos gráficos),
+  leyenda siempre visible con 2+ series, tabla equivalente en el `<details>` "Ver los
+  números", y los valores en texto normal (el color identifica, no informa).
+  Paleta `SERIE_A` `#8661cc` / `SERIE_B` `#c78200`, validada contra fondo blanco (banda de
+  luminosidad, croma, daltonismo y contraste). **El iris de marca `#524276` NO sirve para
+  barras**: muy oscuro y de croma bajo, el validador lo rechaza.
+- Piezas compartidas en `dashboard/reportes/comun.tsx` (`useReporte` con reintentar,
+  `ReporteShell`, `Panel`, `Ranking`).
+- El **ticket promedio** se mide solo sobre ventas pagadas: meter lo pendiente infla la cifra
+  con plata que no ha entrado. En compras se aclara que el gasto **no es pérdida** (lo no
+  vendido sigue en bodega) — sin eso, ver "gasté más de lo que vendí" asusta sin motivo.
+- Ventas tiene un enlace a Reportes, pero el gráfico ya NO vive ahí: en esa pestaña se
+  registra y se busca.
 
 ## Cómo trabajamos (preferencias del dueño)
 

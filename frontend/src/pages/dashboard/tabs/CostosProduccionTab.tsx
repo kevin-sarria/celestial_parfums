@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import CostoDeProduccion from '../cotizacion/CostoDeProduccion';
+import MargenPorFragancia from '../cotizacion/MargenPorFragancia';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
 import { Section, SectionTitle, Toolbar } from '../ui';
 import type { GuardedFetch } from '../types';
+import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
 
 const API = `${BASE_URL}/api/costeo`;
@@ -23,19 +25,24 @@ const API = `${BASE_URL}/api/costeo`;
 export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
   const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
+  const [perfumes, setPerfumes] = useState<Perfume[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = async () => {
     setLoading(true);
     try {
-      const [rf, ri] = await Promise.all([
+      const [rf, ri, rp] = await Promise.all([
         guardedFetch(`${API}/formulas`),
         guardedFetch(`${API}/insumos`),
+        guardedFetch(`${BASE_URL}/api/parfums`),
       ]);
       if (!rf.ok || !ri.ok) throw new Error('respuesta no válida');
       setFormulas((await rf.json()).data ?? []);
       setInsumos((await ri.json()).data ?? []);
+      // /api/parfums sin paginar responde { data: { data: [...] } }
+      const jp = rp.ok ? await rp.json() : null;
+      setPerfumes(Array.isArray(jp?.data) ? jp.data : (jp?.data?.data ?? []));
       setError('');
     } catch {
       setError('No se pudieron cargar los datos. Revisa tu conexión y reintenta.');
@@ -125,6 +132,9 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
           ))}
         </div>
       )}
+
+      {/* Con precio de venta parejo, el margen lo decide la esencia de cada una */}
+      <MargenPorFragancia perfumes={perfumes} formulas={formulas} insumos={insumos} />
 
       {/* Costos que van una sola vez por envío, no por perfume */}
       {porPedido.length > 0 && (

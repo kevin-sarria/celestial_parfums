@@ -10,6 +10,12 @@
   descuento?: number;
   agotado?: boolean;
   esencia_premium?: boolean;
+  /** Esencia concreta con la que se hace (Eternity, Khamrah…). */
+  insumo_esencia_id?: number | null;
+  tipo_producto?: 'fabricado' | 'comprado' | 'fraccionado';
+  insumo_producto_id?: number | null;
+  ml_utiles?: number | null;
+  envases_talla?: { presentacion_id: number; envase_insumo_id?: number | null; accesorios?: number[] }[];
   tipos_aroma: number[];
   ocasiones: number[];
   presentaciones: number[];

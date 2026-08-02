@@ -1,13 +1,14 @@
 import { Request, Response } from 'express';
 import * as perfumeService from '../services/perfume.service';
 import { parsePagination, parseSearch } from '../utils/pagination';
+import { mensajeSeguro } from '../utils/errorSeguro';
 
 export const getRelatedPerfumes = async (req: Request, res: Response) => {
   try {
     const data = await perfumeService.getRelatedPerfumes(req.params.slug as string);
     res.status(200).json({ data });
   } catch (error: any) {
-    res.status(404).json({ error: error.message });
+    res.status(404).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -16,7 +17,7 @@ export const getDestacados = async (_req: Request, res: Response) => {
     const data = await perfumeService.getDestacados();
     res.json({ data });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -25,7 +26,7 @@ export const getPerfumeBySlug = async (req: Request, res: Response) => {
     const data = await perfumeService.getPerfumeBySlug(req.params.slug as string);
     res.status(200).json({ data });
   } catch (error: any) {
-    res.status(404).json({ error: error.message });
+    res.status(404).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -56,7 +57,7 @@ export const selectAllPerfumes = async (req: Request, res: Response) => {
       res.status(200).json({ message: 'Datos Encontrados Correctamente', data: result });
     }
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -65,7 +66,7 @@ export const createPerfume = async (req: Request, res: Response) => {
     const result = await perfumeService.createPerfume(req.body);
     res.status(201).json({ message: 'Perfume creado correctamente', data: result });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -74,7 +75,7 @@ export const editPerfume = async (req: Request, res: Response) => {
     const result = await perfumeService.editPerfume(req.params.id as string, req.body);
     res.status(200).json({ message: 'Perfume actualizado correctamente', data: result });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -83,7 +84,7 @@ export const deletePerfume = async (req: Request, res: Response) => {
     await perfumeService.deletePerfume(req.params.id as string);
     res.status(200).json({ message: 'Perfume eliminado correctamente' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -92,7 +93,7 @@ export const patchDescuentoPerfume = async (req: Request, res: Response) => {
     await perfumeService.patchDescuentoPerfume(req.params.id as string, Number(req.body.descuento));
     res.json({ message: 'Descuento actualizado' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -104,7 +105,7 @@ export const patchDescuentoCategoria = async (req: Request, res: Response) => {
     );
     res.json({ message: `Descuento aplicado a ${count} perfumes`, count });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -113,7 +114,7 @@ export const patchAgotadoPerfume = async (req: Request, res: Response) => {
     await perfumeService.patchAgotadoPerfume(req.params.id as string, Boolean(req.body.agotado));
     res.json({ message: 'Estado de stock actualizado' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -122,7 +123,7 @@ export const getAromas = async (_req: Request, res: Response) => {
     const data = await perfumeService.getAllAromas();
     res.status(200).json({ data });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -131,7 +132,7 @@ export const addAroma = async (req: Request, res: Response) => {
     const id = await perfumeService.createAroma(req.body.nombre);
     res.status(201).json({ message: 'Aroma creado', data: { id } });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -140,7 +141,7 @@ export const removeAroma = async (req: Request, res: Response) => {
     await perfumeService.deleteAroma(req.params.id as string);
     res.status(200).json({ message: 'Aroma eliminado' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -149,7 +150,7 @@ export const editAroma = async (req: Request, res: Response) => {
     await perfumeService.updateAroma(req.params.id as string, req.body.nombre);
     res.status(200).json({ message: 'Aroma actualizado' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -158,7 +159,7 @@ export const getOcasiones = async (_req: Request, res: Response) => {
     const data = await perfumeService.getAllOcasiones();
     res.status(200).json({ data });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -167,7 +168,7 @@ export const addOcasion = async (req: Request, res: Response) => {
     const id = await perfumeService.createOcasion(req.body.nombre);
     res.status(201).json({ message: 'Ocasión creada', data: { id } });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -176,7 +177,7 @@ export const removeOcasion = async (req: Request, res: Response) => {
     await perfumeService.deleteOcasion(req.params.id as string);
     res.status(200).json({ message: 'Ocasión eliminada' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -185,7 +186,7 @@ export const editOcasion = async (req: Request, res: Response) => {
     await perfumeService.updateOcasion(req.params.id as string, req.body.nombre);
     res.status(200).json({ message: 'Ocasión actualizada' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -194,7 +195,7 @@ export const getCategorias = async (_req: Request, res: Response) => {
     const data = await perfumeService.getAllCategorias();
     res.status(200).json({ data });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -203,7 +204,7 @@ export const addCategoria = async (req: Request, res: Response) => {
     const id = await perfumeService.createCategoria(req.body.nombre);
     res.status(201).json({ message: 'Categoría creada', data: { id } });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -212,7 +213,7 @@ export const removeCategoria = async (req: Request, res: Response) => {
     await perfumeService.deleteCategoria(req.params.id as string);
     res.status(200).json({ message: 'Categoría eliminada' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -221,7 +222,7 @@ export const editCategoria = async (req: Request, res: Response) => {
     await perfumeService.updateCategoria(req.params.id as string, req.body.nombre);
     res.status(200).json({ message: 'Categoría actualizada' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -230,7 +231,7 @@ export const getPrecios = async (_req: Request, res: Response) => {
     const data = await perfumeService.getPrecios();
     res.status(200).json({ data });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -240,7 +241,7 @@ export const putPrecio = async (req: Request, res: Response) => {
     const data = await perfumeService.setPrecioLista(categoria_id, presentacion_id, precio ?? null);
     res.status(200).json({ message: 'Precio actualizado', data });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -249,7 +250,7 @@ export const getPresentaciones = async (_req: Request, res: Response) => {
     const data = await perfumeService.getAllPresentaciones();
     res.status(200).json({ data });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -258,7 +259,7 @@ export const addPresentacion = async (req: Request, res: Response) => {
     const id = await perfumeService.createPresentacion(req.body.nombre);
     res.status(201).json({ message: 'Presentación creada', data: { id } });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -267,7 +268,7 @@ export const removePresentacion = async (req: Request, res: Response) => {
     await perfumeService.deletePresentacion(req.params.id as string);
     res.status(200).json({ message: 'Presentación eliminada' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };
 
@@ -276,6 +277,6 @@ export const editPresentacion = async (req: Request, res: Response) => {
     await perfumeService.updatePresentacion(req.params.id as string, req.body.nombre);
     res.status(200).json({ message: 'Presentación actualizada' });
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: mensajeSeguro(error) });
   }
 };

@@ -39,3 +39,27 @@ export const uploadMemoria = multer({
     cb(null, true);
   },
 });
+
+/**
+ * Soportes de compras a proveedores: fotos de la factura o el PDF que manda la
+ * distribuidora. Va en memoria para que las imágenes pasen por sharp.
+ *
+ * Doble candado a propósito: se valida el mimetype **y** la extensión. Con solo
+ * uno, un archivo llamado `factura.pdf` con contenido de otra cosa (o al revés)
+ * podría colarse. Nada de SVG: admite scripts.
+ */
+const SOPORTE_EXT = ['.jpg', '.jpeg', '.png', '.webp', '.pdf'];
+
+export const uploadSoportes = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 8 * 1024 * 1024, files: 10 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const esImagen = file.mimetype.startsWith('image/') && file.mimetype !== 'image/svg+xml';
+    const esPdf = file.mimetype === 'application/pdf' && ext === '.pdf';
+    if (!SOPORTE_EXT.includes(ext) || !(esImagen || esPdf)) {
+      return cb(new Error('Solo se permiten imágenes (jpg, png, webp) o PDF'));
+    }
+    cb(null, true);
+  },
+});

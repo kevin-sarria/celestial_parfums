@@ -37,7 +37,10 @@ export default function ResenaProductoCard({ producto, onGuardada }: { producto:
   const agregarFotos = (files: FileList | null) => {
     if (!files) return;
     const libres = 3 - totalFotos;
-    setNuevas((n) => [...n, ...Array.from(files).slice(0, libres)]);
+    // Copiar la lista AQUÍ, no dentro del updater: `files` es un FileList vivo
+    // del input y limpiarlo abajo lo vacía antes de que React lo lea.
+    const elegidas = Array.from(files);
+    setNuevas((n) => [...n, ...elegidas.slice(0, libres)]);
     if (fileRef.current) fileRef.current.value = '';
   };
 

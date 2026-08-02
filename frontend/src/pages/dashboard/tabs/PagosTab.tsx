@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Modal from '../../../components/Modal';
+import DetalleCompra, { type LineaCompra } from '../compras/DetalleCompra';
+import { BASE_URL } from '../../../infrastructure/api/client';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
@@ -12,6 +14,7 @@ import { pagosColumns } from '../columns';
 import { API_PAGOS, API_EMPRESAS, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, StatCard, StatRow } from '../ui';
 import type { GuardedFetch, Pago, Empresa, PagoForm } from '../types';
+import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { emptyPagoForm } from '../types';
 
 interface PagosTabProps {
@@ -27,11 +30,20 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
 
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
+  // Detalle de la compra: mueve el inventario y el costo promedio
+  const [insumos, setInsumos] = useState<Insumo[]>([]);
+  const [lineas, setLineas] = useState<LineaCompra[]>([]);
+  const [archivos, setArchivos] = useState<string[]>([]);
   const [form, setForm] = useState<PagoForm>(emptyPagoForm());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+
+  const cargarInsumos = async () => {
+    const r = await guardedFetch(`${BASE_URL}/api/costeo/insumos`);
+    if (r.ok) setInsumos((await r.json()).data ?? []);
+  };
 
   const load = async (p = page, s = pageSize, term = searchTerm) => {
     const searchQs = term ? `&search=${encodeURIComponent(term)}` : '';
@@ -48,16 +60,25 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
     setEmpresas(eJson.data ?? []);
   };
 
-  useEffect(() => { load(1); }, []);
+  useEffect(() => { load(1); cargarInsumos(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openCreate = () => { setForm(emptyPagoForm()); setError(''); setModal({ open: true, editId: null }); };
+  const openCreate = () => {
+    setForm(emptyPagoForm()); setError(''); setLineas([]); setArchivos([]);
+    setModal({ open: true, editId: null });
+  };
   const openEdit = (p: Pago) => {
     setForm({
       dia: p.dia.slice(0, 10), empresa_id: p.empresa.id,
       nueva_nombre: '', nueva_nit: '', nueva_telefono: '', nueva_correo: '', nueva_direccion: '',
       valor_compra: String(p.valor_compra), coste_envio: String(p.coste_envio),
       detalles_adicionales: p.detalles_adicionales ?? '',
+      numero_factura: p.numero_factura ?? '',
     });
+    setLineas((p.items ?? []).map(i => ({
+      insumo_id: i.insumo_id, insumo_nombre: i.insumo_nombre,
+      cantidad: String(i.cantidad), unidad_compra: i.unidad_compra, subtotal: String(i.subtotal),
+    })));
+    setArchivos(p.archivos ?? []);
     setError(''); setModal({ open: true, editId: p.id });
   };
   const closeModal = () => setModal({ open: false, editId: null });
@@ -90,6 +111,15 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
         dia: form.dia, empresa_id: empresaId,
         valor_compra: Number(form.valor_compra), coste_envio: Number(form.coste_envio),
         detalles_adicionales: form.detalles_adicionales.trim() || null,
+        numero_factura: form.numero_factura.trim() || null,
+        archivos,
+        // Solo viajan las líneas completas: una a medias descuadraría el costo
+        items: lineas
+          .filter(l => Number(l.cantidad) > 0 && Number(l.subtotal) >= 0 && l.subtotal !== '')
+          .map(l => ({
+            insumo_id: l.insumo_id, cantidad: Number(l.cantidad),
+            unidad_compra: l.unidad_compra, subtotal: Number(l.subtotal),
+          })),
       };
       const url = modal.editId ? `${API_PAGOS}/${modal.editId}` : API_PAGOS;
       const method = modal.editId ? 'PATCH' : 'POST';
@@ -226,6 +256,21 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
               onChange={e => setForm(f => ({ ...f, coste_envio: e.target.value }))} />
           </Field>
         </FieldRow>
+        <Field label="Numero de factura o remision">
+          <Input value={form.numero_factura} maxLength={60} placeholder="Ej: FV-8891"
+            onChange={e => setForm(f => ({ ...f, numero_factura: e.target.value }))} />
+        </Field>
+
+        <DetalleCompra
+          guardedFetch={guardedFetch}
+          insumos={insumos}
+          lineas={lineas}
+          onLineas={setLineas}
+          archivos={archivos}
+          onArchivos={setArchivos}
+          flete={Number(form.coste_envio) || 0}
+        />
+
         <Field label="Detalles adicionales">
           <Textarea rows={2} value={form.detalles_adicionales} maxLength={300}
             onChange={e => setForm(f => ({ ...f, detalles_adicionales: e.target.value }))} />

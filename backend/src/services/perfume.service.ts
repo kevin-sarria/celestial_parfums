@@ -47,8 +47,9 @@ export const allPerfumesPaginated = async (
 
 export const createPerfume = async (data: CreatePerfumeDTO) => {
   if (!data?.nombre || !data?.precio) throw new Error('Nombre y precio son obligatorios');
-  if (!data?.tipos_aroma?.length || !data?.ocasiones?.length)
-    throw new Error('Debe tener al menos un aroma y una ocasión');
+  // Aroma y ocasión ya NO son obligatorios: el catálogo dejó de ser solo
+  // perfumes (una gorra no tiene notas olfativas) y al crear un producto al
+  // vuelo desde una venta se completa la ficha después, con calma.
   const result = await perfumeRepository.createPerfume(data);
   bustCatalogoCache();
   return result;

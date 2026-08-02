@@ -51,10 +51,15 @@ export const calcularDesgloseCosto = (
   formula: FormulaVolumen,
   insumos: Insumo[],
   accesorios: AccesorioSeleccionado[] = [],
+  /**
+   * Costo por ml de la esencia CONCRETA de la fragancia (Eternity, Khamrah…).
+   * Cada una cuesta distinto, así que el costo de un mismo tamaño cambia según
+   * qué se esté armando. Sin este dato se cae a la esencia de la receta.
+   */
+  esenciaPrecio?: number | null,
 ): DesgloseCosto => {
-  // La esencia se toma de la elegida en la receta (puede haber varias: normal,
-  // premium…). Solo si no hay ninguna asignada se busca por nombre.
-  const precioEsencia = formula.esencia_precio ?? precioPorMl(insumos, 'esencia');
+  // Prioridad: esencia del perfume → esencia elegida en la receta → por nombre.
+  const precioEsencia = esenciaPrecio ?? formula.esencia_precio ?? precioPorMl(insumos, 'esencia');
   const esencia = redondear(formula.esencia_ml * precioEsencia);
   const diluyente = redondear(mlDiluyente(formula) * precioPorMl(insumos, 'diluyente'));
   const sellador = redondear(formula.sellador_ml * precioPorMl(insumos, 'sellador'));

@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   Menu, ChevronDown, SprayCan, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText, Store, LogOut,
-  BellRing, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, type LucideIcon,
+  BellRing, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX, ChartColumn, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +41,11 @@ import { CotizacionesTab } from './tabs/CotizacionesTab';
 import { InsumosCostoTab } from './tabs/InsumosCostoTab';
 import { FormulasVolumenTab } from './tabs/FormulasVolumenTab';
 import { CostosProduccionTab } from './tabs/CostosProduccionTab';
+import { DevolucionesTab } from './tabs/DevolucionesTab';
+import { InventarioTab } from './tabs/InventarioTab';
+import { ReportesVentasTab } from './tabs/ReportesVentasTab';
+import { ReportesComprasTab } from './tabs/ReportesComprasTab';
+import { ReportesClientesTab } from './tabs/ReportesClientesTab';
 import { RedesTab } from './tabs/RedesTab';
 import PerfumeSpinner from '../../components/PerfumeSpinner';
 import { BrandMark } from '../../components/BrandMark';
@@ -56,7 +61,12 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   descuentos: { label: 'Descuentos', icon: BadgePercent },
   ventas: { label: 'Ventas', icon: CircleDollarSign },
   creditos: { label: 'Creditos', icon: ClipboardList },
+  devoluciones: { label: 'Devoluciones', icon: PackageX },
   pagos: { label: 'Proveedores', icon: Factory },
+  inventario: { label: 'Inventario', icon: Boxes },
+  rep_ventas: { label: 'Reporte de ventas', icon: ChartColumn },
+  rep_compras: { label: 'Reporte de compras', icon: ChartColumn },
+  rep_clientes: { label: 'Reporte de clientes', icon: ChartColumn },
   usuarios: { label: 'Usuarios', icon: Users },
   publicidad: { label: 'Publicidad', icon: Megaphone },
   recompensas: { label: 'Recompensas', icon: Star },
@@ -75,8 +85,9 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
 const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
   { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones'] },
-  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'pagos'] },
+  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos', 'inventario'] },
   { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'insumos', 'formulas', 'costos'] },
+  { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
 ];
 
@@ -388,6 +399,9 @@ export default function DashboardPage() {
             )}
             {tab === 'ventas' && <VentasTab guardedFetch={guardedFetch} />}
             {tab === 'creditos' && <CreditosTab guardedFetch={guardedFetch} />}
+            {tab === 'rep_ventas' && <ReportesVentasTab guardedFetch={guardedFetch} />}
+            {tab === 'rep_compras' && <ReportesComprasTab guardedFetch={guardedFetch} />}
+            {tab === 'rep_clientes' && <ReportesClientesTab guardedFetch={guardedFetch} />}
             {tab === 'pagos' && <PagosTab guardedFetch={guardedFetch} />}
             {tab === 'usuarios' && <UsuariosTab guardedFetch={guardedFetch} />}
             {tab === 'publicidad' && <PublicidadTab guardedFetch={guardedFetch} categorias={categorias} />}
@@ -400,6 +414,8 @@ export default function DashboardPage() {
             {tab === 'insumos' && <InsumosCostoTab guardedFetch={guardedFetch} />}
             {tab === 'formulas' && <FormulasVolumenTab guardedFetch={guardedFetch} />}
             {tab === 'costos' && <CostosProduccionTab guardedFetch={guardedFetch} />}
+            {tab === 'devoluciones' && <DevolucionesTab guardedFetch={guardedFetch} />}
+            {tab === 'inventario' && <InventarioTab guardedFetch={guardedFetch} />}
             {tab === 'redes' && <RedesTab guardedFetch={guardedFetch} />}
           </>
         )}

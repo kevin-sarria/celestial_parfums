@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { CheckCircle2, Link2, Pencil, Trash2, TriangleAlert, Upload, X, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,9 +11,14 @@ import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { ventasColumns } from '../columns';
+// Mismo cálculo del cupón que usan el carrito y los créditos (tope incluido)
+import { descuentoDeCupon } from '../creditoLineas';
 import { API, API_VENTAS, API_USUARIOS, DEFAULT_PAGE_SIZE, formatPrice, parseClienteSeleccion, personaLabel, validarCodigoDescuento } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, StatCard, StatRow } from '../ui';
 import type { CodigoValidado, GuardedFetch, Venta, VentaForm, Usuario } from '../types';
+
+/** Tallas en ml. La talla es un NÚMERO: así "30ML" y "30 ML" dejan de ser distintas. */
+const TALLAS_ML = [6, 10, 20, 30, 50, 60, 75, 80, 100, 200, 250];
 import { emptyVentaForm } from '../types';
 
 interface VentasTabProps {
@@ -77,9 +83,48 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   // Certificación inline del código de descuento del pedido
   const [codigoCheck, setCodigoCheck] = useState<CodigoValidado | null>(null);
   const [checking, setChecking] = useState(false);
+  /**
+   * Código que YA tenía la venta al abrir el editor. Si sigue siendo el mismo,
+   * el `valor_venta` guardado ya trae el descuento restado (así se registraron
+   * todas las ventas hasta hoy) y volver a aplicarlo lo descontaría dos veces.
+   */
+  const [codigoOriginal, setCodigoOriginal] = useState('');
+  /** El admin ya usó el botón "Aplicar" en esta sesión del formulario. */
+  const [cuponAplicado, setCuponAplicado] = useState(false);
+  /**
+   * Alta rápida de un producto que no está en el catálogo (un 1.1 nuevo, una
+   * gorra). Mismo patrón que "+ Registrar persona nueva": se crea sin salir de
+   * la venta y la ficha se completa después.
+   */
+  const [nuevoProd, setNuevoProd] = useState<{ nombre: string; precio: string } | null>(null);
+  const [creandoProd, setCreandoProd] = useState(false);
+
+  const crearProductoAlVuelo = async () => {
+    const nombre = nuevoProd?.nombre.trim();
+    const precio = Number(nuevoProd?.precio);
+    if (!nombre || !(precio > 0)) { setError('Ponle nombre y precio al producto nuevo'); return; }
+    setCreandoProd(true);
+    try {
+      const res = await guardedFetch(`${API}/create`, {
+        method: 'POST',
+        body: JSON.stringify({ nombre, precio, tipos_aroma: [], ocasiones: [], presentaciones: [] }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) { setError(json?.error ?? 'No se pudo crear el producto'); return; }
+      const creado = { id: json.data.id, nombre: json.data.nombre };
+      setPerfumes((ps) => [...ps, creado].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
+      setForm((fm) => ({
+        ...fm,
+        lineas: [...fm.lineas, { perfume_id: creado.id, nombre: creado.nombre, ml: null, cantidad: 1 }],
+      }));
+      setNuevoProd(null); setError('');
+    } catch { setError('No se pudo conectar con el servidor'); }
+    finally { setCreandoProd(false); }
+  };
 
   const openCreate = () => {
     setForm(emptyVentaForm()); setReferenciaInvalida(''); setError(''); setCodigoCheck(null);
+    setCodigoOriginal(''); setCuponAplicado(false);
     setModal({ open: true, editId: null });
   };
   const openEdit = (v: Venta) => {
@@ -89,7 +134,8 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
       user_id: v.user_id ?? '',
       cantidad_perfumes: String(v.cantidad_perfumes), presentacion: v.presentacion,
       // Un id repetido = varias unidades de la misma fragancia
-      perfume_ids: v.perfumes.flatMap(p => Array(p.cantidad ?? 1).fill(p.id) as number[]),
+      perfume_ids: [],
+      lineas: v.perfumes.map(p => ({ perfume_id: p.id, nombre: p.nombre, ml: p.ml ?? null, cantidad: p.cantidad ?? 1 })),
       valor_venta: String(v.valor_venta),
       datos_adicionales: v.datos_adicionales ?? '',
       pagada: v.pagada,
@@ -97,7 +143,9 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
     });
     // Venta importada cuya referencia libre no coincidió con ningún perfume
     setReferenciaInvalida(v.perfumes.length === 0 ? v.referencia_perfume : '');
-    setError(''); setCodigoCheck(null); setModal({ open: true, editId: v.id });
+    setError(''); setCodigoCheck(null);
+    setCodigoOriginal(v.codigo?.codigo ?? ''); setCuponAplicado(false);
+    setModal({ open: true, editId: v.id });
   };
   const closeModal = () => setModal({ open: false, editId: null });
 
@@ -109,33 +157,38 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
     setChecking(false);
   };
 
-  // Elegir la misma fragancia otra vez suma una unidad (chip ×2, ×3…).
-  // La "Cantidad" se mantiene sola con lo elegido; sigue siendo editable a mano.
-  const addPerfume = (id: number) => {
-    if (!id) return;
-    setForm(f => {
-      const perfume_ids = [...f.perfume_ids, id];
-      return { ...f, perfume_ids, cantidad_perfumes: String(perfume_ids.length) };
+  /** Agrega el producto como línea nueva; si ya está sin talla, le suma una unidad. */
+  const agregarLinea = (id: number) => {
+    const p = perfumes.find((x) => x.id === id);
+    if (!p) return;
+    setForm((f) => {
+      const i = f.lineas.findIndex((l) => l.perfume_id === id && l.ml === null);
+      const lineas = i >= 0
+        ? f.lineas.map((l, k) => (k === i ? { ...l, cantidad: l.cantidad + 1 } : l))
+        : [...f.lineas, { perfume_id: id, nombre: p.nombre, ml: null, cantidad: 1 }];
+      return { ...f, lineas, cantidad_perfumes: String(lineas.reduce((s, l) => s + l.cantidad, 0)) };
     });
   };
-  // Quita UNA unidad; el chip desaparece cuando llega a cero
-  const removePerfume = (id: number) =>
-    setForm(f => {
-      const i = f.perfume_ids.lastIndexOf(id);
-      if (i < 0) return f;
-      const perfume_ids = [...f.perfume_ids];
-      perfume_ids.splice(i, 1);
-      return {
-        ...f,
-        perfume_ids,
-        cantidad_perfumes: String(Math.max(1, perfume_ids.length)),
-      };
+
+  /** Cambia talla o cantidad de una línea, fusionando si queda igual a otra. */
+  const actualizarLinea = (idx: number, cambios: { ml?: number | null; cantidad?: number }) => {
+    setForm((f) => {
+      let lineas = f.lineas.map((l, i) => (i === idx ? { ...l, ...cambios } : l));
+      // Si al cambiar la talla queda idéntica a otra línea, se suman
+      const actual = lineas[idx];
+      const gemela = lineas.findIndex((l, i) => i !== idx && l.perfume_id === actual.perfume_id && l.ml === actual.ml);
+      if (gemela >= 0) {
+        lineas[gemela] = { ...lineas[gemela], cantidad: lineas[gemela].cantidad + actual.cantidad };
+        lineas = lineas.filter((_, i) => i !== idx);
+      }
+      return { ...f, lineas, cantidad_perfumes: String(lineas.reduce((s, l) => s + l.cantidad, 0)) };
     });
+  };
 
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault(); setLoading(true); setError('');
 
-    if (form.perfume_ids.length === 0) {
+    if (form.lineas.length === 0) {
       setError('Selecciona al menos un perfume del catálogo'); setLoading(false); return;
     }
 
@@ -167,7 +220,7 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
       user_id: userId,
       cantidad_perfumes: Number(form.cantidad_perfumes),
       presentacion: form.presentacion,
-      perfume_ids: form.perfume_ids,
+      lineas: form.lineas.map(l => ({ perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad })),
       valor_venta: Number(form.valor_venta),
       datos_adicionales: form.datos_adicionales.trim() || null,
       pagada: form.pagada,
@@ -185,9 +238,34 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
     finally { setLoading(false); }
   };
 
+  /** Unidades totales del pedido, sumando todas las líneas. */
+  const unidadesElegidas = form.lineas.reduce((s, l) => s + l.cantidad, 0);
+
   const handleDelete = async (id: number) => {
     if (!window.confirm('¿Eliminar esta venta?')) return;
     await guardedFetch(`${API_VENTAS}/${id}`, { method: 'DELETE' }); load();
+  };
+
+  // ── Ayuda de cálculo del cupón ────────────────────────────────────────────
+  // El valor de la venta se sigue tecleando a mano (es la plata que entró de
+  // verdad); esto solo hace la cuenta y la ofrece, respetando el tope en pesos
+  // de la campaña. Nunca se aplica solo.
+  const cupon = codigoCheck?.valido ? codigoCheck.cupon : undefined;
+  const valorTecleado = Number(form.valor_venta) || 0;
+  /** Editando la misma venta con su mismo código: el valor ya viene descontado. */
+  const cuponYaEnLaVenta = Boolean(modal.editId) && codigoOriginal !== ''
+    && codigoOriginal.toUpperCase() === form.codigo_descuento.trim().toUpperCase();
+  const noAlcanzaMinimo = !!cupon && cupon.min_monto > 0 && valorTecleado < cupon.min_monto;
+  const descuentoCupon = cupon && !cuponYaEnLaVenta && !cuponAplicado && !noAlcanzaMinimo
+    ? descuentoDeCupon(valorTecleado, cupon.descuento_pct, cupon.max_descuento)
+    : 0;
+  /** ¿El tope de la campaña recortó el porcentaje? (para explicarlo). */
+  const topeRecorto = !!cupon && cupon.max_descuento > 0 && descuentoCupon > 0
+    && Math.round((valorTecleado * cupon.descuento_pct) / 100) > cupon.max_descuento;
+
+  const aplicarCupon = () => {
+    setForm(f => ({ ...f, valor_venta: String(valorTecleado - descuentoCupon) }));
+    setCuponAplicado(true);
   };
 
   const [enlazando, setEnlazando] = useState(false);
@@ -204,16 +282,6 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   };
 
   // Todos siguen disponibles: repetir uno suma otra unidad de esa fragancia
-  const disponibles = perfumes;
-  // Unidades implícitas por los chips elegidos (para avisar si no cuadra con "Cantidad")
-  const unidadesElegidas = form.perfume_ids.length;
-  // Un chip por fragancia, con sus unidades, en el orden en que se fueron eligiendo
-  const chipsPerfumes = form.perfume_ids.reduce<{ id: number; nombre: string; cantidad: number }[]>((acc, id) => {
-    const ya = acc.find(c => c.id === id);
-    if (ya) ya.cantidad++;
-    else acc.push({ id, nombre: perfumes.find(p => p.id === id)?.nombre ?? `#${id}`, cantidad: 1 });
-    return acc;
-  }, []);
 
   return (
     <>
@@ -247,6 +315,15 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
             />
           </StatRow>
         )}
+
+        {/* La ganancia y el gráfico de meses viven en Reportes: aquí se registra
+            y se busca, allá se mira cómo va el negocio. */}
+        <p className="mt-2 text-[12.5px] text-muted-foreground">
+          ¿Cómo va el mes contra los anteriores?{' '}
+          <Link to="/dashboard/rep_ventas" className="font-medium text-primary hover:underline">
+            Míralo en Reportes
+          </Link>
+        </p>
 
         <SmartTable
           columns={ventasColumns}
@@ -341,7 +418,7 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
 
         <Field label="Perfumes vendidos * (elige uno o varios del catálogo)">
           <div className="space-y-2">
-            {referenciaInvalida && form.perfume_ids.length === 0 && (
+            {referenciaInvalida && form.lineas.length === 0 && (
               <p className="flex items-start gap-2 rounded-lg border border-amber-400/45 bg-amber-400/10 px-3 py-2 text-[12.5px] font-medium text-amber-700">
                 <TriangleAlert className="mt-0.5 size-4 shrink-0" />
                 "{referenciaInvalida}" no coincide con los perfumes registrados en la base de
@@ -349,26 +426,84 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
               </p>
             )}
             <BuscadorSelect
-              opciones={disponibles}
-              placeholder="Buscar y agregar perfume… (repite uno para sumar unidades)"
-              onSelect={(id) => addPerfume(Number(id))}
+              opciones={[
+                { id: 'nuevo', nombre: '+ Crear producto nuevo (no está en el catálogo)' },
+                ...perfumes.map((p) => ({ id: p.id, nombre: p.nombre })),
+              ]}
+              placeholder="Buscar y agregar producto al pedido…"
+              onSelect={(id) => {
+                if (String(id) === 'nuevo') setNuevoProd({ nombre: '', precio: '' });
+                else agregarLinea(Number(id));
+              }}
             />
-            {/* Lo elegido se acumula debajo del control, como en cualquier multi-select.
-                Un perfume elegido varias veces se muestra una sola vez con su ×N. */}
-            {chipsPerfumes.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {chipsPerfumes.map(({ id, nombre, cantidad }) => (
-                  <span key={id} className="inline-flex items-center gap-1 rounded-full bg-brand-soft px-2.5 py-1 text-[12.5px] font-medium text-primary">
-                    {cantidad > 1 && <strong className="tabular-nums">{cantidad}×</strong>}
-                    {nombre}
-                    <button type="button" aria-label={`Quitar una unidad de ${nombre}`}
-                      className="rounded-full p-0.5 transition-colors hover:bg-primary/15"
-                      onClick={() => removePerfume(id)}>
-                      <X className="size-3" />
-                    </button>
-                  </span>
-                ))}
+
+            {/* Alta rápida: lo mínimo para poder vender ya; el resto se
+                completa después en la ficha del catálogo. */}
+            {nuevoProd && (
+              <div className="space-y-2 rounded-lg border border-primary/25 bg-brand-soft/40 p-3">
+                <p className="text-[12.5px] text-primary">
+                  Producto nuevo. Con el nombre y el precio basta para vender hoy; la ficha
+                  completa (esencia, tallas, fotos) la llenas después en Catálogo.
+                </p>
+                <FieldRow>
+                  <Field label="Nombre *">
+                    <Input value={nuevoProd.nombre} maxLength={150} autoFocus
+                      placeholder="Ej: Thank U Next 1.1"
+                      onChange={(e) => setNuevoProd({ ...nuevoProd, nombre: e.target.value })} />
+                  </Field>
+                  <Field label="Precio *">
+                    <Input type="number" min="0" value={nuevoProd.precio}
+                      onChange={(e) => setNuevoProd({ ...nuevoProd, precio: e.target.value })} />
+                  </Field>
+                </FieldRow>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" disabled={creandoProd} onClick={crearProductoAlVuelo}>
+                    {creandoProd ? 'Creando…' : 'Crear y agregar'}
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setNuevoProd(null)}>
+                    Cancelar
+                  </Button>
+                </div>
               </div>
+            )}
+
+            {/*
+              Una LÍNEA por producto+talla. Antes era una lista de ids con UNA
+              talla para toda la venta, así que "1 de 30 ml y 2 de 60 ml" no se
+              podía registrar bien y era imposible saber qué descontar.
+              Dos iguales se suman en la misma línea, no se duplican.
+            */}
+            {form.lineas.length > 0 && (
+              <ul className="flex flex-col gap-2">
+                {form.lineas.map((l, idx) => (
+                  <li key={`${l.perfume_id}-${l.ml ?? 'sin'}`}
+                    className="flex flex-wrap items-end gap-2.5 rounded-lg border border-border bg-secondary/40 p-2.5">
+                    <p className="min-w-32 flex-1 text-[13.5px] font-medium text-foreground">{l.nombre}</p>
+
+                    <Field label="Talla" className="w-28">
+                      <NativeSelect className="h-9" value={l.ml ?? ''}
+                        onChange={(e) => actualizarLinea(idx, { ml: Number(e.target.value) || null })}>
+                        <option value="">Sin talla</option>
+                        {TALLAS_ML.map((ml) => <option key={ml} value={ml}>{ml} ml</option>)}
+                      </NativeSelect>
+                    </Field>
+
+                    <Field label="Cantidad" className="w-24">
+                      <Input type="number" min="1" className="h-9" value={l.cantidad}
+                        onChange={(e) => actualizarLinea(idx, { cantidad: Math.max(1, Number(e.target.value) || 1) })} />
+                    </Field>
+
+                    <Button type="button" size="icon" variant="ghost"
+                      className="size-9 text-muted-foreground hover:text-destructive"
+                      onClick={() => setForm((f) => ({ ...f, lineas: f.lineas.filter((_, i) => i !== idx) }))}>
+                      <X className="size-4" />
+                    </Button>
+                  </li>
+                ))}
+                <li className="text-right text-[12px] text-muted-foreground">
+                  {unidadesElegidas} {unidadesElegidas === 1 ? 'unidad' : 'unidades'} en total
+                </li>
+              </ul>
             )}
           </div>
         </Field>
@@ -383,17 +518,15 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
               </p>
             )}
           </Field>
-          <Field label="Presentacion *">
-            <NativeSelect value={form.presentacion}
-              onChange={e => setForm(f => ({ ...f, presentacion: e.target.value }))}>
-              {['10ML', '20ML', '30ML', '60ML', '100ML', '200ML'].map(p => <option key={p}>{p}</option>)}
-            </NativeSelect>
-          </Field>
         </FieldRow>
         <FieldRow>
           <Field label="Valor venta (COP) *">
             <Input type="number" min="0" required value={form.valor_venta}
-              onChange={e => setForm(f => ({ ...f, valor_venta: e.target.value }))} />
+              onChange={e => {
+                // Si vuelve a teclear el valor, la sugerencia del cupón revive
+                setCuponAplicado(false);
+                setForm(f => ({ ...f, valor_venta: e.target.value }));
+              }} />
           </Field>
           <Field label="Estado de pago">
             <NativeSelect value={form.pagada ? 'pagada' : 'pendiente'}
@@ -424,9 +557,42 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
               </span>
             </p>
           )}
+          {/* Calculadora del cupón: hace la cuenta, pero el número lo decides tú */}
+          {cupon && cuponYaEnLaVenta && (
+            <p className="mt-1.5 rounded-lg border border-primary/25 bg-brand-soft/60 px-3 py-2 text-[12.5px] text-primary">
+              Esta venta <strong>ya tiene este cupón</strong>: los {formatPrice(valorTecleado)} guardados
+              son el valor final, con el descuento ya restado. No lo vuelvas a descontar.
+            </p>
+          )}
+          {cupon && !cuponYaEnLaVenta && noAlcanzaMinimo && (
+            <p className="mt-1.5 rounded-lg border border-amber-400/45 bg-amber-400/10 px-3 py-2 text-[12.5px] font-medium text-amber-700">
+              Este cupón pide una compra mínima de {formatPrice(cupon.min_monto)} y la venta va
+              en {formatPrice(valorTecleado)}. Revisa antes de aplicarlo.
+            </p>
+          )}
+          {descuentoCupon > 0 && (
+            <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/25 bg-brand-soft/60 px-3 py-2">
+              <p className="text-[12.5px] text-primary">
+                Con este cupón, {formatPrice(valorTecleado)} quedarían en{' '}
+                <strong>{formatPrice(valorTecleado - descuentoCupon)}</strong>{' '}
+                (−{formatPrice(descuentoCupon)})
+                {topeRecorto && <span className="text-primary/80"> — el tope de la campaña es {formatPrice(cupon!.max_descuento)}</span>}.
+              </p>
+              <Button type="button" size="sm" variant="outline" className="h-7" onClick={aplicarCupon}>
+                Aplicar
+              </Button>
+            </div>
+          )}
+          {cuponAplicado && (
+            <p className="mt-1.5 text-[12.5px] font-medium text-emerald-700">
+              Descuento aplicado. El valor de la venta ya es el final.
+            </p>
+          )}
+
           <p className="mt-1 text-[12px] text-muted-foreground">
-            El código se canjea (deja de servir) cuando la venta queda marcada como pagada;
-            si la venta se edita sin código o se elimina, vuelve a quedar activo.
+            El valor de la venta se escribe <strong>ya con el descuento restado</strong> (es la plata
+            que entró de verdad). El código se canjea (deja de servir) cuando la venta queda marcada
+            como pagada; si la venta se edita sin código o se elimina, vuelve a quedar activo.
           </p>
         </Field>
 

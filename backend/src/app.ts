@@ -33,6 +33,9 @@ import { nosotrosRouter } from './routes/sobreNosotros.router';
 import { blogRouter } from './routes/blog.router';
 import { costeoRouter } from './routes/costeo.router';
 import { cotizacionRouter } from './routes/cotizacion.router';
+import { devolucionRouter } from './routes/devolucion.router';
+import { inventarioRouter } from './routes/inventario.router';
+import { reporteRouter } from './routes/reporte.router';
 import { seoRouter } from './routes/seo.router';
 import { backupRouter } from './routes/backup.router';
 import { errorHandler } from './middleware/error.middleware';
@@ -181,6 +184,9 @@ app.use('/api/nosotros', nosotrosRouter);
 app.use('/api/blog', blogRouter);
 app.use('/api/costeo', costeoRouter);
 app.use('/api/cotizaciones', cotizacionRouter);
+app.use('/api/devoluciones', devolucionRouter);
+app.use('/api/inventario', inventarioRouter);
+app.use('/api/reportes', reporteRouter);
 app.use('/api/backup', backupRouter);
 
 // Middleware central de errores: HttpError responde con su status semántico

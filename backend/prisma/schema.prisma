@@ -98,6 +98,18 @@ enum CotizacionEstado {
 // Para qué sirve la cotización:
 //  - general:   lista de precios por cantidad (sin decir qué fragancias)
 //  - detallada: los productos concretos que se va a llevar el cliente
+/// De dónde sale el producto que se vende. Define CÓMO se costea:
+///  - fabricado:  lo armas con una receta (contratipos, 1.1). Costo = fórmula.
+///  - comprado:   lo compras hecho y lo revendes tal cual (splash, gorras,
+///                perfumeros vacíos). Costo = lo que pagaste por él.
+///  - fraccionado: compras una botella grande y sacas decants. Costo =
+///                (precio botella ÷ ml útiles) × ml del decant + envase.
+enum TipoProducto {
+  fabricado
+  comprado
+  fraccionado
+}
+
 enum CotizacionTipo {
   general
   detallada
@@ -150,6 +162,7 @@ model User {
   entregas           RecompensaEntrega[]
   favoritos          Favorito[]
   avisos_stock       AvisoStock[]
+  devoluciones       Devolucion[]
 
   @@map("users")
 }
@@ -355,10 +368,28 @@ model Perfume {
   /// entran en el precio de combo. Ojo: "premium" describe la ESENCIA, no es
   /// perfumería nicho (Creed, MFK…), que es otra cosa.
   esencia_premium Boolean         @default(false)
+  /// Esencia concreta con la que se hace ESTE perfume (Eternity, Khamrah…).
+  /// Cada fragancia es un insumo distinto con su propio stock y su propio
+  /// costo: promediarlas todas en una sola "Esencia" daría un costo que no es
+  /// el de ninguna. Null = todavía sin asignar (se usa la de la fórmula).
+  insumo_esencia_id Int?
+  /// Cómo se abastece este producto (ver TipoProducto).
+  tipo_producto  TipoProducto @default(fabricado)
+  /// Para `comprado` y `fraccionado`: el insumo que ES el producto (la gorra,
+  /// el splash, la botella original de la que salen los decants). Ahí vive su
+  /// stock y su costo real.
+  insumo_producto_id Int?
+  /// Solo `fraccionado`: cuántos ml SE APROVECHAN de la botella. Es menor que
+  /// el volumen nominal porque al trasvasar siempre queda producto en el
+  /// frasco y en la jeringa. Sin esto el costo del decant sale más barato de
+  /// lo real.
+  ml_utiles      Int?
   agotado      Boolean            @default(false)
   created_at   DateTime           @default(now())
   updated_at   DateTime           @updatedAt
   categoria    Categoria?         @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
+  insumo_esencia InsumoCosto?     @relation("EsenciaDePerfume", fields: [insumo_esencia_id], references: [id], onDelete: SetNull)
+  insumo_producto InsumoCosto?    @relation("ProductoDeInsumo", fields: [insumo_producto_id], references: [id], onDelete: SetNull)
   tipos_aroma    PerfumeTipoAroma[]
   ocasiones      PerfumeOcasion[]
   presentaciones PerfumePresentacion[]
@@ -367,7 +398,9 @@ model Perfume {
   resenas        Resena[]
   favoritos      Favorito[]
   avisos_stock   AvisoStock[]
+  devoluciones   DevolucionPerfume[]
   cotizado_en    CotizacionItem[]
+  producciones   Produccion[]
 
   @@index([categoria_id])
   @@index([genero])
@@ -418,12 +451,23 @@ model PerfumeOcasion {
 model Presentacion {
   id         Int                   @id @default(autoincrement())
   nombre     String                @unique @db.VarChar(20)
+  /// Tamaño en MILILITROS: es la verdad de la talla, el `nombre` es solo la
+  /// etiqueta que ve el cliente. Nació porque el texto se escribía de cinco
+  /// formas ("30ML", "30 ML", "30 ml") y nada casaba; comparando números eso
+  /// desaparece. Null = no es un tamaño (ej. una gorra), y esos NO se costean.
+  ml         Int?
+  /// Qué receta usa esta talla. Enlaza de VERDAD el catálogo público con el
+  /// costeo: antes solo coincidían por nombre y por eso el costo buscaba el
+  /// insumo equivocado.
+  formula_volumen_id Int?
+  formula    FormulaVolumen?       @relation(fields: [formula_volumen_id], references: [id], onDelete: SetNull)
   created_at DateTime              @default(now())
   updated_at DateTime              @updatedAt
   perfumes   PerfumePresentacion[]
   combos     Combo[]
   precios    PrecioLista[]
 
+  @@index([ml])
   @@map("presentaciones")
 }
 
@@ -433,6 +477,15 @@ model PerfumePresentacion {
   /// Excepción a la lista de precios: lo que vale ESTE perfume en ESTA
   /// presentación (los ultra nicho lo usan). null = precio de la lista.
   precio          Decimal?     @db.Decimal(10, 2)
+  /// Frasco de ESTE perfume en ESTA talla. El dueño confirmó que el envase y
+  /// la caja cambian según la referencia (un 1.1 de Sauvage no usa el mismo
+  /// frasco que uno de Bleu), así que no basta con el de la receta del tamaño.
+  /// null = usa el envase por defecto de la fórmula.
+  envase_insumo_id Int?
+  /// Ids de los accesorios propios de esta combinación (caja, tarjeta…).
+  /// Vacío o null = usa los accesorios por defecto del tamaño.
+  accesorios      Json?
+  envase          InsumoCosto? @relation("EnvaseDePerfumeTalla", fields: [envase_insumo_id], references: [id], onDelete: SetNull)
   perfume         Perfume      @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
   presentacion    Presentacion @relation(fields: [presentacion_id], references: [id], onDelete: Cascade)
 
@@ -455,6 +508,10 @@ model Venta {
   // false = pedido registrado pero aún sin pagar; al pasar a true se canjea el
   // código de descuento enlazado (si lo hay).
   pagada             Boolean  @default(true)
+  /// Lo que costó producir lo vendido, congelado al registrar la venta.
+  /// Ingresos − esto = ganancia real. 0 = no se pudo costear (producto sin
+  /// esencia asignada, sin talla, o venta histórica).
+  costo_mercancia    Decimal  @default(0) @db.Decimal(12, 2)
   created_at         DateTime @default(now())
   updated_at         DateTime @updatedAt
   user               User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
@@ -463,6 +520,8 @@ model Venta {
   codigo             DescuentoCodigo?
   // Crédito que generó esta venta (ventas a crédito nacen pendientes de pago)
   credito            Credito?
+  // Devoluciones/reclamos de garantía sobre esta venta
+  devoluciones       Devolucion[]
 
   @@index([dia])
   @@index([user_id])
@@ -471,16 +530,28 @@ model Venta {
 
 // Enlace inferido (por nombre) entre una venta y los perfumes que incluyó;
 // alimenta el cálculo automático de "los más vendidos".
+/// Una LÍNEA de la venta: qué producto, en qué talla y cuántas unidades.
+///
+/// Antes la clave era (venta_id, perfume_id), así que el MISMO perfume en dos
+/// tallas no cabía: vender 1 Khamrah de 30 ml y otro de 100 ml era imposible.
+/// Ahora la línea tiene id propio y lo único que no se repite es la
+/// combinación producto+talla — dos Khamrah de 30 ml siguen siendo UNA línea
+/// con cantidad 2, no dos registros.
 model VentaPerfume {
+  id         Int     @id @default(autoincrement())
   venta_id   Int
   perfume_id Int
-  // Unidades de ESTA fragancia dentro de la venta (un combo de 3 puede llevar
-  // 2 del mismo perfume); alimenta el conteo exacto de "los más vendidos".
+  /// Talla en mililitros. Null = las ventas históricas (que no la guardaban) y
+  /// los productos que no son perfume: una gorra no tiene ml. Sin ml NO se
+  /// descuenta inventario, porque no se sabe qué receta aplicar.
+  ml         Int?
+  // Unidades de ESTA fragancia y talla dentro de la venta.
   cantidad   Int     @default(1) @db.UnsignedSmallInt
   venta      Venta   @relation(fields: [venta_id], references: [id], onDelete: Cascade)
   perfume    Perfume @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
 
-  @@id([venta_id, perfume_id])
+  @@unique([venta_id, perfume_id, ml])
+  @@index([venta_id])
   @@index([perfume_id])
   @@map("venta_perfume")
 }
@@ -541,9 +612,15 @@ model PagoProveedor {
   valor_compra         Decimal  @db.Decimal(10, 2)
   coste_envio          Decimal  @default(0) @db.Decimal(10, 2)
   detalles_adicionales String?  @db.Text
+  /// Número de la factura o remisión del proveedor (para cruzar con el soporte).
+  numero_factura       String?  @db.VarChar(60)
+  /// URLs de los soportes que manda la distribuidora (imágenes y PDF).
+  archivos             Json?
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
   empresa              Empresa  @relation(fields: [empresa_id], references: [id])
+  /// Detalle de qué se compró (opcional: los pagos viejos no lo tienen).
+  items                CompraItem[]
 
   @@index([empresa_id])
   @@index([dia])
@@ -730,8 +807,19 @@ model InsumoCosto {
   unidad     InsumoUnidad @default(unidad)
   /// Se cobra por cada perfume o una sola vez por pedido.
   alcance    InsumoAlcance @default(unidad)
-  /// Costo actual: por ml (materias primas) o por pieza (envases/accesorios).
-  precio     Decimal      @db.Decimal(10, 2)
+  /// Costo actual por ml (materias primas) o por pieza (envases/accesorios).
+  /// Desde que existen las compras detalladas, NO se teclea: es el **costo
+  /// promedio ponderado** que recalcula `recalcularCosto` con cada movimiento.
+  /// Editable a mano solo para sembrar el arranque.
+  /// 4 decimales: el promedio ponderado da fracciones y redondear a 2 en cada
+  /// compra iría torciendo el costo poco a poco.
+  precio     Decimal      @db.Decimal(12, 4)
+  /// Cantidad disponible en la unidad base del insumo (ml o piezas).
+  /// Es una proyección del libro de movimientos, no la verdad última.
+  stock      Decimal      @default(0) @db.Decimal(12, 3)
+  /// Punto de pedido: cuando el stock baja de aquí, hay que reponer. En 0 se
+  /// desactiva la alerta (no todo insumo la necesita).
+  stock_minimo Decimal    @default(0) @db.Decimal(12, 3)
   activo     Boolean      @default(true)
   created_at DateTime     @default(now())
   updated_at DateTime     @updatedAt
@@ -741,9 +829,103 @@ model InsumoCosto {
   esencia_de FormulaVolumen[] @relation("EsenciaDeFormula")
   /// Tamaños que lo incluyen por defecto (bolsa, perfumero…).
   incluido_en FormulaAccesorio[]
+  /// Líneas de compra y movimientos de inventario de este insumo.
+  compras     CompraItem[]
+  movimientos MovimientoInventario[]
+  /// Perfumes que se hacen con esta esencia.
+  esencia_de_perfumes Perfume[] @relation("EsenciaDePerfume")
+  /// Productos comprados o fraccionados que SON este insumo.
+  producto_de         Perfume[] @relation("ProductoDeInsumo")
+  /// Combinaciones perfume+talla que usan este insumo como frasco.
+  envase_de_talla     PerfumePresentacion[] @relation("EnvaseDePerfumeTalla")
 
   @@index([tipo, activo])
   @@map("insumos_costo")
+}
+
+// ── Inventario ──────────────────────────────────────────────────────────────
+
+/// En qué unidad vino la compra. El proveedor factura ml y gramos **1 a 1**
+/// (así lo maneja el sector), por eso `g` se guarda como ml sin convertir por
+/// densidad. NO "arreglar" esto metiendo densidades: descuadraría contra la
+/// factura que el proveedor emitió.
+enum UnidadCompra {
+  ml
+  g
+  /// Litros y kilos se convierten ×1000 a ml. Como ml y gramos van 1 a 1 (la
+  /// densidad de las esencias lo permite), 1 L = 1 kg = 1000 ml. SIN esto,
+  /// teclear "20 L" de alcohol se registraba como 20 ml y el costo por ml
+  /// quedaba 1000 veces inflado.
+  l
+  kg
+  unidad
+}
+
+/// Por qué se movió el inventario. Cada movimiento guarda el costo unitario
+/// del momento, así el histórico no cambia cuando suba el precio del insumo.
+enum MovimientoTipo {
+  compra
+  produccion
+  garantia
+  /// Conteo físico: absorbe el desperdicio pequeño del día a día (los gramos
+  /// que se van de más al servir). No hace falta anotar cada accidente.
+  ajuste
+  /// Derrame, frasco roto, esencia dañada: pérdida identificada.
+  merma
+  /// Material que sale a propósito y no se vende: rolones del mostrario,
+  /// minis de regalo. Es COSTO DE MARKETING, no pérdida — por eso va aparte.
+  muestra
+  /// Consumo por una VENTA. Como se arma contra pedido, la venta es la que
+  /// gasta los insumos; de aquí sale el costo de mercancía vendida.
+  venta
+}
+
+/// Línea de una compra a proveedor: qué insumo, cuánto y a qué precio.
+/// El flete de la compra se reparte proporcional entre las líneas
+/// (`costo_unitario_final`), porque el transporte ES parte de lo que te
+/// costó el material: ignorarlo infla los márgenes.
+model CompraItem {
+  id                   Int          @id @default(autoincrement())
+  pago_id              Int
+  insumo_id            Int
+  cantidad             Decimal      @db.Decimal(12, 3)
+  unidad_compra        UnidadCompra @default(unidad)
+  /// Lo que costó la línea sin flete.
+  subtotal             Decimal      @db.Decimal(12, 2)
+  /// Costo por unidad YA con la parte proporcional del flete (congelado).
+  costo_unitario_final Decimal      @db.Decimal(12, 4)
+  created_at           DateTime     @default(now())
+
+  pago   PagoProveedor @relation(fields: [pago_id], references: [id], onDelete: Cascade)
+  insumo InsumoCosto   @relation(fields: [insumo_id], references: [id])
+
+  @@index([pago_id])
+  @@index([insumo_id])
+  @@map("compra_items")
+}
+
+/// Libro de movimientos: la verdad auditable del inventario. `stock` y el
+/// costo promedio de `insumos_costo` son una proyección de esto y se pueden
+/// reconstruir desde aquí si algo se descuadra.
+model MovimientoInventario {
+  id             Int            @id @default(autoincrement())
+  insumo_id      Int
+  tipo           MovimientoTipo
+  /// Positiva entra, negativa sale (en la unidad base del insumo).
+  cantidad       Decimal        @db.Decimal(12, 3)
+  /// Costo unitario aplicado en ESE momento (congelado).
+  costo_unitario Decimal        @db.Decimal(12, 4)
+  fecha          DateTime       @db.Date
+  /// De dónde vino: id de la compra, producción o devolución que lo generó.
+  referencia_id  Int?
+  nota           String?        @db.VarChar(255)
+  created_at     DateTime       @default(now())
+
+  insumo InsumoCosto @relation(fields: [insumo_id], references: [id], onDelete: Cascade)
+
+  @@index([insumo_id, fecha])
+  @@index([tipo])
+  @@map("movimientos_inventario")
 }
 
 // Accesorios que un tamaño incluye POR DEFECTO. Al cotizar vienen marcados y se
@@ -784,6 +966,8 @@ model FormulaVolumen {
   escalas          EscalaPrecio[]
   items            CotizacionItem[]
   accesorios       FormulaAccesorio[]
+  producciones     Produccion[]
+  presentaciones   Presentacion[]
 
   @@index([activo])
   @@map("formulas_volumen")
@@ -902,4 +1086,121 @@ model CotizacionItem {
 
   @@index([cotizacion_id])
   @@map("cotizacion_items")
+}
+
+// ── Devoluciones y garantías ─────────────────────────────────────────────────
+
+/// Por qué el cliente devuelve. Alineado con lo que cubre la garantía legal
+/// según `/legal#devoluciones` (Ley 1480 de 2011).
+enum DevolucionMotivo {
+  llego_danado
+  llego_equivocado
+  llego_incompleto
+  envase_defectuoso
+  no_llego
+  otro
+}
+
+/// Estado del caso. `pendiente` es donde nace una solicitud del cliente
+/// (fase C); el admin la mueve a resuelta o rechazada.
+enum DevolucionEstado {
+  pendiente
+  en_revision
+  resuelta
+  rechazada
+}
+
+/// Qué se hizo. `ninguna` cubre el caso resuelto sin plata de por medio
+/// (ej: se aclaró con el cliente y no procedía).
+enum DevolucionSolucion {
+  reposicion
+  devolucion_dinero
+  ninguna
+}
+
+/// Quién radicó el caso. `cliente` se usará cuando exista el portal (fase C).
+enum DevolucionOrigen {
+  admin
+  cliente
+}
+
+/// Devolución/reclamo de garantía ligado SIEMPRE a una venta: así se sabe qué
+/// plata sale y de dónde. Si se devolvió dinero, `monto_devuelto` se descuenta
+/// de los ingresos del mes en que se resolvió (ver getVentaTotales).
+model Devolucion {
+  id                Int                 @id @default(autoincrement())
+  venta_id          Int
+  /// Quien radicó el caso, si vino del portal del cliente (fase C).
+  user_id           Int?
+  origen            DevolucionOrigen    @default(admin)
+  /// Fecha en que el cliente reportó el problema (arranca el conteo de días).
+  fecha             DateTime            @db.Date
+  motivo            DevolucionMotivo
+  detalle           String?             @db.Text
+  estado            DevolucionEstado    @default(pendiente)
+  solucion          DevolucionSolucion?
+  /// Plata efectivamente devuelta. 0 si se repuso el producto.
+  monto_devuelto    Decimal             @default(0) @db.Decimal(10, 2)
+  fecha_resolucion  DateTime?           @db.Date
+  notas             String?             @db.Text
+  /// URLs de las fotos del producto (las sube el admin o el cliente en fase C).
+  imagenes          Json?
+  /// Tamaño repuesto y cuántas unidades, para valorar la pérdida al costo real
+  /// de producción (no al precio de venta: la venta original ya se cobró).
+  reposicion_formula_id Int?
+  reposicion_cantidad   Int      @default(0)
+  /// Costo de producir lo repuesto + envío que asumimos. Se congela al cerrar.
+  costo_reposicion      Decimal  @default(0) @db.Decimal(12, 2)
+  costo_envio           Decimal  @default(0) @db.Decimal(12, 2)
+  created_at        DateTime            @default(now())
+  updated_at        DateTime            @updatedAt
+
+  venta             Venta               @relation(fields: [venta_id], references: [id], onDelete: Cascade)
+  user              User?               @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  perfumes          DevolucionPerfume[]
+
+  @@index([venta_id])
+  @@index([estado])
+  @@index([fecha])
+  @@map("devoluciones")
+}
+
+/// Qué unidades de qué fragancia vuelven (una venta de combo puede devolver
+/// solo una de las tres).
+model DevolucionPerfume {
+  devolucion_id Int
+  perfume_id    Int
+  cantidad      Int        @default(1) @db.UnsignedSmallInt
+  devolucion    Devolucion @relation(fields: [devolucion_id], references: [id], onDelete: Cascade)
+  perfume       Perfume    @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+
+  @@id([devolucion_id, perfume_id])
+  @@index([perfume_id])
+  @@map("devolucion_perfume")
+}
+
+/// Un lote armado: "hice 10 perfumes de 30 ml". Descuenta del inventario los
+/// insumos de la fórmula y congela lo que costó ese lote, para que el histórico
+/// no cambie cuando suba la esencia.
+model Produccion {
+  id                 Int      @id @default(autoincrement())
+  fecha              DateTime @db.Date
+  formula_volumen_id Int
+  /// Qué fragancia se armó (de ahí sale la esencia que se descuenta).
+  perfume_id         Int?
+  /// Envase realmente usado (el mismo tamaño puede llevar normal o luxury).
+  envase_insumo_id   Int?
+  /// Unidades armadas.
+  cantidad           Int
+  /// Costo de UNA unidad y del lote entero, al promedio del momento.
+  costo_unitario     Decimal  @db.Decimal(12, 4)
+  costo_total        Decimal  @db.Decimal(12, 2)
+  nota               String?  @db.VarChar(255)
+  created_at         DateTime @default(now())
+
+  formula FormulaVolumen @relation(fields: [formula_volumen_id], references: [id])
+  perfume Perfume?       @relation(fields: [perfume_id], references: [id], onDelete: SetNull)
+
+  @@index([fecha])
+  @@map("producciones")
 }

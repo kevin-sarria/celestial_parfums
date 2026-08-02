@@ -11,8 +11,11 @@ import Footer from './components/Footer';
 
 function AppLayout() {
   const { pathname } = useLocation();
-  // Rutas a pantalla completa: sin footer ni chrome del catálogo
-  const isFullBleed = pathname === '/dashboard' || pathname === '/contactame';
+  // Rutas a pantalla completa: sin footer ni chrome del catálogo.
+  // Ojo con `startsWith`: la pestaña vive en la URL (/dashboard/ventas), así que
+  // comparar por igualdad exacta dejaba el footer público colgando debajo de
+  // TODAS las pestañas del dashboard menos la raíz.
+  const isFullBleed = pathname === '/dashboard' || pathname.startsWith('/dashboard/') || pathname === '/contactame';
 
   if (isFullBleed) {
     return <AppRouter />;

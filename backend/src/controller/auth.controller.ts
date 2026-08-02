@@ -9,6 +9,7 @@ import {
   ACCESS_TOKEN_MAX_AGE,
   REFRESH_TOKEN_MAX_AGE,
 } from '../services/auth.service';
+import { mensajeSeguro } from '../utils/errorSeguro';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -30,7 +31,7 @@ export const login = async (req: Request, res: Response) => {
     setAuthCookies(res, accessToken, refreshToken);
     res.status(200).json({ message: 'Login exitoso', data: { token: accessToken, user } });
   } catch (err: any) {
-    res.status(401).json({ error: err.message });
+    res.status(401).json({ error: mensajeSeguro(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.') });
   }
 };
 
@@ -40,7 +41,7 @@ export const googleAuth = async (req: Request, res: Response) => {
     setAuthCookies(res, accessToken, refreshToken);
     res.status(200).json({ message: 'Login con Google exitoso', data: { token: accessToken, user } });
   } catch (err: any) {
-    res.status(401).json({ error: err.message });
+    res.status(401).json({ error: mensajeSeguro(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.') });
   }
 };
 
@@ -57,7 +58,7 @@ export const refresh = async (req: Request, res: Response) => {
   } catch (err: any) {
     res.clearCookie('access_token');
     res.clearCookie('refresh_token', { path: '/api/auth' });
-    res.status(401).json({ error: err.message });
+    res.status(401).json({ error: mensajeSeguro(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.') });
   }
 };
 
@@ -79,7 +80,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
       data,
     });
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: mensajeSeguro(err) });
   }
 };
 
@@ -91,7 +92,7 @@ export const registerClient = async (req: Request, res: Response) => {
       data,
     });
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: mensajeSeguro(err) });
   }
 };
 
@@ -100,6 +101,6 @@ export const verifyEmail = async (req: Request, res: Response) => {
     const data = await verifyEmailService(req.params.token as string);
     res.status(200).json({ message: 'Cuenta activada exitosamente', data });
   } catch (err: any) {
-    res.status(400).json({ error: err.message });
+    res.status(400).json({ error: mensajeSeguro(err) });
   }
 };

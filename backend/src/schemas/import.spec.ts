@@ -177,4 +177,472 @@ export const IMPORT_SPECS: Record<string, ImportSpec> = {
     ],
     notas: ['Si la empresa no existe, se crea automaticamente con ese nombre.'],
   },
+
+  insumos: {
+    titulo: 'Importar insumos y costos',
+    columnas: [
+      { key: 'nombre', required: true, descripcion: 'Nombre del insumo (Esencia Eternity, Envase 30 ml...)', ejemplo: 'Esencia Eternity' },
+      { key: 'tipo', required: true, descripcion: 'materia_prima, envase o accesorio', ejemplo: 'materia_prima' },
+      { key: 'unidad', required: false, descripcion: 'ml (liquidos) o unidad (piezas)', ejemplo: 'ml' },
+      { key: 'alcance', required: false, descripcion: 'unidad (por perfume) o pedido (una vez por envio)', ejemplo: 'unidad' },
+      { key: 'costo_promedio', required: false, descripcion: 'Costo por ml o por pieza. Vacio o 0 = no se toca', ejemplo: 1200 },
+      { key: 'existencias', required: false, descripcion: 'Informativo al exportar; NO se importa desde aqui', ejemplo: 100 },
+      { key: 'activo', required: false, descripcion: 'si o no', ejemplo: 'si' },
+    ],
+    notas: [
+      'Cada esencia va como un insumo APARTE (Esencia Eternity, Esencia Khamrah...): cada fragancia cuesta distinto y promediarlas da un costo que no es el de ninguna.',
+      'Si el nombre ya existe se ACTUALIZA; si no, se crea.',
+      'Las EXISTENCIAS no se cambian aqui: se siembran con la hoja "inventario" (conteo fisico) o entran con las compras a proveedores.',
+      'El costo_promedio solo hace falta al arrancar: despues lo calcula solo con cada compra.',
+    ],
+  },
+  inventario: {
+    titulo: 'Conteo fisico de inventario',
+    columnas: [
+      { key: 'insumo', required: true, descripcion: 'Nombre exacto de un insumo existente', ejemplo: 'Esencia Eternity' },
+      { key: 'unidad', required: false, descripcion: 'Solo informativo (ml o unidad)', ejemplo: 'ml' },
+      { key: 'existencias_sistema', required: false, descripcion: 'Lo que el sistema cree que hay (informativo)', ejemplo: 100 },
+      { key: 'cantidad_real', required: true, descripcion: 'Lo que hay DE VERDAD tras contar', ejemplo: 96.5 },
+      { key: 'costo_unitario', required: false, descripcion: 'Costo por unidad; solo se usa si el ajuste SUMA material', ejemplo: 1200 },
+    ],
+    notas: [
+      'Es la forma comoda de sembrar el stock inicial: exporta la hoja, escribe lo que hay en cantidad_real y vuelvela a subir.',
+      'El sistema calcula la diferencia contra lo que tenia y la registra como movimiento de ajuste (queda auditable).',
+      'La diferencia entre lo teorico y lo real ES el desperdicio del dia a dia: no hace falta anotar cada gramo que se va de mas.',
+      'El costo_unitario solo pesa cuando el ajuste suma material (al arrancar). Si estas quitando, se valora al promedio que ya tiene.',
+    ],
+  },
+  devoluciones: {
+    titulo: 'Devoluciones y garantias',
+    columnas: [
+      { key: 'venta_id', required: true, descripcion: 'Numero de la venta a la que pertenece', ejemplo: 187 },
+      { key: 'cliente', required: false, descripcion: 'Nombre de la venta (informativo)', ejemplo: 'Luz Gomez' },
+      { key: 'fecha', required: true, descripcion: 'Cuando lo reporto el cliente (AAAA-MM-DD)', ejemplo: '2026-08-01' },
+      { key: 'motivo', required: true, descripcion: 'llego_danado, llego_equivocado, llego_incompleto, envase_defectuoso, no_llego, otro', ejemplo: 'envase_defectuoso' },
+      { key: 'detalle', required: false, descripcion: 'Que dijo el cliente', ejemplo: 'El atomizador no rocia' },
+      { key: 'estado', required: false, descripcion: 'pendiente, en_revision, resuelta o rechazada', ejemplo: 'resuelta' },
+      { key: 'solucion', required: false, descripcion: 'reposicion, devolucion_dinero o ninguna', ejemplo: 'devolucion_dinero' },
+      { key: 'monto_devuelto', required: false, descripcion: 'Plata devuelta (solo si la solucion fue devolucion_dinero)', ejemplo: 25000 },
+      { key: 'costo_reposicion', required: false, descripcion: 'Lo que costo producir lo repuesto', ejemplo: 0 },
+      { key: 'costo_envio', required: false, descripcion: 'Envio de la garantia (lo asume el vendedor por ley)', ejemplo: 8000 },
+      { key: 'fecha_resolucion', required: false, descripcion: 'Cuando se cerro el caso', ejemplo: '2026-08-05' },
+      { key: 'origen', required: false, descripcion: 'admin o cliente (quien radico el caso)', ejemplo: 'cliente' },
+      { key: 'notas', required: false, descripcion: 'Notas internas', ejemplo: 'Reclamado a la transportadora' },
+    ],
+    notas: [
+      'Pensada sobre todo para EXPORTAR: es el respaldo de los reclamos ante la SIC (queda cuando se reporto y cuando se resolvio).',
+      'La venta_id debe existir; una devolucion sin venta dejaria los ingresos descuadrados.',
+      'No se puede devolver mas plata de la que costo la venta.',
+    ],
+  },
+  movimientos: {
+    titulo: 'Movimientos de inventario',
+    columnas: [
+      { key: 'fecha', required: true, descripcion: 'Fecha del movimiento', ejemplo: '2026-08-01' },
+      { key: 'insumo', required: true, descripcion: 'Nombre del insumo', ejemplo: 'Esencia Eternity' },
+      { key: 'tipo', required: true, descripcion: 'compra, produccion, garantia, ajuste, merma o muestra', ejemplo: 'compra' },
+      { key: 'cantidad', required: true, descripcion: 'Positiva entra, negativa sale', ejemplo: 100 },
+      { key: 'unidad', required: false, descripcion: 'ml o unidad', ejemplo: 'ml' },
+      { key: 'costo_unitario', required: false, descripcion: 'Costo aplicado en ese momento', ejemplo: 1200 },
+      { key: 'valor', required: false, descripcion: 'cantidad x costo', ejemplo: 120000 },
+      { key: 'nota', required: false, descripcion: 'De donde vino', ejemplo: 'Factura FV-9001' },
+    ],
+    notas: [
+      'Es el libro de auditoria del inventario: SOLO se exporta, no se importa.',
+      'Si el stock se descuadra, este es el historial que permite reconstruirlo.',
+    ],
+  },
+
+  resenas: {
+    titulo: 'Resenas de clientes',
+    columnas: [
+      { key: 'id', required: true, descripcion: 'Numero de la resena (NO cambiar: es como se identifica)', ejemplo: 12 },
+      { key: 'perfume', required: false, descripcion: 'Perfume resenado (informativo)', ejemplo: 'Invictus' },
+      { key: 'cliente', required: false, descripcion: 'Quien la escribio (informativo)', ejemplo: 'Luz Gomez' },
+      { key: 'correo', required: false, descripcion: 'Correo del cliente (informativo)', ejemplo: 'luz@correo.com' },
+      { key: 'estrellas', required: false, descripcion: 'Calificacion 1 a 5 (informativo)', ejemplo: 5 },
+      { key: 'comentario', required: false, descripcion: 'Lo que escribio (informativo)', ejemplo: 'Excelente fijacion' },
+      { key: 'fotos', required: false, descripcion: 'URLs de las fotos separadas por comas (informativo)', ejemplo: 'https://.../foto.webp' },
+      { key: 'estado', required: true, descripcion: 'pendiente, aprobada o rechazada. ESTA es la columna que se puede cambiar', ejemplo: 'aprobada' },
+      { key: 'fecha', required: false, descripcion: 'Cuando se escribio (informativo)', ejemplo: '2026-08-01' },
+    ],
+    notas: [
+      'Sirve para MODERAR EN LOTE: exporta las pendientes, escribe aprobada o rechazada en la columna estado y vuelve a subir el archivo.',
+      'NO se pueden crear resenas desde un archivo, a proposito: una resena solo existe si esa persona COMPRO ese perfume. Inventarlas seria publicidad enganosa (Ley 1480) y ademas las estrellas dejarian de decirte que fragancia gusto de verdad.',
+      'Todo lo demas (comentario, estrellas, fotos) es informativo: se exporta pero al importar no se toca.',
+      'La exportacion sirve de respaldo del contenido de tus clientes y para responder un derecho de acceso a datos (Ley 1581 de 2012).',
+    ],
+  },
+  entregas: {
+    titulo: 'Fotos de premios entregados',
+    columnas: [
+      { key: 'id', required: true, descripcion: 'Numero de la entrega (NO cambiar)', ejemplo: 5 },
+      { key: 'cliente', required: false, descripcion: 'A quien se le entrego (informativo)', ejemplo: 'Luz Gomez' },
+      { key: 'correo', required: false, descripcion: 'Correo del cliente (informativo)', ejemplo: 'luz@correo.com' },
+      { key: 'premio', required: false, descripcion: 'Que se entrego (informativo)', ejemplo: 'Perfume 10ml gratis' },
+      { key: 'fotos', required: false, descripcion: 'URLs de las fotos separadas por comas (informativo)', ejemplo: 'https://.../foto.webp' },
+      { key: 'estado', required: true, descripcion: 'pendiente, aprobada o rechazada. ESTA es la que se puede cambiar', ejemplo: 'aprobada' },
+      { key: 'fecha', required: false, descripcion: 'Cuando se entrego (informativo)', ejemplo: '2026-08-01' },
+    ],
+    notas: [
+      'Igual que las resenas: se exporta todo, pero al importar solo se cambia el estado (aprobar o rechazar en lote).',
+      'Las fotos las sube el cliente o el admin desde el dashboard; no entran por archivo.',
+    ],
+  },
+  formulas: {
+    "titulo": "Recetas por tamano",
+    "columnas": [
+      {
+        "key": "nombre",
+        "required": true,
+        "descripcion": "Como se llama el tamano",
+        "ejemplo": "30 ml"
+      },
+      {
+        "key": "ml_total",
+        "required": true,
+        "descripcion": "Volumen total en mililitros",
+        "ejemplo": 30
+      },
+      {
+        "key": "esencia_ml",
+        "required": true,
+        "descripcion": "Mililitros de esencia por unidad",
+        "ejemplo": 15
+      },
+      {
+        "key": "sellador_ml",
+        "required": false,
+        "descripcion": "Mililitros de sellador o fijador",
+        "ejemplo": 0.4
+      },
+      {
+        "key": "feromonas_ml",
+        "required": false,
+        "descripcion": "Mililitros de feromonas",
+        "ejemplo": 0.3
+      },
+      {
+        "key": "diluyente_ml",
+        "required": false,
+        "descripcion": "Informativo: es el resto y NO se guarda",
+        "ejemplo": 14.3
+      },
+      {
+        "key": "envase",
+        "required": false,
+        "descripcion": "Insumo tipo envase que usa por defecto",
+        "ejemplo": "Envase 30 ml"
+      },
+      {
+        "key": "esencia_defecto",
+        "required": false,
+        "descripcion": "Informativo: la esencia sale del perfume",
+        "ejemplo": ""
+      },
+      {
+        "key": "escalas",
+        "required": false,
+        "descripcion": "Informativo: precios por cantidad (desde-hasta:precio)",
+        "ejemplo": "10-19:18000"
+      },
+      {
+        "key": "activo",
+        "required": false,
+        "descripcion": "si o no",
+        "ejemplo": "si"
+      }
+    ],
+    "notas": [
+      "El DILUYENTE nunca se guarda: siempre es ml_total menos esencia, sellador y feromonas. Guardarlo lo desincronizaria al cambiar el volumen.",
+      "Si ya existe una receta con ese ml_total se ACTUALIZA; si no, se crea.",
+      "La esencia NO se define aqui: cada perfume tiene la suya (Khamrah cuesta el triple que Mandarin Sky por ml).",
+      "Los precios por cantidad se editan en \"Tamanos y formulas\"; aqui salen solo para consultarlos."
+    ]
+  },
+  producciones: {
+    "titulo": "Lotes producidos",
+    "columnas": [
+      {
+        "key": "fecha",
+        "required": true,
+        "descripcion": "Cuando se armo el lote",
+        "ejemplo": "2026-08-01"
+      },
+      {
+        "key": "fragancia",
+        "required": false,
+        "descripcion": "Que perfume se armo",
+        "ejemplo": "Sauvage 1.1"
+      },
+      {
+        "key": "tamano",
+        "required": true,
+        "descripcion": "Talla del lote",
+        "ejemplo": "30 ml"
+      },
+      {
+        "key": "cantidad",
+        "required": true,
+        "descripcion": "Unidades armadas",
+        "ejemplo": 10
+      },
+      {
+        "key": "costo_unitario",
+        "required": false,
+        "descripcion": "Lo que costo cada una",
+        "ejemplo": 9256
+      },
+      {
+        "key": "costo_total",
+        "required": false,
+        "descripcion": "Lo que costo el lote",
+        "ejemplo": 92560
+      },
+      {
+        "key": "nota",
+        "required": false,
+        "descripcion": "Nota del lote",
+        "ejemplo": ""
+      }
+    ],
+    "notas": [
+      "SOLO se exporta: es historico contable y reescribirlo a mano rompe la trazabilidad del inventario.",
+      "Los lotes se registran desde la pestana Inventario."
+    ]
+  },
+  cotizaciones: {
+    "titulo": "Cotizaciones mayoristas",
+    "columnas": [
+      {
+        "key": "numero",
+        "required": true,
+        "descripcion": "Numero de la cotizacion",
+        "ejemplo": "COT-2026-0001"
+      },
+      {
+        "key": "fecha",
+        "required": false,
+        "descripcion": "Cuando se emitio",
+        "ejemplo": "2026-08-01"
+      },
+      {
+        "key": "tipo",
+        "required": false,
+        "descripcion": "detallada o general",
+        "ejemplo": "detallada"
+      },
+      {
+        "key": "cliente",
+        "required": true,
+        "descripcion": "A quien se le cotizo",
+        "ejemplo": "Distribuidora XYZ"
+      },
+      {
+        "key": "empresa",
+        "required": false,
+        "descripcion": "Empresa del cliente",
+        "ejemplo": ""
+      },
+      {
+        "key": "telefono",
+        "required": false,
+        "descripcion": "Telefono de contacto",
+        "ejemplo": ""
+      },
+      {
+        "key": "estado",
+        "required": false,
+        "descripcion": "borrador o enviada",
+        "ejemplo": "enviada"
+      },
+      {
+        "key": "producto",
+        "required": false,
+        "descripcion": "Producto de la linea",
+        "ejemplo": "Eros"
+      },
+      {
+        "key": "tamano",
+        "required": false,
+        "descripcion": "Talla de la linea",
+        "ejemplo": "30 ml"
+      },
+      {
+        "key": "cantidad",
+        "required": false,
+        "descripcion": "Unidades de la linea",
+        "ejemplo": 50
+      },
+      {
+        "key": "precio_unitario",
+        "required": false,
+        "descripcion": "Precio por unidad cotizado",
+        "ejemplo": 18000
+      },
+      {
+        "key": "subtotal",
+        "required": false,
+        "descripcion": "Subtotal de la linea",
+        "ejemplo": 900000
+      },
+      {
+        "key": "total_cotizacion",
+        "required": false,
+        "descripcion": "Total de toda la cotizacion",
+        "ejemplo": 900000
+      }
+    ],
+    "notas": [
+      "SOLO se exporta. Una fila por LINEA: una cotizacion con tres productos ocupa tres filas con el mismo numero.",
+      "NO incluye costos ni margenes: eso es interno del admin y nunca sale del dashboard."
+    ]
+  },
+  usuarios: {
+    "titulo": "Clientes",
+    "columnas": [
+      {
+        "key": "nombre",
+        "required": true,
+        "descripcion": "Nombre",
+        "ejemplo": "Luz"
+      },
+      {
+        "key": "apellido",
+        "required": false,
+        "descripcion": "Apellido",
+        "ejemplo": "Gomez"
+      },
+      {
+        "key": "correo",
+        "required": true,
+        "descripcion": "Correo electronico",
+        "ejemplo": "luz@correo.com"
+      },
+      {
+        "key": "telefono",
+        "required": false,
+        "descripcion": "Telefono / WhatsApp",
+        "ejemplo": "3001234567"
+      },
+      {
+        "key": "direccion",
+        "required": false,
+        "descripcion": "Direccion de envio",
+        "ejemplo": ""
+      },
+      {
+        "key": "cupo_base",
+        "required": false,
+        "descripcion": "Cupo de credito base en COP",
+        "ejemplo": 0
+      },
+      {
+        "key": "tipo",
+        "required": false,
+        "descripcion": "ficha (creada por el admin) o cuenta (se registro en la web)",
+        "ejemplo": "ficha"
+      },
+      {
+        "key": "activo",
+        "required": false,
+        "descripcion": "si o no",
+        "ejemplo": "si"
+      },
+      {
+        "key": "registrado",
+        "required": false,
+        "descripcion": "Cuando entro al sistema",
+        "ejemplo": "2026-08-01"
+      }
+    ],
+    "notas": [
+      "Los administradores NO se exportan.",
+      "Es el respaldo de tus contactos y la forma de responder un derecho de acceso a datos (Ley 1581 de 2012)."
+    ]
+  },
+  blog: {
+    "titulo": "Entradas del blog",
+    "columnas": [
+      {
+        "key": "titulo",
+        "required": true,
+        "descripcion": "Titulo de la entrada",
+        "ejemplo": "Como elegir tu fragancia"
+      },
+      {
+        "key": "slug",
+        "required": true,
+        "descripcion": "Direccion en la web",
+        "ejemplo": "como-elegir-tu-fragancia"
+      },
+      {
+        "key": "resumen",
+        "required": false,
+        "descripcion": "Resumen corto",
+        "ejemplo": ""
+      },
+      {
+        "key": "publicado",
+        "required": false,
+        "descripcion": "si o no",
+        "ejemplo": "si"
+      },
+      {
+        "key": "fecha",
+        "required": false,
+        "descripcion": "Cuando se creo",
+        "ejemplo": "2026-08-01"
+      }
+    ],
+    "notas": [
+      "SOLO se exporta: el contenido lleva HTML que se sanea en el servidor, y meterlo por Excel se saltaria ese filtro.",
+      "Sirve de respaldo del listado; el contenido se edita en la pestana Blog."
+    ]
+  },
+  avisos: {
+    "titulo": "Avisame cuando vuelva",
+    "columnas": [
+      {
+        "key": "perfume",
+        "required": true,
+        "descripcion": "Perfume que esperan",
+        "ejemplo": "Eros"
+      },
+      {
+        "key": "agotado",
+        "required": false,
+        "descripcion": "si el perfume sigue agotado",
+        "ejemplo": "si"
+      },
+      {
+        "key": "cliente",
+        "required": false,
+        "descripcion": "Quien lo espera",
+        "ejemplo": "Luz Gomez"
+      },
+      {
+        "key": "correo",
+        "required": false,
+        "descripcion": "Su correo",
+        "ejemplo": "luz@correo.com"
+      },
+      {
+        "key": "telefono",
+        "required": false,
+        "descripcion": "Su WhatsApp",
+        "ejemplo": "3001234567"
+      },
+      {
+        "key": "fecha",
+        "required": false,
+        "descripcion": "Cuando lo pidio",
+        "ejemplo": "2026-08-01"
+      }
+    ],
+    "notas": [
+      "SOLO se exporta: es la demanda real de reposicion, util para decidir que pedir.",
+      "Los avisos los piden los clientes desde la ficha del producto agotado."
+    ]
+  },
 };

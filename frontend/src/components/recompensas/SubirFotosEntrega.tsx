@@ -79,7 +79,14 @@ export default function SubirFotosEntrega({ entrega, onSubido, url, nota = true 
           </button>
         )}
         <input ref={fileRef} type="file" accept="image/*" multiple className="hidden"
-          onChange={(e) => { if (e.target.files) setNuevas((n) => [...n, ...Array.from(e.target.files!).slice(0, 3 - total)]); if (fileRef.current) fileRef.current.value = ''; }} />
+          onChange={(e) => {
+            // Copiar la lista YA: `e.target.files` es un FileList vivo y
+            // limpiar el input (línea siguiente) lo vacía antes de que React
+            // ejecute el updater, así que las fotos se perderían.
+            const elegidas = e.target.files ? Array.from(e.target.files) : [];
+            if (elegidas.length) setNuevas((n) => [...n, ...elegidas.slice(0, 3 - total)]);
+            if (fileRef.current) fileRef.current.value = '';
+          }} />
       </div>
 
       {nuevas.length > 0 && (

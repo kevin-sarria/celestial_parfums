@@ -43,7 +43,7 @@ export interface Venta {
   presentacion: string;
   referencia_perfume: string;
   /** Perfumes del catálogo incluidos en la venta (un combo lleva varios; cantidad = unidades de esa fragancia). */
-  perfumes: { id: number; nombre: string; cantidad: number }[];
+  perfumes: { id: number; nombre: string; ml: number | null; cantidad: number }[];
   valor_venta: number;
   datos_adicionales: string | null;
   /** false = pendiente de pago; al marcarla pagada se canjea el código enlazado. */
@@ -93,6 +93,37 @@ export interface Pago {
   valor_compra: number;
   coste_envio: number;
   detalles_adicionales: string | null;
+  numero_factura: string | null;
+  archivos: string[];
+  /** Detalle de la compra; vacío en los pagos históricos. */
+  items: {
+    id: number; insumo_id: number; insumo_nombre: string;
+    cantidad: number; unidad_compra: 'ml' | 'g' | 'l' | 'kg' | 'unidad';
+    subtotal: number; costo_unitario_final: number;
+  }[];
+}
+
+/** Una línea del inventario con su valor. */
+export interface InventarioInsumo {
+  id: number; nombre: string; tipo: string; unidad: string;
+  stock: number; costo_promedio: number; valor: number;
+  /** Punto de pedido; 0 = alerta apagada. */
+  stock_minimo: number;
+  bajo_minimo: boolean;
+  /** Cuánto pedir para volver a un colchón razonable. */
+  sugerido: number;
+}
+
+export interface MovimientoInventario {
+  id: number; tipo: 'compra' | 'produccion' | 'garantia' | 'ajuste' | 'merma' | 'muestra';
+  cantidad: number; costo_unitario: number; fecha: string;
+  referencia_id: number | null; nota: string | null;
+}
+
+export interface Produccion {
+  id: number; fecha: string; formula_volumen_id: number; volumen_nombre: string;
+  perfume_nombre: string | null;
+  cantidad: number; costo_unitario: number; costo_total: number; nota: string | null;
 }
 
 export interface PerfumeForm {
@@ -101,6 +132,16 @@ export interface PerfumeForm {
   categoria_id: number | ''; tipos_aroma: number[]; ocasiones: number[]; presentaciones: number[];
   /** Contratipo hecho con la esencia de mayor calidad: distintivo y fuera de combos. */
   esencia_premium: boolean;
+  /** Esencia concreta con la que se hace (define su costo real por ml). */
+  insumo_esencia_id: number | '';
+  /** Cómo se abastece: lo fabricas, lo compras hecho o lo fraccionas. */
+  tipo_producto: 'fabricado' | 'comprado' | 'fraccionado';
+  /** Insumo que ES el producto (comprado) o del que sale (fraccionado). */
+  insumo_producto_id: number | '';
+  /** Solo fraccionado: ml que de verdad se aprovechan de la botella. */
+  ml_utiles: string;
+  /** Frasco propio por talla (presentacion_id → insumo del envase). */
+  envases_talla: Record<number, number | ''>;
   /** Precio propio por presentación (id → texto); vacío = usa la lista de su categoría. */
   precios_propios: Record<number, string>;
 }
@@ -109,7 +150,9 @@ export const emptyPerfumeForm = (): PerfumeForm => ({
   nombre: '', descripcion: '', precio: '', duracion: '',
   proyeccion: '', imagen_url: '', genero: '', categoria_id: '',
   tipos_aroma: [], ocasiones: [], presentaciones: [],
-  esencia_premium: false, precios_propios: {},
+  esencia_premium: false, insumo_esencia_id: '',
+  tipo_producto: 'fabricado', insumo_producto_id: '', ml_utiles: '', envases_talla: {},
+  precios_propios: {},
 });
 
 /** Una fila de la lista de precios: lo que vale una presentación en una categoría. */
@@ -133,6 +176,12 @@ export interface VentaForm {
   datos_adicionales: string;
   /** Perfumes del catálogo seleccionados (al menos uno). */
   perfume_ids: number[];
+  /**
+   * Líneas de la venta: producto + talla + cantidad. Es la forma nueva; sin la
+   * talla por línea es imposible saber qué receta descontar del inventario.
+   * `ml` en null = producto sin talla (una gorra).
+   */
+  lineas: { perfume_id: number; nombre: string; ml: number | null; cantidad: number }[];
   user_id: ClienteSeleccion;
   /** false = pendiente de pago (el código queda reservado, no canjeado). */
   pagada: boolean;
@@ -146,7 +195,7 @@ export const emptyVentaForm = (): VentaForm => ({
   dia: new Date().toISOString().slice(0, 10),
   persona: '', cantidad_perfumes: '1', presentacion: '30ML',
   valor_venta: '', datos_adicionales: '',
-  perfume_ids: [],
+  perfume_ids: [], lineas: [],
   user_id: '',
   pagada: true,
   codigo_descuento: '',
@@ -209,13 +258,14 @@ export interface PagoForm {
   nueva_nombre: string; nueva_nit: string; nueva_telefono: string;
   nueva_correo: string; nueva_direccion: string;
   valor_compra: string; coste_envio: string; detalles_adicionales: string;
+  numero_factura: string;
 }
 
 export const emptyPagoForm = (): PagoForm => ({
   dia: new Date().toISOString().slice(0, 10),
   empresa_id: '',
   nueva_nombre: '', nueva_nit: '', nueva_telefono: '', nueva_correo: '', nueva_direccion: '',
-  valor_compra: '', coste_envio: '0', detalles_adicionales: '',
+  valor_compra: '', coste_envio: '0', detalles_adicionales: '', numero_factura: '',
 });
 
 export interface ComboForm {
@@ -321,7 +371,7 @@ export interface CodigoValidado {
   venta?: { id: number; persona: string; dia: string } | null;
 }
 
-export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'recompensas' | 'resenas' | 'avisos' | 'nosotros' | 'blog' | 'redes' | 'cotizaciones' | 'insumos' | 'formulas' | 'costos';
+export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'recompensas' | 'resenas' | 'avisos' | 'nosotros' | 'blog' | 'redes' | 'cotizaciones' | 'insumos' | 'formulas' | 'costos' | 'devoluciones' | 'inventario' | 'rep_ventas' | 'rep_compras' | 'rep_clientes';
 
 /** Tarjeta de recompensas de un cliente (calculada del historial). */
 export interface TarjetaRecompensa {
@@ -359,3 +409,46 @@ export interface RecompensaClienteRow {
 }
 
 export type GuardedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+// ── Devoluciones y garantías ────────────────────────────────────────────────
+
+export type DevolucionMotivo =
+  | 'llego_danado' | 'llego_equivocado' | 'llego_incompleto'
+  | 'envase_defectuoso' | 'no_llego' | 'otro';
+export type DevolucionEstado = 'pendiente' | 'en_revision' | 'resuelta' | 'rechazada';
+export type DevolucionSolucion = 'reposicion' | 'devolucion_dinero' | 'ninguna';
+
+/** Venta candidata para engancharle una devolución (buscador del formulario). */
+export interface VentaParaDevolucion {
+  id: number;
+  dia: string;
+  persona: string;
+  valor_venta: number;
+  referencia_perfume: string;
+  perfumes: { perfume_id: number; nombre: string; cantidad: number }[];
+}
+
+export interface Devolucion {
+  id: number;
+  venta_id: number;
+  user_id: number | null;
+  origen: 'admin' | 'cliente';
+  fecha: string;
+  motivo: DevolucionMotivo;
+  detalle: string | null;
+  estado: DevolucionEstado;
+  solucion: DevolucionSolucion | null;
+  monto_devuelto: number;
+  fecha_resolucion: string | null;
+  notas: string | null;
+  reposicion_formula_id: number | null;
+  reposicion_cantidad: number;
+  costo_reposicion: number;
+  costo_envio: number;
+  /** Lo que TE costó la garantía: devuelto + repuesto + envío. */
+  costo_total: number;
+  imagenes: string[];
+  venta: { id: number; dia: string; persona: string; valor_venta: number; referencia_perfume: string } | null;
+  perfumes: { perfume_id: number; cantidad: number; nombre: string }[];
+  created_at: string;
+}

@@ -7,8 +7,7 @@ export const getAllVentas = (page: number, limit: number, search?: string) => re
 export const createVenta = async (data: CreateVentaDTO) => {
   if (!data.dia || !data.persona || !data.valor_venta)
     throw new Error('Día, persona y valor son obligatorios');
-  if (!data.perfume_ids?.length)
-    throw new Error('Selecciona al menos un perfume del catálogo');
+  // La validación real está en Zod (acepta líneas nuevas o ids antiguos)
   if (data.cantidad_perfumes < 1)
     throw new Error('La cantidad de perfumes debe ser al menos 1');
   const result = await repo.createVenta(data);
@@ -19,8 +18,7 @@ export const createVenta = async (data: CreateVentaDTO) => {
 export const updateVenta = async (id: string, data: CreateVentaDTO) => {
   if (!data.dia || !data.persona || !data.valor_venta)
     throw new Error('Día, persona y valor son obligatorios');
-  if (!data.perfume_ids?.length)
-    throw new Error('Selecciona al menos un perfume del catálogo');
+  // La validación real está en Zod (acepta líneas nuevas o ids antiguos)
   const result = await repo.updateVenta(id, data);
   bustCatalogoCache();
   return result;
@@ -39,3 +37,5 @@ export const relinkVentasPerfume = async () => {
   bustCatalogoCache();
   return result;
 };
+
+export const getVentasPorMes = () => repo.getVentasPorMes();

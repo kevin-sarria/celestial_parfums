@@ -4,6 +4,7 @@ import { ShoppingBag } from 'lucide-react';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
 import ResenaProductoCard, { type ProductoComprado } from '../components/resenas/ResenaProductoCard';
+import MisPedidos from '../components/devoluciones/MisPedidos';
 import { BASE_URL, authFetchWithRefresh } from '../infrastructure/api/client';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
@@ -59,6 +60,9 @@ export default function MisComprasPage() {
             ))}
           </div>
         )}
+
+        {/* Garantía: reportar un problema con un pedido y seguir el caso */}
+        {!loading && <MisPedidos />}
       </main>
     </div>
   );

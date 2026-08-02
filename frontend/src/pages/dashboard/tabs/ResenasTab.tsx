@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Check, Star, Trash2, X } from 'lucide-react';
+import { Check, Star, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NativeSelect } from '@/components/ui/native-select';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { DEFAULT_PAGE_SIZE, fmtInstante } from '../helpers';
+import ExportButton from '../../../components/ExportButton';
+import ImportModal from '../../../components/ImportModal';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import type { GuardedFetch } from '../types';
 
@@ -35,6 +37,7 @@ export function ResenasTab({ guardedFetch }: Props) {
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('pendiente');
   const [loading, setLoading] = useState(true);
+  const [importOpen, setImportOpen] = useState(false);
 
   const load = async (p = page, est = estado) => {
     setLoading(true);
@@ -69,6 +72,12 @@ export function ResenasTab({ guardedFetch }: Props) {
             <option value="rechazada">Rechazadas</option>
             <option value="">Todas</option>
           </NativeSelect>
+          {/* Exportar es el respaldo del contenido de los clientes (y como se
+              responde un derecho de acceso a datos). Importar SOLO modera. */}
+          <ExportButton entity="resenas" guardedFetch={guardedFetch} />
+          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
+            <Upload className="size-4" /> Moderar en lote
+          </Button>
         </ToolbarActions>
       </Toolbar>
 
@@ -134,6 +143,13 @@ export function ResenasTab({ guardedFetch }: Props) {
           <Button variant="outline" size="sm" disabled={page >= totalPaginas} onClick={() => load(page + 1)}>Siguiente</Button>
         </div>
       )}
+      <ImportModal
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        entity="resenas"
+        guardedFetch={guardedFetch}
+        onImported={load}
+      />
     </Section>
   );
 }

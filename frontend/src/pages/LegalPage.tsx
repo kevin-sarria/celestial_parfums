@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { FileText, ShieldCheck, Copyright } from 'lucide-react';
+import { FileText, ShieldCheck, Copyright, PackageCheck } from 'lucide-react';
 import CatalogHeader from '../components/CatalogHeader';
 import { WHATSAPP_NUMBER, BRAND_NAME } from '../config/constants';
+import { GARANTIA } from '../config/negocio';
 import { useSeo } from '../application/hooks/useSeo';
 
 const WA = `https://wa.me/${WHATSAPP_NUMBER}`;
@@ -10,6 +11,7 @@ const ACTUALIZADO = 'julio de 2026';
 
 const SECCIONES = [
   { id: 'terminos', label: 'Términos y condiciones', icon: FileText },
+  { id: 'devoluciones', label: 'Garantía y devoluciones', icon: PackageCheck },
   { id: 'datos', label: 'Tratamiento de datos', icon: ShieldCheck },
   { id: 'marcas', label: 'Marcas e imágenes', icon: Copyright },
 ];
@@ -101,6 +103,88 @@ export default function LegalPage() {
                   mantener la confidencialidad de tu acceso.</Item>
               </ul>
               <p>¿Dudas sobre un pedido o una promoción? Escríbenos por <Wa />.</p>
+            </Seccion>
+
+            <Seccion id="devoluciones" icon={PackageCheck} titulo="Garantía, cambios y devoluciones">
+              <p>
+                Tus derechos como comprador están protegidos por la <strong>Ley 1480 de 2011</strong>
+                {' '}(Estatuto del Consumidor) de Colombia. Aquí te explicamos, sin letra menuda, qué
+                cubrimos y cómo se hace efectivo.
+              </p>
+
+              <h3 className="pt-2 text-[14px] font-medium text-foreground">Garantía legal</h3>
+              <p>
+                Todos nuestros productos tienen <strong>garantía legal</strong>: respondemos por su
+                calidad, idoneidad y buen funcionamiento. Conforme al artículo 8 de la Ley 1480 de
+                2011, anunciamos un término de garantía de <strong>{GARANTIA.texto}</strong> contados
+                desde la entrega del producto — tiempo más que suficiente para que se manifieste
+                cualquier defecto de fabricación en una fragancia o su envase.
+              </p>
+              <p>Puedes hacerla efectiva, entre otros, si el producto:</p>
+              <ul className="space-y-2">
+                <Item>Llega <strong>equivocado</strong> (una fragancia o presentación distinta a la
+                  que pediste).</Item>
+                <Item>Llega <strong>dañado, derramado o incompleto</strong>.</Item>
+                <Item>Tiene un <strong>envase o atomizador defectuoso</strong> (no rocía, gotea, la
+                  válvula no funciona).</Item>
+                <Item><strong>No corresponde</strong> a lo que se ofreció en el catálogo.</Item>
+                <Item><strong>Nunca llegó</strong> a su destino.</Item>
+              </ul>
+              <p>
+                En estos casos elegimos contigo la solución: <strong>reponer el producto</strong> por uno
+                igual o <strong>devolverte el dinero</strong> que pagaste. Los <strong>costos de envío
+                que implique hacer efectiva la garantía los asumimos nosotros</strong>, como lo exige la
+                ley. La devolución del dinero se hace por el mismo medio por el que pagaste.
+              </p>
+              <p>
+                La garantía <strong>no cubre</strong> el desgaste por el uso normal, el producto ya
+                consumido, ni los daños causados por mal uso, exposición al sol o al calor, o
+                manipulación indebida después de la entrega.
+              </p>
+
+              <h3 className="pt-2 text-[14px] font-medium text-foreground">Sobre el derecho de retracto</h3>
+              <p>
+                El artículo 47 de la Ley 1480 de 2011 permite retractarse de una compra a distancia
+                dentro de los 5 días hábiles siguientes, <strong>pero exceptúa expresamente los bienes
+                de uso personal</strong> (numeral 7). Los perfumes y cosméticos entran en esa excepción
+                — así lo ha señalado la Superintendencia de Industria y Comercio — porque son productos
+                de contacto directo con la piel que, una vez entregados, no pueden volver a
+                comercializarse por razones de higiene y seguridad.
+              </p>
+              <p>
+                Por eso <strong>no aceptamos devoluciones por cambio de opinión ni por gusto de la
+                fragancia</strong>. Esto <strong>no afecta en nada tu garantía legal</strong>: si el
+                producto llega mal, siempre respondemos.
+              </p>
+              <p>
+                Para que aciertes antes de comprar, escríbenos por <Wa />: te asesoramos con el perfil
+                olfativo, la duración y la proyección de cada fragancia sin ningún compromiso.
+              </p>
+
+              <h3 className="pt-2 text-[14px] font-medium text-foreground">Cómo hacer un reclamo</h3>
+              <ul className="space-y-2">
+                <Item><strong>1. Revisa tu pedido al recibirlo.</strong> Si llegó dañado, incompleto
+                  o equivocado, avísanos dentro de los <strong>{GARANTIA.avisoEntregaDias} días
+                  hábiles</strong> siguientes: ese margen nos permite reclamarle a la transportadora.
+                  Los defectos de fabricación puedes reportarlos durante todo el término de garantía.</Item>
+                <Item><strong>2. Escríbenos por <Wa /></strong> con el nombre con el que hiciste el
+                  pedido, la fecha aproximada, el producto afectado y <strong>fotos o video</strong> del
+                  producto y del empaque como lo recibiste.</Item>
+                <Item><strong>3. Revisamos el caso contigo</strong> y acordamos la solución: reposición
+                  o devolución del dinero. La ley nos da un plazo máximo de 30 días hábiles para hacer
+                  efectiva la garantía; nuestra intención es resolverlo mucho antes.</Item>
+              </ul>
+              <p>
+                Si pagaste por medios electrónicos y tu caso corresponde a los supuestos del artículo 51
+                de la Ley 1480 de 2011 (por ejemplo, producto no recibido o defectuoso), también puedes
+                solicitar la <strong>reversión del pago</strong> ante tu entidad financiera.
+              </p>
+              <p>
+                Si no quedas conforme con nuestra respuesta, puedes acudir a la{' '}
+                <strong>Superintendencia de Industria y Comercio (SIC)</strong>, autoridad de protección
+                al consumidor en Colombia, a través de <a href="https://www.sic.gov.co" target="_blank"
+                  rel="noreferrer" className="font-medium text-primary underline underline-offset-2">sic.gov.co</a>.
+              </p>
             </Seccion>
 
             <Seccion id="datos" icon={ShieldCheck} titulo="Tratamiento de datos personales">
