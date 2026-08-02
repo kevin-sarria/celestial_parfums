@@ -3,6 +3,9 @@
 export type ColType = 'string' | 'number' | 'currency' | 'date' | 'enum';
 export type SortDir = 'asc' | 'desc';
 
+/** Qué papel juega la columna cuando la fila se pinta como tarjeta en celular. */
+export type RolMovil = 'titulo' | 'meta' | 'estado' | 'destacado' | 'detalle';
+
 export interface ColumnDef<T> {
   key: string;
   header: string;
@@ -14,6 +17,8 @@ export interface ColumnDef<T> {
   enumOptions?: readonly string[];
   className?: string;
   noTruncate?: boolean;
+  /** Papel en la tarjeta de celular. Sin marcar = 'detalle' (solo al expandir). */
+  movil?: RolMovil;
 }
 
 export interface SortState {

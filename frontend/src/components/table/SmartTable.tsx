@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import type { ColumnDef, FilterValue } from './tableTypes';
 import { useTableControls } from './useTableControls';
 import { useMediaQuery } from './useMediaQuery';
+import { FilaTarjeta } from './FilaTarjeta';
 import { ColumnFilterPopover } from './ColumnFilterPopover';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100] as const;
@@ -52,6 +53,15 @@ interface SmartTableProps<T> {
    * Se ignora si ya se pasó `pagination` (paginación de servidor).
    */
   paginadoLocal?: boolean;
+  /** Debajo de 640px cambia la tabla por tarjetas, en vez de scroll horizontal. */
+  tarjetaMovil?: boolean;
+  /**
+   * Acciones de la tarjeta. Si falta, usa `renderActions`.
+   * Existe porque `renderActions` devuelve botones de solo icono, pensados para
+   * una fila estrecha; en la tarjeta hay ancho de sobra y el icono solo es
+   * ambiguo con el pulgar.
+   */
+  accionesMovil?: (row: T) => ReactNode;
 }
 
 const SERVER_SEARCH_DEBOUNCE_MS = 2000;
@@ -81,10 +91,15 @@ export function SmartTable<T>({
   onServerSearch,
   numerada,
   paginadoLocal,
+  tarjetaMovil,
+  accionesMovil,
 }: SmartTableProps<T>) {
   const { processed, sort, toggleSort, filters, setFilter, clearAll, search, setSearch, activeFiltersCount } =
     useTableControls(rows, columns);
   const pantallaAngosta = useMediaQuery('(max-width: 520px)');
+  // 639px = justo debajo del breakpoint `sm` de Tailwind
+  const esMovil = useMediaQuery('(max-width: 639px)');
+  const vistaTarjeta = esMovil && !!tarjetaMovil;
 
   // ── Paginación en el navegador ──
   // Dos modos excluyentes: la de servidor (prop `pagination`) manda sobre la local.
@@ -244,7 +259,26 @@ export function SmartTable<T>({
         </div>
       </div>
 
-      {/* ── Tabla ── */}
+      {/* ── Tarjetas (celular) o tabla (el resto) ── */}
+      {vistaTarjeta ? (
+        visibles.length === 0 ? (
+          <p className="rounded-xl border border-border py-10 text-center text-muted-foreground">
+            {emptyText}
+          </p>
+        ) : (
+          <ul className="flex flex-col gap-2.5">
+            {visibles.map((row, i) => (
+              <FilaTarjeta
+                key={rowKey ? rowKey(row) : i}
+                row={row}
+                numero={numerada ? offsetNumero + i + 1 : null}
+                columns={columns}
+                acciones={(accionesMovil ?? renderActions)?.(row)}
+              />
+            ))}
+          </ul>
+        )
+      ) : (
       <div className="overflow-x-auto rounded-xl border border-border">
         <Table className="min-w-150">
           <TableHeader className="bg-secondary/60">
@@ -371,6 +405,7 @@ export function SmartTable<T>({
           </TableBody>
         </Table>
       </div>
+      )}
 
       {/* ── Footer: tamaño de página + paginador ── */}
       {paginadorVisible && (
