@@ -15,6 +15,15 @@ import { ColumnFilterPopover } from './ColumnFilterPopover';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100] as const;
 
+/**
+ * Por defecto de la paginación en el navegador. Es distinto del
+ * DEFAULT_PAGE_SIZE = 10 de helpers.ts a propósito: ese aplica a las pestañas
+ * que piden página por página al servidor, donde cada página cuesta una
+ * petición. Aquí las filas ya están todas en memoria, así que cortar de a 10
+ * solo obliga a paginar más sin ahorrar nada.
+ */
+const PAGE_SIZE_LOCAL = 25;
+
 interface PaginationProps {
   page: number;
   totalRows: number;
@@ -36,6 +45,13 @@ interface SmartTableProps<T> {
    * al vaciar el campo se restaura la lista original de inmediato.
    */
   onServerSearch?: (term: string) => void;
+  /** Muestra una columna "#" con la posición en la lista (1, 2, 3…). */
+  numerada?: boolean;
+  /**
+   * Pagina en el navegador cuando la pantalla carga todas las filas de una.
+   * Se ignora si ya se pasó `pagination` (paginación de servidor).
+   */
+  paginadoLocal?: boolean;
 }
 
 const SERVER_SEARCH_DEBOUNCE_MS = 2000;
@@ -63,10 +79,26 @@ export function SmartTable<T>({
   emptyText = 'Sin resultados',
   pagination,
   onServerSearch,
+  numerada,
+  paginadoLocal,
 }: SmartTableProps<T>) {
   const { processed, sort, toggleSort, filters, setFilter, clearAll, search, setSearch, activeFiltersCount } =
     useTableControls(rows, columns);
   const pantallaAngosta = useMediaQuery('(max-width: 520px)');
+
+  // ── Paginación en el navegador ──
+  // Dos modos excluyentes: la de servidor (prop `pagination`) manda sobre la local.
+  const [pageLocal, setPageLocal] = useState(1);
+  const [sizeLocal, setSizeLocal] = useState(PAGE_SIZE_LOCAL);
+  const localActivo = !!paginadoLocal && !pagination;
+
+  /**
+   * Al cambiar búsqueda, filtros u orden la lista es otra: volver al principio.
+   * Sin esto, filtrar de 200 a 3 registros deja al usuario mirando una página 7
+   * vacía. Se hace en el evento que cambia la lista y no en un efecto que
+   * reaccione después: eso encadenaría un render de más.
+   */
+  const volverAlPrincipio = () => setPageLocal(1);
 
   // ── Búsqueda en servidor (opcional) ──
   const isServerSearch = !!onServerSearch;
@@ -76,6 +108,7 @@ export function SmartTable<T>({
   const searchValue = isServerSearch ? serverTerm : search;
 
   const handleSearchChange = (value: string) => {
+    volverAlPrincipio();
     if (!isServerSearch) { setSearch(value); return; }
     setServerTerm(value);
     clearTimeout(debounceRef.current);
@@ -88,6 +121,7 @@ export function SmartTable<T>({
   };
 
   const handleSearchClear = () => {
+    volverAlPrincipio();
     if (isServerSearch) {
       clearTimeout(debounceRef.current);
       setServerTerm('');
@@ -98,6 +132,7 @@ export function SmartTable<T>({
   };
 
   const handleClearAll = () => {
+    volverAlPrincipio();
     clearAll();
     if (isServerSearch && serverTerm) handleSearchClear();
   };
@@ -126,7 +161,39 @@ export function SmartTable<T>({
   }, []);
 
   const hasActiveControls = activeFiltersCount > 0 || searchValue.trim().length > 0 || sort !== null;
-  const totalPages = pagination ? Math.ceil(pagination.totalRows / pagination.pageSize) : 0;
+
+  const totalPaginasLocal = Math.max(1, Math.ceil(processed.length / sizeLocal));
+  // Red de seguridad: si borran filas y la página guardada ya no existe,
+  // el clamp evita quedarse mirando una lista vacía.
+  const paginaLocal = Math.min(pageLocal, totalPaginasLocal);
+
+  const visibles = localActivo
+    ? processed.slice((paginaLocal - 1) * sizeLocal, paginaLocal * sizeLocal)
+    : processed;
+
+  /** Cuánto sumarle al índice de la fila para que el "#" siga de corrido entre páginas. */
+  const offsetNumero = pagination
+    ? (pagination.page - 1) * pagination.pageSize
+    : localActivo
+      ? (paginaLocal - 1) * sizeLocal
+      : 0;
+
+  // ── Datos del paginador, sirva de servidor o de navegador ──
+  const paginadorVisible = !!pagination || localActivo;
+  const paginaActual = pagination ? pagination.page : paginaLocal;
+  const tamanoActual = pagination ? pagination.pageSize : sizeLocal;
+  const totalPages = pagination
+    ? Math.ceil(pagination.totalRows / pagination.pageSize)
+    : totalPaginasLocal;
+
+  const irAPagina = (p: number) => {
+    if (pagination) pagination.onPageChange(p);
+    else setPageLocal(p);
+  };
+  const cambiarTamano = (s: number) => {
+    if (pagination) pagination.onPageSizeChange(s);
+    else { setSizeLocal(s); setPageLocal(1); }
+  };
 
   const SortIcon = ({ dir }: { dir: 'asc' | 'desc' | null }) =>
     dir === 'asc' ? <ArrowUp className="size-3.5" /> : dir === 'desc' ? <ArrowDown className="size-3.5" /> : <ArrowUpDown className="size-3.5 opacity-40" />;
@@ -182,6 +249,11 @@ export function SmartTable<T>({
         <Table className="min-w-150">
           <TableHeader className="bg-secondary/60">
             <TableRow className="hover:bg-transparent">
+              {numerada && (
+                <TableHead className="h-10 w-12 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                  #
+                </TableHead>
+              )}
               {columns.map(col => {
                 const isFilterActive = !!filters[col.key];
                 const sortDir = sort?.key === col.key ? sort.dir : null;
@@ -198,7 +270,7 @@ export function SmartTable<T>({
                             'flex items-center gap-1 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors',
                             sortDir ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
                           )}
-                          onClick={() => toggleSort(col.key)}
+                          onClick={() => { volverAlPrincipio(); toggleSort(col.key); }}
                           title={`Ordenar por ${col.header}`}
                         >
                           {col.header}
@@ -238,7 +310,7 @@ export function SmartTable<T>({
                             <ColumnFilterPopover
                               column={col}
                               active={filters[col.key]}
-                              onApply={(v: FilterValue | null) => setFilter(col.key, v)}
+                              onApply={(v: FilterValue | null) => { volverAlPrincipio(); setFilter(col.key, v); }}
                               onClose={() => { setOpenFilter(null); setFilterAnchor(null); }}
                               anchorEl={filterAnchor}
                             />
@@ -253,18 +325,23 @@ export function SmartTable<T>({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {processed.length === 0 ? (
+            {visibles.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length + (renderActions ? 1 : 0)}
+                  colSpan={columns.length + (numerada ? 1 : 0) + (renderActions ? 1 : 0)}
                   className="py-10 text-center text-muted-foreground"
                 >
                   {emptyText}
                 </TableCell>
               </TableRow>
             ) : (
-              processed.map((row, i) => (
+              visibles.map((row, i) => (
                 <TableRow key={rowKey ? rowKey(row) : i} className="text-[13px]">
+                  {numerada && (
+                    <TableCell className="py-2.5 text-[12px] tabular-nums text-muted-foreground">
+                      {offsetNumero + i + 1}
+                    </TableCell>
+                  )}
                   {columns.map(col => {
                     const raw = String(col.getValue(row) ?? '') || '—';
                     const content = col.render ? col.render(row) : raw;
@@ -296,15 +373,15 @@ export function SmartTable<T>({
       </div>
 
       {/* ── Footer: tamaño de página + paginador ── */}
-      {pagination && totalPages >= 1 && (
+      {paginadorVisible && (
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <label htmlFor="st-ps">Filas:</label>
             <NativeSelect
               id="st-ps"
               className="w-18"
-              value={pagination.pageSize}
-              onChange={e => pagination.onPageSizeChange(Number(e.target.value))}
+              value={tamanoActual}
+              onChange={e => cambiarTamano(Number(e.target.value))}
             >
               {PAGE_SIZE_OPTIONS.map(n => (
                 <option key={n} value={n}>{n}</option>
@@ -318,22 +395,22 @@ export function SmartTable<T>({
                 variant="outline"
                 size="icon"
                 className="size-8"
-                disabled={pagination.page === 1}
-                onClick={() => pagination.onPageChange(pagination.page - 1)}
+                disabled={paginaActual === 1}
+                onClick={() => irAPagina(paginaActual - 1)}
                 aria-label="Página anterior"
               >
                 ‹
               </Button>
-              {getPages(pagination.page, totalPages, pantallaAngosta).map((p, i) =>
+              {getPages(paginaActual, totalPages, pantallaAngosta).map((p, i) =>
                 p === '...' ? (
                   <span key={`e${i}`} className="px-1 text-muted-foreground">…</span>
                 ) : (
                   <Button
                     key={p}
-                    variant={p === pagination.page ? 'default' : 'outline'}
+                    variant={p === paginaActual ? 'default' : 'outline'}
                     size="icon"
                     className="size-8 text-xs"
-                    onClick={() => pagination.onPageChange(p as number)}
+                    onClick={() => irAPagina(p as number)}
                   >
                     {p}
                   </Button>
@@ -343,8 +420,8 @@ export function SmartTable<T>({
                 variant="outline"
                 size="icon"
                 className="size-8"
-                disabled={pagination.page === totalPages}
-                onClick={() => pagination.onPageChange(pagination.page + 1)}
+                disabled={paginaActual === totalPages}
+                onClick={() => irAPagina(paginaActual + 1)}
                 aria-label="Página siguiente"
               >
                 ›
