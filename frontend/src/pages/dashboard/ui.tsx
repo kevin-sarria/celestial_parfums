@@ -81,6 +81,31 @@ export function FieldRow({ children, className }: SectionProps) {
   return <div className={cn('grid gap-3 sm:grid-cols-2', className)}>{children}</div>;
 }
 
+/**
+ * Grupo de campos con título. Parte un formulario largo en secciones para que
+ * se vea qué pertenece a qué, en vez de una tira de campos todos iguales.
+ *
+ * Se usa <div> y no <fieldset> a propósito: `Modal` ya envuelve el contenido en
+ * un <form>, y el estilo por defecto del fieldset pelea con las clases de Tailwind.
+ */
+export function BloqueCampos({ titulo, descripcion, children }: {
+  titulo: string;
+  descripcion?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-3 border-t border-border pt-4 first:border-t-0 first:pt-0">
+      <div>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          {titulo}
+        </p>
+        {descripcion && <p className="mt-0.5 text-[12px] text-muted-foreground">{descripcion}</p>}
+      </div>
+      {children}
+    </div>
+  );
+}
+
 /** Selector de color: muestra el swatch nativo + el hex editable. */
 export function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
