@@ -155,7 +155,7 @@ export function LookupTab({
         onClose={cerrar}
         title={modal.editId != null ? editar : nuevo}
         onSubmit={e => { e.preventDefault(); guardar(false); }}
-        loading={guardando}
+        // `loading` no se pasa: solo lo usa el footer por defecto, y aquí hay uno propio
         footer={
           <div className="flex flex-wrap justify-end gap-2">
             <Button type="button" variant="ghost" onClick={cerrar}>Cancelar</Button>
