@@ -26,7 +26,7 @@ import { PerfumesTab } from './tabs/PerfumesTab';
 import { CombosTab } from './tabs/CombosTab';
 import { PreciosTab } from './tabs/PreciosTab';
 import { DescuentosTab } from './tabs/DescuentosTab';
-import { LookupTab } from './tabs/LookupTab';
+import { LookupTab, type ResultadoLookup } from './tabs/LookupTab';
 import { VentasTab } from './tabs/VentasTab';
 import { CreditosTab } from './tabs/CreditosTab';
 import { PagosTab } from './tabs/PagosTab';
@@ -206,20 +206,37 @@ export default function DashboardPage() {
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
-  const handleLookupAdd = (endpoint: string) => async (name: string) => {
-    await guardedFetch(`${API}/${endpoint}`, { method: 'POST', body: JSON.stringify({ nombre: name }) });
+  // Devuelven { ok, error } para que la pestaña pueda avisar cuando el backend
+  // rechaza (nombre repetido, elemento en uso). Antes se ignoraba la respuesta
+  // y el fallo era invisible: el elemento no se agregaba y nadie sabía por qué.
+  const handleLookupAdd = (endpoint: string) => async (name: string): Promise<ResultadoLookup> => {
+    const res = await guardedFetch(`${API}/${endpoint}`, {
+      method: 'POST', body: JSON.stringify({ nombre: name }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, error: json?.error ?? 'No se pudo guardar' };
     refreshAll();
+    return { ok: true };
   };
 
-  const handleLookupDelete = (endpoint: string) => async (id: number) => {
-    if (!window.confirm('¿Eliminar este elemento?')) return;
-    await guardedFetch(`${API}/${endpoint}/${id}`, { method: 'DELETE' });
+  const handleLookupDelete = (endpoint: string) => async (id: number): Promise<ResultadoLookup> => {
+    // Cancelar no es un error: se responde ok para que no salte ningún aviso.
+    if (!window.confirm('¿Eliminar este elemento?')) return { ok: true };
+    const res = await guardedFetch(`${API}/${endpoint}/${id}`, { method: 'DELETE' });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, error: json?.error ?? 'No se pudo eliminar' };
     refreshAll();
+    return { ok: true };
   };
 
-  const handleLookupEdit = (endpoint: string) => async (id: number, name: string) => {
-    await guardedFetch(`${API}/${endpoint}/${id}`, { method: 'PATCH', body: JSON.stringify({ nombre: name }) });
+  const handleLookupEdit = (endpoint: string) => async (id: number, name: string): Promise<ResultadoLookup> => {
+    const res = await guardedFetch(`${API}/${endpoint}/${id}`, {
+      method: 'PATCH', body: JSON.stringify({ nombre: name }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!res.ok) return { ok: false, error: json?.error ?? 'No se pudo guardar' };
     refreshAll();
+    return { ok: true };
   };
 
   const ActiveIcon = TAB_META[tab].icon;
@@ -359,22 +376,26 @@ export default function DashboardPage() {
               />
             )}
             {tab === 'aromas' && (
-              <LookupTab title="Tipos de Aroma" items={aromas} placeholder="Nuevo aroma..."
+              <LookupTab title="Tipos de Aroma" nuevo="Nuevo aroma" editar="Editar aroma"
+                ejemplo="Ej: Amaderado, Cítrico, Oriental" items={aromas}
                 onAdd={handleLookupAdd('tipos-aroma')} onDelete={handleLookupDelete('tipos-aroma')} onEdit={handleLookupEdit('tipos-aroma')}
                 importEntity="aromas" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
             {tab === 'ocasiones' && (
-              <LookupTab title="Ocasiones" items={ocasiones} placeholder="Nueva ocasion..."
+              <LookupTab title="Ocasiones" nuevo="Nueva ocasión" editar="Editar ocasión"
+                ejemplo="Ej: Diario, Noche, Oficina" items={ocasiones}
                 onAdd={handleLookupAdd('ocasiones')} onDelete={handleLookupDelete('ocasiones')} onEdit={handleLookupEdit('ocasiones')}
                 importEntity="ocasiones" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
             {tab === 'categorias' && (
-              <LookupTab title="Categorias" items={categorias} placeholder="Nueva categoria..."
+              <LookupTab title="Categorias" nuevo="Nueva categoría" editar="Editar categoría"
+                ejemplo="Ej: Árabes, Diseñador, Nicho" items={categorias}
                 onAdd={handleLookupAdd('categorias')} onDelete={handleLookupDelete('categorias')} onEdit={handleLookupEdit('categorias')}
                 importEntity="categorias" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
             {tab === 'presentaciones' && (
-              <LookupTab title="Presentaciones" items={presentaciones} placeholder="Nueva presentacion (ej: 30ML)..."
+              <LookupTab title="Presentaciones" nuevo="Nueva presentación" editar="Editar presentación"
+                ejemplo="Ej: 30ML, 50 ml, 100 ml" items={presentaciones}
                 onAdd={handleLookupAdd('presentaciones')} onDelete={handleLookupDelete('presentaciones')} onEdit={handleLookupEdit('presentaciones')}
                 importEntity="presentaciones" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
