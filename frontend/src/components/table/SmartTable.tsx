@@ -1,4 +1,4 @@
-import { type ReactNode, useState, useRef, useCallback, useEffect } from 'react';
+import { type ReactNode, useState, useRef, useCallback } from 'react';
 import { Search, X, Filter, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -10,6 +10,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { cn } from '@/lib/utils';
 import type { ColumnDef, FilterValue } from './tableTypes';
 import { useTableControls } from './useTableControls';
+import { useMediaQuery } from './useMediaQuery';
 import { ColumnFilterPopover } from './ColumnFilterPopover';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100] as const;
@@ -54,19 +55,6 @@ function getPages(page: number, totalPages: number, compacto: boolean): (number 
   return [1, '...', page - 1, page, page + 1, '...', totalPages];
 }
 
-/** true en pantallas angostas (celular): el paginador usa la versión compacta. */
-function usePantallaAngosta() {
-  const [angosta, setAngosta] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 520px)');
-    const onChange = () => setAngosta(mq.matches);
-    onChange();
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return angosta;
-}
-
 export function SmartTable<T>({
   columns,
   rows,
@@ -78,7 +66,7 @@ export function SmartTable<T>({
 }: SmartTableProps<T>) {
   const { processed, sort, toggleSort, filters, setFilter, clearAll, search, setSearch, activeFiltersCount } =
     useTableControls(rows, columns);
-  const pantallaAngosta = usePantallaAngosta();
+  const pantallaAngosta = useMediaQuery('(max-width: 520px)');
 
   // ── Búsqueda en servidor (opcional) ──
   const isServerSearch = !!onServerSearch;
