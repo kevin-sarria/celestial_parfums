@@ -7,7 +7,7 @@ import { consumirPorVenta, revertirVenta } from './inventario.repository';
 type LineaVenta = { perfume_id: number; ml: number | null; cantidad: number };
 import { paginatedResponse } from '../utils/pagination';
 import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
-import { aplicarCodigoAVenta, liberarCodigoDeVenta, validarCodigoParaVenta } from '../services/anuncio.service';
+import { aplicarCodigoAVenta, liberarCodigoDeVenta, validarCodigoParaVenta, codigoCanjeadoDeVenta } from '../services/anuncio.service';
 
 const includeRel = {
   user: { select: { id: true, nombre: true, apellido: true, telefono: true, email: true } },
@@ -139,6 +139,21 @@ export const updateVenta = async (id: string, data: CreateVentaDTO) => {
   const ventaId = Number(id);
   const pagada = data.pagada ?? true;
   const codigo = data.codigo_descuento?.trim() || null;
+
+  /**
+   * Un cupón ya canjeado queda amarrado a su venta: cambiarlo o quitarlo desde
+   * el editor lo revivía en silencio y esa persona podía volver a usarlo. Para
+   * soltarlo hay que ELIMINAR la venta, que es una acción deliberada.
+   * La comprobación vive aquí y no solo en el formulario: la pantalla se puede
+   * saltar, el servidor no.
+   */
+  const yaCanjeado = await codigoCanjeadoDeVenta(ventaId);
+  if (yaCanjeado && (codigo?.trim().toUpperCase() ?? '') !== yaCanjeado) {
+    throw new Error(
+      `Esta venta ya canjeó el cupón ${yaCanjeado}. Para cambiarlo hay que eliminar la venta y volver a registrarla.`,
+    );
+  }
+
   if (codigo) await validarCodigoParaVenta(codigo, ventaId);
   await prisma.$transaction(async (tx) => {
     // Se deshace el consumo anterior: si no, editar contaría doble
@@ -161,8 +176,9 @@ export const updateVenta = async (id: string, data: CreateVentaDTO) => {
     const { costo } = await consumirPorVenta(tx, ventaId, new Date(data.dia), lineas);
     await tx.venta.update({ where: { id: ventaId }, data: { costo_mercancia: costo } });
   });
-  // Si el código cambió o se quitó, el anterior vuelve a quedar activo
-  await liberarCodigoDeVenta(ventaId, codigo);
+  // Si el código cambió o se quitó, el anterior vuelve a quedar activo.
+  // Los ya canjeados NO: esos solo se sueltan borrando la venta.
+  await liberarCodigoDeVenta(ventaId, codigo, true);
   if (codigo) await aplicarCodigoAVenta(codigo, ventaId, pagada);
   return mapVenta(await prisma.venta.findUnique({ where: { id: ventaId }, include: includeRel }));
 };

@@ -367,13 +367,35 @@ export const canjearCodigoEnCredito = async (codigoStr: string, ventaId: number)
 /**
  * Libera los códigos enlazados a una venta (editada sin código o eliminada):
  * vuelven a estar activos para que la persona pueda usarlos en otra compra.
+ *
+ * @param soloNoCanjeados true = deja quietos los ya canjeados. Se usa al EDITAR.
+ * Un cupón consumido queda amarrado a su venta y solo se suelta si la venta se
+ * ELIMINA. Antes se liberaba cualquiera, así que bastaba con borrar el texto del
+ * campo —incluso sin querer— para revivir un cupón ya gastado.
  */
-export const liberarCodigoDeVenta = async (ventaId: number, exceptoCodigo?: string | null) => {
+export const liberarCodigoDeVenta = async (
+  ventaId: number,
+  exceptoCodigo?: string | null,
+  soloNoCanjeados = false,
+) => {
   await prisma.descuentoCodigo.updateMany({
     where: {
       venta_id: ventaId,
       ...(exceptoCodigo ? { NOT: { codigo: normalizarCodigo(exceptoCodigo) } } : {}),
+      ...(soloNoCanjeados ? { NOT: { estado: 'canjeado' } } : {}),
     },
     data: { venta_id: null, estado: 'activo', canjeado_at: null },
   });
+};
+
+/**
+ * El código canjeado que tiene una venta, si lo hay. Sirve para impedir que se
+ * cambie al editar: la regla vive en el servidor, no en el formulario.
+ */
+export const codigoCanjeadoDeVenta = async (ventaId: number) => {
+  const row = await prisma.descuentoCodigo.findFirst({
+    where: { venta_id: ventaId, estado: 'canjeado' },
+    select: { codigo: true },
+  });
+  return row?.codigo ?? null;
 };
