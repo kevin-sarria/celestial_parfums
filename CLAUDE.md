@@ -172,9 +172,24 @@ de la misma tarjeta: *"se ve pésimo y nada similar a un dashboard serio"*. El o
    Sueltos junto al título se leen como acciones de toda la página y dejan una banda de
    botones sin caja. Esto lo corrigió el dueño explícitamente.
 
-Todo es opt-in: las pestañas que aún no se rediseñan (Ola 3) se ven igual que siempre.
+**Aplicada en las 14 pestañas** de las tres olas. La única excepción son las pantallas que
+no tienen tabla con barra (Tamaños y fórmulas, Inventario): ahí sus botones van en el
+`EncabezadoPagina`, porque no hay barra donde colgarlos.
+
 Los comparativos entre meses **no van en las cajas**: van a Reportes, que es la pantalla
 de analizar, no la de registrar.
+
+## Reportes — selector de periodo (Ola 3, 2026-08-02)
+
+- `ReporteShell` acepta `acciones` para los controles del reporte. En Ventas hay un
+  selector de **3 / 6 / 12 meses** que recorta la serie **solo del gráfico**.
+- La tarjeta "Ventas" dice cómo va el último mes contra el anterior
+  (`variacionUltimoMes`). Devuelve null si el mes previo fue cero: un "+∞ %" no informa.
+- **El número de ventas SIEMPRE son 12 meses** aunque el gráfico muestre 3: el selector no
+  filtra el resto del reporte. La etiqueta lo dice explícitamente en vez de mentir.
+- **GOTCHA repetido**: `Intl.DateTimeFormat` necesita `timeZone: 'UTC'` al formatear un mes
+  construido con `Date.UTC`. Sin eso, en Colombia (UTC-5) el día 1 se corre al mes anterior
+  y "agosto" se lee "julio". Se detectó mirando la pantalla, no compilando.
 
 ## Avisos al usuario (toasts)
 
@@ -1196,12 +1211,10 @@ subir: respaldo por SSH y verificar que el archivo pese cientos de KB, no 20 byt
 1. **Rediseño del dashboard, en 3 olas** (el dueño señaló 9 pantallas el 2026-08-01).
    Diseño y plan escritos en `docs/superpowers/`. **Ola 1 HECHA** (cimientos de la tabla +
    Clasificaciones + Usuarios, rama `rediseno-dashboard-ola1`; ver la sección "La tabla del
-   dashboard"). **Ola 2 HECHA** (Ventas y Créditos, rama `rediseno-dashboard-ola2`; ver las
-   dos secciones de arriba). **Ola 3 pendiente** = Inventario, Proveedores, Insumos y
-   precios, Costos de producción, Tamaños y fórmulas — les falta la maquetación nueva,
-   `numerada`, `tarjetaMovil` y las acciones dentro de la barra de la tabla.
-   **Pendiente aparte, pedido por el dueño**: en Reportes, un selector para comparar meses
-   en los gráficos (ahí es donde se analiza; las cajas de Ventas no llevan comparativos).
+   dashboard"). **Ola 2 HECHA** (Ventas y Créditos) y **Ola 3 HECHA** (Inventario,
+   Proveedores, Insumos y precios, Costos de producción, Tamaños y fórmulas, más los tres
+   Reportes con su selector de periodo). Todo en la rama `rediseno-dashboard-ola2`.
+   **El rediseño está completo**; lo que queda son mejoras de fondo, no de forma.
 2. **8 líneas de venta sin talla**: las ventas 1179, 1180, 1181 y 1249 dicen "200/250 ML"
    (no se sabe si fue el de 200 o el de 250) y la 1219 es un "Combo Personalizado" con dos
    tallas en una línea. Solo el dueño puede decir cuál era.
