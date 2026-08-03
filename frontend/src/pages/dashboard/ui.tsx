@@ -138,21 +138,66 @@ export function FormError({ children }: { children: ReactNode }) {
 interface StatCardProps {
   label: string;
   value: ReactNode;
+  /** Línea de apoyo bajo la cifra (el matiz que no cabe en la etiqueta). */
+  nota?: ReactNode;
 }
 
-/** Tarjeta de métrica (totales de ventas, pagos, etc.). */
-export function StatCard({ label, value }: StatCardProps) {
+/**
+ * Tarjeta de métrica.
+ *
+ * Va en `bg-card` (blanca) porque vive sobre el fondo marfil de la página. Antes
+ * era `bg-background` DENTRO de una tarjeta blanca, o sea al revés: parecía un
+ * hueco hundido en vez de un elemento que resalta.
+ */
+export function StatCard({ label, value, nota }: StatCardProps) {
   return (
-    <div className="min-w-44 rounded-xl border border-border bg-background px-4 py-3">
+    <div className="rounded-xl border border-border bg-card px-4 py-3.5 shadow-[0_1px_3px_rgb(0_0_0/0.04)]">
       <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </span>
-      <span className="mt-1 block font-display text-xl font-medium text-foreground">{value}</span>
+      <span className="mt-1.5 block font-display text-2xl font-medium text-foreground">{value}</span>
+      {nota && <span className="mt-1 block text-[12px] leading-snug text-muted-foreground">{nota}</span>}
     </div>
   );
 }
 
-/** Contenedor de tarjetas de métricas. */
+/** Contenedor de métricas de las pestañas que aún no se rediseñan. */
 export function StatRow({ children }: { children: ReactNode }) {
   return <div className="flex flex-wrap gap-3">{children}</div>;
+}
+
+/**
+ * Título y acciones de la pantalla, FUERA de la tarjeta de contenido.
+ *
+ * Meter el título, los botones, las métricas, el buscador y la tabla dentro de
+ * la misma tarjeta deja seis cosas distintas en el mismo plano visual y se lee
+ * como un formulario largo, no como un panel.
+ */
+export function EncabezadoPagina({ titulo, count, children }: {
+  titulo: string;
+  count?: number | string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <h1 className="flex items-center gap-2.5 font-display text-xl font-medium text-foreground">
+        {titulo}
+        {count !== undefined && (
+          <Badge variant="secondary" className="rounded-full px-2.5 font-sans text-[11px] font-semibold">
+            {count}
+          </Badge>
+        )}
+      </h1>
+      {children && <div className="flex flex-wrap items-center gap-2">{children}</div>}
+    </div>
+  );
+}
+
+/**
+ * Rejilla de métricas sobre el fondo de la página.
+ * Rejilla y no `flex-wrap`: así las tarjetas quedan del mismo ancho, en vez de
+ * dejar sobras al final de la fila.
+ */
+export function FranjaMetricas({ children }: { children: ReactNode }) {
+  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{children}</div>;
 }
