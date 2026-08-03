@@ -67,24 +67,6 @@ export function ReporteShell({ titulo, cargando, error, onReintentar, acciones, 
   );
 }
 
-/**
- * Variación entre el último mes de una serie y el anterior.
- * Devuelve null si no hay con qué comparar o si el mes previo fue cero: un
- * "+∞ %" no informa nada.
- */
-export function variacionUltimoMes(serie: { mes: string; ingresos: number }[]) {
-  if (serie.length < 2) return null;
-  const actual = serie[serie.length - 1];
-  const previo = serie[serie.length - 2];
-  if (previo.ingresos <= 0) return null;
-  return {
-    pct: Math.round(((actual.ingresos - previo.ingresos) / previo.ingresos) * 100),
-    mesActual: actual.mes,
-    mesPrevio: previo.mes,
-    valorPrevio: previo.ingresos,
-  };
-}
-
 /** Caja con el gráfico o una tabla adentro, para que todo respire igual. */
 export function Panel({ children, className = '' }: { children: ReactNode; className?: string }) {
   return <div className={`rounded-xl border border-border bg-card p-4 ${className}`}>{children}</div>;

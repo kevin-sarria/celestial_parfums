@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NativeSelect } from '@/components/ui/native-select';
 import GraficoBarras, { SERIE_A, SERIE_B } from '../GraficoBarras';
-import { Panel, Ranking, ReporteShell, useReporte, variacionUltimoMes } from '../reportes/comun';
+import { Panel, Ranking, ReporteShell, useReporte } from '../reportes/comun';
 import { formatPrice } from '../helpers';
 import { FranjaMetricas, StatCard } from '../ui';
 import type { GuardedFetch } from '../types';
@@ -16,6 +16,24 @@ interface ReporteVentas {
   a_credito: number;
   top_productos: { perfume_id: number; nombre: string; unidades: number }[];
   por_talla: { ml: number | null; unidades: number }[];
+}
+
+/**
+ * Variación entre el último mes de una serie y el anterior.
+ * Devuelve null si no hay con qué comparar o si el mes previo fue cero: un
+ * "+∞ %" no informa nada.
+ */
+function variacionUltimoMes(serie: { mes: string; ingresos: number }[]) {
+  if (serie.length < 2) return null;
+  const actual = serie[serie.length - 1];
+  const previo = serie[serie.length - 2];
+  if (previo.ingresos <= 0) return null;
+  return {
+    pct: Math.round(((actual.ingresos - previo.ingresos) / previo.ingresos) * 100),
+    mesActual: actual.mes,
+    mesPrevio: previo.mes,
+    valorPrevio: previo.ingresos,
+  };
 }
 
 const unidades = (n: number) => `${n} u`;
