@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Boxes, Droplets, FlaskConical, ShoppingCart, Trash2, Upload } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Boxes, Droplets, FlaskConical, PackagePlus, ShoppingCart, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +12,7 @@ import ExportButton from '../../../components/ExportButton';
 import ImportModal from '../../../components/ImportModal';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice, fmtDate } from '../helpers';
-import { Field, FieldRow, Section, SectionTitle, StatCard, StatRow, Toolbar, ToolbarActions } from '../ui';
+import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, StatCard } from '../ui';
 import { mlDiluyente } from '../../../application/costeoCotizacion';
 import type { GuardedFetch, InventarioInsumo, Produccion } from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
@@ -222,42 +223,58 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
   const porPedir = insumos.filter((i) => i.bajo_minimo);
 
   return (
-    <Section>
-      <Toolbar>
-        <SectionTitle count={insumos.length}>Inventario</SectionTitle>
-        <ToolbarActions>
-          {/* La hoja de conteo es la forma cómoda de sembrar el stock inicial */}
-          <ExportButton entity="inventario" guardedFetch={guardedFetch} label="Hoja de conteo" />
-          <ExportButton entity="insumos" guardedFetch={guardedFetch} label="Insumos" />
-          <ExportButton entity="movimientos" guardedFetch={guardedFetch} label="Movimientos" />
-          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
-            <Upload className="size-4" /> Importar conteo
-          </Button>
+    <div className="space-y-4">
+      {/* Las tres cosas que de verdad se hacen aquí, en el orden en que
+          ocurren: entra material, se arma producto, sale material. Antes
+          estaban revueltas con los botones de Excel y no se distinguía
+          cuál era la acción importante. */}
+      <EncabezadoPagina titulo="Inventario" count={insumos.length}>
           <Button size="sm" variant="outline" onClick={() => setSalidaAbierta(true)}>
             <Droplets className="size-4" /> Registrar salida
           </Button>
-          <Button size="sm" onClick={() => { setProdAbierta(true); setFormulaId(formulas[0]?.id ?? ''); }}>
+          <Button size="sm" variant="outline"
+            onClick={() => { setProdAbierta(true); setFormulaId(formulas[0]?.id ?? ''); }}>
             <FlaskConical className="size-4" /> Registrar producción
           </Button>
-        </ToolbarActions>
-      </Toolbar>
+          <Button size="sm" asChild>
+            <Link to="/dashboard/pagos?nueva=1">
+              <PackagePlus className="size-4" /> Registrar llegada
+            </Link>
+          </Button>
+      </EncabezadoPagina>
+
+      {/* Excel: es mantenimiento, no la tarea del día. Va aparte y en pequeño. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border/70 pb-3 text-[12px] text-muted-foreground">
+        <span className="font-medium uppercase tracking-widest text-[11px]">Excel</span>
+        {/* La hoja de conteo es la forma cómoda de sembrar el stock inicial */}
+        <ExportButton entity="inventario" guardedFetch={guardedFetch} label="Hoja de conteo" />
+        <ExportButton entity="insumos" guardedFetch={guardedFetch} label="Insumos" />
+        <ExportButton entity="movimientos" guardedFetch={guardedFetch} label="Movimientos" />
+        <button type="button" className="font-medium text-primary hover:underline"
+          onClick={() => setImportOpen(true)}>
+          Importar conteo
+        </button>
+      </div>
 
       {error && (
-        <p className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
+        <p className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
           {error}
           <Button size="sm" variant="outline" className="h-7" onClick={load}>Reintentar</Button>
         </p>
       )}
 
-      <StatRow>
-        <StatCard label="Valor del inventario" value={formatPrice(valorTotal)} />
-        <StatCard label="Insumos registrados" value={String(insumos.length)} />
-        <StatCard label="Sin existencias" value={String(sinStock)} />
-      </StatRow>
+      <FranjaMetricas>
+        <StatCard label="Valor del inventario" value={formatPrice(valorTotal)}
+          nota="Lo que tienes guardado, al costo promedio" />
+        <StatCard label="Insumos registrados" value={String(insumos.length)}
+          nota="Materias primas, envases y accesorios" />
+        <StatCard label="Sin existencias" value={String(sinStock)}
+          nota={sinStock === 0 ? 'Todo con stock' : 'Insumos en cero: revisa antes de producir'} />
+      </FranjaMetricas>
 
       {/* Lista de pedido: lo que hay que encargar, con cuánto */}
       {porPedir.length > 0 && (
-        <div className="mt-4 rounded-xl border border-amber-400/45 bg-amber-400/10 px-3.5 py-3">
+        <div className="rounded-xl border border-amber-400/45 bg-amber-400/10 px-3.5 py-3">
           <p className="flex items-center gap-2 text-[13.5px] font-medium text-amber-800">
             <ShoppingCart className="size-4" />
             Hora de pedir: {porPedir.length} {porPedir.length === 1 ? 'insumo está' : 'insumos están'} en el mínimo
@@ -278,7 +295,7 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
 
       {/* Lo que se fue sin vender: muestras es marketing, merma es pérdida */}
       {(salidasMes.muestras > 0 || salidasMes.mermas > 0 || salidasMes.ajustes > 0) && (
-        <p className="mt-4 rounded-lg border border-border bg-secondary/40 px-3.5 py-2.5 text-[12.5px] text-muted-foreground">
+        <p className="rounded-lg border border-border bg-secondary/40 px-3.5 py-2.5 text-[12.5px] text-muted-foreground">
           Este mes salió material sin venta:
           {salidasMes.muestras > 0 && <> <strong className="text-foreground">{formatPrice(salidasMes.muestras)}</strong> en muestras y mostrario</>}
           {salidasMes.mermas > 0 && <> · <strong className="text-foreground">{formatPrice(salidasMes.mermas)}</strong> en mermas</>}
@@ -287,7 +304,8 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
         </p>
       )}
 
-      <p className="mb-3 mt-5 text-[12.5px] text-muted-foreground">
+      <Section>
+      <p className="mb-3 text-[12.5px] text-muted-foreground">
         El stock entra con las compras a proveedores y sale con la producción. Usa
         <strong className="text-foreground"> Ajustar</strong> para sembrar lo que ya tienes hoy
         o corregir tras un conteo — la diferencia que aparezca es el desperdicio del día a día
@@ -329,9 +347,10 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
           </tbody>
         </table>
       </div>
+      </Section>
 
       {/* Lotes armados */}
-      <h3 className="mb-2 mt-8 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+      <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
         <Boxes className="size-3.5" /> Producciones recientes
       </h3>
       {producciones.length === 0 ? (
@@ -542,6 +561,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
           )}
         </Modal>
       )}
-    </Section>
+    </div>
   );
 }

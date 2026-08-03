@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pencil, Trash2, Upload } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,7 +13,7 @@ import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { pagosColumns } from '../columns';
 import { API_PAGOS, API_EMPRESAS, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
-import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, StatCard, StatRow } from '../ui';
+import { EncabezadoPagina, FranjaMetricas, Section, Field, FieldRow, FormError, StatCard } from '../ui';
 import type { GuardedFetch, Pago, Empresa, PagoForm } from '../types';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { emptyPagoForm } from '../types';
@@ -62,10 +63,20 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
 
   useEffect(() => { load(1); cargarInsumos(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const openCreate = () => {
+  // Se llega aquí desde el botón "Registrar llegada" de Inventario
+  // (/dashboard/pagos?nueva=1): abre el formulario de una vez, sin pedirle al
+  // dueño que adivine que "registrar lo que llegó" vive bajo "Proveedores".
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('nueva') === '1') {
+      openCreate();
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function openCreate() {
     setForm(emptyPagoForm()); setError(''); setLineas([]); setArchivos([]);
     setModal({ open: true, editId: null });
-  };
+  }
   const openEdit = (p: Pago) => {
     setForm({
       dia: p.dia.slice(0, 10), empresa_id: p.empresa.id,
@@ -131,53 +142,81 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
     finally { setLoading(false); }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('¿Eliminar este pago?')) return;
-    await guardedFetch(`${API_PAGOS}/${id}`, { method: 'DELETE' }); load();
+  const handleDelete = async (p: Pago) => {
+    if (!window.confirm(`¿Eliminar el pago a ${p.empresa.nombre}? Si tenia lineas de compra, el inventario que entro con ellas se revierte.`)) return;
+    try {
+      const res = await guardedFetch(`${API_PAGOS}/${p.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        toast.error(j?.error ?? 'No se pudo eliminar', { id: 'pagos' });
+        return;
+      }
+      load();
+    } catch { toast.error('No se pudo conectar con el servidor', { id: 'pagos' }); }
   };
 
-  return (
+  const acciones = (p: Pago, conTexto: boolean) => (
     <>
+      <Button
+        variant={conTexto ? 'outline' : 'ghost'}
+        size={conTexto ? 'sm' : 'icon'}
+        className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-foreground'}
+        onClick={() => openEdit(p)}
+        title="Editar"
+      >
+        <Pencil className="size-4" />{conTexto && ' Editar'}
+      </Button>
+      <Button
+        variant={conTexto ? 'outline' : 'ghost'}
+        size={conTexto ? 'sm' : 'icon'}
+        className={conTexto ? 'text-destructive' : 'size-8 text-muted-foreground hover:text-destructive'}
+        onClick={() => handleDelete(p)}
+        title="Eliminar"
+      >
+        <Trash2 className="size-4" />{conTexto && ' Borrar'}
+      </Button>
+    </>
+  );
+
+  return (
+    <div className="space-y-4">
+      <EncabezadoPagina titulo="Proveedores" count={total} />
+
+      {totales && (
+        <FranjaMetricas>
+          <StatCard label="Total en compras" value={formatPrice(totales.total_compras)}
+            nota="Lo pagado por material, sin el transporte" />
+          <StatCard label="Total en envios" value={formatPrice(totales.total_envios)}
+            nota="El flete tambien es parte de lo que costo el material" />
+          <StatCard label="Total general" value={formatPrice(totales.total_compras + totales.total_envios)}
+            nota="Todo lo que le has pagado a tus proveedores" />
+        </FranjaMetricas>
+      )}
+
       <Section>
-        <Toolbar>
-          <SectionTitle count={total}>Pagos a Proveedores</SectionTitle>
-          <ToolbarActions>
-            <ExportButton entity="proveedores" guardedFetch={guardedFetch} />
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-              <Upload className="size-4" /> Importar
-            </Button>
-            <Button size="sm" onClick={openCreate}>+ Registrar pago</Button>
-          </ToolbarActions>
-        </Toolbar>
-
-        {totales && (
-          <StatRow>
-            <StatCard label="Total en compras" value={formatPrice(totales.total_compras)} />
-            <StatCard label="Total en envios" value={formatPrice(totales.total_envios)} />
-            <StatCard label="Total general" value={formatPrice(totales.total_compras + totales.total_envios)} />
-          </StatRow>
-        )}
-
         <SmartTable
           columns={pagosColumns}
           rows={pagos}
           rowKey={p => p.id}
+          numerada
+          tarjetaMovil
           onServerSearch={t => { setSearchTerm(t); load(1, pageSize, t); }}
           pagination={{
             page, totalRows: total, pageSize,
             onPageChange: p => load(p, pageSize),
             onPageSizeChange: s => { setPageSize(s); load(1, s); },
           }}
-          renderActions={p => (
+          renderActions={p => acciones(p, false)}
+          accionesMovil={p => acciones(p, true)}
+          acciones={
             <>
-              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => openEdit(p)} title="Editar">
-                <Pencil className="size-4" />
+              <ExportButton entity="proveedores" guardedFetch={guardedFetch} />
+              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <Upload className="size-4" /> Importar
               </Button>
-              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(p.id)} title="Eliminar">
-                <Trash2 className="size-4" />
-              </Button>
+              <Button size="sm" onClick={openCreate}>+ Registrar pago</Button>
             </>
-          )}
+          }
         />
       </Section>
 
@@ -269,6 +308,7 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
           archivos={archivos}
           onArchivos={setArchivos}
           flete={Number(form.coste_envio) || 0}
+          onInsumoCreado={i => setInsumos(prev => [...prev, i])}
         />
 
         <Field label="Detalles adicionales">
@@ -277,6 +317,6 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
         </Field>
         <FormError>{error}</FormError>
       </Modal>
-    </>
+    </div>
   );
 }

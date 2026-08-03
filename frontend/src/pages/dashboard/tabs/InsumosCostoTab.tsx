@@ -9,7 +9,7 @@ import Modal from '../../../components/Modal';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
-import { Section, SectionTitle, Toolbar, Field, FieldRow } from '../ui';
+import { EncabezadoPagina, Section, Field, FieldRow } from '../ui';
 import type { GuardedFetch } from '../types';
 import type { Insumo, InsumoAlcance, InsumoTipo, InsumoUnidad } from '../../../domain/entities/cotizacion.types';
 
@@ -73,28 +73,34 @@ export function InsumosCostoTab({ guardedFetch }: { guardedFetch: GuardedFetch }
         method: modal.id ? 'PATCH' : 'POST',
         body: JSON.stringify({ nombre: form.nombre.trim(), tipo: form.tipo, unidad: form.unidad, alcance: form.alcance, precio }),
       });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? 'No se pudo guardar'); return; }
+      const json = await res.json().catch(() => null);
+      if (!res.ok) { setError(json?.error ?? 'No se pudo guardar'); return; }
       setModal({ open: false, id: null }); load();
-    } finally { setSaving(false); }
+    } catch { setError('No se pudo conectar con el servidor'); }
+    finally { setSaving(false); }
   };
 
   const eliminar = async (i: Insumo) => {
-    if (!window.confirm(`¿Eliminar "${i.nombre}"?`)) return;
-    const res = await guardedFetch(`${API}/insumos/${i.id}`, { method: 'DELETE' });
-    if (!res.ok) { toast.error('No se pudo eliminar: puede estar en uso por un tamaño', { id: 'No se pudo eliminar: puede estar en uso por un tamaño' }); return; }
-    load();
+    if (!window.confirm(`¿Eliminar "${i.nombre}"? Si algún tamaño o fórmula lo usa, no se podrá.`)) return;
+    try {
+      const res = await guardedFetch(`${API}/insumos/${i.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const j = await res.json().catch(() => null);
+        // El mensaje del servidor explica la causa mejor que un texto genérico
+        toast.error(j?.error ?? 'No se pudo eliminar: puede estar en uso por un tamaño', { id: 'insumos' });
+        return;
+      }
+      load();
+    } catch { toast.error('No se pudo conectar con el servidor', { id: 'insumos' }); }
   };
 
   if (loading) return <Section><PerfumeSpinner /></Section>;
 
   return (
-    <Section>
-      <Toolbar>
-        <SectionTitle count={items.length}>Costos de producción</SectionTitle>
-      </Toolbar>
+    <div className="space-y-4">
+      <EncabezadoPagina titulo="Insumos y precios" count={items.length} />
 
-      <p className="mb-5 flex items-start gap-2 rounded-xl border border-primary/25 bg-brand-soft/60 px-3.5 py-3 text-[13px] leading-relaxed text-primary">
+      <p className="flex items-start gap-2 rounded-xl border border-primary/25 bg-brand-soft/60 px-3.5 py-3 text-[13px] leading-relaxed text-primary">
         <Info className="mt-0.5 size-4 shrink-0" />
         <span>
           Aquí registras <strong>cuánto te cuesta hoy</strong> cada cosa. Con estos números el
@@ -104,13 +110,13 @@ export function InsumosCostoTab({ guardedFetch }: { guardedFetch: GuardedFetch }
       </p>
 
       {errorCarga && (
-        <p className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
+        <p className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
           {errorCarga}
           <Button size="sm" variant="outline" className="h-7" onClick={() => load()}>Reintentar</Button>
         </p>
       )}
 
-      <div className="flex flex-col gap-8">
+      <Section className="flex flex-col gap-8">
         {GRUPOS.map(({ tipo, titulo, ayuda }) => {
           const delGrupo = items.filter((i) => i.tipo === tipo);
           return (
@@ -149,7 +155,7 @@ export function InsumosCostoTab({ guardedFetch }: { guardedFetch: GuardedFetch }
             </div>
           );
         })}
-      </div>
+      </Section>
 
       <Modal
         open={modal.open}
@@ -206,6 +212,6 @@ export function InsumosCostoTab({ guardedFetch }: { guardedFetch: GuardedFetch }
           {error && <p className="text-[12.5px] font-medium text-destructive">{error}</p>}
         </div>
       </Modal>
-    </Section>
+    </div>
   );
 }

@@ -9,7 +9,7 @@ import Modal from '../../../components/Modal';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
-import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow } from '../ui';
+import { EncabezadoPagina, Section, Field, FieldRow } from '../ui';
 import { mlDiluyente } from '../../../application/costeoCotizacion';
 import type { GuardedFetch } from '../types';
 import type { EscalaPrecio, FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
@@ -197,15 +197,12 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
   if (loading) return <Section><PerfumeSpinner /></Section>;
 
   return (
-    <Section>
-      <Toolbar>
-        <SectionTitle count={formulas.length}>Tamaños y fórmulas</SectionTitle>
-        <ToolbarActions>
-          <Button size="sm" onClick={abrirNuevo}><Plus className="size-4" /> Nuevo tamaño</Button>
-        </ToolbarActions>
-      </Toolbar>
+    <div className="space-y-4">
+      <EncabezadoPagina titulo="Tamaños y fórmulas" count={formulas.length}>
+        <Button size="sm" onClick={abrirNuevo}><Plus className="size-4" /> Nuevo tamaño</Button>
+      </EncabezadoPagina>
 
-      <p className="mb-5 flex items-start gap-2 rounded-xl border border-primary/25 bg-brand-soft/60 px-3.5 py-3 text-[13px] leading-relaxed text-primary">
+      <p className="flex items-start gap-2 rounded-xl border border-primary/25 bg-brand-soft/60 px-3.5 py-3 text-[13px] leading-relaxed text-primary">
         <Info className="mt-0.5 size-4 shrink-0" />
         <span>
           Define cada tamaño que fabricas y su receta. El <strong>diluyente se calcula solo</strong>
@@ -244,16 +241,8 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
                 <div className="min-w-40 flex-1">
                   <p className="text-[15px] font-medium text-foreground">{f.nombre}</p>
                   <p className="text-[12.5px] text-muted-foreground">
-                    {f.ml_total} ml · esencia {f.esencia_ml} · diluyente {f.diluyente_ml} ·
-                    sellador {f.sellador_ml} · feromonas {f.feromonas_ml}
-                    {f.envase_nombre && ` · envase: ${f.envase_nombre}`}
-                  </p>
-                  <p className="text-[12.5px]">
-                    {f.esencia_nombre ? (
-                      <span className="text-primary">Usa: {f.esencia_nombre} ({formatPrice(f.esencia_precio ?? 0)}/ml)</span>
-                    ) : (
-                      <span className="font-medium text-amber-700">Falta elegir qué esencia usa</span>
-                    )}
+                    Para armar <strong className="font-medium text-foreground">un</strong> frasco
+                    de {f.ml_total} ml
                   </p>
                 </div>
                 <Button size="icon" variant="ghost" className="size-8" onClick={() => abrirEditar(f)}>
@@ -262,6 +251,45 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
                 <Button size="icon" variant="ghost" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => eliminar(f)}>
                   <Trash2 className="size-4" />
                 </Button>
+              </div>
+
+              {/* La receta era un párrafo corrido ("esencia 15 · diluyente 14.3 ·
+                  sellador 0.4…") y no se podía leer de un vistazo. En rejilla,
+                  cada ingrediente tiene su etiqueta y su cantidad alineada. */}
+              <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+                {[
+                  { t: 'Esencia', v: f.esencia_ml },
+                  { t: 'Diluyente', v: f.diluyente_ml },
+                  { t: 'Sellador', v: f.sellador_ml },
+                  { t: 'Feromonas', v: f.feromonas_ml },
+                ].map((i) => (
+                  <div key={i.t} className="rounded-lg bg-secondary/50 px-2.5 py-1.5">
+                    <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">{i.t}</dt>
+                    <dd className="text-[13.5px] font-medium tabular-nums text-foreground">{i.v} ml</dd>
+                  </div>
+                ))}
+              </dl>
+
+              <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1 text-[12.5px]">
+                <span className="text-muted-foreground">
+                  Envase:{' '}
+                  <span className={f.envase_nombre ? 'text-foreground' : 'font-medium text-amber-700'}>
+                    {f.envase_nombre ?? 'sin elegir'}
+                  </span>
+                </span>
+                {/* Sin esencia asignada el costo sale de la genérica y el margen
+                    de este tamaño deja de ser real. */}
+                <span className="text-muted-foreground">
+                  Esencia:{' '}
+                  {f.esencia_nombre ? (
+                    <span className="text-foreground">
+                      {f.esencia_nombre}{' '}
+                      <span className="text-muted-foreground">({formatPrice(f.esencia_precio ?? 0)}/ml)</span>
+                    </span>
+                  ) : (
+                    <span className="font-medium text-amber-700">falta elegirla</span>
+                  )}
+                </span>
               </div>
 
               {/* Escalas de precio mayorista */}
@@ -436,6 +464,6 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
           {error && <p className="text-[12.5px] font-medium text-destructive">{error}</p>}
         </div>
       </Modal>
-    </Section>
+    </div>
   );
 }

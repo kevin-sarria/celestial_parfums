@@ -7,7 +7,7 @@ import CostoDeProduccion from '../cotizacion/CostoDeProduccion';
 import MargenPorFragancia from '../cotizacion/MargenPorFragancia';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
-import { Section, SectionTitle, Toolbar } from '../ui';
+import { EncabezadoPagina, Section } from '../ui';
 import type { GuardedFetch } from '../types';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
@@ -88,12 +88,10 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
   if (loading) return <Section><PerfumeSpinner /></Section>;
 
   return (
-    <Section>
-      <Toolbar>
-        <SectionTitle count={formulas.length}>Costos de producción</SectionTitle>
-      </Toolbar>
+    <div className="space-y-4">
+      <EncabezadoPagina titulo="Costos de producción" count={formulas.length} />
 
-      <p className="mb-5 flex items-start gap-2 rounded-xl border border-primary/25 bg-brand-soft/60 px-3.5 py-3 text-[13px] leading-relaxed text-primary">
+      <p className="flex items-start gap-2 rounded-xl border border-primary/25 bg-brand-soft/60 px-3.5 py-3 text-[13px] leading-relaxed text-primary">
         <Info className="mt-0.5 size-4 shrink-0" />
         <span>
           Cuánto te cuesta producir cada presentación, ya con los accesorios que la acompañan.
@@ -103,7 +101,7 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
       </p>
 
       {error && (
-        <p className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
+        <p className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
           {error}
           <Button size="sm" variant="outline" className="h-7" onClick={() => load()}>Reintentar</Button>
         </p>
@@ -138,7 +136,7 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
 
       {/* Costos que van una sola vez por envío, no por perfume */}
       {porPedido.length > 0 && (
-        <div className="mt-6 rounded-xl border border-border bg-secondary/40 p-4">
+        <div className="rounded-xl border border-border bg-secondary/40 p-4">
           <p className="flex items-center gap-2 text-[13.5px] font-medium text-foreground">
             <Package className="size-4 text-primary" /> Costos por pedido (no por perfume)
           </p>
@@ -155,6 +153,6 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
           </ul>
         </div>
       )}
-    </Section>
+    </div>
   );
 }
