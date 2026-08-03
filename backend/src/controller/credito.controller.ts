@@ -13,6 +13,14 @@ export const getCreditos = async (req: Request, res: Response) => {
   }
 };
 
+export const getTotales = async (_req: Request, res: Response) => {
+  try {
+    res.json({ data: await creditoService.getTotales() });
+  } catch (error: any) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
 export const addCredito = async (req: Request, res: Response) => {
   try {
     const data = await creditoService.createCredito(req.body);

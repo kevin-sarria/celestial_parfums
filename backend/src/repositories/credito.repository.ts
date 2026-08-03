@@ -282,3 +282,62 @@ export const deleteCredito = async (id: string) => {
   }
   return credito;
 };
+
+/**
+ * Resumen de la cartera para las tarjetas de la pestaña Créditos.
+ *
+ * Hace falta un endpoint porque "cuánto te deben" NO se puede calcular con la
+ * página que está en pantalla: daría un número que cambia al pasar de página.
+ *
+ * Se traen los créditos y sus abonos y se calcula en memoria, con el MISMO
+ * criterio que `mapCredito`. Es a propósito: si el total se calculara con otra
+ * fórmula, tarde o temprano la caja de arriba y la tabla de abajo dirían cosas
+ * distintas, y ahí ya no se sabe a cuál creerle.
+ */
+export const getCreditoTotales = async () => {
+  const ahora = new Date();
+  // Medianoche UTC: con hora local, todo lo del día 1 se saldría del mes
+  const inicioMes = new Date(Date.UTC(ahora.getFullYear(), ahora.getMonth(), 1));
+
+  const creditos = await prisma.credito.findMany({
+    select: {
+      user_id: true,
+      deuda_inicial: true,
+      fecha_limite: true,
+      abonos: { select: { monto: true, fecha: true } },
+    },
+  });
+
+  let totalEnDeuda = 0;
+  let vencido = 0;
+  let creditosVencidos = 0;
+  let abonadoMes = 0;
+  const deudores = new Set<number>();
+
+  for (const c of creditos) {
+    const abonado = c.abonos.reduce((s, a) => s + Number(a.monto), 0);
+    const saldo = Math.max(0, Number(c.deuda_inicial) - abonado);
+
+    abonadoMes += c.abonos
+      .filter((a) => a.fecha >= inicioMes)
+      .reduce((s, a) => s + Number(a.monto), 0);
+
+    if (saldo > 0) {
+      totalEnDeuda += saldo;
+      deudores.add(c.user_id);
+      // Vencido = sigue debiendo y ya pasó la fecha límite pactada
+      if (c.fecha_limite != null && Date.now() > c.fecha_limite.getTime()) {
+        vencido += saldo;
+        creditosVencidos += 1;
+      }
+    }
+  }
+
+  return {
+    total_en_deuda: Math.round(totalEnDeuda * 100) / 100,
+    clientes_con_deuda: deudores.size,
+    vencido: Math.round(vencido * 100) / 100,
+    creditos_vencidos: creditosVencidos,
+    abonado_mes: Math.round(abonadoMes * 100) / 100,
+  };
+};

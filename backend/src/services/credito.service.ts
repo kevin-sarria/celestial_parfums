@@ -3,6 +3,9 @@ import { CreateCreditoDTO } from '../types/credito.type';
 
 export const getAllCreditos = (page: number, limit: number, search?: string) => repo.getAllCreditos(page, limit, search);
 
+/** Resumen de la cartera (cuánto te deben, cuánto está vencido, abonos del mes). */
+export const getTotales = () => repo.getCreditoTotales();
+
 const validarCredito = (data: CreateCreditoDTO) => {
   if (!data.fecha || !data.user_id || !data.articulos)
     throw new Error('Fecha, persona y artículos son obligatorios');
