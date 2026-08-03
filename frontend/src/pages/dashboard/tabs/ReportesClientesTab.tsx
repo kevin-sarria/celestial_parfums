@@ -1,7 +1,7 @@
 import GraficoBarras, { SERIE_A } from '../GraficoBarras';
 import { Panel, Ranking, ReporteShell, useReporte } from '../reportes/comun';
 import { formatPrice } from '../helpers';
-import { StatCard, StatRow } from '../ui';
+import { FranjaMetricas, StatCard } from '../ui';
 import type { GuardedFetch } from '../types';
 
 interface ReporteClientes {
@@ -25,8 +25,8 @@ export function ReportesClientesTab({ guardedFetch }: { guardedFetch: GuardedFet
   return (
     <ReporteShell titulo="Reporte de clientes" cargando={cargando} error={error} onReintentar={recargar}>
       {datos && (
-        <>
-          <StatRow>
+        <div className="space-y-4">
+          <FranjaMetricas>
             <StatCard label="Clientes registrados" value={datos.total} />
             <StatCard label="Ya te compraron" value={datos.compradores} />
             {datos.con_deuda > 0 && (
@@ -35,9 +35,9 @@ export function ReportesClientesTab({ guardedFetch }: { guardedFetch: GuardedFet
                 value={formatPrice(datos.deuda_total)}
               />
             )}
-          </StatRow>
+          </FranjaMetricas>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Panel>
               <GraficoBarras
                 datos={datos.serie}
@@ -83,7 +83,7 @@ export function ReportesClientesTab({ guardedFetch }: { guardedFetch: GuardedFet
               color={SERIE_A}
             />
           </div>
-        </>
+        </div>
       )}
     </ReporteShell>
   );

@@ -1,7 +1,9 @@
+import { useState } from 'react';
+import { NativeSelect } from '@/components/ui/native-select';
 import GraficoBarras, { SERIE_A, SERIE_B } from '../GraficoBarras';
-import { Panel, Ranking, ReporteShell, useReporte } from '../reportes/comun';
+import { Panel, Ranking, ReporteShell, useReporte, variacionUltimoMes } from '../reportes/comun';
 import { formatPrice } from '../helpers';
-import { StatCard, StatRow } from '../ui';
+import { FranjaMetricas, StatCard } from '../ui';
 import type { GuardedFetch } from '../types';
 
 interface ReporteVentas {
@@ -25,40 +27,78 @@ const sinTalla = (d: ReporteVentas) =>
 /** Cuánto se vendió, qué se vendió y cuánto quedó de ganancia. */
 export function ReportesVentasTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
   const { datos, cargando, error, recargar } = useReporte<ReporteVentas>(guardedFetch, 'ventas');
+  /** Cuántos meses se ven en el gráfico. Comparar 12 meses de un vistazo cansa;
+      a veces solo interesa cómo va el trimestre. */
+  const [meses, setMeses] = useState(12);
+
+  const serie = datos ? datos.serie.slice(-meses) : [];
+  const variacion = variacionUltimoMes(serie);
 
   return (
-    <ReporteShell titulo="Reporte de ventas" cargando={cargando} error={error} onReintentar={recargar}>
+    <ReporteShell
+      titulo="Reporte de ventas"
+      cargando={cargando}
+      error={error}
+      onReintentar={recargar}
+      acciones={
+        <label className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+          Ver
+          <NativeSelect
+            className="h-9 w-40"
+            value={meses}
+            onChange={(e) => setMeses(Number(e.target.value))}
+            aria-label="Meses a comparar"
+          >
+            <option value={3}>Últimos 3 meses</option>
+            <option value={6}>Últimos 6 meses</option>
+            <option value={12}>Últimos 12 meses</option>
+          </NativeSelect>
+        </label>
+      }
+    >
       {datos && (
-        <>
-          <StatRow>
-            <StatCard label="Ventas (12 meses)" value={datos.num_ventas} />
-            <StatCard label="Ticket promedio" value={formatPrice(datos.ticket_promedio)} />
-            {datos.num_pendientes > 0 && (
-              <StatCard
-                label={`Por cobrar (${datos.num_pendientes} ${datos.num_pendientes === 1 ? 'venta' : 'ventas'})`}
-                value={formatPrice(datos.valor_pendiente)}
-              />
-            )}
-          </StatRow>
+        <div className="space-y-4">
+          <FranjaMetricas>
+            {/* Este número SIEMPRE son 12 meses: el selector solo recorta el
+                gráfico, no el resto del reporte. Poner "(3 meses)" aquí sería
+                mentir sobre lo que se está contando. */}
+            <StatCard
+              label="Ventas (12 meses)"
+              value={datos.num_ventas}
+              nota={variacion
+                ? `${variacion.mesActual} va ${variacion.pct >= 0 ? '↑' : '↓'} ${Math.abs(variacion.pct)}% contra ${variacion.mesPrevio} (${formatPrice(variacion.valorPrevio)})`
+                : 'Aún no hay un mes anterior con el que comparar'}
+            />
+            <StatCard
+              label="Ticket promedio"
+              value={formatPrice(datos.ticket_promedio)}
+              nota="Solo sobre ventas pagadas: lo pendiente inflaría la cifra"
+            />
+            <StatCard
+              label={datos.num_pendientes > 0
+                ? `Por cobrar (${datos.num_pendientes} ${datos.num_pendientes === 1 ? 'venta' : 'ventas'})`
+                : 'Por cobrar'}
+              value={formatPrice(datos.valor_pendiente)}
+              nota={datos.num_pendientes === 0 ? 'Todo cobrado' : 'Ventas registradas que aún no te han pagado'}
+            />
+          </FranjaMetricas>
 
-          <div className="mt-5">
-            <Panel>
-              <GraficoBarras
-                datos={datos.serie}
-                series={[
-                  { clave: 'ganancia', nombre: 'Ganancia', color: SERIE_A },
-                  { clave: 'costo', nombre: 'Costo de lo vendido', color: SERIE_B },
-                ]}
-                titulo="Ingresos por mes (últimos 12)"
-                formato={formatPrice}
-                nota={datos.serie.every((s) => s.costo === 0)
-                  ? 'Todavía no hay costo de mercancía: aparece cuando las ventas empiecen a descontar inventario (necesitan talla y el perfume con su esencia asignada).'
-                  : undefined}
-              />
-            </Panel>
-          </div>
+          <Panel>
+            <GraficoBarras
+              datos={serie}
+              series={[
+                { clave: 'ganancia', nombre: 'Ganancia', color: SERIE_A },
+                { clave: 'costo', nombre: 'Costo de lo vendido', color: SERIE_B },
+              ]}
+              titulo={`Ingresos por mes (últimos ${meses})`}
+              formato={formatPrice}
+              nota={serie.every((s) => s.costo === 0)
+                ? 'Todavía no hay costo de mercancía: aparece cuando las ventas empiecen a descontar inventario (necesitan talla y el perfume con su esencia asignada).'
+                : undefined}
+            />
+          </Panel>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Ranking
               titulo="Los más vendidos"
               filas={datos.top_productos.map((p) => ({ nombre: p.nombre, valor: p.unidades }))}
@@ -79,7 +119,7 @@ export function ReportesVentasTab({ guardedFetch }: { guardedFetch: GuardedFetch
               color={SERIE_B}
             />
           </div>
-        </>
+        </div>
       )}
     </ReporteShell>
   );

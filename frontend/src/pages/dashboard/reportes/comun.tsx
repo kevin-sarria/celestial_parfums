@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { BASE_URL } from '../../../infrastructure/api/client';
-import { Section, SectionTitle, Toolbar } from '../ui';
+import { EncabezadoPagina, Section } from '../ui';
 import type { GuardedFetch } from '../types';
 
 /**
@@ -45,24 +45,44 @@ interface ShellProps {
   cargando: boolean;
   error: string;
   onReintentar: () => void;
+  /** Controles del reporte (por ejemplo, el periodo a mostrar). */
+  acciones?: ReactNode;
   children: ReactNode;
 }
 
-export function ReporteShell({ titulo, cargando, error, onReintentar, children }: ShellProps) {
+export function ReporteShell({ titulo, cargando, error, onReintentar, acciones, children }: ShellProps) {
   return (
-    <Section>
-      <Toolbar><SectionTitle>{titulo}</SectionTitle></Toolbar>
+    <div className="space-y-4">
+      <EncabezadoPagina titulo={titulo}>{acciones}</EncabezadoPagina>
 
       {error && (
-        <p className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
+        <p className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
           {error}
           <Button size="sm" variant="outline" className="h-7" onClick={onReintentar}>Reintentar</Button>
         </p>
       )}
 
-      {cargando ? <PerfumeSpinner /> : children}
-    </Section>
+      {cargando ? <Section><PerfumeSpinner /></Section> : children}
+    </div>
   );
+}
+
+/**
+ * Variación entre el último mes de una serie y el anterior.
+ * Devuelve null si no hay con qué comparar o si el mes previo fue cero: un
+ * "+∞ %" no informa nada.
+ */
+export function variacionUltimoMes(serie: { mes: string; ingresos: number }[]) {
+  if (serie.length < 2) return null;
+  const actual = serie[serie.length - 1];
+  const previo = serie[serie.length - 2];
+  if (previo.ingresos <= 0) return null;
+  return {
+    pct: Math.round(((actual.ingresos - previo.ingresos) / previo.ingresos) * 100),
+    mesActual: actual.mes,
+    mesPrevio: previo.mes,
+    valorPrevio: previo.ingresos,
+  };
 }
 
 /** Caja con el gráfico o una tabla adentro, para que todo respire igual. */

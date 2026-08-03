@@ -1,7 +1,7 @@
 import GraficoBarras, { SERIE_A, SERIE_B } from '../GraficoBarras';
 import { Panel, Ranking, ReporteShell, useReporte } from '../reportes/comun';
 import { formatPrice } from '../helpers';
-import { StatCard, StatRow } from '../ui';
+import { FranjaMetricas, StatCard } from '../ui';
 import type { GuardedFetch } from '../types';
 
 interface ReporteCompras {
@@ -20,12 +20,12 @@ export function ReportesComprasTab({ guardedFetch }: { guardedFetch: GuardedFetc
   return (
     <ReporteShell titulo="Reporte de compras" cargando={cargando} error={error} onReintentar={recargar}>
       {datos && (
-        <>
-          <StatRow>
+        <div className="space-y-4">
+          <FranjaMetricas>
             <StatCard label="Comprado (12 meses)" value={formatPrice(datos.total_gastado)} />
             <StatCard label="Pagado en envíos" value={formatPrice(datos.total_envios)} />
             <StatCard label="Pedidos a proveedores" value={datos.num_compras} />
-          </StatRow>
+          </FranjaMetricas>
 
           {/* Sin esta aclaración, ver "gasté más de lo que vendí" asusta sin
               motivo: buena parte de esa plata sigue en bodega como mercancía. */}
@@ -48,7 +48,7 @@ export function ReportesComprasTab({ guardedFetch }: { guardedFetch: GuardedFetc
             </Panel>
           </div>
 
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Ranking
               titulo="A quién le compras más"
               filas={datos.por_proveedor.map((p) => ({
@@ -72,7 +72,7 @@ export function ReportesComprasTab({ guardedFetch }: { guardedFetch: GuardedFetc
               color={SERIE_B}
             />
           </div>
-        </>
+        </div>
       )}
     </ReporteShell>
   );
