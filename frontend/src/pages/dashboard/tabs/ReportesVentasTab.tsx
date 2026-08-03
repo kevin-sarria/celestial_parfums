@@ -19,6 +19,23 @@ interface ReporteVentas {
 }
 
 /**
+ * `timeZone: 'UTC'` NO es opcional: la fecha se construye con Date.UTC, y al
+ * formatearla en hora local (Colombia, UTC-5) el día 1 se corre al mes anterior
+ * y "agosto" se lee "julio". Es el mismo tropiezo que ya documenta CLAUDE.md.
+ */
+const MES_LARGO = new Intl.DateTimeFormat('es-CO', { month: 'long', timeZone: 'UTC' });
+
+/**
+ * "2026-08" → "agosto". El código del mes sirve para ordenar, no para leerlo.
+ * Se construye con Date.UTC: con hora local, el día 1 se iría al mes anterior.
+ */
+const nombreMes = (clave: string) => {
+  const [a, m] = clave.split('-').map(Number);
+  if (!a || !m) return clave;
+  return MES_LARGO.format(new Date(Date.UTC(a, m - 1, 1)));
+};
+
+/**
  * Variación entre el último mes de una serie y el anterior.
  * Devuelve null si no hay con qué comparar o si el mes previo fue cero: un
  * "+∞ %" no informa nada.
@@ -30,8 +47,8 @@ function variacionUltimoMes(serie: { mes: string; ingresos: number }[]) {
   if (previo.ingresos <= 0) return null;
   return {
     pct: Math.round(((actual.ingresos - previo.ingresos) / previo.ingresos) * 100),
-    mesActual: actual.mes,
-    mesPrevio: previo.mes,
+    mesActual: nombreMes(actual.mes),
+    mesPrevio: nombreMes(previo.mes),
     valorPrevio: previo.ingresos,
   };
 }
