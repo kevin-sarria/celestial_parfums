@@ -74,7 +74,7 @@ export const ventasColumns: ColumnDef<Venta>[] = [
 ];
 
 export const creditosColumns: ColumnDef<Credito>[] = [
-  { key: 'fecha', header: 'Fecha', type: 'date', getValue: c => c.fecha.slice(0, 10), render: c => fmtDate(c.fecha), className: cellMeta, noTruncate: true },
+  { key: 'fecha', header: 'Fecha', type: 'date', getValue: c => c.fecha.slice(0, 10), render: c => fmtDate(c.fecha), className: cellMeta, noTruncate: true, movil: 'meta' },
   { key: 'cliente', header: 'Cliente', type: 'string',
     getValue: c => `${c.cliente.nombre} ${c.cliente.apellido}`,
     render: c => (
@@ -82,7 +82,7 @@ export const creditosColumns: ColumnDef<Credito>[] = [
         {c.cliente.nombre} {c.cliente.apellido}
         {c.cliente.correo && <SubText>{c.cliente.correo}</SubText>}
       </span>
-    ), className: cellName },
+    ), className: cellName, movil: 'titulo' },
   { key: 'telefono', header: 'Telefono', type: 'string', getValue: c => c.cliente.telefono ?? '', render: c => c.cliente.telefono ?? '—', className: cellMeta, noTruncate: true },
   { key: 'articulos', header: 'Articulos', type: 'string', getValue: c => c.articulos,
     render: c => (
@@ -99,7 +99,7 @@ export const creditosColumns: ColumnDef<Credito>[] = [
           ? <Badge variant="outline" className="border-rose-300 bg-rose-50 text-rose-600">Vencido · {fmtDate(c.fecha_limite)}</Badge>
           : <span className={cellMeta}>{fmtDate(c.fecha_limite)}</span>)
       : <>—</>,
-    noTruncate: true },
+    noTruncate: true, movil: 'estado' },
   { key: 'deuda_inicial', header: 'Deuda inicial', type: 'currency', getValue: c => c.deuda_inicial, render: c => formatPrice(c.deuda_inicial), className: cellPrice, noTruncate: true },
   { key: 'total_abonado', header: 'Abonado', type: 'currency',
     getValue: c => c.total_abonado,
@@ -111,7 +111,7 @@ export const creditosColumns: ColumnDef<Credito>[] = [
         {formatPrice(c.total_en_deuda)}
       </span>
     ),
-    className: cellPrice, noTruncate: true },
+    className: cellPrice, noTruncate: true, movil: 'destacado' },
 ];
 
 export const pagosColumns: ColumnDef<Pago>[] = [

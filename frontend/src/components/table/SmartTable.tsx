@@ -62,6 +62,13 @@ interface SmartTableProps<T> {
    * ambiguo con el pulgar.
    */
   accionesMovil?: (row: T) => ReactNode;
+  /**
+   * Botones que actúan SOBRE la tabla (crear, importar, exportar). Van en su
+   * barra, al lado opuesto del buscador: pertenecen a la tabla, no a la página.
+   * Sueltos arriba junto al título se leen como acciones de toda la pantalla y
+   * dejan una banda de botones sin caja que se ve improvisada.
+   */
+  acciones?: ReactNode;
 }
 
 const SERVER_SEARCH_DEBOUNCE_MS = 2000;
@@ -93,6 +100,7 @@ export function SmartTable<T>({
   paginadoLocal,
   tarjetaMovil,
   accionesMovil,
+  acciones,
 }: SmartTableProps<T>) {
   const { processed, sort, toggleSort, filters, setFilter, clearAll, search, setSearch, activeFiltersCount } =
     useTableControls(rows, columns);
@@ -215,8 +223,9 @@ export function SmartTable<T>({
 
   return (
     <div className="space-y-3">
-      {/* ── Toolbar: búsqueda global + resumen de filtros ── */}
+      {/* ── Barra de la tabla: buscar y estado a la izquierda, acciones a la derecha ── */}
       <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
         <div className="relative w-full max-w-72">
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -238,7 +247,6 @@ export function SmartTable<T>({
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2.5">
           {activeFiltersCount > 0 && (
             <Badge variant="secondary" className="rounded-full">
               {activeFiltersCount} filtro{activeFiltersCount !== 1 ? 's' : ''} activo{activeFiltersCount !== 1 ? 's' : ''}
@@ -249,7 +257,7 @@ export function SmartTable<T>({
               Limpiar todo
             </Button>
           )}
-          <span className="text-xs text-muted-foreground">
+          <span className="whitespace-nowrap text-xs text-muted-foreground">
             {processed.length !== rows.length
               ? `${processed.length} de ${rows.length}`
               : pagination
@@ -257,6 +265,8 @@ export function SmartTable<T>({
                 : `${rows.length} registros`}
           </span>
         </div>
+
+        {acciones && <div className="flex flex-wrap items-center gap-2">{acciones}</div>}
       </div>
 
       {/* ── Tarjetas (celular) o tabla (el resto) ── */}

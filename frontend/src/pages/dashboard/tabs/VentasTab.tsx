@@ -137,20 +137,7 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
 
   return (
     <div className="space-y-4">
-      <EncabezadoPagina titulo="Ventas" count={total}>
-        <ExportButton entity="ventas" guardedFetch={guardedFetch} />
-        <Button
-          variant="outline" size="sm" disabled={enlazando}
-          title="Intenta enlazar por nombre las ventas importadas que aún no tienen producto del catálogo"
-          onClick={handleEnlazar}
-        >
-          <Link2 className="size-4" /> {enlazando ? 'Enlazando…' : 'Enlazar perfumes'}
-        </Button>
-        <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-          <Upload className="size-4" /> Importar
-        </Button>
-        <Button size="sm" onClick={() => setModal({ open: true, venta: null })}>+ Registrar venta</Button>
-      </EncabezadoPagina>
+      <EncabezadoPagina titulo="Ventas" count={total} />
 
       {totales && (
         <FranjaMetricas>
@@ -200,6 +187,24 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
             }}
             renderActions={v => acciones(v, false)}
             accionesMovil={v => acciones(v, true)}
+            acciones={
+              <>
+                <ExportButton entity="ventas" guardedFetch={guardedFetch} />
+                <Button
+                  variant="outline" size="sm" disabled={enlazando}
+                  title="Intenta enlazar por nombre las ventas importadas que aún no tienen producto del catálogo"
+                  onClick={handleEnlazar}
+                >
+                  <Link2 className="size-4" /> {enlazando ? 'Enlazando…' : 'Enlazar perfumes'}
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                  <Upload className="size-4" /> Importar
+                </Button>
+                <Button size="sm" onClick={() => setModal({ open: true, venta: null })}>
+                  + Registrar venta
+                </Button>
+              </>
+            }
           />
         )}
       </Section>
