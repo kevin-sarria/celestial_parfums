@@ -12,7 +12,7 @@ import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { ventasColumns } from '../columns';
 // Mismo cálculo del cupón que usan el carrito y los créditos (tope incluido)
-import { descuentoDeCupon } from '../creditoLineas';
+import { descuentoDeCupon } from '../pedido/lineasPedido';
 import { API, API_VENTAS, API_USUARIOS, DEFAULT_PAGE_SIZE, formatPrice, parseClienteSeleccion, personaLabel, validarCodigoDescuento } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, StatCard, StatRow } from '../ui';
 import type { CodigoValidado, GuardedFetch, Venta, VentaForm, Usuario } from '../types';

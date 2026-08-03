@@ -1,3 +1,5 @@
+import type { LineaPedido } from './pedido/lineasPedido';
+
 export interface Lookup {
   id: number;
   nombre: string;
@@ -206,15 +208,11 @@ export const emptyVentaForm = (): VentaForm => ({
 });
 
 /** Una línea del crédito: un perfume con su talla, cantidad y si lleva descuento. */
-export interface LineaCredito {
-  /** clave estable para React (varias líneas del mismo perfume son válidas) */
-  key: string;
-  perfume_id: number;
-  presentacion: string;
-  cantidad: number;
-  /** true = a este cliente NO se le aplica el descuento de la página en esta línea */
-  sin_descuento: boolean;
-}
+/**
+ * La línea de un crédito es la misma que la de una venta: ambas pantallas
+ * comparten el armador de pedido. El tipo vive en `pedido/lineasPedido.ts`.
+ */
+export type { LineaPedido };
 
 export interface CreditoForm {
   fecha: string; user_id: ClienteSeleccion;
@@ -223,7 +221,7 @@ export interface CreditoForm {
   /** Texto de artículos: se arma solo con las líneas (o se edita a mano). */
   articulos: string; deuda_inicial: string;
   /** Productos del crédito (editor de líneas). */
-  lineas: LineaCredito[];
+  lineas: LineaPedido[];
   /** true = aplicar precio de combo (mayoreo) a este crédito. */
   aplicar_combo: boolean;
   /** true = la deuda se editó a mano; deja de recalcularse desde las líneas. */

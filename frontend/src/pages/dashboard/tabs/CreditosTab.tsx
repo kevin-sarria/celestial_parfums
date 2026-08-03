@@ -18,10 +18,10 @@ import PerfilCreditoModal from './PerfilCreditoModal';
 import { creditosColumns } from '../columns';
 import {
   precioUnitario, itemsDeLineas, articulosDeLineas, presentacionResumen, descuentoDeCupon,
-} from '../creditoLineas';
+} from '../pedido/lineasPedido';
 import { API, API_COMBOS, API_CREDITOS, API_USUARIOS, DEFAULT_PAGE_SIZE, formatPrice, parseClienteSeleccion, personaLabel, validarCodigoDescuento } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
-import type { GuardedFetch, Credito, CreditoForm, LineaCredito, CodigoValidado, PerfilCredito, Usuario } from '../types';
+import type { GuardedFetch, Credito, CreditoForm, LineaPedido, CodigoValidado, PerfilCredito, Usuario } from '../types';
 import { emptyCreditoForm, unMesDespues } from '../types';
 
 interface CreditosTabProps {
@@ -156,12 +156,17 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
       const i = f.lineas.findIndex(l => l.perfume_id === id && l.presentacion === presentacion);
       const lineas = [...f.lineas];
       if (i >= 0) lineas[i] = { ...lineas[i], cantidad: lineas[i].cantidad + 1 };
-      else lineas.push({ key: `${id}-${presentacion}-${Date.now()}`, perfume_id: id, presentacion, cantidad: 1, sin_descuento: false });
+      else lineas.push({
+        key: `${id}-${presentacion}-${Date.now()}`, perfume_id: id, nombre: p.nombre,
+        // El ml sale del catalogo junto al precio: no se deduce del texto
+        presentacion, ml: p.precios.find(x => x.presentacion === presentacion)?.ml ?? null,
+        cantidad: 1, sin_descuento: false,
+      });
       // Cambió una línea: se recalcula la deuda desde el subtotal
       return { ...f, lineas, deuda_manual: false };
     });
   };
-  const setLinea = (key: string, patch: Partial<LineaCredito>) =>
+  const setLinea = (key: string, patch: Partial<LineaPedido>) =>
     setForm(f => ({ ...f, deuda_manual: false, lineas: f.lineas.map(l => (l.key === key ? { ...l, ...patch } : l)) }));
   const removeLinea = (key: string) =>
     setForm(f => ({ ...f, deuda_manual: false, lineas: f.lineas.filter(l => l.key !== key) }));
@@ -235,12 +240,17 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
 
   // Reconstruye el formulario desde un crédito existente para editarlo
   const abrirEditar = (c: Credito) => {
-    const lineas: LineaCredito[] = c.productos.map((prod, i) => {
+    const lineas: LineaPedido[] = c.productos.map((prod, i) => {
       const p = perfumePorId.get(prod.perfume_id);
       // Talla: si el resumen del crédito es una sola conocida, se usa; si no, la primera
       const tallas = p?.presentaciones ?? [];
       const presentacion = tallas.includes(c.presentacion) ? c.presentacion : (tallas[0] ?? (c.presentacion || '30ML'));
-      return { key: `${prod.perfume_id}-${i}-${Date.now()}`, perfume_id: prod.perfume_id, presentacion, cantidad: prod.cantidad, sin_descuento: false };
+      return {
+        key: `${prod.perfume_id}-${i}-${Date.now()}`, perfume_id: prod.perfume_id,
+        nombre: p?.nombre ?? '',
+        presentacion, ml: p?.precios.find(x => x.presentacion === presentacion)?.ml ?? null,
+        cantidad: prod.cantidad, sin_descuento: false,
+      };
     });
     setEditId(c.id);
     setForm({
@@ -419,11 +429,11 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
                     <span className="min-w-32 flex-1 text-[13px] font-medium text-foreground">{p?.nombre ?? `#${l.perfume_id}`}</span>
                     {/* Talla propia de esta línea (cambia su precio) */}
                     <NativeSelect
-                      value={l.presentacion}
+                      value={l.presentacion ?? ''}
                       className="h-8 w-24 text-[12.5px]"
                       onChange={e => setLinea(l.key, { presentacion: e.target.value })}
                     >
-                      {(p?.presentaciones ?? [l.presentacion]).map(pr => <option key={pr} value={pr}>{pr}</option>)}
+                      {(p?.presentaciones ?? [l.presentacion ?? '']).map(pr => <option key={pr} value={pr}>{pr}</option>)}
                     </NativeSelect>
                     <Input
                       type="number" min="1" value={l.cantidad}
