@@ -17,9 +17,16 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 
 ## Stack y estructura
 
-- `backend/`: Express + TypeScript + Prisma 6 + MySQL. Cliente Prisma generado en
-  `src/generated/prisma` (NUNCA editar ni convertir su encoding). Build: `npm run build`
+- `backend/`: Express + TypeScript + Prisma 6 + MySQL. Build: `npm run build`
   (prisma generate + tsc → `dist/`).
+- **El cliente de Prisma se importa de `@prisma/client`, NUNCA de una carpeta dentro de
+  `src/`** (y el `generator` del schema NO lleva `output`). Con `output = "../src/generated/
+  prisma"` el proyecto funcionaba en local pero **se rompía en el servidor**: `tsc` solo
+  traduce los `.ts`, así que a `dist/` llegaban 7 archivos y quedaban fuera los otros 43
+  — incluido el MOTOR de Prisma. En local no se notaba porque el dev server corre desde
+  `src/`; en producción `node dist/app.js` arrancaba sin motor. `node_modules` no lo
+  compila nadie, así que ahí el cliente queda entero. Verificado arrancando `dist/app.js`
+  y consultando la base de verdad.
 - `frontend/`: React + Vite + Tailwind **v4** + shadcn. Build: `npm run build` → `dist/`.
 - Auth: JWT en cookies, roles (ADMIN=rol 1), Google OAuth, reCAPTCHA en login/registro
   (para pruebas E2E locales: comentar `RECAPTCHA_SECRET_KEY` en `.env` y restaurar al final).
@@ -61,6 +68,113 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
   `pathname.startsWith('/dashboard/')`, no por igualdad. Comparar `=== '/dashboard'` dejaba
   el footer de la tienda colgando debajo de TODAS las pestañas (la ruta real es
   `/dashboard/:tab`); solo se notaba al mirar la página completa, no la primera pantalla.
+
+## La tabla del dashboard (`SmartTable`) — Ola 1 del rediseño, 2026-08-01
+
+Diseño y plan en `docs/superpowers/specs/` y `docs/superpowers/plans/` (fecha 2026-08-01).
+La usan ~10 pestañas, así que **todas sus capacidades son props OPCIONALES**: una pestaña
+que no pase nada renderiza exactamente igual que siempre. Al tocarla, mantener esa regla.
+
+- `numerada`: columna **#** con la **posición visible**, no el id. Sigue de corrido entre
+  páginas (la 2 empieza en 26) y **se renumera al reordenar** — es un número para leer y
+  para decir "revisa el 14", no un código permanente. El `id` sigue siendo la llave real
+  de `rowKey` y de las rutas `PATCH`/`DELETE`; el `#` nunca viaja al servidor.
+- `paginadoLocal`: pagina en el navegador las pestañas que cargan todas las filas de una
+  (Usuarios, Clasificaciones). Se ignora si ya se pasó `pagination` (la de servidor).
+  Por defecto **25**, a propósito distinto del `DEFAULT_PAGE_SIZE = 10` de `helpers.ts`:
+  ese aplica cuando cada página cuesta una petición; aquí las filas ya están en memoria.
+  El corte se hace **sobre `processed`** (ya filtrado y ordenado), nunca sobre `rows`.
+- **Volver a la página 1** al buscar, filtrar u ordenar se hace **en el evento**
+  (`volverAlPrincipio`), no en un `useEffect`: el linter de react-hooks rechaza
+  `setState` dentro de un efecto porque encadena renders. Sin esto, filtrar de 200 a 3
+  registros deja al usuario mirando una página 7 vacía.
+- `tarjetaMovil`: debajo de 640px la fila se pinta como tarjeta táctil resumida que se
+  expande al tocarla (`FilaTarjeta.tsx`), en vez del scroll horizontal. Es **opt-in** para
+  no cambiarle el aspecto a Ventas y Créditos antes de su propio rediseño (Ola 2).
+  El papel de cada columna se declara con `movil: 'titulo' | 'meta' | 'estado' |
+  'destacado' | 'detalle'`; **sin marcar es `detalle`** (solo se ve al expandir), y si
+  ninguna se declara `titulo` manda la primera columna.
+- `accionesMovil`: acciones con TEXTO para la tarjeta (`✎ Editar`), porque `renderActions`
+  devuelve botones de solo icono pensados para una fila estrecha y con el pulgar el icono
+  solo es ambiguo. Si falta, cae a `renderActions`.
+- `useMediaQuery(query)` (`components/table/useMediaQuery.ts`) reemplazó al hook privado
+  `usePantallaAngosta`; lo usan el paginador compacto (520px) y la tarjeta (639px).
+- **Clasificaciones** (aromas, ocasiones, categorías, presentaciones) salen las cuatro de
+  `LookupTab`: alta y edición por modal con **"Guardar y agregar otro"**, aviso de
+  duplicado calculado en el front (normalizando tildes y mayúsculas) antes de gastar una
+  petición, y `nuevo`/`editar` como textos completos ("Nueva categoría", "Nuevo aroma")
+  en vez de derivar el género gramatical, que se escribe mal.
+- **BUG ya corregido**: los tres `handleLookup*` de `DashboardPage` hacían
+  `await guardedFetch(...)` **sin mirar `res.ok`**. Si el backend rechazaba, no aparecía
+  nada: el elemento no se agregaba y nadie sabía por qué. Ahora devuelven
+  `{ ok, error }` y la pestaña muestra el mensaje del servidor. **Regla: ningún handler
+  de mutación puede ignorar la respuesta.**
+- `BloqueCampos` (`dashboard/ui.tsx`) agrupa campos con título dentro de un formulario
+  largo. Estrenado en Usuarios (contacto vs. cuenta web); es la pieza con la que la Ola 2
+  parte el formulario de Ventas.
+
+## Ventas y Créditos (`pedido/`) — Ola 2 del rediseño, 2026-08-02
+
+Diseño y plan en `docs/superpowers/` (fecha 2026-08-02). Las dos pantallas hacían **lo
+mismo** con dos implementaciones desalineadas: cada una era buena en lo que la otra no.
+Ahora comparten pieza.
+
+- **`pedido/lineasPedido.ts`** (antes `creditoLineas.ts`): cálculos puros. La `LineaPedido`
+  lleva la talla **por partida doble a propósito**: `presentacion` es la etiqueta con la que
+  se busca el precio y `ml` el número con el que el inventario sabe qué receta descontar.
+  Las dos salen juntas de `perfume.precios[]`, así que **no se pueden desincronizar**.
+  `presentacion`/`ml` en null = producto sin talla (una gorra).
+- **El servidor manda `ml` dentro de `precios[]`** (`resolverPrecios`). Se decidió eso en vez
+  de que el navegador adivine el número leyendo el texto: de ese número depende qué insumo
+  se descuenta, y "200/250ML" o "Combo Personalizado" no tienen número que adivinar.
+- **`ArmadorPedido`**: agregar el mismo producto con la misma talla suma unidades; cambiar
+  la talla hasta dejar dos líneas iguales **las fusiona**. Sin eso la misma referencia
+  aparece dos veces y el conteo miente.
+- **`ResumenPedido`**: productos − combo − cupón = total. Las líneas que valen cero no se
+  pintan. En Ventas el total es un **"Sugerido"** con botón `usar`: el valor se sigue
+  tecleando a mano porque es la plata que entró de verdad; el sistema propone, no impone.
+- **El campo "Cantidad" suelto de Ventas desapareció**: se deriva de las líneas
+  (`unidadesDeLineas`). Era un dato duplicado y el día que no coincidiera ganaba el número
+  tecleado.
+- **Al contado el precio de combo se aplica solo** (es política de precios permanente);
+  a crédito hay interruptor y está apagado por defecto.
+- **CUPÓN CANJEADO = AMARRADO A SU VENTA** (decidido con el dueño el 2026-08-02). Antes
+  bastaba con **borrar el texto del campo al editar** para que `liberarCodigoDeVenta` lo
+  devolviera a `activo` y esa persona pudiera usarlo otra vez. Ahora:
+  - `liberarCodigoDeVenta(ventaId, excepto, soloNoCanjeados)` — al **editar** se pasa
+    `true`; al **borrar** la venta no, porque ahí sí debe soltarse.
+  - `updateVenta` **rechaza** el cambio con un mensaje claro. La regla vive en el servidor:
+    la pantalla se puede saltar.
+  - En el formulario el campo sale `disabled` con la explicación.
+  - **Ojo: en CRÉDITOS sigue funcionando distinto a propósito** (quitar el código lo
+    libera; es el único camino para devolver un cupón canjeado en crédito). Igualar las dos
+    reglas es una decisión aparte que hay que hablar con el dueño.
+- **`GET /creditos/totales`**: cuánto te deben, cuánto está vencido y cuánto abonaron este
+  mes. Hace falta un endpoint porque eso **no se puede calcular con la página que está en
+  pantalla**. Usa el MISMO criterio de saldo que `mapCredito` para que la caja de arriba y
+  la tabla de abajo nunca digan cosas distintas.
+- Archivos: `VentasTab` 607→236 (+ `VentaForm` 453), `CreditosTab` 565→313
+  (+ `CreditoForm` 381). Ninguno pasa de 500.
+
+## Maquetación de una pestaña del dashboard (decidido por el dueño, 2026-08-02)
+
+El dueño rechazó tener el título, los botones, las métricas, el buscador y la tabla dentro
+de la misma tarjeta: *"se ve pésimo y nada similar a un dashboard serio"*. El orden correcto:
+
+1. **`EncabezadoPagina`** — solo el título y su contador, fuera de la tarjeta.
+2. **`FranjaMetricas`** + **`StatCard`** — rejilla (no `flex-wrap`, para que queden del
+   mismo ancho) sobre el fondo de la página. `StatCard` va en **`bg-card`**: antes era
+   `bg-background` DENTRO de una tarjeta blanca, o sea al revés, y parecía un hueco hundido.
+   `StatCard` acepta `nota` para el matiz que no cabe en la etiqueta.
+3. **`Section`** con la tabla **y nada más**.
+4. **Los botones que actúan SOBRE la tabla** (crear, importar, exportar) van en la prop
+   `acciones` de `SmartTable`, dentro de su barra y **al lado opuesto del buscador**.
+   Sueltos junto al título se leen como acciones de toda la página y dejan una banda de
+   botones sin caja. Esto lo corrigió el dueño explícitamente.
+
+Todo es opt-in: las pestañas que aún no se rediseñan (Ola 3) se ven igual que siempre.
+Los comparativos entre meses **no van en las cajas**: van a Reportes, que es la pantalla
+de analizar, no la de registrar.
 
 ## Avisos al usuario (toasts)
 
@@ -1051,6 +1165,51 @@ de subir.
   vendido sigue en bodega) — sin eso, ver "gasté más de lo que vendí" asusta sin motivo.
 - Ventas tiene un enlace a Reportes, pero el gráfico ya NO vive ahí: en esa pestaña se
   registra y se busca.
+
+## Estado al cerrar el 2026-08-01 (leer antes de seguir)
+
+**Base local = copia de producción.** Se importó el dump real del servidor y se le
+aplicaron las 8 migraciones. Ojo: el export de TablePlus venía **cortado** a mitad de la
+última fila de `ventas`; la copia reparada está en `Documents\celestial_db_REPARADO_2026-08-01.sql`.
+A la venta 1267 (Esteban Madera) se le completaron `pagada=1` y `user_id=NULL` a mano —
+si el dueño dice otra cosa, corregirla.
+
+**NADA de esto está en producción todavía.** El deploy pendiente incluye el arreglo de
+Prisma (`@prisma/client`), las 8 migraciones y todo el módulo de inventario. Antes de
+subir: respaldo por SSH y verificar que el archivo pese cientos de KB, no 20 bytes.
+
+**Hecho en UX (sesión 2026-08-01), después de que el dueño lo reclamara:**
+- **Inventario**: faltaba el botón para registrar que LLEGÓ material — solo había salida y
+  producción, y las compras vivían escondidas bajo "Proveedores". Ahora hay
+  **"Registrar llegada"** (enlaza a `/dashboard/pagos?nueva=1`, que abre el formulario
+  solo). Los botones de Excel se bajaron a una fila aparte en pequeño: competían con las
+  acciones reales y no se distinguía cuál era la importante.
+- **Crear insumo al vuelo** dentro de la compra (`DetalleCompra.tsx`): llega una esencia o
+  un envase nuevo y se da de alta ahí mismo, sin salir de la factura. Va **primero** en la
+  lista del buscador (al final hay que hacer scroll y nadie ve que existe). **No pide
+  precio**: lo fija esa misma compra vía costo promedio.
+- **Fórmulas**: la receta era un párrafo corrido ("esencia 15 · diluyente 14.3 · …") y
+  ahora es una rejilla de 4 casillas etiquetadas, con envase y esencia en su propia línea
+  y aviso ámbar si falta elegir la esencia.
+
+**Pendientes concretos:**
+1. **Rediseño del dashboard, en 3 olas** (el dueño señaló 9 pantallas el 2026-08-01).
+   Diseño y plan escritos en `docs/superpowers/`. **Ola 1 HECHA** (cimientos de la tabla +
+   Clasificaciones + Usuarios, rama `rediseno-dashboard-ola1`; ver la sección "La tabla del
+   dashboard"). **Ola 2 HECHA** (Ventas y Créditos, rama `rediseno-dashboard-ola2`; ver las
+   dos secciones de arriba). **Ola 3 pendiente** = Inventario, Proveedores, Insumos y
+   precios, Costos de producción, Tamaños y fórmulas — les falta la maquetación nueva,
+   `numerada`, `tarjetaMovil` y las acciones dentro de la barra de la tabla.
+   **Pendiente aparte, pedido por el dueño**: en Reportes, un selector para comparar meses
+   en los gráficos (ahí es donde se analiza; las cajas de Ventas no llevan comparativos).
+2. **8 líneas de venta sin talla**: las ventas 1179, 1180, 1181 y 1249 dicen "200/250 ML"
+   (no se sabe si fue el de 200 o el de 250) y la 1219 es un "Combo Personalizado" con dos
+   tallas en una línea. Solo el dueño puede decir cuál era.
+3. Separar "200/250ML" en dos tallas reales y sembrar el stock inicial.
+4. La skill **`catalogo-recompra`** existe en la cuenta de claude.ai del dueño pero NO en
+   disco, así que Claude Code no la ve (`Unknown skill`). Para usarla hay que copiarla a
+   `C:\Users\Estaduardo\.claude\skills\catalogo-recompra\SKILL.md`. No decirle que "no
+   existe": existe, simplemente no llega hasta acá.
 
 ## Cómo trabajamos (preferencias del dueño)
 
