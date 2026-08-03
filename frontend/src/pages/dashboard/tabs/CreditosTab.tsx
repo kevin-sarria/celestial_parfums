@@ -209,7 +209,9 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
             value={formatPrice(totales.vencido)}
             nota={totales.creditos_vencidos === 0
               ? 'Ningún crédito pasado de fecha'
-              : `${totales.creditos_vencidos} crédito${totales.creditos_vencidos === 1 ? '' : 's'} pasados de la fecha pactada`}
+              : totales.creditos_vencidos === 1
+                ? '1 crédito pasado de la fecha pactada'
+                : `${totales.creditos_vencidos} créditos pasados de la fecha pactada`}
           />
           <StatCard
             label="Abonado este mes"
