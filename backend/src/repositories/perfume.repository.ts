@@ -32,6 +32,13 @@ const resolverPrecios = (p: PerfumeRow) => {
   const lista = new Map((p.categoria?.precios ?? []).map((pr) => [pr.presentacion_id, Number(pr.precio)]));
   return p.presentaciones.map((r) => ({
     presentacion: r.presentacion.nombre,
+    /**
+     * Número real de la talla. La etiqueta ("30ML") sirve para buscar el precio;
+     * el número, para saber qué receta descontar del inventario. Van juntos para
+     * que quien arma un pedido no tenga que adivinar uno a partir del otro.
+     * Null a propósito en las que no son talla ("200/250ML", "Combo Personalizado").
+     */
+    ml: r.presentacion.ml ?? null,
     precio: Number(r.precio ?? lista.get(r.presentacion_id) ?? p.precio),
     /** true = ese precio es exclusivo del perfume, no viene de la lista */
     propio: r.precio != null,

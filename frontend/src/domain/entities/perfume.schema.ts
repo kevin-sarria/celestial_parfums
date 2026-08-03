@@ -20,6 +20,11 @@ export const GENERO_SYMBOLS: Record<Genero, string> = {
 /** Lo que vale el perfume en una presentación concreta (ej: 30ml → 22.000). */
 export const precioPresentacionSchema = z.object({
   presentacion: z.string(),
+  /**
+   * Número real de la talla, para saber qué receta descontar del inventario.
+   * Null en las entradas que no son una talla ("Combo Personalizado").
+   */
+  ml: z.number().nullable().default(null),
   precio: z.number(),
   /** true = precio exclusivo de este perfume, no el estándar de su categoría */
   propio: z.boolean().default(false),
