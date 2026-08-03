@@ -17,7 +17,7 @@ const SubText = ({ children }: { children: React.ReactNode }) => (
 );
 
 export const ventasColumns: ColumnDef<Venta>[] = [
-  { key: 'dia', header: 'Dia', type: 'date', getValue: v => v.dia.slice(0, 10), render: v => fmtDate(v.dia), className: cellMeta, noTruncate: true },
+  { key: 'dia', header: 'Dia', type: 'date', getValue: v => v.dia.slice(0, 10), render: v => fmtDate(v.dia), className: cellMeta, noTruncate: true, movil: 'meta' },
   { key: 'persona', header: 'Persona', type: 'string', getValue: v => v.persona,
     render: v => (
       <span>
@@ -31,7 +31,7 @@ export const ventasColumns: ColumnDef<Venta>[] = [
         )}
       </span>
     ),
-    className: cellName },
+    className: cellName, movil: 'titulo' },
   { key: 'cantidad_perfumes', header: 'Cant.', type: 'number', getValue: v => v.cantidad_perfumes, className: cellMeta, noTruncate: true },
   { key: 'presentacion', header: 'Presentacion', type: 'enum', enumOptions: ['10ML', '20ML', '30ML', '60ML', '100ML', '200ML'],
     getValue: v => v.presentacion,
@@ -62,13 +62,13 @@ export const ventasColumns: ColumnDef<Venta>[] = [
         )}
       </span>
     ),
-    className: cellPrice, noTruncate: true },
+    className: cellPrice, noTruncate: true, movil: 'destacado' },
   { key: 'pagada', header: 'Pago', type: 'enum', enumOptions: ['Pagada', 'Pendiente'],
     getValue: v => (v.pagada ? 'Pagada' : 'Pendiente'),
     render: v => v.pagada
       ? <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-600">Pagada</Badge>
       : <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-600">Pendiente</Badge>,
-    noTruncate: true },
+    noTruncate: true, movil: 'estado' },
   { key: 'datos_adicionales', header: 'Datos adicionales', type: 'string', getValue: v => v.datos_adicionales ?? '',
     render: v => <>{v.datos_adicionales ?? '—'}</> },
 ];
