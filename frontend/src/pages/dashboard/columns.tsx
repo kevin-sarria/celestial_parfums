@@ -3,7 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Perfume } from '../../domain/entities/perfume.schema';
 import type { Combo } from '../../domain/entities/combo.schema';
 import type { ColumnDef } from '../../components/table/tableTypes';
-import type { Venta, Credito, Pago } from './types';
+import type { Venta, Credito, Pago, InventarioInsumo, Produccion } from './types';
 import { formatPrice, fmtDate } from './helpers';
 import { finalPrice } from '@/lib/format';
 
@@ -129,6 +129,57 @@ export const pagosColumns: ColumnDef<Pago>[] = [
     render: p => p.coste_envio > 0 ? formatPrice(p.coste_envio) : '—', className: cellPrice, noTruncate: true },
   { key: 'detalles_adicionales', header: 'Detalles', type: 'string', getValue: p => p.detalles_adicionales ?? '',
     render: p => <>{p.detalles_adicionales ?? '—'}</> },
+];
+
+/**
+ * Inventario de insumos.
+ *
+ * "Existencias" es la columna que se mira primero (por eso es `destacado` en la
+ * tarjeta de celular) y se pinta en ámbar cuando toca el punto de pedido o
+ * llega a cero: es el aviso de que hay que encargar antes de quedarse sin
+ * material a mitad de una producción.
+ */
+export const inventarioColumns: ColumnDef<InventarioInsumo>[] = [
+  // El tipo NO se repite bajo el nombre: tiene su propia columna, que además filtra.
+  { key: 'nombre', header: 'Insumo', type: 'string', getValue: i => i.nombre,
+    className: cellName, movil: 'titulo' },
+  { key: 'tipo', header: 'Tipo', type: 'enum', getValue: i => i.tipo.replace('_', ' '),
+    enumOptions: ['materia prima', 'envase', 'accesorio'], filterable: true,
+    className: cellMeta, movil: 'meta' },
+  { key: 'stock', header: 'Existencias', type: 'number', getValue: i => i.stock,
+    render: i => (
+      <span className={i.bajo_minimo || i.stock <= 0 ? 'font-medium text-amber-700' : undefined}>
+        {i.stock} {i.unidad}
+      </span>
+    ), sortable: true, className: 'whitespace-nowrap text-right tabular-nums text-foreground', noTruncate: true, movil: 'destacado' },
+  { key: 'stock_minimo', header: 'Minimo', type: 'number', getValue: i => i.stock_minimo,
+    render: i => <>{i.stock_minimo > 0 ? i.stock_minimo : '—'}</>,
+    sortable: true, className: 'whitespace-nowrap text-right tabular-nums text-muted-foreground', noTruncate: true },
+  { key: 'costo_promedio', header: 'Costo promedio', type: 'currency', getValue: i => i.costo_promedio,
+    render: i => formatPrice(i.costo_promedio), sortable: true,
+    className: 'whitespace-nowrap text-right tabular-nums text-muted-foreground', noTruncate: true },
+  { key: 'valor', header: 'Valor', type: 'currency', getValue: i => i.valor,
+    render: i => formatPrice(i.valor), sortable: true,
+    className: `text-right ${cellPrice}`, noTruncate: true, movil: 'meta' },
+];
+
+/** Lotes armados. El costo por unidad sale de los insumos que se consumieron. */
+export const produccionesColumns: ColumnDef<Produccion>[] = [
+  { key: 'fecha', header: 'Fecha', type: 'date', getValue: p => p.fecha.slice(0, 10),
+    render: p => fmtDate(p.fecha), className: cellMeta, noTruncate: true, movil: 'meta' },
+  { key: 'lote', header: 'Lote', type: 'string',
+    getValue: p => `${p.perfume_nombre ?? ''} ${p.volumen_nombre}`.trim(),
+    render: p => (
+      <span>
+        {p.cantidad} × {p.perfume_nombre ? `${p.perfume_nombre} ${p.volumen_nombre}` : p.volumen_nombre}
+      </span>
+    ), className: cellName, movil: 'titulo' },
+  { key: 'costo_unitario', header: 'Costo c/u', type: 'currency', getValue: p => p.costo_unitario,
+    render: p => formatPrice(p.costo_unitario), sortable: true,
+    className: 'whitespace-nowrap text-right tabular-nums text-muted-foreground', noTruncate: true },
+  { key: 'costo_total', header: 'Costo total', type: 'currency', getValue: p => p.costo_total,
+    render: p => formatPrice(p.costo_total), sortable: true,
+    className: `text-right ${cellPrice}`, noTruncate: true, movil: 'destacado' },
 ];
 
 export const perfumesColumns: ColumnDef<Perfume>[] = [

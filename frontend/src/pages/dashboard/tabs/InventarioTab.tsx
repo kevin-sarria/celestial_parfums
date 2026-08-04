@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Boxes, Droplets, FlaskConical, PackagePlus, ShoppingCart, Trash2 } from 'lucide-react';
+import { Boxes, Droplets, FlaskConical, PackagePlus, Scale, ShoppingCart, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,11 +8,14 @@ import { NativeSelect } from '@/components/ui/native-select';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import Modal from '../../../components/Modal';
 import BuscadorSelect from '../../../components/BuscadorSelect';
-import ExportButton from '../../../components/ExportButton';
+import ExportMenu from '../../../components/ExportMenu';
 import ImportModal from '../../../components/ImportModal';
+import { SmartTable } from '../../../components/table/SmartTable';
 import { BASE_URL } from '../../../infrastructure/api/client';
-import { formatPrice, fmtDate } from '../helpers';
-import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, StatCard } from '../ui';
+import { formatPrice } from '../helpers';
+import { inventarioColumns, produccionesColumns } from '../columns';
+import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, SectionTitle, StatCard } from '../ui';
+import { SalidaModal } from './inventario/SalidaModal';
 import { mlDiluyente } from '../../../application/costeoCotizacion';
 import type { GuardedFetch, InventarioInsumo, Produccion } from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
@@ -57,11 +60,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
   const [envaseId, setEnvaseId] = useState<number | ''>('');
   // Salidas sin venta: rolones del mostrario, minis de regalo, derrames
   const [salidaAbierta, setSalidaAbierta] = useState(false);
-  const [salidaInsumo, setSalidaInsumo] = useState<number | ''>('');
-  const [salidaCantidad, setSalidaCantidad] = useState('');
-  const [salidaUnidad, setSalidaUnidad] = useState<'ml' | 'g' | 'l' | 'kg' | 'unidad'>('ml');
-  const [salidaMotivo, setSalidaMotivo] = useState<'muestra' | 'merma'>('muestra');
-  const [salidaNota, setSalidaNota] = useState('');
   const [salidasMes, setSalidasMes] = useState({ muestras: 0, mermas: 0, ajustes: 0 });
   const [importOpen, setImportOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -186,29 +184,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
     finally { setGuardando(false); }
   };
 
-  const guardarSalida = async (e: { preventDefault(): void }) => {
-    e.preventDefault();
-    if (!salidaInsumo || !(Number(salidaCantidad) > 0)) {
-      toast.error('Elige el insumo y cuánto salió', { id: 'salida' }); return;
-    }
-    setGuardando(true);
-    try {
-      const res = await guardedFetch(`${API}/salidas`, {
-        method: 'POST',
-        body: JSON.stringify({
-          insumo_id: salidaInsumo, cantidad: Number(salidaCantidad),
-          unidad: salidaUnidad, motivo: salidaMotivo, fecha: hoy(),
-          nota: salidaNota.trim() || null,
-        }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo registrar', { id: 'salida' }); return; }
-      toast.success(`Salida registrada: ${formatPrice(json.data?.costo ?? 0)}`);
-      setSalidaAbierta(false); setSalidaCantidad(''); setSalidaNota(''); load();
-    } catch { toast.error('No se pudo conectar con el servidor', { id: 'salida' }); }
-    finally { setGuardando(false); }
-  };
-
   const borrarProduccion = async (p: Produccion) => {
     if (!window.confirm(`¿Borrar el lote de ${p.cantidad} × ${p.volumen_nombre}? Los insumos vuelven al inventario.`)) return;
     const res = await guardedFetch(`${API}/producciones/${p.id}`, { method: 'DELETE' });
@@ -224,37 +199,7 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
 
   return (
     <div className="space-y-4">
-      {/* Las tres cosas que de verdad se hacen aquí, en el orden en que
-          ocurren: entra material, se arma producto, sale material. Antes
-          estaban revueltas con los botones de Excel y no se distinguía
-          cuál era la acción importante. */}
-      <EncabezadoPagina titulo="Inventario" count={insumos.length}>
-          <Button size="sm" variant="outline" onClick={() => setSalidaAbierta(true)}>
-            <Droplets className="size-4" /> Registrar salida
-          </Button>
-          <Button size="sm" variant="outline"
-            onClick={() => { setProdAbierta(true); setFormulaId(formulas[0]?.id ?? ''); }}>
-            <FlaskConical className="size-4" /> Registrar producción
-          </Button>
-          <Button size="sm" asChild>
-            <Link to="/dashboard/pagos?nueva=1">
-              <PackagePlus className="size-4" /> Registrar llegada
-            </Link>
-          </Button>
-      </EncabezadoPagina>
-
-      {/* Excel: es mantenimiento, no la tarea del día. Va aparte y en pequeño. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-b border-border/70 pb-3 text-[12px] text-muted-foreground">
-        <span className="font-medium uppercase tracking-widest text-[11px]">Excel</span>
-        {/* La hoja de conteo es la forma cómoda de sembrar el stock inicial */}
-        <ExportButton entity="inventario" guardedFetch={guardedFetch} label="Hoja de conteo" />
-        <ExportButton entity="insumos" guardedFetch={guardedFetch} label="Insumos" />
-        <ExportButton entity="movimientos" guardedFetch={guardedFetch} label="Movimientos" />
-        <button type="button" className="font-medium text-primary hover:underline"
-          onClick={() => setImportOpen(true)}>
-          Importar conteo
-        </button>
-      </div>
+      <EncabezadoPagina titulo="Inventario" count={insumos.length} />
 
       {error && (
         <p className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
@@ -305,75 +250,89 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
       )}
 
       <Section>
-      <p className="mb-3 text-[12.5px] text-muted-foreground">
-        El stock entra con las compras a proveedores y sale con la producción. Usa
-        <strong className="text-foreground"> Ajustar</strong> para sembrar lo que ya tienes hoy
-        o corregir tras un conteo — la diferencia que aparezca es el desperdicio del día a día
-        (los gramos que se van de más al servir), no hace falta anotarlos uno por uno.
-      </p>
+        <p className="text-[12.5px] text-muted-foreground">
+          El stock entra con las compras a proveedores y sale con la producción. Usa
+          <strong className="text-foreground"> Ajustar</strong> para sembrar lo que ya tienes hoy
+          o corregir tras un conteo — la diferencia que aparezca es el desperdicio del día a día
+          (los gramos que se van de más al servir), no hace falta anotarlos uno por uno.
+        </p>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="border-b border-border text-left text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
-              <th className="py-2 pr-3 font-semibold">Insumo</th>
-              <th className="py-2 pr-3 text-right font-semibold">Existencias</th>
-              <th className="py-2 pr-3 text-right font-semibold">Mínimo</th>
-              <th className="py-2 pr-3 text-right font-semibold">Costo promedio</th>
-              <th className="py-2 pr-3 text-right font-semibold">Valor</th>
-              <th className="py-2" />
-            </tr>
-          </thead>
-          <tbody>
-            {insumos.map((i) => (
-              <tr key={i.id} className="border-b border-border/60">
-                <td className="py-2 pr-3 text-foreground">
-                  {i.nombre}
-                  <span className="ml-1.5 text-[11px] text-muted-foreground">{i.tipo.replace('_', ' ')}</span>
-                </td>
-                <td className={`py-2 pr-3 text-right tabular-nums ${i.bajo_minimo || i.stock <= 0 ? 'font-medium text-amber-700' : 'text-foreground'}`}>
-                  {i.stock} {i.unidad}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">
-                  {i.stock_minimo > 0 ? i.stock_minimo : '—'}
-                </td>
-                <td className="py-2 pr-3 text-right tabular-nums text-muted-foreground">{formatPrice(i.costo_promedio)}</td>
-                <td className="py-2 pr-3 text-right tabular-nums font-medium text-foreground">{formatPrice(i.valor)}</td>
-                <td className="py-2 text-right">
-                  <Button size="sm" variant="ghost" className="h-7" onClick={() => abrirAjuste(i)}>Ajustar</Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        <SmartTable
+          columns={inventarioColumns}
+          rows={insumos}
+          rowKey={i => i.id}
+          numerada
+          paginadoLocal
+          tarjetaMovil
+          emptyText="Todavía no has registrado insumos."
+          renderActions={i => (
+            <Button size="sm" variant="ghost" className="h-7" onClick={() => abrirAjuste(i)}>
+              Ajustar
+            </Button>
+          )}
+          accionesMovil={i => (
+            <Button size="sm" variant="outline" onClick={() => abrirAjuste(i)}>
+              <Scale className="size-4" /> Ajustar existencias
+            </Button>
+          )}
+          acciones={
+            <>
+              {/* Excel es mantenimiento: cabe detrás de un clic para no competir
+                  con las tres acciones reales del día. */}
+              <ExportMenu
+                guardedFetch={guardedFetch}
+                onImportar={() => setImportOpen(true)}
+                importarLabel="Subir hoja de conteo"
+                descargas={[
+                  { entity: 'inventario', label: 'Hoja de conteo', nota: 'Para contar y volver a subirla' },
+                  { entity: 'insumos', label: 'Insumos y precios' },
+                  { entity: 'movimientos', label: 'Movimientos' },
+                ]}
+              />
+              <Button size="sm" variant="outline" onClick={() => setSalidaAbierta(true)}>
+                <Droplets className="size-4" /> Salida
+              </Button>
+              <Button size="sm" variant="outline"
+                onClick={() => { setProdAbierta(true); setFormulaId(formulas[0]?.id ?? ''); }}>
+                <FlaskConical className="size-4" /> Producción
+              </Button>
+              <Button size="sm" asChild>
+                <Link to="/dashboard/pagos?nueva=1">
+                  <PackagePlus className="size-4" /> Registrar llegada
+                </Link>
+              </Button>
+            </>
+          }
+        />
       </Section>
 
       {/* Lotes armados */}
-      <h3 className="mb-2 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-        <Boxes className="size-3.5" /> Producciones recientes
-      </h3>
-      {producciones.length === 0 ? (
-        <p className="py-4 text-center text-[13px] text-muted-foreground">Todavía no has registrado lotes.</p>
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {producciones.map((p) => (
-            <li key={p.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-3.5 py-2.5">
-              <span className="min-w-32 flex-1 text-[13.5px] text-foreground">
-                {p.cantidad} × {p.perfume_nombre ? `${p.perfume_nombre} ${p.volumen_nombre}` : p.volumen_nombre}
-                <span className="ml-2 text-[12px] text-muted-foreground">{fmtDate(p.fecha)}</span>
-              </span>
-              <span className="text-[12.5px] text-muted-foreground">
-                {formatPrice(p.costo_unitario)} c/u · total <strong className="text-foreground">{formatPrice(p.costo_total)}</strong>
-              </span>
-              <Button size="icon" variant="ghost" className="size-8 text-muted-foreground hover:text-destructive"
-                onClick={() => borrarProduccion(p)}>
-                <Trash2 className="size-4" />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+      <Section>
+        <SectionTitle count={producciones.length}>
+          <Boxes className="size-4 text-muted-foreground" /> Producciones recientes
+        </SectionTitle>
+        <SmartTable
+          columns={produccionesColumns}
+          rows={producciones}
+          rowKey={p => p.id}
+          numerada
+          paginadoLocal
+          tarjetaMovil
+          emptyText="Todavía no has registrado lotes."
+          renderActions={p => (
+            <Button size="icon" variant="ghost" className="size-8 text-muted-foreground hover:text-destructive"
+              onClick={() => borrarProduccion(p)}>
+              <Trash2 className="size-4" />
+            </Button>
+          )}
+          accionesMovil={p => (
+            <Button size="sm" variant="outline" className="text-destructive"
+              onClick={() => borrarProduccion(p)}>
+              <Trash2 className="size-4" /> Borrar lote
+            </Button>
+          )}
+        />
+      </Section>
 
       {/* Ajuste por conteo físico */}
       {ajuste && (
@@ -419,65 +378,12 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
 
       {/* Salida sin venta: mostrario, regalos, derrames */}
       {salidaAbierta && (
-        <Modal open onClose={() => setSalidaAbierta(false)} title="Registrar salida de material"
-          onSubmit={guardarSalida} submitLabel={guardando ? 'Guardando…' : 'Registrar'} loading={guardando}>
-          <p className="text-[13px] text-muted-foreground">
-            Material que sale <strong className="text-foreground">sin que haya venta</strong>: los
-            rolones del mostrario, los minis que regalas, o algo que se derramó. Se valora al
-            costo promedio del insumo.
-          </p>
-
-          <Field label="¿Qué insumo?">
-            <BuscadorSelect
-              value={salidaInsumo}
-              placeholder="— Elige el insumo —"
-              opciones={insumos.map((i) => ({
-                id: i.id, nombre: `${i.nombre} · quedan ${i.stock} ${i.unidad}`,
-              }))}
-              onSelect={(id) => {
-                setSalidaInsumo(Number(id));
-                const inv = insumos.find((x) => x.id === Number(id));
-                setSalidaUnidad(inv?.unidad === 'ml' ? 'ml' : 'unidad');
-              }}
-            />
-          </Field>
-
-          <FieldRow>
-            <Field label="¿Cuánto salió?">
-              <Input type="number" min="0" step="0.001" value={salidaCantidad}
-                onChange={(e) => setSalidaCantidad(e.target.value)} />
-            </Field>
-            <Field label="Unidad">
-              <NativeSelect value={salidaUnidad}
-                onChange={(e) => setSalidaUnidad(e.target.value as typeof salidaUnidad)}>
-                <option value="ml">ml</option>
-                <option value="g">gramos</option>
-                <option value="l">litros</option>
-                <option value="kg">kilos</option>
-                <option value="unidad">unidades</option>
-              </NativeSelect>
-            </Field>
-            <Field label="¿Por qué?">
-              <NativeSelect value={salidaMotivo}
-                onChange={(e) => setSalidaMotivo(e.target.value as typeof salidaMotivo)}>
-                <option value="muestra">Muestra / mostrario / regalo</option>
-                <option value="merma">Se derramó o dañó</option>
-              </NativeSelect>
-            </Field>
-          </FieldRow>
-
-          <Field label="Nota (opcional)">
-            <Input value={salidaNota} maxLength={255}
-              placeholder="Ej: rolones de la esencia nueva para el mostrador"
-              onChange={(e) => setSalidaNota(e.target.value)} />
-          </Field>
-
-          <p className="text-[12px] text-muted-foreground">
-            {salidaMotivo === 'muestra'
-              ? 'Las muestras cuentan como inversión en vender, no como pérdida: se llevan aparte para que veas cuánto te cuesta dar a probar.'
-              : 'Las mermas son plata perdida. Los gramos que se van de más al servir no hace falta anotarlos: los recoge el conteo físico.'}
-          </p>
-        </Modal>
+        <SalidaModal
+          insumos={insumos}
+          guardedFetch={guardedFetch}
+          onClose={() => setSalidaAbierta(false)}
+          onGuardado={load}
+        />
       )}
 
       {/* Registrar un lote */}

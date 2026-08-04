@@ -172,9 +172,25 @@ de la misma tarjeta: *"se ve pésimo y nada similar a un dashboard serio"*. El o
    Sueltos junto al título se leen como acciones de toda la página y dejan una banda de
    botones sin caja. Esto lo corrigió el dueño explícitamente.
 
-**Aplicada en las 14 pestañas** de las tres olas. La única excepción son las pantallas que
-no tienen tabla con barra (Tamaños y fórmulas, Inventario): ahí sus botones van en el
-`EncabezadoPagina`, porque no hay barra donde colgarlos.
+**Aplicada en las 14 pestañas** de las tres olas. La única excepción es **Tamaños y
+fórmulas**, que no tiene tabla sino una rejilla de tarjetas: ahí sus botones van en el
+`EncabezadoPagina` porque no hay barra donde colgarlos.
+
+**OJO — "no hay barra" casi nunca es una razón válida, es un síntoma** (2026-08-04). A
+Inventario se le documentó esa misma excepción y era falsa: no tenía barra porque su tabla
+estaba escrita a mano en vez de usar `SmartTable`. En cuanto se convirtió, apareció la
+barra y la excepción se cayó sola. Antes de escribir una tabla a mano, comprobar que
+`SmartTable` no sirva — si no se usa, la pantalla pierde de golpe buscador, orden, filtros,
+columna #, paginación y vista de celular, y se nota a simple vista que no pertenece al
+mismo dashboard. Es exactamente lo que el dueño reclamó.
+
+**`ExportMenu`** (`components/ExportMenu.tsx`) agrupa varias descargas de Excel y el
+importar en UN solo botón desplegable. Nació en Inventario, que tenía 3 exportaciones + 1
+importación + 3 acciones de negocio: siete botones no caben en una barra y la fila suelta
+de Excel era la "banda de botones sin caja" que el dueño ya había rechazado. La lógica de
+descarga vive en `useExportEntity` y la comparte con `ExportButton`, así que no está
+duplicada. Regla: bajar Excel es MANTENIMIENTO, no la tarea del día — cabe detrás de un clic;
+lo que no puede esconderse son las acciones reales (registrar llegada, producción, salida).
 
 Los comparativos entre meses **no van en las cajas**: van a Reportes, que es la pantalla
 de analizar, no la de registrar.
@@ -1057,6 +1073,27 @@ Orden acordado: (0) unificar tallas → (1) consumo por venta + ganancia real �
   `/costeo/formulas/:id/accesorios`.
 - **Puertos zombis locales**: si 4000/5173 quedan ocupados tras pruebas,
   `Get-NetTCPConnection -LocalPort N` → `Stop-Process`.
+- **MySQL de XAMPP que arranca y se muere a los segundos (2026-08-04)**: NO era la base del
+  proyecto. Las tablas de PERMISOS de la base de sistema `mysql` (motor **Aria**, no InnoDB)
+  estaban corruptas: `proxies_priv` inflada a **5,35 MB** cuando pesa 8 KB, más `db` y
+  `columns_priv`. Al leer los permisos, mysqld chocaba con una página con CRC malo y
+  **abortaba el proceso** — por eso alcanzaba a decir "ready for connections" y moría después.
+  - **Síntoma delator**: en el log de Windows (no en `mysql_error.log`) sale
+    `InnoDB: Tried to read 16384 bytes at offset N, but was only able to read 0`. Divide ese
+    offset por **8192** (página Aria) y te da la página dañada; aquí 5275648/8192 = 644, justo
+    en el rango que reportó el reparador. El prefijo dice "InnoDB" pero el archivo era Aria.
+  - **Diagnóstico en 1 comando**: `mysqlcheck --all-databases --check`. Y para aislar:
+    arrancar con `--skip-grant-tables --port=3307`; si así SÍ vive, el problema son los permisos.
+  - **Arreglo**: `REPAIR TABLE mysql.db, mysql.columns_priv, mysql.proxies_priv, …` →
+    `FLUSH PRIVILEGES`. Ojo: el reparador DESCARTA las filas ilegibles ("Number of rows changed
+    from 3 to 0"), así que hay que volver a otorgar lo que vivía ahí — aquí se perdió el permiso
+    de phpMyAdmin y se restauró con `GRANT … ON phpmyadmin.* TO 'pma'@'localhost'`.
+    `root` no se ve afectado: sus privilegios viven en `mysql.global_priv`, no en `mysql.db`.
+  - **Causa de fondo y prevención**: TODOS los arranques del log decían "Starting crash
+    recovery" — nunca hubo un apagado limpio. Aria no siempre sobrevive a eso y el daño se
+    acumula. **Detener MySQL siempre desde el panel de XAMPP** (o `mysqladmin shutdown`), nunca
+    matando el proceso ni apagando Windows con MySQL prendido.
+  - La base `perfumes_db` NO se tocó: las 94 tablas quedaron sin errores y los datos intactos.
 - **`prisma generate` falla con EPERM** si el dev server (ts-node-dev) está corriendo:
   tiene tomado `query_engine-windows.dll.node`. Detener node antes de compilar.
 - **Límite de 10 logins cada 15 min** (`authLimiter` en app.ts): las pruebas E2E que
