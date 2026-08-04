@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Boxes, Droplets, FlaskConical, PackagePlus, Scale, ShoppingCart, Trash2 } from 'lucide-react';
+import { Droplets, FlaskConical, PackagePlus, Scale, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,11 +13,11 @@ import ImportModal from '../../../components/ImportModal';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
-import { inventarioColumns, produccionesColumns } from '../columns';
-import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, SectionTitle, StatCard } from '../ui';
+import { inventarioColumns } from '../columns';
+import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, StatCard } from '../ui';
 import { SalidaModal } from './inventario/SalidaModal';
 import { mlDiluyente } from '../../../application/costeoCotizacion';
-import type { GuardedFetch, InventarioInsumo, Produccion } from '../types';
+import type { GuardedFetch, InventarioInsumo } from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
 
 /** Lo mínimo que hace falta del catálogo para elegir qué fragancia se armó. */
@@ -42,7 +42,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
   const [insumos, setInsumos] = useState<InventarioInsumo[]>([]);
   const [catalogo, setCatalogo] = useState<Insumo[]>([]);
   const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
-  const [producciones, setProducciones] = useState<Produccion[]>([]);
   const [valorTotal, setValorTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -67,21 +66,19 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
   const load = async () => {
     setLoading(true);
     try {
-      const [ri, rc, rf, rp, rpf] = await Promise.all([
+      const [ri, rc, rf, rpf] = await Promise.all([
         guardedFetch(API),
         guardedFetch(`${BASE_URL}/api/costeo/insumos`),
         guardedFetch(`${BASE_URL}/api/costeo/formulas`),
-        guardedFetch(`${API}/producciones`),
         guardedFetch(`${BASE_URL}/api/parfums`),
       ]);
-      if (!ri.ok || !rc.ok || !rf.ok || !rp.ok) throw new Error();
+      if (!ri.ok || !rc.ok || !rf.ok) throw new Error();
       const inv = (await ri.json()).data;
       setInsumos(inv.insumos ?? []);
       setValorTotal(inv.valor_total ?? 0);
       setSalidasMes(inv.salidas_mes ?? { muestras: 0, mermas: 0, ajustes: 0 });
       setCatalogo((await rc.json()).data ?? []);
       setFormulas((await rf.json()).data ?? []);
-      setProducciones((await rp.json()).data ?? []);
       // /api/parfums sin paginar responde { data: { data: [...] } }
       const jp = rpf.ok ? await rpf.json() : null;
       const lista = Array.isArray(jp?.data) ? jp.data : (jp?.data?.data ?? []);
@@ -178,17 +175,11 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) { toast.error(json?.error ?? 'No se pudo registrar', { id: 'prod' }); return; }
-      toast.success(`Lote registrado: ${formatPrice(json.data?.costo_total ?? 0)} en insumos`);
+      // Se dice dónde quedó: el historial de lotes ya no vive en esta pantalla
+      toast.success(`Lote registrado: ${formatPrice(json.data?.costo_total ?? 0)} en insumos. Lo ves en Producciones.`);
       setProdAbierta(false); load();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'prod' }); }
     finally { setGuardando(false); }
-  };
-
-  const borrarProduccion = async (p: Produccion) => {
-    if (!window.confirm(`¿Borrar el lote de ${p.cantidad} × ${p.volumen_nombre}? Los insumos vuelven al inventario.`)) return;
-    const res = await guardedFetch(`${API}/producciones/${p.id}`, { method: 'DELETE' });
-    if (!res.ok) { toast.error('No se pudo borrar', { id: 'prod-del' }); return; }
-    load();
   };
 
   if (loading) return <Section><PerfumeSpinner /></Section>;
@@ -306,33 +297,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
         />
       </Section>
 
-      {/* Lotes armados */}
-      <Section>
-        <SectionTitle count={producciones.length}>
-          <Boxes className="size-4 text-muted-foreground" /> Producciones recientes
-        </SectionTitle>
-        <SmartTable
-          columns={produccionesColumns}
-          rows={producciones}
-          rowKey={p => p.id}
-          numerada
-          paginadoLocal
-          tarjetaMovil
-          emptyText="Todavía no has registrado lotes."
-          renderActions={p => (
-            <Button size="icon" variant="ghost" className="size-8 text-muted-foreground hover:text-destructive"
-              onClick={() => borrarProduccion(p)}>
-              <Trash2 className="size-4" />
-            </Button>
-          )}
-          accionesMovil={p => (
-            <Button size="sm" variant="outline" className="text-destructive"
-              onClick={() => borrarProduccion(p)}>
-              <Trash2 className="size-4" /> Borrar lote
-            </Button>
-          )}
-        />
-      </Section>
 
       {/* Ajuste por conteo físico */}
       {ajuste && (

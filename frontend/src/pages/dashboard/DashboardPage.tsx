@@ -43,6 +43,7 @@ import { FormulasVolumenTab } from './tabs/FormulasVolumenTab';
 import { CostosProduccionTab } from './tabs/CostosProduccionTab';
 import { DevolucionesTab } from './tabs/DevolucionesTab';
 import { InventarioTab } from './tabs/InventarioTab';
+import { ProduccionesTab } from './tabs/ProduccionesTab';
 import { ReportesVentasTab } from './tabs/ReportesVentasTab';
 import { ReportesComprasTab } from './tabs/ReportesComprasTab';
 import { ReportesClientesTab } from './tabs/ReportesClientesTab';
@@ -64,6 +65,7 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   devoluciones: { label: 'Devoluciones', icon: PackageX },
   pagos: { label: 'Proveedores', icon: Factory },
   inventario: { label: 'Inventario', icon: Boxes },
+  producciones: { label: 'Producciones', icon: FlaskConical },
   rep_ventas: { label: 'Reporte de ventas', icon: ChartColumn },
   rep_compras: { label: 'Reporte de compras', icon: ChartColumn },
   rep_clientes: { label: 'Reporte de clientes', icon: ChartColumn },
@@ -85,7 +87,7 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
 const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
   { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones'] },
-  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos', 'inventario'] },
+  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos', 'inventario', 'producciones'] },
   { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'insumos', 'formulas', 'costos'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
@@ -465,6 +467,7 @@ export default function DashboardPage() {
             {tab === 'costos' && <CostosProduccionTab guardedFetch={guardedFetch} />}
             {tab === 'devoluciones' && <DevolucionesTab guardedFetch={guardedFetch} />}
             {tab === 'inventario' && <InventarioTab guardedFetch={guardedFetch} />}
+            {tab === 'producciones' && <ProduccionesTab guardedFetch={guardedFetch} />}
             {tab === 'redes' && <RedesTab guardedFetch={guardedFetch} />}
           </>
         )}

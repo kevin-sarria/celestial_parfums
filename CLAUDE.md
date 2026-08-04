@@ -184,6 +184,19 @@ barra y la excepción se cayó sola. Antes de escribir una tabla a mano, comprob
 columna #, paginación y vista de celular, y se nota a simple vista que no pertenece al
 mismo dashboard. Es exactamente lo que el dueño reclamó.
 
+**UNA PANTALLA, UNA TABLA** (decidido por el dueño el 2026-08-04). Al convertir Inventario
+quedaron dos tablas apiladas —insumos arriba, lotes de producción abajo— y el dueño lo
+rechazó: *"se ve como trabajo de practicante, no como diseño de un dashboard profesional"*.
+El historial de lotes salió a su **pestaña propia `producciones`** (`ProduccionesTab.tsx`).
+- Criterio: Inventario responde **"qué tengo"**, Producciones responde **"qué armé"**. Son
+  preguntas distintas y no comparten pantalla.
+- Se eligió pestaña y no modal porque en este dashboard **todo es una pestaña**: un modal
+  sería la excepción rara, y los lotes son historial contable que merece URL propia.
+- El botón para registrar un lote **sigue en Inventario** (es donde está el material), y su
+  aviso de éxito dice "Lo ves en Producciones" para que nadie lo busque donde ya no está.
+- **Regla general**: si una pantalla necesita una segunda tabla, casi siempre son dos
+  pantallas. Antes de apilarlas, preguntarse qué pregunta responde cada una.
+
 **`ExportMenu`** (`components/ExportMenu.tsx`) agrupa varias descargas de Excel y el
 importar en UN solo botón desplegable. Nació en Inventario, que tenía 3 exportaciones + 1
 importación + 3 acciones de negocio: siete botones no caben en una barra y la fila suelta
