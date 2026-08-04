@@ -16,6 +16,8 @@ import { formatPrice } from '../helpers';
 import { inventarioColumns } from '../columns';
 import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, StatCard } from '../ui';
 import { SalidaModal } from './inventario/SalidaModal';
+import { PrimerosPasos } from './inventario/PrimerosPasos';
+import { AsignarEsenciasModal } from './inventario/AsignarEsenciasModal';
 import { mlDiluyente } from '../../../application/costeoCotizacion';
 import type { GuardedFetch, InventarioInsumo } from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
@@ -62,6 +64,10 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
   const [salidasMes, setSalidasMes] = useState({ muestras: 0, mermas: 0, ajustes: 0 });
   const [importOpen, setImportOpen] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  // Arranque: la lista de primeros pasos y la asignación de esencias en bloque
+  const [esenciasAbierto, setEsenciasAbierto] = useState(false);
+  const [pasosVersion, setPasosVersion] = useState(0);
+  const recargarPasos = () => setPasosVersion(v => v + 1);
 
   const load = async () => {
     setLoading(true);
@@ -114,7 +120,7 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
       const json = await res.json().catch(() => null);
       if (!res.ok) { toast.error(json?.error ?? 'No se pudo ajustar', { id: 'ajuste' }); return; }
       toast.success('Inventario ajustado');
-      setAjuste(null); load();
+      setAjuste(null); load(); recargarPasos();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'ajuste' }); }
     finally { setGuardando(false); }
   };
@@ -191,6 +197,18 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
   return (
     <div className="space-y-4">
       <EncabezadoPagina titulo="Inventario" count={insumos.length} />
+
+      {/* Guía de arranque. Se esconde sola cuando los 4 pasos están hechos. */}
+      <PrimerosPasos
+        guardedFetch={guardedFetch}
+        recargar={pasosVersion}
+        onContar={() => {
+          // Lleva al primero sin existencias, que es por donde se empieza a contar
+          const primero = insumos.find(i => i.stock <= 0) ?? insumos[0];
+          if (primero) abrirAjuste(primero);
+        }}
+        onAsignarEsencias={() => setEsenciasAbierto(true)}
+      />
 
       {error && (
         <p className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
@@ -341,6 +359,14 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
         guardedFetch={guardedFetch}
         onImported={load}
       />
+
+      {esenciasAbierto && (
+        <AsignarEsenciasModal
+          guardedFetch={guardedFetch}
+          onClose={() => setEsenciasAbierto(false)}
+          onGuardado={recargarPasos}
+        />
+      )}
 
       {/* Salida sin venta: mostrario, regalos, derrames */}
       {salidaAbierta && (

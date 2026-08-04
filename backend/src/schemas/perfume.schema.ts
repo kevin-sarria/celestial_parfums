@@ -57,6 +57,15 @@ export const patchDescuentoCategoriaSchema = z.object({
   descuento: z.number().int().min(0).max(100),
 });
 
+/**
+ * Asignar la misma esencia a varios perfumes. `insumo_esencia_id` en null
+ * la QUITA, que es la forma de deshacer una asignación equivocada en bloque.
+ */
+export const asignarEsenciaMasivaSchema = z.object({
+  perfume_ids: z.array(z.number().int().positive()).min(1, 'Marca al menos un perfume'),
+  insumo_esencia_id: z.number().int().positive().nullable(),
+});
+
 export const patchAgotadoSchema = z.object({
   agotado: z.boolean(),
 });

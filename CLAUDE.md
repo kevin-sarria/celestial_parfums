@@ -184,6 +184,35 @@ barra y la excepción se cayó sola. Antes de escribir una tabla a mano, comprob
 columna #, paginación y vista de celular, y se nota a simple vista que no pertenece al
 mismo dashboard. Es exactamente lo que el dueño reclamó.
 
+## Primeros pasos del inventario (arranque guiado, 2026-08-04)
+
+Nació de una observación del dueño: *"el flujo lo siento muy rígido e ineficiente; una
+persona que no entiende de tecnología poco entendería cómo hacer las cosas"*. Diseño en
+`docs/superpowers/specs/2026-08-04-primeros-pasos-inventario-design.md`.
+
+- **`PrimerosPasos.tsx`** (arriba en Inventario): lista de 4 pasos que **se esconde sola**
+  cuando están hechos. `GET /inventario/primeros-pasos` devuelve los 4 contadores.
+- **El progreso se deduce de los DATOS, nunca de una bandera** `onboarding_completado`:
+  esa mentiría al primer Excel importado, y quien ya trabaja no debe ver la caja jamás.
+  Verificado insertando un movimiento a mano en la base: el paso se marcó solo.
+- **Solo hay UN orden obligatorio y está verificado en el código**: contar el stock ANTES
+  de la primera compra. Con stock 0, `aplicarMovimiento` fija el promedio al precio de esa
+  compra (`nuevoPromedio = costoAplicado`), y el modal de Ajustar prellena el costo con ese
+  promedio — así el material viejo entra al precio equivocado, en silencio. El paso 3
+  **avisa en ámbar, NO bloquea** (y el aviso desaparece solo al completarse el paso 2):
+  imponer orden donde no hace falta es la rigidez que el dueño rechazó.
+- **El paso 4 se mide contra los FABRICADOS, no contra los 212 perfumes**: un splash
+  comprado o una gorra no llevan esencia, así que contra el total nunca se completaría.
+- **`AsignarEsenciasModal.tsx`**: asigna una esencia a VARIOS perfumes de una vez
+  (`PATCH /parfums/esencia/masiva`). Existía el dato pero no la forma de llenarlo: eran 212
+  visitas a la ficha. El backend **rechaza un insumo que no sea `materia_prima`** (apuntar
+  a un envase daría un costo por ml sin sentido) y `insumo_esencia_id: null` lo QUITA, que
+  es cómo se deshace una asignación masiva equivocada.
+- El selector **ordena las esencias primero**: diluyente, sellador y feromonas también son
+  materia prima, y abrir en "Diluyente" invitaba a asignar el insumo equivocado.
+
+Skill de método: **`arranque-guiado`** (en `~/.claude/skills/`), creada para esto.
+
 **UNA PANTALLA, UNA TABLA** (decidido por el dueño el 2026-08-04). Al convertir Inventario
 quedaron dos tablas apiladas —insumos arriba, lotes de producción abajo— y el dueño lo
 rechazó: *"se ve como trabajo de practicante, no como diseño de un dashboard profesional"*.

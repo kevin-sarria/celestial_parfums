@@ -15,6 +15,15 @@ inventarioRouter.get('/', h(async (_req, res) => {
   res.json({ data: { ...resumen, salidas_mes: salidas } });
 }));
 
+/**
+ * Progreso del arranque, para la lista de "Primeros pasos".
+ * Un solo endpoint porque son cuatro conteos: pedirlos por separado
+ * serían cuatro viajes para pintar una sola caja.
+ */
+inventarioRouter.get('/primeros-pasos', h(async (_req, res) => {
+  res.json({ data: await repo.primerosPasos() });
+}));
+
 /** Movimientos de un insumo (entradas y salidas con su costo). */
 inventarioRouter.get('/movimientos/:insumoId', h(async (req, res) => {
   res.json({ data: await repo.movimientosDeInsumo(Number(req.params.insumoId)) });

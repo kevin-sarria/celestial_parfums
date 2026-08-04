@@ -5,6 +5,7 @@ import { paginatedResponse } from '../utils/pagination';
 import { toSlug } from '../utils/slug';
 import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 import { resumenRatings } from './resena.repository';
+import { badRequest } from '../utils/httpError';
 
 type PerfumeRow = Prisma.PerfumeGetPayload<{
   include: {
@@ -290,6 +291,29 @@ export const patchDescuentoPorCategoria = async (categoriaId: number, descuento:
 
 export const patchAgotadoPerfume = (id: string, agotado: boolean) =>
   prisma.perfume.update({ where: { id: Number(id) }, data: { agotado } });
+
+/**
+ * Asigna la misma esencia a varios perfumes de una vez.
+ *
+ * Existe porque hacerlo perfume por perfume son 212 visitas a la ficha, y sin
+ * esencia asignada la venta no descuenta material ni el costo es real. El
+ * insumo se valida contra `materia_prima`: apuntar un perfume a un envase
+ * daría un costo por ml sin sentido.
+ */
+export const asignarEsenciaMasiva = async (perfumeIds: number[], insumoId: number | null) => {
+  if (insumoId !== null) {
+    const insumo = await prisma.insumoCosto.findUnique({ where: { id: insumoId } });
+    if (!insumo) throw badRequest('Esa esencia no existe');
+    if (insumo.tipo !== 'materia_prima') {
+      throw badRequest(`"${insumo.nombre}" no es una materia prima, así que no puede ser la esencia de un perfume`);
+    }
+  }
+  const { count } = await prisma.perfume.updateMany({
+    where: { id: { in: perfumeIds } },
+    data: { insumo_esencia_id: insumoId },
+  });
+  return count;
+};
 
 // ── Lista de precios (categoría × presentación) ─────────────────────────────
 

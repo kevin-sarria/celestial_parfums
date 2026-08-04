@@ -1,4 +1,4 @@
-import { Prisma } from '../generated/prisma';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
 
@@ -525,4 +525,25 @@ export const perfumesSinCostear = async () => {
     take: 100,
   });
   return rows;
+};
+
+/**
+ * Progreso del arranque del inventario, para la lista de "Primeros pasos".
+ *
+ * Se deduce SIEMPRE de los datos reales, nunca de una bandera de "ya lo hizo":
+ * una bandera mentiría el día que se cargue algo por Excel o se borre un
+ * registro, y quien ya tiene su inventario andando nunca debe ver la lista.
+ */
+export const primerosPasos = async () => {
+  // Solo los FABRICADOS necesitan esencia: una gorra o un splash comprado no
+  // lleva receta. Contra el total de perfumes, el paso nunca se completaría.
+  const fabricado = { tipo_producto: 'fabricado' as const };
+  const [materiales, conteos, compras, faltanEsencia, fabricados] = await Promise.all([
+    prisma.insumoCosto.count(),
+    prisma.movimientoInventario.count({ where: { tipo: 'ajuste' } }),
+    prisma.compraItem.count(),
+    prisma.perfume.count({ where: { ...fabricado, insumo_esencia_id: null } }),
+    prisma.perfume.count({ where: fabricado }),
+  ]);
+  return { materiales, conteos, compras, faltan_esencia: faltanEsencia, fabricados };
 };

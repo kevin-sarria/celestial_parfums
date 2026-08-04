@@ -82,6 +82,12 @@ export const patchDescuentoPorCategoria = async (categoriaId: number, descuento:
   return count;
 };
 
+export const asignarEsenciaMasiva = async (perfumeIds: number[], insumoId: number | null) => {
+  const count = await perfumeRepository.asignarEsenciaMasiva(perfumeIds, insumoId);
+  bustCatalogoCache();
+  return count;
+};
+
 export const patchAgotadoPerfume = async (id: string, agotado: boolean) => {
   const result = await perfumeRepository.patchAgotadoPerfume(id, agotado);
   bustCatalogoCache();
