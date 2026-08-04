@@ -78,16 +78,19 @@ export function PrimerosPasos({ guardedFetch, onContar, onAsignarEsencias, recar
       hecho: p.conteos > 0,
       detalle: p.conteos > 0
         ? 'Ya sembraste tus existencias'
-        : 'Hoy el sistema cree que tu bodega está vacía.',
+        : 'Cuánto hay en tu bodega y cuánto costó. Con esto basta: no hace falta el historial.',
       accion: <Button size="sm" variant="outline" onClick={onContar}>Empezar</Button>,
     },
     {
       n: 3,
-      titulo: 'Registra tu primera compra',
+      // "primera compra" se leía como "la primera que hiciste en tu vida" y el
+      // dueño entendió que tenía que ir a buscar facturas viejas. No hace falta:
+      // el conteo del paso 2 ya captura cuánto hay y cuánto costó.
+      titulo: 'Registra la próxima compra que te llegue',
       hecho: p.compras > 0,
       detalle: p.compras > 0
-        ? 'Ya tienes compras registradas'
-        : 'Así el costo de cada material se calcula solo.',
+        ? 'Ya tienes compras con su detalle'
+        : 'De aquí en adelante. No busques facturas viejas: el paso 2 ya dice qué tienes y cuánto costó.',
       aviso: p.conteos === 0 && p.compras === 0
         ? 'Haz antes el paso 2. Si compras primero, lo que ya tenías entra al precio de esta compra y el costo te queda mal sin que se note.'
         : undefined,

@@ -79,7 +79,8 @@ cuando los cuatro pasos están hechos.
 │  ○  2. Cuenta lo que tienes hoy                          [ Empezar ]   │
 │        Hoy el sistema cree que tu bodega está vacía.                   │
 │                                                                        │
-│  ○  3. Registra tu primera compra                        [ Empezar ]   │
+│  ○  3. Registra la próxima compra que te llegue          [ Empezar ]   │
+│        De aquí en adelante. No busques facturas viejas.                │
 │        ⚠ Haz antes el paso 2. Si compras primero, el costo de lo que   │
 │          ya tenías entra al precio equivocado y no se nota.            │
 │                                                                        │
@@ -95,6 +96,11 @@ Decisiones y su porqué:
   exactamente la rigidez de la que se quejó el dueño. El aviso dice la consecuencia en
   plata, no "requisito no cumplido".
 - **Cada paso dice para qué sirve** en términos del negocio, no del sistema.
+- **NO se pide el historial de compras.** El dueño leyó "tu primera compra" como "la
+  primera que hiciste en tu vida" y entendió que debía rastrear facturas viejas. No hace
+  falta: el conteo del paso 2 captura cantidad **y** costo, que es todo lo que el sistema
+  necesita. Las 59 compras históricas ya están en `pagos_proveedor` (sin líneas, y así se
+  quedan: un pago sin líneas es válido y no mueve inventario).
 - **El paso 4 muestra `0 de 212`**: un contador convierte un pendiente invisible en uno
   medible.
 
