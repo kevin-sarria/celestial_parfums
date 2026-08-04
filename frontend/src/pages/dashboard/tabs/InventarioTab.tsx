@@ -269,15 +269,17 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
           acciones={
             <>
               {/* Excel es mantenimiento: cabe detrás de un clic para no competir
-                  con las tres acciones reales del día. */}
+                  con las tres acciones reales del día. Los nombres van en el idioma
+                  del dueño, no del sistema: "Movimientos" e "Insumos" no le dicen
+                  nada a quien no construyó esto. */}
               <ExportMenu
                 guardedFetch={guardedFetch}
                 onImportar={() => setImportOpen(true)}
                 importarLabel="Subir hoja de conteo"
                 descargas={[
                   { entity: 'inventario', label: 'Hoja de conteo', nota: 'Para contar y volver a subirla' },
-                  { entity: 'insumos', label: 'Insumos y precios' },
-                  { entity: 'movimientos', label: 'Movimientos' },
+                  { entity: 'insumos', label: 'Lista de materiales', nota: 'Qué usas y cuánto cuesta' },
+                  { entity: 'movimientos', label: 'Historial de entradas y salidas', nota: 'Solo se descarga' },
                 ]}
               />
               <Button size="sm" variant="outline" onClick={() => setSalidaAbierta(true)}>
