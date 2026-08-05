@@ -7,6 +7,23 @@ Dueño: Kevin — no técnico; explícale en español claro, sin jerga, y dale l
 negocio, migración, convención nueva, gotcha descubierto) agrégalo aquí en la sección
 que corresponda. Este documento es la memoria del proyecto entre sesiones y modelos.
 
+## Skills del proyecto (leerlas antes de trabajar)
+
+Viven en `~/.claude/skills/` (fuera del repositorio, en la máquina del dueño):
+
+- **`celestial-sistema`** — skill BASE. Funciona como un comité de departamentos
+  (Desarrollo, QA, Contabilidad, Legal, Diseño, Marketing, Viabilidad): antes de dar algo
+  por terminado se pasa por los que apliquen. Contiene además la **auditoría viva** del
+  sistema (`references/auditoria.md`) con los pendientes priorizados y su evidencia
+  medida, y la referencia de **tributación colombiana** (IVA, facturación electrónica,
+  POS). Al aprender algo que sirva mañana, se AMPLÍA esa skill; no se crea otra.
+- **`dashboard-interno-ux`** — método para rediseñar pantallas internas ya existentes.
+- **`arranque-guiado`** — método para diseñar los primeros pasos de un módulo que no
+  sirve hasta que alguien lo configura.
+
+Este `CLAUDE.md` guarda lo decidido en ESTE negocio y por qué; las skills guardan el
+criterio general reutilizable.
+
 ## Reglas inquebrantables de código
 
 - **Refactoriza SIEMPRE que se pueda**: extrae helpers, reutiliza lógica existente (no
