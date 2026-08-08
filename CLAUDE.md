@@ -478,6 +478,32 @@ de analizar, no la de registrar.
   de más al servir): lo absorbe el **conteo físico**. La diferencia entre el stock teórico y
   el real ES el desperdicio, y queda registrada como `ajuste`. Pedirle al dueño que anote
   cada gramo garantiza que deje de usar el módulo en una semana.
+- **IVA de compras: se configura POR PROVEEDOR, nunca global** (2026-08-08). Los proveedores
+  de este negocio facturan distinto y un porcentaje único es un error caro:
+  `empresas.iva_modo` = `incluido` (el precio ya lo trae — así factura el distribuidor
+  principal), `agregado` (dan el parcial y suman el IVA) o `sin_iva` (Temu, Amazon, persona
+  natural). Aplicarle 19% a todos **contaría el impuesto dos veces** con el proveedor más
+  grande, y como el costo promedio se arrastra, ese error no se deshace después.
+  - Se configura UNA vez por proveedor y cada factura puede corregirlo (`pagos_proveedor.
+    iva_modo`). El modo y la tasa se **congelan** en el pago: cambiarle el modo al proveedor
+    mañana no reescribe una compra de marzo.
+  - **La tasa NO va quemada**: vive en `negocio_config.iva_tasa` (cambia por ley) y el
+    formulario la pide a `GET /pagos/config-iva`.
+  - `negocio_config.responsable_iva` decide si el IVA **es costo** (hoy `false`: el dueño no
+    está constituido como empresa, así que el impuesto sale de su bolsillo) o si se descuenta
+    ante la DIAN y entonces el costo es la base gravable. `costosConFlete(lineas, flete, iva)`
+    lo aplica; **sin el 3er parámetro se comporta exactamente como antes**.
+  - El IVA **se reparte entre las líneas como el flete**, y el flete se prorratea sobre el
+    valor CON impuesto (que es lo que de verdad pesa cada línea en la factura).
+  - Se guarda `base_gravable` e `iva_valor` **por línea**: sin el desglose no se puede
+    declarar ni, más adelante, emitir factura electrónica.
+  - El formulario muestra **la cuenta antes de guardar** (`compras/IvaDeLaCompra.tsx`): ver
+    el total es lo que impide el error; pedirle al dueño que multiplique de cabeza lo
+    garantiza. Las constantes viven en `compras/iva.ts` — un archivo que exporta componente
+    Y constantes rompe la recarga en caliente.
+  - Verificado: 17 casos de cálculo, y de punta a punta con la MISMA factura de $322.000 →
+    proveedor `agregado` deja el insumo en **$383,18/ml** y `incluido` en **$322,00/ml**.
+  - Migración: `20260805120000_iva_por_proveedor`.
 - **Soportes de compra** (`utils/soporteArchivo.ts`): imágenes → WebP como el resto; **PDF
   se guarda tal cual**. `uploadSoportes` valida mimetype **y** extensión (con solo uno, un
   `.pdf` con otro contenido pasaría) y rechaza SVG (admite scripts). `sanearUploadsConservados`

@@ -1,6 +1,11 @@
+// SIN `output`: el cliente se genera dentro de node_modules y se importa desde
+// '@prisma/client'. Con un `output` dentro de src/, `tsc` solo copiaba a dist/
+// los .ts compilados (7 archivos) y dejaba fuera el MOTOR de Prisma y su schema
+// (los otros 43) -> en local funcionaba (se corre desde src/) pero en el
+// servidor `node dist/app.js` arrancaba sin motor. node_modules no lo compila
+// nadie, así que ahí el cliente queda completo.
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -556,6 +561,18 @@ model VentaPerfume {
   @@map("venta_perfume")
 }
 
+/// Cómo factura el IVA un proveedor. No es global: el distribuidor principal
+/// entrega el precio ya con IVA, otros lo suman aparte, y las compras al
+/// exterior no lo cobran. Un porcentaje único contaría el impuesto dos veces.
+enum IvaModo {
+  /// El valor que da el proveedor YA incluye el IVA.
+  incluido
+  /// El proveedor da el parcial y el IVA se suma.
+  agregado
+  /// No cobra IVA (exterior, persona natural).
+  sin_iva
+}
+
 model Empresa {
   id         Int             @id @default(autoincrement())
   nombre     String          @db.VarChar(150)
@@ -563,11 +580,29 @@ model Empresa {
   telefono   String?         @db.VarChar(20)
   correo     String?         @db.VarChar(150)
   direccion  String?         @db.VarChar(255)
+  /// Se configura UNA vez y todas sus compras la heredan.
+  /// `incluido` por defecto: es el comportamiento actual y no infla ningún costo.
+  iva_modo   IvaModo         @default(incluido)
   created_at DateTime        @default(now())
   updated_at DateTime        @updatedAt
   pagos      PagoProveedor[]
 
   @@map("empresas")
+}
+
+/// Configuración tributaria del negocio (fila única, patrón ContactoConfig).
+model NegocioConfig {
+  id              Int      @id @default(1)
+  /// ¿El negocio descuenta el IVA de sus compras ante la DIAN?
+  /// false = el IVA es COSTO (sale del bolsillo). true = es descontable y NO
+  /// entra al costo. Hoy false: el dueño no está constituido como empresa.
+  responsable_iva Boolean  @default(false)
+  /// Tasa general vigente. Configurable porque cambia por ley; la tasa usada
+  /// se CONGELA en cada compra, así que la historia nunca se reescribe.
+  iva_tasa        Decimal  @default(0.19) @db.Decimal(5, 4)
+  updated_at      DateTime @updatedAt
+
+  @@map("negocio_config")
 }
 
 model Credito {
@@ -616,6 +651,15 @@ model PagoProveedor {
   numero_factura       String?  @db.VarChar(60)
   /// URLs de los soportes que manda la distribuidora (imágenes y PDF).
   archivos             Json?
+  /// Cómo se liquidó el IVA de ESTA factura. Se hereda del proveedor y se puede
+  /// corregir puntualmente. Se CONGELA: cambiar el proveedor mañana no reescribe
+  /// una compra de marzo.
+  iva_modo             IvaModo?
+  /// Tasa aplicada, congelada (la general cambia por ley).
+  iva_tasa             Decimal? @db.Decimal(5, 4)
+  /// IVA total de la factura, congelado. Hace falta para declarar aunque hoy no
+  /// se descuente.
+  iva_valor            Decimal  @default(0) @db.Decimal(12, 2)
   created_at           DateTime @default(now())
   updated_at           DateTime @updatedAt
   empresa              Empresa  @relation(fields: [empresa_id], references: [id])
@@ -894,6 +938,10 @@ model CompraItem {
   subtotal             Decimal      @db.Decimal(12, 2)
   /// Costo por unidad YA con la parte proporcional del flete (congelado).
   costo_unitario_final Decimal      @db.Decimal(12, 4)
+  /// Desglose del impuesto, congelado. Guardar base y valor por línea (y no solo
+  /// el total) es lo que permite declarar y, más adelante, facturar.
+  base_gravable        Decimal?     @db.Decimal(12, 4)
+  iva_valor            Decimal?     @db.Decimal(12, 4)
   created_at           DateTime     @default(now())
 
   pago   PagoProveedor @relation(fields: [pago_id], references: [id], onDelete: Cascade)

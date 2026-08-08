@@ -109,24 +109,62 @@ export const FACTOR_UNIDAD: Record<string, number> = {
 export const aBase = (cantidad: number, unidad: string) =>
   r3(cantidad * (FACTOR_UNIDAD[unidad] ?? 1));
 
+export type IvaModo = 'incluido' | 'agregado' | 'sin_iva';
+
+/** Cómo se liquida el IVA de una compra, resuelto contra el proveedor. */
+export interface IvaCompra {
+  modo: IvaModo;
+  tasa: number;
+  /** true = el negocio lo descuenta ante la DIAN, así que NO es costo. */
+  descontable: boolean;
+}
+
 /**
- * Reparte el flete de una compra entre sus líneas, proporcional a lo que pesa
- * cada una en el total. El transporte es parte de lo que te costó el material:
- * si lo ignoras, el margen se ve mejor de lo que es.
+ * Parte un valor de línea en base gravable e IVA, según cómo factura ESE proveedor.
  *
- * Devuelve el costo por unidad BASE (por ml, no por litro), que es como se
- * valora el inventario y como lo consumen las fórmulas.
+ * Existe porque el IVA no es global: el distribuidor principal entrega el precio
+ * ya con impuesto, otros lo suman aparte y las compras al exterior no lo cobran.
+ * Aplicarle 19% a todos contaría el impuesto dos veces con el proveedor más grande.
+ */
+export const desglosarIva = (subtotal: number, modo: IvaModo, tasa: number) => {
+  if (modo === 'sin_iva' || tasa <= 0) return { base: r4(subtotal), iva: 0 };
+  if (modo === 'agregado') return { base: r4(subtotal), iva: r4(subtotal * tasa) };
+  const base = subtotal / (1 + tasa); // 'incluido': el valor ya lo trae dentro
+  return { base: r4(base), iva: r4(subtotal - base) };
+};
+
+/**
+ * Cuánto cuesta de verdad una unidad de cada línea de la compra.
+ *
+ * Suma lo que se pagó: el material, su IVA (cuando no se descuenta) y la parte
+ * proporcional del flete. El prorrateo del transporte se hace sobre el valor CON
+ * impuesto, que es lo que de verdad pesa cada línea en la factura.
+ *
+ * Devuelve el costo por unidad BASE (por ml, no por litro), que es como se valora
+ * el inventario y como lo consumen las fórmulas.
+ *
+ * `iva` es opcional: sin él se comporta exactamente igual que antes.
  */
 export const costosConFlete = (
   lineas: { cantidad: number; subtotal: number; unidad_compra?: string }[],
   flete: number,
+  iva?: IvaCompra,
 ): number[] => {
-  const totalSinFlete = lineas.reduce((s, l) => s + l.subtotal, 0);
-  return lineas.map((l) => {
+  // Costo = base gravable + el IVA SOLO si no se descuenta.
+  // Ojo: no es `subtotal + iva`. Con el modo `incluido` el subtotal ya trae el
+  // impuesto dentro, así que sumárselo lo contaría dos veces — que es
+  // precisamente el error que esta función existe para evitar.
+  const valores = lineas.map((l) => {
+    if (!iva) return l.subtotal;
+    const { base, iva: impuesto } = desglosarIva(l.subtotal, iva.modo, iva.tasa);
+    return iva.descontable ? base : base + impuesto;
+  });
+  const total = valores.reduce((s, v) => s + v, 0);
+  return lineas.map((l, i) => {
     const base = aBase(l.cantidad, l.unidad_compra ?? 'unidad');
     if (base <= 0) return 0;
-    const parteFlete = totalSinFlete > 0 ? (l.subtotal / totalSinFlete) * flete : 0;
-    return r4((l.subtotal + parteFlete) / base);
+    const parteFlete = total > 0 ? (valores[i] / total) * flete : 0;
+    return r4((valores[i] + parteFlete) / base);
   });
 };
 

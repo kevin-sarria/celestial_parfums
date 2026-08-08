@@ -8,6 +8,8 @@ const mapEmpresa = (e: any) => ({
   telefono:  e.telefono ?? null,
   correo:    e.correo ?? null,
   direccion: e.direccion ?? null,
+  /// Cómo factura el IVA: define el costo real de todo lo que se le compra.
+  iva_modo:  e.iva_modo ?? 'incluido',
   created_at: e.created_at,
 });
 
@@ -24,6 +26,7 @@ export const createEmpresa = async (data: CreateEmpresaDTO) => {
       telefono:  data.telefono ?? null,
       correo:    data.correo ?? null,
       direccion: data.direccion ?? null,
+      iva_modo:  data.iva_modo ?? 'incluido',
     },
   });
   return mapEmpresa(row);
@@ -38,6 +41,7 @@ export const updateEmpresa = async (id: string, data: CreateEmpresaDTO) => {
       telefono:  data.telefono ?? null,
       correo:    data.correo ?? null,
       direccion: data.direccion ?? null,
+      ...(data.iva_modo ? { iva_modo: data.iva_modo } : {}),
     },
   });
   return mapEmpresa(row);

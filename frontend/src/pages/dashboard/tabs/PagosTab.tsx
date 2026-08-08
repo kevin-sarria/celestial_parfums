@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { NativeSelect } from '@/components/ui/native-select';
 import Modal from '../../../components/Modal';
 import DetalleCompra, { type LineaCompra } from '../compras/DetalleCompra';
 import { BASE_URL } from '../../../infrastructure/api/client';
@@ -11,10 +12,12 @@ import BuscadorSelect from '../../../components/BuscadorSelect';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
+import { IvaDeLaCompra } from '../compras/IvaDeLaCompra';
+import { IVA_MODOS } from '../compras/iva';
 import { pagosColumns } from '../columns';
 import { API_PAGOS, API_EMPRESAS, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
 import { EncabezadoPagina, FranjaMetricas, Section, Field, FieldRow, FormError, StatCard } from '../ui';
-import type { GuardedFetch, Pago, Empresa, PagoForm } from '../types';
+import type { GuardedFetch, Pago, Empresa, PagoForm, IvaModo } from '../types';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { emptyPagoForm } from '../types';
 
@@ -34,6 +37,9 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
   // Detalle de la compra: mueve el inventario y el costo promedio
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [lineas, setLineas] = useState<LineaCompra[]>([]);
+  // null = se usa el modo del proveedor; con valor, esta factura lo corrige
+  const [ivaModo, setIvaModo] = useState<IvaModo | null>(null);
+  const [ivaTasa, setIvaTasa] = useState(0.19);
   const [archivos, setArchivos] = useState<string[]>([]);
   const [form, setForm] = useState<PagoForm>(emptyPagoForm());
   const [loading, setLoading] = useState(false);
@@ -44,6 +50,18 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
   const cargarInsumos = async () => {
     const r = await guardedFetch(`${BASE_URL}/api/costeo/insumos`);
     if (r.ok) setInsumos((await r.json()).data ?? []);
+  };
+
+  /**
+   * Tasa de IVA vigente. Viene del servidor, no de una constante: cambia por ley.
+   * Si la petición falla se queda en 0.19, que es la general de Colombia — es
+   * mejor mostrar la cuenta con la tasa habitual que no mostrarla.
+   */
+  const cargarConfigIva = async () => {
+    try {
+      const r = await guardedFetch(`${API_PAGOS}/config-iva`);
+      if (r.ok) setIvaTasa((await r.json()).data?.iva_tasa ?? 0.19);
+    } catch { /* se queda el valor por defecto */ }
   };
 
   const load = async (p = page, s = pageSize, term = searchTerm) => {
@@ -61,7 +79,7 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
     setEmpresas(eJson.data ?? []);
   };
 
-  useEffect(() => { load(1); cargarInsumos(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(1); cargarInsumos(); cargarConfigIva(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Se llega aquí desde el botón "Registrar llegada" de Inventario
   // (/dashboard/pagos?nueva=1): abre el formulario de una vez, sin pedirle al
@@ -81,10 +99,12 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
     setForm({
       dia: p.dia.slice(0, 10), empresa_id: p.empresa.id,
       nueva_nombre: '', nueva_nit: '', nueva_telefono: '', nueva_correo: '', nueva_direccion: '',
+      nueva_iva_modo: 'incluido' as IvaModo,
       valor_compra: String(p.valor_compra), coste_envio: String(p.coste_envio),
       detalles_adicionales: p.detalles_adicionales ?? '',
       numero_factura: p.numero_factura ?? '',
     });
+    setIvaModo(p.iva_modo ?? null);
     setLineas((p.items ?? []).map(i => ({
       insumo_id: i.insumo_id, insumo_nombre: i.insumo_nombre,
       cantidad: String(i.cantidad), unidad_compra: i.unidad_compra, subtotal: String(i.subtotal),
@@ -93,6 +113,11 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
     setError(''); setModal({ open: true, editId: p.id });
   };
   const closeModal = () => setModal({ open: false, editId: null });
+
+  // Modo de IVA de ESTA factura. null = se usa el del proveedor.
+  const empresaElegida = empresas.find(e => e.id === form.empresa_id) ?? null;
+  const modoProveedor: IvaModo = empresaElegida?.iva_modo ?? 'incluido';
+  const modoEfectivo: IvaModo = ivaModo ?? modoProveedor;
 
   const handleSubmit = async (e: { preventDefault(): void }) => {
     e.preventDefault(); setLoading(true); setError('');
@@ -107,6 +132,7 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
             nombre: form.nueva_nombre.trim(), nit: form.nueva_nit.trim() || null,
             telefono: form.nueva_telefono.trim() || null, correo: form.nueva_correo.trim() || null,
             direccion: form.nueva_direccion.trim() || null,
+            iva_modo: form.nueva_iva_modo,
           }),
         });
         const json = await res.json();
@@ -124,6 +150,8 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
         detalles_adicionales: form.detalles_adicionales.trim() || null,
         numero_factura: form.numero_factura.trim() || null,
         archivos,
+        // Solo viaja si se corrigio: si no, manda el del proveedor
+        ...(ivaModo && ivaModo !== modoProveedor ? { iva_modo: ivaModo } : {}),
         // Solo viajan las líneas completas: una a medias descuadraría el costo
         items: lineas
           .filter(l => Number(l.cantidad) > 0 && Number(l.subtotal) >= 0 && l.subtotal !== '')
@@ -287,6 +315,12 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
               <Input value={form.nueva_direccion} maxLength={150}
                 onChange={e => setForm(f => ({ ...f, nueva_direccion: e.target.value }))} />
             </Field>
+            <Field label="Como te factura el IVA">
+              <NativeSelect value={form.nueva_iva_modo}
+                onChange={e => setForm(f => ({ ...f, nueva_iva_modo: e.target.value as IvaModo }))}>
+                {IVA_MODOS.map(m => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
+              </NativeSelect>
+            </Field>
           </div>
         )}
         <FieldRow>
@@ -295,6 +329,14 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
               onChange={e => setForm(f => ({ ...f, coste_envio: e.target.value }))} />
           </Field>
         </FieldRow>
+        {/* La cuenta a la vista: verla antes de guardar es lo que evita el error */}
+        <IvaDeLaCompra
+          valor={Number(form.valor_compra) || 0}
+          modo={modoEfectivo}
+          tasa={ivaTasa}
+          modoDelProveedor={modoProveedor}
+          onModo={setIvaModo}
+        />
         <Field label="Numero de factura o remision">
           <Input value={form.numero_factura} maxLength={60} placeholder="Ej: FV-8891"
             onChange={e => setForm(f => ({ ...f, numero_factura: e.target.value }))} />

@@ -7,7 +7,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
-import { Field } from '../ui';
+import { Field, FieldRow } from '../ui';
 import type { GuardedFetch } from '../types';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
 
@@ -36,6 +36,15 @@ interface Props {
   onArchivos: (a: string[]) => void;
   /** Flete de la compra, para mostrar el costo real ya prorrateado. */
   flete: number;
+  /** Avisa arriba que hay un insumo nuevo, para que entre a la lista. */
+  onInsumoCreado: (i: Insumo) => void;
+}
+
+/** Lo mínimo para dar de alta un insumo: el precio lo pone la compra. */
+interface NuevoInsumo {
+  nombre: string;
+  tipo: 'materia_prima' | 'envase' | 'accesorio';
+  unidad: 'ml' | 'unidad';
 }
 
 const esPdf = (url: string) => url.toLowerCase().endsWith('.pdf');
@@ -50,10 +59,13 @@ const esPdf = (url: string) => url.toLowerCase().endsWith('.pdf');
  * usan las cotizaciones y los márgenes.
  */
 export default function DetalleCompra({
-  guardedFetch, insumos, lineas, onLineas, archivos, onArchivos, flete,
+  guardedFetch, insumos, lineas, onLineas, archivos, onArchivos, flete, onInsumoCreado,
 }: Props) {
   const [subiendo, setSubiendo] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Mini-form para dar de alta un insumo sin salir de la factura
+  const [nuevo, setNuevo] = useState<NuevoInsumo | null>(null);
+  const [creando, setCreando] = useState(false);
 
   const totalSinFlete = lineas.reduce((s, l) => s + (Number(l.subtotal) || 0), 0);
   /** Mismo prorrateo que hace el backend, para que veas el costo antes de guardar. */
@@ -66,9 +78,9 @@ export default function DetalleCompra({
     return (sub + parte) / base;
   };
 
-  const agregar = (id: number | string) => {
-    const insumo = insumos.find((i) => i.id === Number(id));
-    if (!insumo || lineas.some((l) => l.insumo_id === insumo.id)) return;
+  /** Mete el insumo como línea nueva (o lo ignora si ya está). */
+  const agregarInsumo = (insumo: { id: number; nombre: string; unidad: string }) => {
+    if (lineas.some((l) => l.insumo_id === insumo.id)) return;
     onLineas([...lineas, {
       insumo_id: insumo.id,
       insumo_nombre: insumo.nombre,
@@ -76,6 +88,38 @@ export default function DetalleCompra({
       unidad_compra: insumo.unidad === 'ml' ? 'ml' : 'unidad',
       subtotal: '',
     }]);
+  };
+
+  const agregar = (id: number | string) => {
+    // Llega una esencia o un envase que nunca habías comprado: se crea aquí
+    // mismo. Mandarlo a otra pestaña a mitad de una factura es perder el hilo.
+    if (id === 'nuevo') { setNuevo({ nombre: '', tipo: 'materia_prima', unidad: 'ml' }); return; }
+    const insumo = insumos.find((i) => i.id === Number(id));
+    if (insumo) agregarInsumo(insumo);
+  };
+
+  /** Crea el insumo con precio 0: su costo lo fija ESTA compra al guardarse. */
+  const crearInsumo = async () => {
+    if (!nuevo) return;
+    const nombre = nuevo.nombre.trim();
+    if (!nombre) { toast.error('Ponle un nombre al insumo', { id: 'insumo-nuevo' }); return; }
+    setCreando(true);
+    try {
+      const res = await guardedFetch(`${BASE_URL}/api/costeo/insumos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...nuevo, nombre, alcance: 'unidad', precio: 0 }),
+      });
+      const json = await res.json().catch(() => null);
+      if (!res.ok) { toast.error(json?.error ?? 'No se pudo crear el insumo', { id: 'insumo-nuevo' }); return; }
+      const creado = json.data;
+      onInsumoCreado(creado);
+      agregarInsumo(creado);
+      setNuevo(null);
+      toast.success(`"${creado.nombre}" quedó creado y agregado a la compra`);
+    } catch {
+      toast.error('No se pudo conectar con el servidor', { id: 'insumo-nuevo' });
+    } finally { setCreando(false); }
   };
 
   const actualizar = (idx: number, cambios: Partial<LineaCompra>) =>
@@ -110,13 +154,57 @@ export default function DetalleCompra({
       </div>
 
       <BuscadorSelect
-        opciones={insumos
-          .filter((i) => !lineas.some((l) => l.insumo_id === i.id))
-          .map((i) => ({ id: i.id, nombre: `${i.nombre} (${i.unidad})` }))}
+        // "Crear nuevo" va PRIMERO: al final de una lista larga hay que hacer
+        // scroll para encontrarlo y no se ve que la opción existe.
+        opciones={[
+          { id: 'nuevo', nombre: '+ Crear insumo nuevo (esencia, envase…)' },
+          ...insumos
+            .filter((i) => !lineas.some((l) => l.insumo_id === i.id))
+            .map((i) => ({ id: i.id as number | string, nombre: `${i.nombre} (${i.unidad})` })),
+        ]}
         placeholder="Agregar insumo a la compra…"
         onSelect={agregar}
         vacio="Sin insumos que coincidan"
       />
+
+      {nuevo && (
+        <div className="rounded-lg border border-primary/40 bg-card p-3">
+          <p className="mb-2.5 text-[13px] font-medium text-foreground">Insumo nuevo</p>
+          <FieldRow>
+            <Field label="¿Cómo se llama?" className="min-w-52 flex-1">
+              <Input autoFocus value={nuevo.nombre} maxLength={120}
+                placeholder="Ej: Esencia Khamrah, Frasco luxury 30 ml"
+                onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} />
+            </Field>
+            <Field label="¿Qué es?" className="w-44">
+              <NativeSelect value={nuevo.tipo}
+                onChange={(e) => setNuevo({ ...nuevo, tipo: e.target.value as NuevoInsumo['tipo'] })}>
+                <option value="materia_prima">Materia prima (esencia, alcohol…)</option>
+                <option value="envase">Envase (frasco, tapa)</option>
+                <option value="accesorio">Accesorio (bolsa, tarjeta)</option>
+              </NativeSelect>
+            </Field>
+            <Field label="¿Cómo se mide?" className="w-40">
+              <NativeSelect value={nuevo.unidad}
+                onChange={(e) => setNuevo({ ...nuevo, unidad: e.target.value as NuevoInsumo['unidad'] })}>
+                <option value="ml">Por mililitro o gramo</option>
+                <option value="unidad">Por unidad</option>
+              </NativeSelect>
+            </Field>
+          </FieldRow>
+          {/* No se pregunta el precio a propósito: sale del costo promedio que
+              calcula esta misma compra. Teclearlo a mano sería inventárselo. */}
+          <p className="mt-1.5 text-[12px] text-muted-foreground">
+            No hace falta el precio: lo fija esta compra cuando la guardes.
+          </p>
+          <div className="mt-2.5 flex gap-2">
+            <Button size="sm" onClick={crearInsumo} disabled={creando}>
+              {creando ? 'Creando…' : 'Crear y agregar'}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setNuevo(null)}>Cancelar</Button>
+          </div>
+        </div>
+      )}
 
       {lineas.length > 0 && (
         <ul className="flex flex-col gap-2.5">

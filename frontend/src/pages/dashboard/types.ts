@@ -28,6 +28,9 @@ export interface PerfilCredito {
   }[];
 }
 
+/** Cómo factura el IVA un proveedor. Define el costo real de lo que se le compra. */
+export type IvaModo = 'incluido' | 'agregado' | 'sin_iva';
+
 export interface Empresa {
   id: number;
   nombre: string;
@@ -35,6 +38,8 @@ export interface Empresa {
   telefono: string | null;
   correo: string | null;
   direccion: string | null;
+  /** Se configura una vez y todas sus compras la heredan. */
+  iva_modo: IvaModo;
 }
 
 export interface Venta {
@@ -99,11 +104,16 @@ export interface Pago {
   detalles_adicionales: string | null;
   numero_factura: string | null;
   archivos: string[];
+  /** Cómo se liquidó el IVA de esta factura (congelado). Null en los históricos. */
+  iva_modo: IvaModo | null;
+  iva_tasa: number | null;
+  iva_valor: number;
   /** Detalle de la compra; vacío en los pagos históricos. */
   items: {
     id: number; insumo_id: number; insumo_nombre: string;
     cantidad: number; unidad_compra: 'ml' | 'g' | 'l' | 'kg' | 'unidad';
     subtotal: number; costo_unitario_final: number;
+    base_gravable: number | null; iva_valor: number | null;
   }[];
 }
 
@@ -259,6 +269,8 @@ export interface PagoForm {
   nueva_correo: string; nueva_direccion: string;
   valor_compra: string; coste_envio: string; detalles_adicionales: string;
   numero_factura: string;
+  /** Solo al dar de alta un proveedor desde la compra: cómo factura el IVA. */
+  nueva_iva_modo: IvaModo;
 }
 
 export const emptyPagoForm = (): PagoForm => ({
@@ -266,6 +278,8 @@ export const emptyPagoForm = (): PagoForm => ({
   empresa_id: '',
   nueva_nombre: '', nueva_nit: '', nueva_telefono: '', nueva_correo: '', nueva_direccion: '',
   valor_compra: '', coste_envio: '0', detalles_adicionales: '', numero_factura: '',
+  // 'incluido' por defecto: nunca infla un costo por descuido
+  nueva_iva_modo: 'incluido',
 });
 
 export interface ComboForm {

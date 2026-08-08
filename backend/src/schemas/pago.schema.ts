@@ -26,6 +26,20 @@ export const createPagoSchema = z.object({
   /// Detalle opcional: un pago sin líneas sigue siendo válido (los históricos
   /// no lo tienen) pero solo los que traen líneas mueven el inventario.
   items: z.array(compraItemSchema).max(60).optional(),
+  /// Corrección puntual del IVA de ESTA factura. Sin esto se usa el modo del
+  /// proveedor y la tasa vigente del negocio.
+  iva_modo: z.enum(['incluido', 'agregado', 'sin_iva']).optional(),
+  iva_tasa: z.number().min(0).max(1).optional(),
 });
 
 export type CreatePagoInput = z.infer<typeof createPagoSchema>;
+
+/**
+ * Configuración tributaria del negocio.
+ * La tasa se guarda como fracción (0.19 = 19%) y se acota: un 1.9 tecleado por
+ * error multiplicaría el costo de todo el inventario.
+ */
+export const configIvaSchema = z.object({
+  responsable_iva: z.boolean().optional(),
+  iva_tasa: z.number().min(0).max(1, 'La tasa va como fracción: 0.19 para el 19%').optional(),
+});
