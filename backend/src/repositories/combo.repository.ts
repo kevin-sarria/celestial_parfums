@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma';
-import { Prisma } from '../generated/prisma';
+import { Prisma } from '@prisma/client';
 import { paginatedResponse } from '../utils/pagination';
 import { toSlug } from '../utils/slug';
 import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
