@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 /**
  * Paleta de series. Validada con el script del design system contra superficie
@@ -44,6 +44,43 @@ interface Props {
  */
 export default function GraficoBarras({ datos, series, titulo, formato, nota }: Props) {
   const [activo, setActivo] = useState<number | null>(null);
+  /**
+   * Dónde pintar el tooltip, en píxeles desde el borde del gráfico.
+   *
+   * Hace falta porque el tooltip NO puede vivir dentro del carril de barras: ese
+   * carril usa `overflow-x-auto` para poder deslizarse, y en CSS recortar un eje
+   * obliga a recortar el otro — no existe "scroll horizontal con desborde
+   * vertical libre". Dentro, el tooltip se cortaba por arriba (y por el costado
+   * en la primera y la última barra).
+   */
+  const [ancla, setAncla] = useState<{ x: number; y: number } | null>(null);
+  const marco = useRef<HTMLDivElement>(null);
+
+  /**
+   * Dónde va el tooltip de la barra apuntada, en coordenadas del marco.
+   *
+   * Sale por DEBAJO, pegado al nombre del mes, y no encima de la barra: anclado
+   * arriba quedaba flotando lejísimos en las barras pequeñas, porque la columna
+   * mide siempre lo mismo aunque la barra sea de dos píxeles. Abajo, la
+   * distancia es igual para todas.
+   *
+   * Se calcula aquí, en el evento, y no al pintar: leer un ref durante el render
+   * da un valor viejo.
+   */
+  const apuntar = (i: number, el: HTMLElement) => {
+    const caja = marco.current?.getBoundingClientRect();
+    if (!caja) return;
+    const b = el.getBoundingClientRect();
+    const MARGEN = 70; // media anchura aproximada del tooltip
+    const centro = b.left + b.width / 2 - caja.left;
+    setActivo(i);
+    setAncla({
+      // Sujeto a los bordes: la primera y la última barra no lo sacan de vista
+      x: Math.min(Math.max(centro, MARGEN), Math.max(caja.width - MARGEN, MARGEN)),
+      y: b.bottom - caja.top + 6,
+    });
+  };
+  const soltar = () => { setActivo(null); setAncla(null); };
 
   const totalDe = (d: Record<string, number | string>) =>
     series.reduce((s, serie) => s + Math.max(Number(d[serie.clave]) || 0, 0), 0);
@@ -73,6 +110,30 @@ export default function GraficoBarras({ datos, series, titulo, formato, nota }: 
         )}
       </div>
 
+      {/* El marco NO recorta: es el que sostiene el tooltip. El carril de dentro
+          sí, porque necesita deslizarse en horizontal. */}
+      <div ref={marco} className="relative">
+      {activo !== null && ancla && totalDe(datos[activo]) !== 0 && (
+        <div
+          // pointer-events-none: si el tooltip capturara el mouse, al aparecer
+          // bajo el cursor se dispararía mouseleave y parpadearía sin parar.
+          className="pointer-events-none absolute z-20 w-max max-w-56 -translate-x-1/2 rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11.5px] shadow-md"
+          style={{ left: ancla.x, top: ancla.y }}
+        >
+          <p className="font-medium text-foreground">{etiquetaMes(String(datos[activo].mes))}</p>
+          {visibles.map((s) => (
+            <p key={s.clave} className="text-muted-foreground">
+              {s.nombre}: {formato(Number(datos[activo][s.clave]) || 0)}
+            </p>
+          ))}
+          {visibles.length > 1 && (
+            <p className="border-t border-border/70 pt-0.5 font-medium text-foreground">
+              Total {formato(totalDe(datos[activo]))}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="flex items-end gap-1.5 overflow-x-auto pb-1" style={{ height: 190 }}>
         {datos.map((d, i) => {
           const total = totalDe(d);
@@ -80,23 +141,9 @@ export default function GraficoBarras({ datos, series, titulo, formato, nota }: 
           const atenuado = activo !== null && activo !== i;
           return (
             <div key={String(d.mes)} className="flex min-w-11 flex-1 flex-col items-center gap-1"
-              onMouseEnter={() => setActivo(i)} onMouseLeave={() => setActivo(null)}>
+              onMouseEnter={(e) => apuntar(i, e.currentTarget)}
+              onMouseLeave={soltar}>
               <div className="relative flex w-full flex-col justify-end" style={{ height: 150 }}>
-                {activo === i && total !== 0 && (
-                  <div className="absolute -top-1 left-1/2 z-10 w-max -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-card px-2.5 py-1.5 text-[11.5px] shadow-md">
-                    <p className="font-medium text-foreground">{etiquetaMes(String(d.mes))}</p>
-                    {visibles.map((s) => (
-                      <p key={s.clave} className="text-muted-foreground">
-                        {s.nombre}: {formato(Number(d[s.clave]) || 0)}
-                      </p>
-                    ))}
-                    {visibles.length > 1 && (
-                      <p className="border-t border-border/70 pt-0.5 font-medium text-foreground">
-                        Total {formato(total)}
-                      </p>
-                    )}
-                  </div>
-                )}
                 {/* De arriba abajo: la primera serie corona la barra, con el
                     extremo redondeado; las demás se apilan debajo con 2px de aire. */}
                 {visibles.map((s, j) => {
@@ -117,6 +164,7 @@ export default function GraficoBarras({ datos, series, titulo, formato, nota }: 
             </div>
           );
         })}
+      </div>
       </div>
 
       {/* Tabla equivalente: el gráfico nunca es la única forma de leer el dato */}
