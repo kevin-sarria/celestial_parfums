@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -8,8 +8,7 @@ import { Field, FieldRow, FormError } from '../../ui';
 import type { GuardedFetch, InventarioInsumo } from '../../types';
 import type { InsumoAlcance, InsumoTipo, InsumoUnidad } from '../../../../domain/entities/cotizacion.types';
 
-/** Gama de la esencia; '' = sin clasificar. */
-type Gama = '' | 'clasica' | 'arabe' | 'premium' | 'disenador';
+interface Gama { id: number; nombre: string; esencias: number }
 
 /** Las esencias se reconocen por el nombre, igual que en el resto del módulo:
  *  el diluyente, el sellador y las feromonas también son materia prima. */
@@ -49,7 +48,15 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
   const [unidad, setUnidad] = useState<InsumoUnidad>((material?.unidad as InsumoUnidad) ?? 'ml');
   const [alcance, setAlcance] = useState<InsumoAlcance>('unidad');
   const [precio, setPrecio] = useState(editando ? String(material.costo_promedio) : '');
-  const [gama, setGama] = useState<Gama>((material?.gama as Gama) ?? '');
+  const [gamaId, setGamaId] = useState<string>(material?.gama_id ? String(material.gama_id) : '');
+  // Las gamas son una tabla que el dueño amplía, así que se piden al servidor
+  const [gamas, setGamas] = useState<Gama[]>([]);
+  useEffect(() => {
+    (async () => {
+      const r = await guardedFetch(`${BASE_URL}/api/costeo/gamas/todas`);
+      if (r.ok) setGamas((await r.json()).data ?? []);
+    })();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
@@ -75,7 +82,7 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
           body: JSON.stringify({
             nombre: nombre.trim(), tipo, unidad, alcance, precio: p,
             // null y no '' : la columna admite nulo y '' no es una gama válida
-            gama: tipo === 'materia_prima' && esEsencia && gama ? gama : null,
+            gama_id: tipo === 'materia_prima' && esEsencia && gamaId ? Number(gamaId) : null,
             ...(editando ? { activo: material.activo } : {}),
           }),
         },
@@ -131,12 +138,9 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
           por la CALIDAD de la esencia, no por el perfume. */}
       {tipo === 'materia_prima' && esEsencia && (
         <Field label="¿De qué gama es esta esencia?">
-          <NativeSelect value={gama} onChange={e => setGama(e.target.value as Gama)}>
+          <NativeSelect value={gamaId} onChange={e => setGamaId(e.target.value)}>
             <option value="">— Sin clasificar —</option>
-            <option value="clasica">Clásica (las de ~$230 a $280 el ml)</option>
-            <option value="arabe">Árabe (~$350 a $480 el ml)</option>
-            <option value="premium">Premium (~$1.500 el ml)</option>
-            <option value="disenador">Diseñador</option>
+            {gamas.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
           </NativeSelect>
           <p className="mt-1 text-[12px] text-muted-foreground">
             Se usa para cotizar al mayoreo cuando el cliente pide "50 de 30 ml" sin decir

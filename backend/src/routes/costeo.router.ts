@@ -4,7 +4,7 @@ import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
 import {
-  insumoSchema, formulaSchema, escalaSchema, cotizacionConfigSchema, accesoriosFormulaSchema,
+  insumoSchema, gamaSchema, formulaSchema, escalaSchema, cotizacionConfigSchema, accesoriosFormulaSchema,
 } from '../schemas/cotizacion.schema';
 
 /**
@@ -25,6 +25,26 @@ costeoRouter.get('/insumos', h(async (req, res) => {
  *  pide "50 de 30 ml" sin decir qué fragancias. */
 costeoRouter.get('/gamas', h(async (_req, res) => {
   res.json({ data: await repo.promediosPorGama() });
+}));
+
+// Las gamas las administra el dueño: puede agregar "nicho" y las que vengan
+costeoRouter.get('/gamas/todas', h(async (_req, res) => {
+  res.json({ data: await repo.listarGamas() });
+}));
+
+costeoRouter.post('/gamas', validate(gamaSchema), h(async (req, res) => {
+  res.status(201).json({ message: 'Gama creada', data: await repo.crearGama(req.body.nombre, req.body.orden) });
+}));
+
+costeoRouter.patch('/gamas/:id', validate(gamaSchema), h(async (req, res) => {
+  res.json({ message: 'Gama actualizada', data: await repo.actualizarGama(Number(req.params.id), req.body.nombre, req.body.orden) });
+}));
+
+costeoRouter.delete('/gamas/:id', h(async (req, res) => {
+  const { desclasificadas } = await repo.eliminarGama(Number(req.params.id));
+  res.json({ message: desclasificadas
+    ? `Gama eliminada. ${desclasificadas} esencias quedaron sin clasificar.`
+    : 'Gama eliminada' });
 }));
 
 costeoRouter.post('/insumos', validate(insumoSchema), h(async (req, res) => {

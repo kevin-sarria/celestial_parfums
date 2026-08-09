@@ -21,11 +21,11 @@ export const insumoSchema = z.object({
   precio: dinero,
   activo: z.boolean().optional(),
   /**
-   * Gama de la esencia (clásica / árabe / premium / diseñador). Solo aplica a
-   * esencias: un frasco o el diluyente van en null. Se usa para costear cuando
-   * todavía no se sabe qué fragancia se va a armar.
+   * Gama de la esencia (clásica, árabe, premium, diseñador… es una tabla que el
+   * dueño puede ampliar). Solo aplica a esencias: un frasco o el diluyente van
+   * en null. Se usa para costear cuando todavía no se sabe qué fragancia va.
    */
-  gama: z.enum(['clasica', 'arabe', 'premium', 'disenador']).nullish(),
+  gama_id: z.number().int().positive().nullish(),
 });
 
 /** Accesorios que un tamaño incluye por defecto. */
@@ -180,7 +180,14 @@ export const cotizacionSchema = z.object({
     }
   });
 
+/** Alta y edición de una gama de esencia. */
+export const gamaSchema = z.object({
+  nombre: z.string().min(1, 'Ponle un nombre a la gama').max(60),
+  orden: z.number().int().min(0).max(999).default(0),
+});
+
 export type InsumoInput = z.infer<typeof insumoSchema>;
+export type GamaInput = z.infer<typeof gamaSchema>;
 export type FormulaInput = z.infer<typeof formulaSchema>;
 export type EscalaInput = z.infer<typeof escalaSchema>;
 export type CotizacionConfigInput = z.infer<typeof cotizacionConfigSchema>;

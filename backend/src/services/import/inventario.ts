@@ -22,11 +22,13 @@ const fmtDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
 
 /** Insumos con su costo y existencias actuales. */
 export const filasInsumos = async () => {
-  const rows = await prisma.insumoCosto.findMany({ orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }] });
+  const rows = await prisma.insumoCosto.findMany({
+    include: { gama: true }, orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
+  });
   return rows.map((i) => ({
     nombre: i.nombre,
     tipo: i.tipo,
-    gama: i.gama ?? '',
+    gama: i.gama?.nombre ?? '',
     unidad: i.unidad,
     alcance: i.alcance,
     costo_promedio: Number(i.precio),
@@ -98,22 +100,22 @@ export const filasMovimientos = async () => {
 // ── Importadores ────────────────────────────────────────────────────────────
 
 const TIPOS = ['materia_prima', 'envase', 'accesorio'];
-const GAMAS = ['clasica', 'arabe', 'premium', 'disenador'];
 
 /**
- * Gama de la esencia tal como la escriba el dueño: "Árabe", "arabe", "ARABE" y
- * "diseñador" tienen que valer. Vacío = sin gama, que es lo correcto para todo
- * lo que no sea una esencia (un frasco, el diluyente).
+ * Índice de las gamas por nombre normalizado (sin tildes ni mayúsculas): en un
+ * Excel nadie escribe "Árabe" dos veces igual.
+ *
+ * NO hay lista fija en el código: las gamas son una tabla que el dueño amplía
+ * ("nicho", "nicho premium"…), así que se acepta cualquiera que exista.
  */
-const leerGama = (v: unknown): string | null | undefined => {
-  const t = txt(v).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
-  if (!t) return undefined;            // columna vacía: no tocar lo que ya tenga
-  if (t === 'ninguna' || t === '-') return null;  // borrarla a propósito
-  return GAMAS.includes(t) ? t : undefined;
+const indiceGamas = async () => {
+  const filas = await prisma.gamaEsencia.findMany({ select: { id: true, nombre: true } });
+  return new Map(filas.map((g) => [normalizar(g.nombre), g.id]));
 };
 
 /** Crea o actualiza insumos por nombre. NO toca existencias (eso va por conteo). */
 export const importarInsumos = async (rows: any[], result: EntityImportResult) => {
+  const gamas = await indiceGamas();
   for (const [i, row] of rows.entries()) {
     const fila = i + 2;
     const nombre = txt(row.nombre);
@@ -128,11 +130,18 @@ export const importarInsumos = async (rows: any[], result: EntityImportResult) =
     const precio = num(row.costo_promedio);
     const activo = txt(row.activo).toLowerCase() !== 'no';
     const gamaCruda = txt(row.gama);
-    const gama = leerGama(row.gama);
-    // Se avisa en vez de tragárselo: una gama mal escrita deja la esencia sin
-    // clasificar y el costeo por gama la ignora, sin que nadie se entere.
-    if (gamaCruda && gama === undefined && gamaCruda.toLowerCase() !== 'ninguna') {
-      result.errores.push(`Fila ${fila}: gama "${gamaCruda}" no existe (usa clasica, arabe, premium o disenador)`);
+    // undefined = la columna vino vacía y no se toca lo que ya tuviera;
+    // null = se pidió quitarla a propósito.
+    let gamaId: number | null | undefined;
+    if (gamaCruda) {
+      const clave = normalizar(gamaCruda);
+      if (clave === 'ninguna' || clave === '-') gamaId = null;
+      else if (gamas.has(clave)) gamaId = gamas.get(clave)!;
+      // Se avisa en vez de tragárselo: una gama mal escrita deja la esencia sin
+      // clasificar y el costeo por gama la ignora, sin que nadie se entere.
+      else result.errores.push(
+        `Fila ${fila}: la gama "${gamaCruda}" no existe. Créala primero o usa una de: ${[...gamas.keys()].join(', ')}`,
+      );
     }
 
     const existente = await prisma.insumoCosto.findFirst({ where: { nombre } });
@@ -142,13 +151,13 @@ export const importarInsumos = async (rows: any[], result: EntityImportResult) =
         // El costo NO se pisa si viene en cero: lo manda el promedio de compras
         data: { tipo: tipo as any, unidad: unidad as any, alcance: alcance as any, activo,
           ...(precio > 0 ? { precio } : {}),
-          ...(gama !== undefined ? { gama: gama as any } : {}) },
+          ...(gamaId !== undefined ? { gama_id: gamaId } : {}) },
       });
       result.actualizados++;
     } else {
       await prisma.insumoCosto.create({
         data: { nombre, tipo: tipo as any, unidad: unidad as any, alcance: alcance as any, precio, activo,
-          gama: (gama ?? null) as any },
+          gama_id: gamaId ?? null },
       });
       result.insertados++;
     }

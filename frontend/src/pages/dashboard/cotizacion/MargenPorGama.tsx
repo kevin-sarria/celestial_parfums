@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { calcularDesgloseCosto, sugerirPrecio } from '../../../application/costeoCotizacion';
 import { formatPrice } from '../helpers';
-import { ETIQUETA_GAMA } from '../columns';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
 
 /** Costo por ml promedio de una gama, tal como lo devuelve `GET /costeo/gamas`. */
 export interface PromedioGama {
+  gama_id: number;
+  /** Nombre tal como lo escribió el dueño ("Clásica", "Nicho premium"…). */
   gama: string;
   esencias: number;
   promedio: number;
@@ -44,7 +45,7 @@ const margenPct = (precio: number, costo: number) =>
 export function MargenPorGama({ formulas, insumos, gamas, descuentoPct }: Props) {
   const [tamanoId, setTamanoId] = useState<number | null>(null);
   /** Unidades esperadas de cada gama, para la mezcla. */
-  const [mezcla, setMezcla] = useState<Record<string, string>>({});
+  const [mezcla, setMezcla] = useState<Record<number, string>>({});
 
   const formula = formulas.find((f) => f.id === tamanoId) ?? formulas[0] ?? null;
 
@@ -59,9 +60,9 @@ export function MargenPorGama({ formulas, insumos, gamas, descuentoPct }: Props)
     }));
   }, [formula, insumos, gamas]);
 
-  const unidades = (gama: string) => Number(mezcla[gama]) || 0;
-  const totalUnidades = costos.reduce((s, c) => s + unidades(c.gama), 0);
-  const costoMezcla = costos.reduce((s, c) => s + unidades(c.gama) * c.costo, 0);
+  const unidades = (id: number) => Number(mezcla[id]) || 0;
+  const totalUnidades = costos.reduce((s, c) => s + unidades(c.gama_id), 0);
+  const costoMezcla = costos.reduce((s, c) => s + unidades(c.gama_id) * c.costo, 0);
   /** El precio se decide por el TOTAL de unidades: es como se pacta el mayoreo. */
   const precioUnit = formula ? sugerirPrecio(formula.escalas, totalUnidades) : null;
   const facturado = precioUnit != null
@@ -127,9 +128,9 @@ export function MargenPorGama({ formulas, insumos, gamas, descuentoPct }: Props)
               </thead>
               <tbody>
                 {costos.map((c) => (
-                  <tr key={c.gama} className="border-b border-border/60 last:border-0">
+                  <tr key={c.gama_id} className="border-b border-border/60 last:border-0">
                     <td className="py-1.5 pr-3 text-foreground">
-                      {ETIQUETA_GAMA[c.gama] ?? c.gama}
+                      {c.gama}
                       <span className="block text-[11px] text-muted-foreground">
                         {formatPrice(c.promedio)}/ml · {c.esencias} esencias
                       </span>
@@ -173,15 +174,15 @@ export function MargenPorGama({ formulas, insumos, gamas, descuentoPct }: Props)
             </p>
             <div className="mt-2 flex flex-wrap gap-2">
               {costos.map((c) => (
-                <label key={c.gama} className="w-28">
+                <label key={c.gama_id} className="w-28">
                   <span className="mb-1 block text-[11.5px] font-medium text-muted-foreground">
-                    {ETIQUETA_GAMA[c.gama] ?? c.gama}
+                    {c.gama}
                   </span>
                   <Input
                     type="number" min="0" placeholder="0"
                     className="h-8 text-right text-[12.5px] tabular-nums"
-                    value={mezcla[c.gama] ?? ''}
-                    onChange={(ev) => setMezcla((m) => ({ ...m, [c.gama]: ev.target.value }))}
+                    value={mezcla[c.gama_id] ?? ''}
+                    onChange={(ev) => setMezcla((m) => ({ ...m, [c.gama_id]: ev.target.value }))}
                   />
                 </label>
               ))}

@@ -128,8 +128,9 @@ export interface InventarioInsumo {
   bajo_minimo: boolean;
   /** Cuánto pedir para volver a un colchón razonable. */
   sugerido: number;
-  /** Solo esencias: su gama (clasica | arabe | premium | disenador). */
-  gama?: string | null;
+  /** Solo esencias: a qué gama pertenece. Null = sin clasificar. */
+  gama_id?: number | null;
+  gama_nombre?: string | null;
 }
 
 export interface MovimientoInventario {

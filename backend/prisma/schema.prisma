@@ -79,22 +79,6 @@ enum InsumoTipo {
   accesorio
 }
 
-/// Gama de una esencia: es la CALIDAD de la esencia pura, y en este negocio
-/// manda el precio por ml. Verificado sobre las 216 esencias cargadas: no hay
-/// 216 precios distintos sino 7, agrupados en tres escalones muy marcados
-/// (clásicas 230-280, árabes 350-480, premium 1.500).
-///
-/// Sirve para costear cuando TODAVÍA no se sabe qué fragancia concreta se va a
-/// armar: la cotización general al mayoreo ("50 de 30 ml") no dice cuáles son,
-/// y costearla con una esencia cualquiera da un margen que no es de nadie.
-/// Cuando el perfume sí se conoce, manda SU esencia, no la gama.
-enum GamaEsencia {
-  clasica
-  arabe
-  premium
-  disenador
-}
-
 // Cómo se cobra el insumo: por mililitro (esencias, diluyente…) o por pieza.
 enum InsumoUnidad {
   ml
@@ -869,6 +853,27 @@ model SobreNosotrosConfig {
 
 // Insumo con su costo actual: esencias, diluyente, envases, bolsas, etiquetas…
 // Catálogo abierto: el admin agrega los que necesite sin tocar el código.
+/// Gama de una esencia: la CALIDAD de la esencia pura (clásica, árabe, premium,
+/// diseñador…). Es una TABLA y no una lista fija en el código a propósito: el
+/// dueño quiere poder agregar "nicho", "nicho premium" y las que vengan sin que
+/// haga falta tocar la base de datos ni publicar una versión nueva.
+///
+/// Para qué sirve: costear cuando todavía NO se sabe qué fragancia se va a
+/// armar. La cotización general al mayoreo dice "50 de 30 ml" sin decir cuáles,
+/// y costear eso con una esencia cualquiera da un margen que no es de nadie.
+/// Cuando el perfume sí se conoce, manda SU esencia, no la gama.
+model GamaEsencia {
+  id         Int      @id @default(autoincrement())
+  nombre     String   @unique @db.VarChar(60)
+  /// Para listarlas de la más barata a la más cara, que es como se leen.
+  orden      Int      @default(0) @db.SmallInt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  esencias   InsumoCosto[]
+
+  @@map("gamas_esencia")
+}
+
 model InsumoCosto {
   id         Int          @id @default(autoincrement())
   nombre     String       @db.VarChar(120)
@@ -889,9 +894,10 @@ model InsumoCosto {
   /// Punto de pedido: cuando el stock baja de aquí, hay que reponer. En 0 se
   /// desactiva la alerta (no todo insumo la necesita).
   stock_minimo Decimal    @default(0) @db.Decimal(12, 3)
-  /// Solo para esencias: su gama (ver GamaEsencia). Null en todo lo demás —
-  /// un frasco o el diluyente no tienen gama.
-  gama       GamaEsencia?
+  /// Solo para esencias: a qué gama pertenece (ver GamaEsencia). Null en todo
+  /// lo demás: un frasco o el diluyente no tienen gama.
+  gama_id    Int?
+  gama       GamaEsencia? @relation(fields: [gama_id], references: [id], onDelete: SetNull)
   activo     Boolean      @default(true)
   created_at DateTime     @default(now())
   updated_at DateTime     @updatedAt

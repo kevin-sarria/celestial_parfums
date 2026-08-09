@@ -482,9 +482,20 @@ Valores: `clasica | arabe | premium | disenador` (null en todo lo que no sea ese
 - **NO se guarda ningún promedio**: `GET /costeo/gamas` lo recalcula del inventario en cada
   llamada (mismo criterio que el cupo y la tarjeta de puntos). Cuenta solo esencias activas
   y con precio: una apagada o en cero arrastraría el promedio y mostraría márgenes falsos.
-- La migración **siembra la gama por precio** (<300 clásica, <800 árabe, resto premium) y
-  deja en null diluyente, sellador y feromonas, que son materia prima pero no esencias.
-  Marcar 216 registros a mano no era razonable; el dueño corrige lo que haga falta.
+- **Es una TABLA (`gamas_esencia`), no una lista fija en el código.** Lo corrigió el dueño:
+  quiere poder agregar "nicho", "nicho premium" y las que vengan **sin migración ni versión
+  nueva**. `insumos_costo.gama_id` es FK con ON DELETE SET NULL: borrar una gama NO borra
+  sus esencias, solo las deja sin clasificar (y el mensaje dice cuántas quedaron así).
+  Endpoints: `GET /costeo/gamas/todas`, `POST`, `PATCH /:id`, `DELETE /:id`.
+- La primera migración **sembró la gama por precio** (<300 clásica, <800 árabe, resto
+  premium) y dejó en null diluyente, sellador y feromonas, que son materia prima pero no
+  esencias. Marcar 216 registros a mano no era razonable.
+- **La receta ya NO elige esencia** (lo corrigió el dueño): `formulas_volumen` guarda las
+  PROPORCIONES y los materiales generales (diluyente, sellador, feromonas, envase), que son
+  iguales para todas las fragancias. Qué esencia se descuenta lo dice el PERFUME, y eso ya
+  pasa al vender. El selector se quitó del modal de Tamaños y fórmulas.
+- Una gama **sin esencias no se lista** en `/costeo/gamas`: costearía a cero y haría ver
+  márgenes que no existen.
 - En Inventario hay **columna Gama filtrable**: es la forma de repasar "muéstrame las
   árabes" y cazar las que quedaron sin clasificar, que el costeo por gama ignora en
   silencio. El campo solo aparece en el modal si el nombre contiene "esencia".

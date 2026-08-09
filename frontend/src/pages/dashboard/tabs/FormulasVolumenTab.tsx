@@ -7,7 +7,6 @@ import { DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Modal from '../../../components/Modal';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
-import BuscadorSelect from '../../../components/BuscadorSelect';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
 import { EncabezadoPagina, Section, Field, FieldRow } from '../ui';
@@ -19,7 +18,7 @@ const API = `${BASE_URL}/api/costeo`;
 
 const formVacio = {
   nombre: '', ml_total: '', esencia_ml: '', sellador_ml: '0', feromonas_ml: '0',
-  envase_insumo_id: '' as string, esencia_insumo_id: '' as string,
+  envase_insumo_id: '' as string,
 };
 const escalaVacia = { cantidad_min: '', cantidad_max: '', precio: '' };
 
@@ -63,11 +62,6 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const envases = insumos.filter((i) => i.tipo === 'envase');
-  // Materias primas cuyo nombre habla de esencia: son las opciones de la receta
-  const esencias = insumos.filter(
-    (i) => i.tipo === 'materia_prima'
-      && i.nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes('esencia'),
-  );
 
   /** Materias primas que alguna receta usa pero que no tienen costo registrado. */
   const faltanMaterias = (() => {
@@ -89,7 +83,6 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
       nombre: f.nombre, ml_total: String(f.ml_total), esencia_ml: String(f.esencia_ml),
       sellador_ml: String(f.sellador_ml), feromonas_ml: String(f.feromonas_ml),
       envase_insumo_id: f.envase_insumo_id ? String(f.envase_insumo_id) : '',
-      esencia_insumo_id: f.esencia_insumo_id ? String(f.esencia_insumo_id) : '',
     });
     setError(''); setModal({ open: true, id: f.id });
   };
@@ -121,7 +114,6 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
           sellador_ml: Number(form.sellador_ml) || 0,
           feromonas_ml: Number(form.feromonas_ml) || 0,
           envase_insumo_id: form.envase_insumo_id ? Number(form.envase_insumo_id) : null,
-          esencia_insumo_id: form.esencia_insumo_id ? Number(form.esencia_insumo_id) : null,
         }),
       });
       const json = await res.json();
@@ -278,19 +270,6 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
                     {f.envase_nombre ?? 'sin elegir'}
                   </span>
                 </span>
-                {/* Sin esencia asignada el costo sale de la genérica y el margen
-                    de este tamaño deja de ser real. */}
-                <span className="text-muted-foreground">
-                  Esencia:{' '}
-                  {f.esencia_nombre ? (
-                    <span className="text-foreground">
-                      {f.esencia_nombre}{' '}
-                      <span className="text-muted-foreground">({formatPrice(f.esencia_precio ?? 0)}/ml)</span>
-                    </span>
-                  ) : (
-                    <span className="font-medium text-amber-700">falta elegirla</span>
-                  )}
-                </span>
               </div>
 
               {/* Escalas de precio mayorista */}
@@ -415,33 +394,15 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
             </Field>
           </FieldRow>
           <FieldRow>
+            {/* La receta dice CUÁNTA esencia lleva, no CUÁL. Qué fragancia se
+                descuenta lo decide el perfume que se vende; aquí solo viven las
+                proporciones y los materiales generales (diluyente, sellador,
+                feromonas, envase), que son iguales para todas. */}
             <Field label="Esencia (ml)">
               <Input type="number" min="0" step="0.1" value={form.esencia_ml}
                 onChange={(e) => setForm((f) => ({ ...f, esencia_ml: e.target.value }))} />
-            </Field>
-            {/* Con buscador, no `NativeSelect`: hay 216 esencias y una lista de
-                HTML plano obliga a recorrerlas a ojo hasta el final de la
-                pantalla. Regla del proyecto: lista larga → BuscadorSelect. */}
-            <Field label="¿Cuál esencia usa por defecto?">
-              <BuscadorSelect
-                opciones={[
-                  { id: '', nombre: '— Sin elegir —' },
-                  ...esencias.map((i) => ({
-                    id: i.id as number | string,
-                    nombre: `${i.nombre} (${formatPrice(i.precio)}/ml)`,
-                  })),
-                ]}
-                value={form.esencia_insumo_id === '' ? '' : Number(form.esencia_insumo_id)}
-                placeholder="Buscar esencia…"
-                vacio="Ninguna esencia coincide"
-                onSelect={(id) => setForm((f) => ({ ...f, esencia_insumo_id: id === '' ? '' : String(id) }))}
-              />
-              {/* Aclara para qué sirve de verdad: al cotizar manda la esencia
-                  del perfume, no esta. Sin la nota parece que la receta fija
-                  con qué se hacen TODAS las fragancias de ese tamaño. */}
               <p className="mt-1 text-[12px] text-muted-foreground">
-                Solo es el respaldo. Al cotizar, cada perfume se costea con SU esencia; esta
-                se usa cuando el perfume todavía no tiene una asignada.
+                Cuánta esencia lleva. Cuál se usa lo dice cada perfume, no la receta.
               </p>
             </Field>
           </FieldRow>

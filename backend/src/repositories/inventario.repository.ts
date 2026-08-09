@@ -363,6 +363,7 @@ export const eliminarProduccion = (id: number) => prisma.$transaction(async (tx)
  */
 export const resumenInventario = async () => {
   const insumos = await prisma.insumoCosto.findMany({
+    include: { gama: true },
     orderBy: [{ activo: 'desc' }, { tipo: 'asc' }, { nombre: 'asc' }],
   });
   const filas = insumos.map((i) => {
@@ -375,7 +376,8 @@ export const resumenInventario = async () => {
       tipo: i.tipo,
       unidad: i.unidad,
       /** Solo esencias: su gama. Null en envases, accesorios y el resto. */
-      gama: i.gama ?? null,
+      gama_id: i.gama_id ?? null,
+      gama_nombre: i.gama?.nombre ?? null,
       activo: i.activo,
       stock,
       stock_minimo: minimo,

@@ -22,7 +22,8 @@ const mapInsumo = (i: any) => ({
   precio: num(i.precio),
   activo: i.activo,
   /** Solo esencias; null en envases, accesorios y el resto de materias primas. */
-  gama: i.gama ?? null,
+  gama_id: i.gama_id ?? null,
+  gama_nombre: i.gama?.nombre ?? null,
 });
 
 /**
@@ -35,6 +36,7 @@ const mapInsumo = (i: any) => ({
 export const listarInsumos = async (todos = false) => {
   const rows = await prisma.insumoCosto.findMany({
     where: todos ? undefined : { activo: true },
+    include: { gama: true },
     orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
   });
   return rows.map(mapInsumo);
@@ -52,24 +54,54 @@ export const listarInsumos = async (todos = false) => {
  * el promedio hacia abajo y haría ver márgenes que no existen.
  */
 export const promediosPorGama = async () => {
-  const filas = await prisma.insumoCosto.groupBy({
-    by: ['gama'],
-    where: { activo: true, gama: { not: null }, precio: { gt: 0 } },
-    _avg: { precio: true },
-    _min: { precio: true },
-    _max: { precio: true },
-    _count: { _all: true },
-  });
-  return filas
-    .filter((f) => f.gama)
-    .map((f) => ({
-      gama: f.gama as string,
-      esencias: f._count._all,
-      promedio: Math.round(num(f._avg.precio) * 100) / 100,
-      minimo: num(f._min.precio),
-      maximo: num(f._max.precio),
-    }))
-    .sort((a, b) => a.promedio - b.promedio);
+  const [gamas, filas] = await Promise.all([
+    prisma.gamaEsencia.findMany({ orderBy: [{ orden: 'asc' }, { nombre: 'asc' }] }),
+    prisma.insumoCosto.groupBy({
+      by: ['gama_id'],
+      where: { activo: true, gama_id: { not: null }, precio: { gt: 0 } },
+      _avg: { precio: true },
+      _min: { precio: true },
+      _max: { precio: true },
+      _count: { _all: true },
+    }),
+  ]);
+  const porId = new Map(filas.map((f) => [f.gama_id as number, f]));
+  return gamas
+    .map((g) => {
+      const f = porId.get(g.id);
+      return {
+        gama_id: g.id,
+        gama: g.nombre,
+        esencias: f?._count._all ?? 0,
+        promedio: f ? Math.round(num(f._avg.precio) * 100) / 100 : 0,
+        minimo: f ? num(f._min.precio) : 0,
+        maximo: f ? num(f._max.precio) : 0,
+      };
+    })
+    // Una gama sin esencias costearía a cero y haría ver márgenes que no existen
+    .filter((g) => g.esencias > 0);
+};
+
+// ── Gamas de esencia ────────────────────────────────────────────────────────
+export const listarGamas = () =>
+  prisma.gamaEsencia.findMany({
+    orderBy: [{ orden: 'asc' }, { nombre: 'asc' }],
+    include: { _count: { select: { esencias: true } } },
+  }).then((rows) => rows.map((g) => ({
+    id: g.id, nombre: g.nombre, orden: g.orden, esencias: g._count.esencias,
+  })));
+
+export const crearGama = (nombre: string, orden: number) =>
+  prisma.gamaEsencia.create({ data: { nombre, orden } });
+
+export const actualizarGama = (id: number, nombre: string, orden: number) =>
+  prisma.gamaEsencia.update({ where: { id }, data: { nombre, orden } });
+
+/** Borrar una gama NO borra sus esencias: las deja sin clasificar (SET NULL). */
+export const eliminarGama = async (id: number) => {
+  const usadas = await prisma.insumoCosto.count({ where: { gama_id: id } });
+  await prisma.gamaEsencia.delete({ where: { id } });
+  return { desclasificadas: usadas };
 };
 
 export const crearInsumo = (data: InsumoInput) =>
