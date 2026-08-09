@@ -290,6 +290,34 @@ de analizar, no la de registrar.
 - `window.alert()` queda deprecado en el dashboard: usar toast. `window.confirm()` sí sigue
   para confirmar borrados.
 
+## Agregar al carrito NO abre el carrito (pedido de un cliente real, 2026-08-09)
+
+Un cliente se lo dijo al dueño: abrir y cerrar el panel en cada producto **cansa y corta
+el impulso de seguir comprando**. Lo que hacía falta no era el carrito entero, sino la
+certeza de que la acción funcionó.
+
+- `addItem` (`CartProvider`) ya **no** hace `setIsOpen(true)`: llama a `avisarAgregado(item)`
+  (`components/avisoAgregado.tsx`), un `toast.custom` con la foto del producto en 44px, el
+  nombre (con `2×` si van varios) y talla · precio.
+- **Sale abajo al CENTRO**, no en la esquina como el resto de avisos (`position` por toast,
+  soportado desde sonner 2): en la tienda esa esquina la ocupan los botones flotantes de
+  carrito y WhatsApp, y el aviso les caía encima justo cuando el cliente quiere ver que el
+  contador subió. En el dashboard no hay FABs, así que ahí se queda como estaba.
+- Se deduplica con `id: 'carrito-agregado'`: agregar tres cosas seguidas deja UN aviso que
+  se reemplaza, no tres apilados.
+- **Trampa que esto destapó**: el recordatorio "Tu pedido te espera" (`CartFab`) funcionaba
+  **de casualidad** — al agregar, el panel se abría y eso lo cancelaba. Sin panel, saltaba
+  justo después de agregar, diciéndole al cliente algo que acababa de hacer. Ahora la marca
+  de sesión vive en `application/carritoRecordatorio.ts` (`recordatorioPendiente` /
+  `cerrarRecordatorio`), `addItem` la cierra, y el temporizador **la vuelve a mirar al
+  disparar**, no solo al programarse. Verificado en los 3 casos: cliente nuevo que agrega
+  (aviso sí, panel no, recordatorio no), cliente que vuelve con productos (recordatorio sí)
+  y cliente que vuelve pero agrega antes de los 2,5 s (recordatorio no).
+- **Ojo con el linter de React** al tocar `CartFab`: `react-hooks/set-state-in-effect`
+  analiza TODO el componente, así que agregarle un `useState` de más hace que marque
+  efectos que antes no marcaba, sin que nada esté mal. Por eso el "ya tocó el carrito" se
+  resolvió con la marca de sesión y no con estado nuevo.
+
 ## Diseño (respetar SIEMPRE)
 
 - Design system: shadcn/Tailwind, paleta marfil + iris (`bg-card`, `text-primary`,

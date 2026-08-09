@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { CartContext, type CartItem } from './CartContext';
 import { useAuthContext } from './useAuthContext';
+import { avisarAgregado } from '../../components/avisoAgregado';
+import { cerrarRecordatorio } from '../carritoRecordatorio';
 
 const STORAGE_KEY = 'celestial_cart';
 
@@ -52,7 +54,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
       saveCart(next);
       return next;
     });
-    setIsOpen(true);
+    // NO se abre el carrito. Lo pidió un cliente real: abrir y cerrar el panel
+    // en cada producto cansa y corta el impulso de seguir comprando. Basta un
+    // aviso pequeño que confirme que sí quedó, con la foto para reconocerlo.
+    avisarAgregado(item);
+    // Y a quien acaba de agregar no hay que recordarle que tiene un pedido.
+    cerrarRecordatorio();
   }, []);
 
   const removeItem = useCallback((id: string) => {

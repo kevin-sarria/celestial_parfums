@@ -1,19 +1,26 @@
 ﻿import { useEffect, useState } from 'react';
 import { ShoppingCart, X } from 'lucide-react';
 import { useCart } from '../application/context/useCart';
-
-const RECORDATORIO_KEY = 'celestial_carrito_recordado';
+import { cerrarRecordatorio, recordatorioPendiente } from '../application/carritoRecordatorio';
 
 export default function CartFab() {
   const { totalItems, openCart, isOpen } = useCart();
   const [recordatorio, setRecordatorio] = useState(false);
 
-  // Recuperación de carrito: quien vuelve con productos pendientes recibe un
-  // recordatorio suave (una vez por sesión) para retomar su pedido
+  /**
+   * Recuperación de carrito: quien VUELVE con productos pendientes recibe un
+   * recordatorio suave, una vez por sesión.
+   *
+   * La marca se vuelve a mirar DENTRO del temporizador, no solo al programarlo:
+   * si el cliente agrega algo en esos 2,5 segundos, `addItem` la cierra y el
+   * globo ya no sale. Sin eso salía justo después de agregar, diciéndole al
+   * cliente algo que acababa de hacer.
+   */
   useEffect(() => {
-    if (totalItems === 0 || sessionStorage.getItem(RECORDATORIO_KEY)) return;
+    if (totalItems === 0 || !recordatorioPendiente()) return;
     const mostrar = setTimeout(() => {
-      sessionStorage.setItem(RECORDATORIO_KEY, '1');
+      if (!recordatorioPendiente()) return;
+      cerrarRecordatorio();
       setRecordatorio(true);
     }, 2500);
     return () => clearTimeout(mostrar);
