@@ -42,8 +42,25 @@ const cssToRgb = (color: string): [number, number, number] => {
 
 const formatCOP = (v: number) => `$${Math.round(v).toLocaleString('es-CO')}`;
 
-/** Descarga una imagen y la devuelve como JPEG pequeño (o null si falla). */
-const cargarImagen = (url: string): Promise<string | null> =>
+/**
+ * ¿La foto vive en otro sitio?
+ *
+ * Las subidas al servidor comparten dominio con la app y se pueden imprimir
+ * directo. Las que son un enlace a otra web (fimgs.net y demás) NO: para copiar
+ * una imagen a un lienzo el navegador exige permiso CORS del sitio que la
+ * aloja, y esos sitios no lo dan — la foto salía en blanco en el PDF. Esas se
+ * piden por nuestro propio servidor, que sí puede descargarlas.
+ */
+const esExterna = (url: string) => {
+  try { return new URL(url, window.location.href).origin !== new URL(BASE_URL, window.location.href).origin; }
+  catch { return false; }
+};
+
+const porNuestroServidor = (url: string) =>
+  `${BASE_URL}/api/parfums/imagen-proxy?url=${encodeURIComponent(url)}`;
+
+/** Dibuja una imagen ya accesible y la devuelve como JPEG pequeño. */
+const aJpegPequeno = (src: string): Promise<string | null> =>
   new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -67,8 +84,33 @@ const cargarImagen = (url: string): Promise<string | null> =>
       }
     };
     img.onerror = () => { clearTimeout(timer); resolve(null); };
-    img.src = url;
+    img.src = src;
   });
+
+/**
+ * Trae la foto de un perfume lista para imprimir, venga de donde venga.
+ *
+ * Las externas se piden por nuestro servidor y se descargan con `fetch`, NO
+ * poniéndoselas a un `<img>`: la etiqueta con `crossOrigin` manda la petición
+ * como anónima —sin la cookie de sesión— y el proxy, que es solo para el admin,
+ * respondía 401. Con el archivo ya en memoria se crea una URL local (`blob:`),
+ * que para el navegador es de casa y no ensucia el lienzo.
+ */
+const cargarImagen = async (url: string): Promise<string | null> => {
+  if (!esExterna(url)) return aJpegPequeno(url);
+  let local: string | null = null;
+  try {
+    const res = await fetch(porNuestroServidor(url), { credentials: 'include' });
+    if (!res.ok) return null; // el PDF sigue, solo sin esa foto
+    local = URL.createObjectURL(await res.blob());
+    return await aJpegPequeno(local);
+  } catch {
+    return null;
+  } finally {
+    // Sin esto, 212 fotos se quedarían en memoria hasta recargar la página
+    if (local) URL.revokeObjectURL(local);
+  }
+};
 
 const marcaDeAgua = (doc: jsPDF) => {
   doc.saveGraphicsState();
@@ -149,7 +191,11 @@ const filaPerfume = (doc: jsPDF, p: Perfume, foto: string | null, y: number) => 
   doc.setTextColor(...MUTED);
   const meta = [
     p.categoria,
-    p.genero ? GENERO_LABELS[p.genero] : null,
+    // Sin el símbolo: Helvetica (la fuente nativa del PDF) no tiene ♀ ♂ ⚥ y
+    // los imprimía como basura ("&Bp Caballero", "&@b Dama") en el catálogo que
+    // ve el cliente. La palabra sola dice lo mismo. Mismo problema que el guion
+    // tipográfico. En la WEB sí se usan los símbolos: ahí la fuente los tiene.
+    p.genero ? GENERO_LABELS[p.genero].replace(/^\S+\s*/, '') : null,
     p.duracion ? `Duración ${p.duracion}` : null,
   ].filter(Boolean).join('  ·  ');
   if (meta) doc.text(meta, xTexto, y + 10.5);
@@ -205,9 +251,15 @@ const filaPerfume = (doc: jsPDF, p: Perfume, foto: string | null, y: number) => 
 
 export const generarCatalogoPdf = async (onProgress: (msg: string) => void): Promise<void> => {
   onProgress('Cargando catálogo…');
-  const res = await fetch(`${BASE_URL}/api/parfums/?page=1&limit=1000`);
+  /**
+   * SIN `?page=`: el listado paginado **topa el límite en 100** aunque se pidan
+   * 1000, así que el catálogo salía con 100 de los 212 perfumes y los otros 112
+   * faltaban en silencio. El endpoint sin paginar devuelve todos (y ya excluye
+   * los que están fuera de la tienda), pero responde anidado: `{data:{data:[]}}`.
+   */
+  const res = await fetch(`${BASE_URL}/api/parfums`);
   const json = await res.json();
-  const perfumes: Perfume[] = (json.data ?? []).filter((p: Perfume) => !p.agotado || true);
+  const perfumes: Perfume[] = Array.isArray(json?.data) ? json.data : (json?.data?.data ?? []);
   if (!perfumes.length) throw new Error('El catálogo está vacío');
 
   // Fotos en tandas de 8 para no saturar el navegador

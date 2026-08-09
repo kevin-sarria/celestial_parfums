@@ -3,6 +3,7 @@ import * as perfumeService from '../services/perfume.service';
 import { parsePagination, parseSearch } from '../utils/pagination';
 import { mensajeSeguro } from '../utils/errorSeguro';
 import { esAdminRequest } from '../middleware/auth.middleware';
+import { traerImagenRemota } from '../utils/imagenRemota';
 
 export const getRelatedPerfumes = async (req: Request, res: Response) => {
   try {
@@ -163,6 +164,28 @@ export const patchPublicadoPerfume = async (req: Request, res: Response) => {
     const publicado = Boolean(req.body.publicado);
     await perfumeService.patchPublicadoPerfume(req.params.id as string, publicado);
     res.json({ message: publicado ? 'El perfume volvió a la tienda' : 'El perfume salió de la tienda' });
+  } catch (error: any) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
+/**
+ * Sirve una imagen de otro sitio desde NUESTRO dominio.
+ *
+ * Lo pide el catálogo en PDF: las fotos que son enlaces externos no se podían
+ * imprimir porque el navegador exige permiso CORS para copiarlas a un lienzo y
+ * esos sitios no lo dan. Al pasar por aquí, el navegador las ve como propias.
+ * Solo admin, y con los candados anti-SSRF de `traerImagenRemota`.
+ */
+export const getImagenProxy = async (req: Request, res: Response) => {
+  try {
+    const url = typeof req.query.url === 'string' ? req.query.url : '';
+    if (!url) { res.status(400).json({ error: 'Falta la dirección de la imagen' }); return; }
+    const { cuerpo, tipo } = await traerImagenRemota(url);
+    // Se cachea: generar el catálogo dos veces no debe volver a bajar 212 fotos
+    res.setHeader('Content-Type', tipo);
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.send(cuerpo);
   } catch (error: any) {
     res.status(400).json({ error: mensajeSeguro(error) });
   }

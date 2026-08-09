@@ -15,6 +15,7 @@ import {
   patchAgotadoPerfume,
   patchPublicadoPerfume,
   getResumenPublicacion,
+  getImagenProxy,
   getAromas,
   addAroma,
   removeAroma,
@@ -62,6 +63,8 @@ perfumeRouter.patch('/:id/agotado', requireAdmin, validate(patchAgotadoSchema), 
 // Sacar de la tienda / devolver a la tienda (distinto de agotado: desaparece)
 perfumeRouter.patch('/:id/publicado', requireAdmin, validate(patchPublicadoSchema), patchPublicadoPerfume);
 perfumeRouter.get('/resumen-publicacion', requireAdmin, getResumenPublicacion);
+// Trae una foto alojada en otro sitio para que el PDF pueda imprimirla
+perfumeRouter.get('/imagen-proxy', requireAdmin, getImagenProxy);
 
 perfumeRouter.post('/tipos-aroma', requireAdmin, validate(nombreSchema), addAroma);
 perfumeRouter.delete('/tipos-aroma/:id', requireAdmin, removeAroma);

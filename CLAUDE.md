@@ -1180,6 +1180,27 @@ Orden acordado: (0) unificar tallas → (1) consumo por venta + ganancia real �
   (RFC 6238 casero en `utils/totp.ts`, secreto en `backend/backups/totp.json`, fuera de
   git). Resetear TOTP = borrar ese archivo por SSH (a propósito: la web no puede).
   Recordatorio con punto rojo a los 7 días sin copia. mysqldump vía `MYSQLDUMP_PATH` o PATH.
+- **El catálogo PDF ya imprime las fotos que son enlaces externos** (2026-08-09). **210 de
+  212 fotos** del catálogo son enlaces a otras webs (fimgs.net y demás) y **ninguna salía**:
+  para copiar una imagen a un lienzo el navegador exige permiso CORS del sitio que la aloja
+  y esos sitios no lo dan, así que `<img crossOrigin>` ni siquiera cargaba. Ahora las trae
+  el servidor (`GET /api/parfums/imagen-proxy?url=…`, solo admin) y el navegador las ve
+  como propias. Resultado medido: de ~0 fotos externas a **211 de 212** incrustadas.
+  - **Se descargan con `fetch` + `blob:`, NO poniéndoselas a un `<img>`**: la etiqueta con
+    `crossOrigin` manda la petición ANÓNIMA (sin la cookie) y el proxy respondía 401.
+  - `utils/imagenRemota.ts` es una **puerta peligrosa (SSRF)** y por eso valida: solo
+    http/https, resuelve el dominio y **rechaza IPs privadas** (incluido el 169.254.169.254
+    de los metadatos de la nube, que entrega credenciales), sigue los redirects **a mano
+    revalidando cada salto** (si no, un redirect a localhost se salta el control), exige
+    content-type de imagen, y topa tamaño (8 MB) y tiempo. Verificado: los 5 intentos de
+    SSRF y el `file://` se rechazan; sin sesión responde 401.
+  - **BUG DE FONDO ya corregido**: el PDF pedía `?page=1&limit=1000` pero `parsePagination`
+    **topa el límite en 100**, así que el catálogo llevaba **100 de 212 perfumes** y los
+    otros 112 faltaban en silencio. Ahora usa el endpoint sin paginar (que además ya
+    excluye los despublicados) y responde anidado — hay que desenvolver las dos formas.
+  - **Nada de símbolos raros en el PDF**: Helvetica no tiene ♀ ♂ ⚥ y salían como "&Bp
+    Caballero". Se imprime solo la palabra. Misma familia de fallo que el guion
+    tipográfico `−` (U+2212). En la WEB sí se usan los símbolos.
 - Catálogo PDF (`utils/catalogoPdf.ts`, jsPDF lazy-loaded): botón "Descargar catálogo PDF"
   **solo admin**, en el dashboard → pestaña Perfumes (toolbar, `DescargarCatalogoButton`).
   Antes era beneficio público para registrados; se movió a herramienta interna del admin.
