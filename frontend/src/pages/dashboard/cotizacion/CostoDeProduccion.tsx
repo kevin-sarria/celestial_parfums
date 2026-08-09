@@ -10,6 +10,15 @@ interface Props {
   /** Si se pasa, se pueden marcar los accesorios que incluye el tamaño. */
   onAccesorios?: (insumoIds: number[]) => void;
   abiertoPorDefecto?: boolean;
+  /**
+   * Costo por ml de la esencia con la que costear. Como la receta ya NO elige
+   * fragancia (eso lo dice el perfume), este número viene del PROMEDIO DE LA
+   * GAMA que se esté mirando: un 30 ml cuesta muy distinto con esencia clásica
+   * ($245/ml) que con premium ($1.500/ml), y un solo número no sirve.
+   */
+  esenciaPrecio?: number | null;
+  /** Nombre de esa gama, para que el desglose diga con qué se calculó. */
+  esenciaEtiqueta?: string;
 }
 
 /**
@@ -20,13 +29,15 @@ interface Props {
  * que se apoyará el módulo de inventario: al subir el precio de una materia
  * prima, estos números se recalculan solos porque salen del motor de costeo.
  */
-export default function CostoDeProduccion({ formula, insumos, onAccesorios, abiertoPorDefecto }: Props) {
+export default function CostoDeProduccion({
+  formula, insumos, onAccesorios, abiertoPorDefecto, esenciaPrecio, esenciaEtiqueta,
+}: Props) {
   const [abierto, setAbierto] = useState(!!abiertoPorDefecto);
 
   // Accesorios que este tamaño incluye por defecto: SÍ son parte del costo real
   // de entregar el producto, así que entran en el cálculo.
   const incluidos = formula.accesorios_default ?? [];
-  const d = calcularDesgloseCosto(formula, insumos, incluidos);
+  const d = calcularDesgloseCosto(formula, insumos, incluidos, esenciaPrecio);
   /** Accesorios disponibles que se cobran por perfume (no los de pedido). */
   const accesoriosPorUnidad = insumos.filter((i) => i.tipo === 'accesorio' && i.alcance !== 'pedido');
 
@@ -45,7 +56,12 @@ export default function CostoDeProduccion({ formula, insumos, onAccesorios, abie
   };
 
   const filas = [
-    { etiqueta: 'Esencia', ml: formula.esencia_ml, unitario: formula.esencia_precio ?? precioMl('esencia'), total: d.esencia },
+    {
+      etiqueta: esenciaEtiqueta ? `Esencia ${esenciaEtiqueta.toLowerCase()}` : 'Esencia',
+      ml: formula.esencia_ml,
+      unitario: esenciaPrecio ?? formula.esencia_precio ?? precioMl('esencia'),
+      total: d.esencia,
+    },
     { etiqueta: 'Diluyente', ml: formula.diluyente_ml, unitario: precioMl('diluyente'), total: d.diluyente },
     { etiqueta: 'Sellador', ml: formula.sellador_ml, unitario: precioMl('sellador'), total: d.sellador },
     { etiqueta: 'Feromonas', ml: formula.feromonas_ml, unitario: precioMl('feromonas'), total: d.feromonas },

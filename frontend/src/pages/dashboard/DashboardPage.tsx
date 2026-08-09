@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   Menu, ChevronDown, SprayCan, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText, Store, LogOut,
-  BellRing, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX, ChartColumn, type LucideIcon,
+  BellRing, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX, ChartColumn, Layers, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -39,6 +39,7 @@ import { SobreNosotrosTab } from './tabs/SobreNosotrosTab';
 import { BlogTab } from './tabs/BlogTab';
 import { CotizacionesTab } from './tabs/CotizacionesTab';
 import { FormulasVolumenTab } from './tabs/FormulasVolumenTab';
+import { GamasTab } from './tabs/GamasTab';
 import { CostosProduccionTab } from './tabs/CostosProduccionTab';
 import { DevolucionesTab } from './tabs/DevolucionesTab';
 import { InventarioTab } from './tabs/InventarioTab';
@@ -56,6 +57,7 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   ocasiones: { label: 'Ocasiones', icon: CalendarDays },
   categorias: { label: 'Categorias', icon: Tags },
   presentaciones: { label: 'Presentaciones', icon: Ruler },
+  gamas: { label: 'Gamas de esencia', icon: Layers },
   combos: { label: 'Combos', icon: Gift },
   precios: { label: 'Precios', icon: Tags },
   descuentos: { label: 'Descuentos', icon: BadgePercent },
@@ -84,9 +86,14 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
 // Menú del dashboard agrupado en secciones colapsables (drawer con burger)
 const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
-  { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones'] },
-  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos', 'inventario', 'producciones'] },
-  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'formulas', 'costos'] },
+  { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones', 'gamas'] },
+  /**
+   * Las RECETAS y el costo de producción viven aquí, no en Mayoreo: de ellas
+   * salen los materiales que descuenta cada venta y cada lote, así que las usa
+   * todo el negocio. Mayoreo solo cotiza, y para eso las lee.
+   */
+  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos', 'inventario', 'producciones', 'formulas', 'costos'] },
+  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
 ];
@@ -429,6 +436,7 @@ export default function DashboardPage() {
                 onAdd={handleLookupAdd('presentaciones')} onDelete={handleLookupDelete('presentaciones', '¿Eliminar esta talla? Los perfumes que la ofrezcan dejarán de tenerla, junto con su precio para esa talla.')} onEdit={handleLookupEdit('presentaciones')}
                 importEntity="presentaciones" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
+            {tab === 'gamas' && <GamasTab guardedFetch={guardedFetch} />}
             {tab === 'combos' && (
               <CombosTab
                 combos={combos} page={combosPage} total={combosTotal} pageSize={combosPageSize}

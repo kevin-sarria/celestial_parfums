@@ -482,6 +482,9 @@ Valores: `clasica | arabe | premium | disenador` (null en todo lo que no sea ese
 - **NO se guarda ningún promedio**: `GET /costeo/gamas` lo recalcula del inventario en cada
   llamada (mismo criterio que el cupo y la tarjeta de puntos). Cuenta solo esencias activas
   y con precio: una apagada o en cero arrastraría el promedio y mostraría márgenes falsos.
+- **Se administran en Clasificaciones → Gamas de esencia** (`tabs/GamasTab.tsx`, reusa
+  `LookupTab`). El nombre muestra cuántas esencias cuelgan de cada una: es lo que evita
+  borrar la que tiene 151 creyendo que estaba vacía.
 - **Es una TABLA (`gamas_esencia`), no una lista fija en el código.** Lo corrigió el dueño:
   quiere poder agregar "nicho", "nicho premium" y las que vengan **sin migración ni versión
   nueva**. `insumos_costo.gama_id` es FK con ON DELETE SET NULL: borrar una gama NO borra
@@ -1317,6 +1320,14 @@ Orden acordado: (0) unificar tallas → (1) consumo por venta + ganancia real �
 
 ## Gotchas (dolores ya vividos — no repetirlos)
 
+- **Cargar un .sql con tildes desde la consola de Windows los CORROMPE** (2026-08-09).
+  `mysql.exe < migracion.sql` sin `--default-character-set=utf8mb4` reinterpreta el archivo
+  con el codepage de la consola: 'Clásica' se guardó como 'Cl├ísica' (bytes E2949C C3AD en
+  vez de C3A1) y se veía así en el dashboard. Peor todavía, `-e "UPDATE … 'Clásica'"` las
+  convierte en '?'. **Siempre**: escribir el .sql en UTF-8 y ejecutar
+  `mysql.exe --default-character-set=utf8mb4 -u root base < archivo.sql`; verificar con
+  `SELECT HEX(nombre)`. Ojo: esto es solo al aplicar SQL A MANO en local — `prisma migrate
+  deploy` usa su propia conexión utf8mb4 y no tiene el problema.
 - **Encoding**: TODOS los .ts/.tsx son UTF-8 **sin BOM**. JAMÁS usar `Get-Content`/
   `Set-Content` de PowerShell sin encoding explícito sobre código fuente (corrompió todo el
   proyecto una vez: "Colección"→"ColecciÃ³n"). Para ediciones masivas usar

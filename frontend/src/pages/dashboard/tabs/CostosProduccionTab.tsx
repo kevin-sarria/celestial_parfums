@@ -7,6 +7,7 @@ import CostoDeProduccion from '../cotizacion/CostoDeProduccion';
 import MargenPorFragancia from '../cotizacion/MargenPorFragancia';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
+import type { PromedioGama } from '../cotizacion/MargenPorGama';
 import { EncabezadoPagina, Section } from '../ui';
 import type { GuardedFetch } from '../types';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
@@ -28,15 +29,32 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  /**
+   * Con qué gama de esencia se muestran los costos. Hace falta elegir porque la
+   * receta ya no fija una fragancia: un 30 ml cuesta $9.277 con esencia clásica
+   * y $28.106 con premium, así que "producir uno te cuesta X" a secas mentiría.
+   */
+  const [gamas, setGamas] = useState<PromedioGama[]>([]);
+  const [gamaId, setGamaId] = useState<number | null>(null);
+
+  const gamaElegida = gamas.find((g) => g.gama_id === gamaId) ?? gamas[0] ?? null;
 
   const load = async () => {
     setLoading(true);
     try {
-      const [rf, ri, rp] = await Promise.all([
+      const [rf, ri, rp, rg] = await Promise.all([
         guardedFetch(`${API}/formulas`),
         guardedFetch(`${API}/insumos`),
         guardedFetch(`${BASE_URL}/api/parfums`),
+        guardedFetch(`${API}/gamas`),
       ]);
+      if (rg.ok) {
+        const gs: PromedioGama[] = (await rg.json()).data ?? [];
+        setGamas(gs);
+        // Arranca en la gama con MÁS esencias: es la que representa lo que de
+        // verdad se fabrica casi siempre.
+        setGamaId((prev) => prev ?? gs.slice().sort((a, b) => b.esencias - a.esencias)[0]?.gama_id ?? null);
+      }
       if (!rf.ok || !ri.ok) throw new Error('respuesta no válida');
       setFormulas((await rf.json()).data ?? []);
       setInsumos((await ri.json()).data ?? []);
@@ -113,6 +131,30 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
         </p>
       ) : (
         <div className="flex flex-col gap-4">
+          {gamas.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-secondary/40 px-3.5 py-3">
+              <span className="text-[12.5px] text-muted-foreground">
+                Costos con esencia
+              </span>
+              {gamas.map((g) => (
+                <button
+                  key={g.gama_id} type="button"
+                  onClick={() => setGamaId(g.gama_id)}
+                  className={`rounded-full px-3 py-1 text-[12.5px] transition-colors ${
+                    g.gama_id === gamaId
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-card text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {g.gama} <span className="opacity-70">({formatPrice(g.promedio)}/ml)</span>
+                </button>
+              ))}
+              <p className="w-full text-[12px] leading-snug text-muted-foreground">
+                La receta dice cuánta esencia lleva, no cuál. Elige la gama para ver el costo
+                real: la misma talla cuesta muy distinto con una clásica que con una premium.
+              </p>
+            </div>
+          )}
           {formulas.map((f) => (
             <div key={f.id} className="rounded-xl border border-border bg-card p-4">
               <p className="text-[15px] font-medium text-foreground">{f.nombre}</p>
@@ -125,6 +167,8 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
                 insumos={insumos}
                 onAccesorios={(ids) => guardarAccesorios(f.id, ids)}
                 abiertoPorDefecto
+                esenciaPrecio={gamaElegida?.promedio ?? null}
+                esenciaEtiqueta={gamaElegida?.gama}
               />
             </div>
           ))}

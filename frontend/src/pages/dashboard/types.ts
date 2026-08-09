@@ -390,7 +390,7 @@ export interface CodigoValidado {
   venta?: { id: number; persona: string; dia: string } | null;
 }
 
-export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'recompensas' | 'resenas' | 'avisos' | 'nosotros' | 'blog' | 'redes' | 'cotizaciones' | 'formulas' | 'costos' | 'devoluciones' | 'inventario' | 'producciones' | 'rep_ventas' | 'rep_compras' | 'rep_clientes';
+export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'gamas' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'recompensas' | 'resenas' | 'avisos' | 'nosotros' | 'blog' | 'redes' | 'cotizaciones' | 'formulas' | 'costos' | 'devoluciones' | 'inventario' | 'producciones' | 'rep_ventas' | 'rep_compras' | 'rep_clientes';
 
 /** Tarjeta de recompensas de un cliente (calculada del historial). */
 export interface TarjetaRecompensa {
