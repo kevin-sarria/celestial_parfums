@@ -21,6 +21,12 @@ costeoRouter.get('/insumos', h(async (req, res) => {
   res.json({ data: await repo.listarInsumos(req.query.todos === '1') });
 }));
 
+/** Costo por ml de cada gama de esencia: con qué se cotiza cuando el cliente
+ *  pide "50 de 30 ml" sin decir qué fragancias. */
+costeoRouter.get('/gamas', h(async (_req, res) => {
+  res.json({ data: await repo.promediosPorGama() });
+}));
+
 costeoRouter.post('/insumos', validate(insumoSchema), h(async (req, res) => {
   res.status(201).json({ message: 'Insumo creado', data: await repo.crearInsumo(req.body) });
 }));

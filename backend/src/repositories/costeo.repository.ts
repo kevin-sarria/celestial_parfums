@@ -21,6 +21,8 @@ const mapInsumo = (i: any) => ({
   alcance: i.alcance,
   precio: num(i.precio),
   activo: i.activo,
+  /** Solo esencias; null en envases, accesorios y el resto de materias primas. */
+  gama: i.gama ?? null,
 });
 
 /**
@@ -36,6 +38,38 @@ export const listarInsumos = async (todos = false) => {
     orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
   });
   return rows.map(mapInsumo);
+};
+
+/**
+ * Cuánto cuesta por ml, en promedio, cada gama de esencia.
+ *
+ * Es el costo con el que se cotiza cuando el cliente pide "50 de 30 ml" sin
+ * decir qué fragancias. Se calcula del inventario en cada llamada —nunca se
+ * guarda— por la misma razón que el cupo y la tarjeta de puntos: un promedio
+ * guardado se desincroniza en cuanto entra una compra.
+ *
+ * Cuenta solo esencias ACTIVAS y con precio: una apagada o en cero arrastraría
+ * el promedio hacia abajo y haría ver márgenes que no existen.
+ */
+export const promediosPorGama = async () => {
+  const filas = await prisma.insumoCosto.groupBy({
+    by: ['gama'],
+    where: { activo: true, gama: { not: null }, precio: { gt: 0 } },
+    _avg: { precio: true },
+    _min: { precio: true },
+    _max: { precio: true },
+    _count: { _all: true },
+  });
+  return filas
+    .filter((f) => f.gama)
+    .map((f) => ({
+      gama: f.gama as string,
+      esencias: f._count._all,
+      promedio: Math.round(num(f._avg.precio) * 100) / 100,
+      minimo: num(f._min.precio),
+      maximo: num(f._max.precio),
+    }))
+    .sort((a, b) => a.promedio - b.promedio);
 };
 
 export const crearInsumo = (data: InsumoInput) =>

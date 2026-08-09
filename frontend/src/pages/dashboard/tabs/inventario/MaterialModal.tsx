@@ -8,6 +8,14 @@ import { Field, FieldRow, FormError } from '../../ui';
 import type { GuardedFetch, InventarioInsumo } from '../../types';
 import type { InsumoAlcance, InsumoTipo, InsumoUnidad } from '../../../../domain/entities/cotizacion.types';
 
+/** Gama de la esencia; '' = sin clasificar. */
+type Gama = '' | 'clasica' | 'arabe' | 'premium' | 'disenador';
+
+/** Las esencias se reconocen por el nombre, igual que en el resto del módulo:
+ *  el diluyente, el sellador y las feromonas también son materia prima. */
+const pareceEsencia = (n: string) =>
+  n.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes('esencia');
+
 const TIPOS: { valor: InsumoTipo; etiqueta: string; ayuda: string }[] = [
   { valor: 'materia_prima', etiqueta: 'Materia prima', ayuda: 'Esencia, diluyente, sellador, feromonas. Se miden en ml.' },
   { valor: 'envase', etiqueta: 'Envase', ayuda: 'El frasco de cada tamaño. Se cuenta por unidades.' },
@@ -41,8 +49,11 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
   const [unidad, setUnidad] = useState<InsumoUnidad>((material?.unidad as InsumoUnidad) ?? 'ml');
   const [alcance, setAlcance] = useState<InsumoAlcance>('unidad');
   const [precio, setPrecio] = useState(editando ? String(material.costo_promedio) : '');
+  const [gama, setGama] = useState<Gama>((material?.gama as Gama) ?? '');
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
+
+  const esEsencia = pareceEsencia(nombre);
 
   /** Al cambiar el tipo se propone la unidad natural, sin encerrar la elección. */
   const cambiarTipo = (t: InsumoTipo) => {
@@ -63,6 +74,8 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
           method: editando ? 'PATCH' : 'POST',
           body: JSON.stringify({
             nombre: nombre.trim(), tipo, unidad, alcance, precio: p,
+            // null y no '' : la columna admite nulo y '' no es una gama válida
+            gama: tipo === 'materia_prima' && esEsencia && gama ? gama : null,
             ...(editando ? { activo: material.activo } : {}),
           }),
         },
@@ -112,6 +125,26 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
           </NativeSelect>
         </Field>
       </FieldRow>
+
+      {/* Solo tiene sentido en esencias: un frasco o el diluyente no tienen
+          gama. Se pregunta con el nombre delante para que se entienda que va
+          por la CALIDAD de la esencia, no por el perfume. */}
+      {tipo === 'materia_prima' && esEsencia && (
+        <Field label="¿De qué gama es esta esencia?">
+          <NativeSelect value={gama} onChange={e => setGama(e.target.value as Gama)}>
+            <option value="">— Sin clasificar —</option>
+            <option value="clasica">Clásica (las de ~$230 a $280 el ml)</option>
+            <option value="arabe">Árabe (~$350 a $480 el ml)</option>
+            <option value="premium">Premium (~$1.500 el ml)</option>
+            <option value="disenador">Diseñador</option>
+          </NativeSelect>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Se usa para cotizar al mayoreo cuando el cliente pide "50 de 30 ml" sin decir
+            qué fragancias: ahí se calcula con el promedio de la gama. Cuando sí se sabe
+            cuál es el perfume, manda el costo de SU esencia.
+          </p>
+        </Field>
+      )}
 
       {tipo === 'accesorio' && (
         <Field label="¿Se cobra por perfume o por pedido?">

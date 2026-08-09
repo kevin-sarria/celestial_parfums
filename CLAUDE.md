@@ -466,6 +466,38 @@ certeza de que la acción funcionó.
   en voz del admin ("Le repuse el producto") y `etiquetaSolucionCliente` en voz del cliente
   ("Te repusimos el producto") — usar la que corresponda o el texto suena absurdo.
 
+### Gama de la esencia (`insumos_costo.gama`, 2026-08-09) — PASO 1 de 3
+
+Decidido con el dueño: **la gama es la CALIDAD de la esencia pura**, no del perfume.
+Valores: `clasica | arabe | premium | disenador` (null en todo lo que no sea esencia).
+
+- **Por qué hace falta**: cuando el perfume se conoce se costea con SU esencia (eso ya
+  funciona). Pero la **cotización general** al mayoreo dice "50 de 30 ml" sin decir qué
+  fragancias, y ahí no hay esencia que usar. Hoy esa cotización **no muestra costo ni
+  margen** (`tipo === 'general'` oculta el panel): se cotiza a ciegas.
+- **El patrón de precios es real, medido sobre las 216 esencias**: no hay 216 precios
+  distintos sino **7**, en tres escalones — 230 (43) y 280 (18) = clásicas; 350 (91),
+  380 (33), 450 (3) y 480 (24) = árabes; 1.500 (4) = premium. Promedios: **245 / 379 /
+  1.500**. Por eso la gama es un dato duro y no una estimación.
+- **NO se guarda ningún promedio**: `GET /costeo/gamas` lo recalcula del inventario en cada
+  llamada (mismo criterio que el cupo y la tarjeta de puntos). Cuenta solo esencias activas
+  y con precio: una apagada o en cero arrastraría el promedio y mostraría márgenes falsos.
+- La migración **siembra la gama por precio** (<300 clásica, <800 árabe, resto premium) y
+  deja en null diluyente, sellador y feromonas, que son materia prima pero no esencias.
+  Marcar 216 registros a mano no era razonable; el dueño corrige lo que haga falta.
+- En Inventario hay **columna Gama filtrable**: es la forma de repasar "muéstrame las
+  árabes" y cazar las que quedaron sin clasificar, que el costeo por gama ignora en
+  silencio. El campo solo aparece en el modal si el nombre contiene "esencia".
+- La hoja de Excel de insumos lleva la columna `gama`, tolerante a tildes y mayúsculas
+  ("Árabe" = "arabe"), y **avisa si viene mal escrita** en vez de tragárselo.
+- Migración: `20260809140000_gama_esencia`.
+
+**Pendiente (pasos 2 y 3, acordados con el dueño):** (2) que la cotización general se arme
+por gamas ("30 clásicas + 15 árabes + 5 premium") y muestre costo y margen; (3) separar la
+pantalla — la RECETA se queda en Tamaños y fórmulas (la usa toda la app para descontar
+inventario), y la esencia por defecto + los rangos de precio mayorista se van a Mayoreo,
+que es donde se usan. Hoy `formulas_volumen` mezcla las tres cosas.
+
 ### Sacar un perfume de la tienda (`perfumes.publicado`, 2026-08-09)
 
 Son **DOS estados distintos y no hay que confundirlos** (el dueño lo separó él mismo):
@@ -1396,6 +1428,8 @@ Migraciones pendientes de aplicar en producción al escribir esto:
 
 - `20260809120000_perfume_publicado`: `perfumes.publicado` (BOOLEAN, **DEFAULT TRUE**) +
   índice. Sacar un perfume del catálogo sin borrarlo. Al aplicarla no desaparece ninguno.
+- `20260809140000_gama_esencia`: `insumos_costo.gama` (ENUM nullable) + siembra por precio
+  (61 clásicas, 151 árabes, 4 premium sobre los datos reales).
 
 **Verificado el 2026-08-01**: la base local se reemplazó por el dump real de producción y
 las 8 migraciones pendientes se aplicaron EN ORDEN sobre esos datos, sin perder una fila

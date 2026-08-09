@@ -26,6 +26,7 @@ export const filasInsumos = async () => {
   return rows.map((i) => ({
     nombre: i.nombre,
     tipo: i.tipo,
+    gama: i.gama ?? '',
     unidad: i.unidad,
     alcance: i.alcance,
     costo_promedio: Number(i.precio),
@@ -97,6 +98,19 @@ export const filasMovimientos = async () => {
 // ── Importadores ────────────────────────────────────────────────────────────
 
 const TIPOS = ['materia_prima', 'envase', 'accesorio'];
+const GAMAS = ['clasica', 'arabe', 'premium', 'disenador'];
+
+/**
+ * Gama de la esencia tal como la escriba el dueño: "Árabe", "arabe", "ARABE" y
+ * "diseñador" tienen que valer. Vacío = sin gama, que es lo correcto para todo
+ * lo que no sea una esencia (un frasco, el diluyente).
+ */
+const leerGama = (v: unknown): string | null | undefined => {
+  const t = txt(v).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
+  if (!t) return undefined;            // columna vacía: no tocar lo que ya tenga
+  if (t === 'ninguna' || t === '-') return null;  // borrarla a propósito
+  return GAMAS.includes(t) ? t : undefined;
+};
 
 /** Crea o actualiza insumos por nombre. NO toca existencias (eso va por conteo). */
 export const importarInsumos = async (rows: any[], result: EntityImportResult) => {
@@ -113,6 +127,13 @@ export const importarInsumos = async (rows: any[], result: EntityImportResult) =
     const alcance = txt(row.alcance).toLowerCase() === 'pedido' ? 'pedido' : 'unidad';
     const precio = num(row.costo_promedio);
     const activo = txt(row.activo).toLowerCase() !== 'no';
+    const gamaCruda = txt(row.gama);
+    const gama = leerGama(row.gama);
+    // Se avisa en vez de tragárselo: una gama mal escrita deja la esencia sin
+    // clasificar y el costeo por gama la ignora, sin que nadie se entere.
+    if (gamaCruda && gama === undefined && gamaCruda.toLowerCase() !== 'ninguna') {
+      result.errores.push(`Fila ${fila}: gama "${gamaCruda}" no existe (usa clasica, arabe, premium o disenador)`);
+    }
 
     const existente = await prisma.insumoCosto.findFirst({ where: { nombre } });
     if (existente) {
@@ -120,12 +141,14 @@ export const importarInsumos = async (rows: any[], result: EntityImportResult) =
         where: { id: existente.id },
         // El costo NO se pisa si viene en cero: lo manda el promedio de compras
         data: { tipo: tipo as any, unidad: unidad as any, alcance: alcance as any, activo,
-          ...(precio > 0 ? { precio } : {}) },
+          ...(precio > 0 ? { precio } : {}),
+          ...(gama !== undefined ? { gama: gama as any } : {}) },
       });
       result.actualizados++;
     } else {
       await prisma.insumoCosto.create({
-        data: { nombre, tipo: tipo as any, unidad: unidad as any, alcance: alcance as any, precio, activo },
+        data: { nombre, tipo: tipo as any, unidad: unidad as any, alcance: alcance as any, precio, activo,
+          gama: (gama ?? null) as any },
       });
       result.insertados++;
     }

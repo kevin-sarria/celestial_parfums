@@ -79,6 +79,22 @@ enum InsumoTipo {
   accesorio
 }
 
+/// Gama de una esencia: es la CALIDAD de la esencia pura, y en este negocio
+/// manda el precio por ml. Verificado sobre las 216 esencias cargadas: no hay
+/// 216 precios distintos sino 7, agrupados en tres escalones muy marcados
+/// (clásicas 230-280, árabes 350-480, premium 1.500).
+///
+/// Sirve para costear cuando TODAVÍA no se sabe qué fragancia concreta se va a
+/// armar: la cotización general al mayoreo ("50 de 30 ml") no dice cuáles son,
+/// y costearla con una esencia cualquiera da un margen que no es de nadie.
+/// Cuando el perfume sí se conoce, manda SU esencia, no la gama.
+enum GamaEsencia {
+  clasica
+  arabe
+  premium
+  disenador
+}
+
 // Cómo se cobra el insumo: por mililitro (esencias, diluyente…) o por pieza.
 enum InsumoUnidad {
   ml
@@ -873,6 +889,9 @@ model InsumoCosto {
   /// Punto de pedido: cuando el stock baja de aquí, hay que reponer. En 0 se
   /// desactiva la alerta (no todo insumo la necesita).
   stock_minimo Decimal    @default(0) @db.Decimal(12, 3)
+  /// Solo para esencias: su gama (ver GamaEsencia). Null en todo lo demás —
+  /// un frasco o el diluyente no tienen gama.
+  gama       GamaEsencia?
   activo     Boolean      @default(true)
   created_at DateTime     @default(now())
   updated_at DateTime     @updatedAt

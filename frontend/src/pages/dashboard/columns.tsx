@@ -139,6 +139,18 @@ export const pagosColumns: ColumnDef<Pago>[] = [
  * llega a cero: es el aviso de que hay que encargar antes de quedarse sin
  * material a mitad de una producción.
  */
+/**
+ * Nombre bonito de cada gama de esencia. Se escribe con tilde y con ñ aunque en
+ * la base vaya sin ellas: en la base es un valor técnico, en pantalla es texto
+ * que lee una persona.
+ */
+export const ETIQUETA_GAMA: Record<string, string> = {
+  clasica: 'Clásica',
+  arabe: 'Árabe',
+  premium: 'Premium',
+  disenador: 'Diseñador',
+};
+
 export const inventarioColumns: ColumnDef<InventarioInsumo>[] = [
   // El tipo NO se repite bajo el nombre: tiene su propia columna, que además filtra.
   { key: 'nombre', header: 'Insumo', type: 'string', getValue: i => i.nombre,
@@ -156,6 +168,13 @@ export const inventarioColumns: ColumnDef<InventarioInsumo>[] = [
     ), className: cellName, movil: 'titulo' },
   { key: 'tipo', header: 'Tipo', type: 'enum', getValue: i => i.tipo.replace('_', ' '),
     enumOptions: ['materia prima', 'envase', 'accesorio'], filterable: true,
+    className: cellMeta, movil: 'meta' },
+  // Filtrable a propósito: es la forma de repasar "muéstrame las árabes" y
+  // cazar las que quedaron sin clasificar, que son las que el costeo por gama
+  // ignora en silencio.
+  { key: 'gama', header: 'Gama', type: 'enum',
+    getValue: i => (i.gama ? ETIQUETA_GAMA[i.gama] ?? i.gama : '—'),
+    enumOptions: [...Object.values(ETIQUETA_GAMA), '—'], filterable: true,
     className: cellMeta, movil: 'meta' },
   { key: 'stock', header: 'Existencias', type: 'number', getValue: i => i.stock,
     render: i => (

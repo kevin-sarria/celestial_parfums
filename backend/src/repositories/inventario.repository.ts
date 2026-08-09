@@ -374,6 +374,8 @@ export const resumenInventario = async () => {
       nombre: i.nombre,
       tipo: i.tipo,
       unidad: i.unidad,
+      /** Solo esencias: su gama. Null en envases, accesorios y el resto. */
+      gama: i.gama ?? null,
       activo: i.activo,
       stock,
       stock_minimo: minimo,

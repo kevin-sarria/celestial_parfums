@@ -20,6 +20,12 @@ export const insumoSchema = z.object({
   alcance: z.enum(['unidad', 'pedido']).default('unidad'),
   precio: dinero,
   activo: z.boolean().optional(),
+  /**
+   * Gama de la esencia (clásica / árabe / premium / diseñador). Solo aplica a
+   * esencias: un frasco o el diluyente van en null. Se usa para costear cuando
+   * todavía no se sabe qué fragancia se va a armar.
+   */
+  gama: z.enum(['clasica', 'arabe', 'premium', 'disenador']).nullish(),
 });
 
 /** Accesorios que un tamaño incluye por defecto. */

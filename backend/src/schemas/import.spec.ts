@@ -183,6 +183,7 @@ export const IMPORT_SPECS: Record<string, ImportSpec> = {
     columnas: [
       { key: 'nombre', required: true, descripcion: 'Nombre del insumo (Esencia Eternity, Envase 30 ml...)', ejemplo: 'Esencia Eternity' },
       { key: 'tipo', required: true, descripcion: 'materia_prima, envase o accesorio', ejemplo: 'materia_prima' },
+      { key: 'gama', required: false, descripcion: 'Solo esencias: clasica, arabe, premium o disenador. Vacio en lo demas', ejemplo: 'arabe' },
       { key: 'unidad', required: false, descripcion: 'ml (liquidos) o unidad (piezas)', ejemplo: 'ml' },
       { key: 'alcance', required: false, descripcion: 'unidad (por perfume) o pedido (una vez por envio)', ejemplo: 'unidad' },
       { key: 'costo_promedio', required: false, descripcion: 'Costo por ml o por pieza. Vacio o 0 = no se toca', ejemplo: 1200 },
@@ -194,6 +195,8 @@ export const IMPORT_SPECS: Record<string, ImportSpec> = {
       'Si el nombre ya existe se ACTUALIZA; si no, se crea.',
       'Las EXISTENCIAS no se cambian aqui: se siembran con la hoja "inventario" (conteo fisico) o entran con las compras a proveedores.',
       'El costo_promedio solo hace falta al arrancar: despues lo calcula solo con cada compra.',
+      'La GAMA es la calidad de la esencia pura (clasica, arabe, premium, disenador). Sirve para cotizar al mayoreo cuando el cliente pide "50 de 30 ml" sin decir que fragancias: ahi se costea con el promedio de la gama.',
+      'Los envases, accesorios, el diluyente, el sellador y las feromonas NO llevan gama: dejala vacia.',
     ],
   },
   inventario: {
