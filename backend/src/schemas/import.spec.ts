@@ -199,14 +199,17 @@ export const IMPORT_SPECS: Record<string, ImportSpec> = {
   inventario: {
     titulo: 'Conteo fisico de inventario',
     columnas: [
-      { key: 'insumo', required: true, descripcion: 'Nombre exacto de un insumo existente', ejemplo: 'Esencia Eternity' },
-      { key: 'unidad', required: false, descripcion: 'Solo informativo (ml o unidad)', ejemplo: 'ml' },
+      { key: 'insumo', required: true, descripcion: 'Nombre del material. Si no existe se CREA', ejemplo: 'Esencia Eternity' },
+      { key: 'tipo', required: false, descripcion: 'Solo si el material es nuevo: materia_prima, envase o accesorio', ejemplo: 'materia_prima' },
+      { key: 'unidad', required: false, descripcion: 'ml o unidad (solo pesa al crear uno nuevo)', ejemplo: 'ml' },
       { key: 'existencias_sistema', required: false, descripcion: 'Lo que el sistema cree que hay (informativo)', ejemplo: 100 },
       { key: 'cantidad_real', required: true, descripcion: 'Lo que hay DE VERDAD tras contar', ejemplo: 96.5 },
       { key: 'costo_unitario', required: false, descripcion: 'Costo por unidad; solo se usa si el ajuste SUMA material', ejemplo: 1200 },
     ],
     notas: [
       'Es la forma comoda de sembrar el stock inicial: exporta la hoja, escribe lo que hay en cantidad_real y vuelvela a subir.',
+      'Puedes AGREGAR filas de materiales que todavia no existen: se crean solos. En ese caso pon el "tipo" (materia_prima, envase o accesorio).',
+      'Los nombres se comparan ignorando mayusculas y tildes, asi que "esencia khamrah" y "Esencia Khamrah" son el mismo material y NO se duplica.',
       'El sistema calcula la diferencia contra lo que tenia y la registra como movimiento de ajuste (queda auditable).',
       'La diferencia entre lo teorico y lo real ES el desperdicio del dia a dia: no hace falta anotar cada gramo que se va de mas.',
       'El costo_unitario solo pesa cuando el ajuste suma material (al arrancar). Si estas quitando, se valora al promedio que ya tiene.',

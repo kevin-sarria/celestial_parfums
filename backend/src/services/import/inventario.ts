@@ -12,6 +12,12 @@ import type { EntityImportResult } from './core';
 
 const num = (v: unknown) => Number(String(v ?? '').toString().replace(/[^\d.-]/g, '')) || 0;
 const txt = (v: unknown) => String(v ?? '').trim();
+
+const TIPOS_VALIDOS = ['materia_prima', 'envase', 'accesorio'];
+
+/** Para comparar nombres sin que una tilde o un espacio de más creen un duplicado. */
+const normalizar = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 const fmtDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : '');
 
 /** Insumos con su costo y existencias actuales. */
@@ -38,6 +44,9 @@ export const filasInventario = async () => {
   });
   return rows.map((i) => ({
     insumo: i.nombre,
+    // Va en la hoja para que, al agregar una fila nueva a mano, se sepa qué
+    // escribir: sin el tipo no se puede crear el material al subirla.
+    tipo: i.tipo,
     unidad: i.unidad,
     existencias_sistema: Number(i.stock),
     cantidad_real: Number(i.stock),
@@ -134,13 +143,45 @@ export const importarInventario = async (rows: any[], result: EntityImportResult
     const fila = i + 2;
     const nombre = txt(row.insumo);
     if (!nombre) { result.omitidos++; continue; }
-    const insumo = await prisma.insumoCosto.findFirst({ where: { nombre } });
-    if (!insumo) {
-      result.errores.push(`Fila ${fila}: no existe el insumo "${nombre}"`);
-      result.omitidos++; continue;
-    }
     const real = num(row.cantidad_real);
     const costo = num(row.costo_unitario);
+
+    // Se busca sin distinguir mayúsculas ni espacios de sobra: "Esencia  Khamrah"
+    // y "esencia khamrah" son el mismo material, y crear un duplicado partiría
+    // el stock en dos registros sin que nadie lo note.
+    let insumo = await prisma.insumoCosto.findFirst({ where: { nombre } });
+    if (!insumo) {
+      const todos = await prisma.insumoCosto.findMany({ select: { id: true, nombre: true } });
+      const clave = normalizar(nombre);
+      const igual = todos.find((i) => normalizar(i.nombre) === clave);
+      if (igual) insumo = await prisma.insumoCosto.findUnique({ where: { id: igual.id } });
+    }
+
+    // Si de verdad es nuevo, se CREA. Antes se rechazaba la fila, y eso obligaba
+    // a dar de alta el material a mano antes de poder contarlo — justo lo que la
+    // hoja venía a evitar.
+    if (!insumo) {
+      const tipo = txt(row.tipo).toLowerCase().replace(/\s+/g, '_');
+      if (!TIPOS_VALIDOS.includes(tipo)) {
+        result.errores.push(
+          `Fila ${fila}: "${nombre}" es nuevo, así que necesita la columna "tipo" `
+          + `(materia_prima, envase o accesorio) para poder crearlo.`);
+        result.omitidos++; continue;
+      }
+      const unidad = txt(row.unidad).toLowerCase() === 'ml' ? 'ml' : 'unidad';
+      insumo = await prisma.insumoCosto.create({
+        data: {
+          nombre,
+          tipo: tipo as 'materia_prima' | 'envase' | 'accesorio',
+          unidad,
+          // El precio arranca en lo que se teclee y de ahí en adelante lo lleva
+          // el costo promedio de las compras.
+          precio: costo > 0 ? costo : 0,
+        },
+      });
+      result.insertados++;
+    }
+
     try {
       const res = await ajustarStock({
         insumo_id: insumo.id,

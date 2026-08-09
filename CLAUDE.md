@@ -478,6 +478,18 @@ de analizar, no la de registrar.
   de más al servir): lo absorbe el **conteo físico**. La diferencia entre el stock teórico y
   el real ES el desperdicio, y queda registrada como `ajuste`. Pedirle al dueño que anote
   cada gramo garantiza que deje de usar el módulo en una semana.
+- **La hoja de conteo CREA los materiales que no existan** (2026-08-09). Antes rechazaba la
+  fila con "no existe el insumo", lo que obligaba a darlo de alta a mano antes de poder
+  contarlo — justo lo que la hoja venía a evitar. Ahora:
+  - Si el nombre no existe, **se crea**. Para eso la hoja lleva una columna `tipo`
+    (`materia_prima`/`envase`/`accesorio`), obligatoria SOLO para los nuevos: sin ella no se
+    puede saber si es una esencia o un frasco, y adivinarlo daría un costeo sin sentido.
+  - **Los nombres se comparan normalizados** (sin tildes, sin mayúsculas, sin espacios de
+    más): `esencia clásica` encuentra `Esencia Clasica` y NO duplica. Un duplicado partiría
+    el stock en dos registros sin que nadie lo note.
+  - El `costo_unitario` de la fila es el precio de arranque del material nuevo.
+  - Verificado con una hoja de 3 filas: la existente-con-otra-escritura se actualizó sin
+    duplicar, la nueva con tipo se creó, y la nueva sin tipo se rechazó con su motivo.
 - **UNA sola pantalla de materiales: Inventario** (2026-08-09). Había DOS pestañas
   enseñando los mismos registros de `insumos_costo` desde ángulos distintos —
   "Insumos y precios" (qué existe y cuánto cuesta) e "Inventario" (cuánto tengo). El dueño
