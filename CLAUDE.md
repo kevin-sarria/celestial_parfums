@@ -1427,6 +1427,14 @@ subir: respaldo por SSH y verificar que el archivo pese cientos de KB, no 20 byt
   El campo de dinero va sin flechitas: en un precio no sirven y en el celular tapaban un
   dígito. **Regla (defecto 12 de la skill `dashboard-interno-ux`): una fila de encabezado
   NO es una etiqueta** — sirve en una tabla ancha, no en un formulario que se angosta.
+- **Se acomodan con `@container`, NO con los `sm:` de siempre** (2026-08-09). Las tres
+  casillas van en fila solo si la TARJETA mide 384 px o más (`@sm:grid-cols-3`); por debajo
+  cada una ocupa el ancho completo y quedan tres filas legibles. Los prefijos `sm:`/`md:`
+  de Tailwind miden la **ventana**, y aquí eso miente: el modal mide 540 px aunque la
+  pantalla tenga 1400, así que "pantalla ancha" no significa "hay espacio". Medido: tarjeta
+  de 443 px → 3 columnas de 134; de 277 px (celular) y de 187 px → una sola columna.
+  **Al maquetar algo dentro de un modal o una tarjeta, usar `@container`**; `sm:` solo
+  sirve para lo que ocupa el ancho de la página.
 
 **Pendientes concretos:**
 1. **Rediseño del dashboard, en 3 olas** (el dueño señaló 9 pantallas el 2026-08-01).

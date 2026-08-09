@@ -212,7 +212,12 @@ export default function DetalleCompra({
             {lineas.map((l, idx) => {
               const costo = costoConFlete(l);
               return (
-                <li key={l.insumo_id} className="px-3 py-2.5">
+                /* `@container`: lo que manda es el ancho de ESTA tarjeta, no el
+                   de la ventana. Las casillas se ponen en fila solo si de verdad
+                   caben; si no, cada una ocupa el ancho completo. Medir la
+                   ventana fue el error de la versión anterior: el modal mide
+                   540 px aunque la pantalla tenga 1400. */
+                <li key={l.insumo_id} className="@container px-3 py-2.5">
                   {/* El nombre ocupa su propio renglón: las esencias se llaman
                       "212 Heroes Dama – Esencia" y en una columna estrecha se
                       partían en cuatro líneas. */}
@@ -230,7 +235,7 @@ export default function DetalleCompra({
                       Antes iban una sola vez en una fila de encabezado: al
                       angostarse el modal esa fila desaparecía y quedaban tres
                       casillas mudas, sin forma de saber qué iba en cada una. */}
-                  <div className="mt-1.5 grid grid-cols-3 gap-2">
+                  <div className="mt-1.5 grid grid-cols-1 gap-2 @sm:grid-cols-3">
                     <label className="block">
                       <span className="mb-1 block text-[11.5px] font-medium text-muted-foreground">Cantidad</span>
                       <Input type="number" min="0" step="0.001" placeholder="0"
