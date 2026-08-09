@@ -15,8 +15,10 @@ export const costeoRouter = Router();
 costeoRouter.use(requireAdmin);
 
 // ── Insumos ─────────────────────────────────────────────────────────────────
-costeoRouter.get('/insumos', h(async (_req, res) => {
-  res.json({ data: await repo.listarInsumos() });
+/** `?todos=1` incluye los apagados; sin él solo vienen los activos, que es lo
+ *  que deben ver los buscadores de compras y producción. */
+costeoRouter.get('/insumos', h(async (req, res) => {
+  res.json({ data: await repo.listarInsumos(req.query.todos === '1') });
 }));
 
 costeoRouter.post('/insumos', validate(insumoSchema), h(async (req, res) => {

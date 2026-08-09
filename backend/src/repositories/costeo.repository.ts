@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma';
+import { badRequest } from '../utils/httpError';
 import type {
   InsumoInput, FormulaInput, EscalaInput, CotizacionConfigInput, CondicionesComerciales,
 } from '../schemas/cotizacion.schema';
@@ -22,8 +23,18 @@ const mapInsumo = (i: any) => ({
   activo: i.activo,
 });
 
-export const listarInsumos = async () => {
-  const rows = await prisma.insumoCosto.findMany({ orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }] });
+/**
+ * Los insumos con los que se trabaja.
+ *
+ * Por defecto SOLO los activos: los apagados no deben aparecer al registrar una
+ * compra ni una producción. La pantalla que los administra pide `todos` para
+ * poder volver a encenderlos.
+ */
+export const listarInsumos = async (todos = false) => {
+  const rows = await prisma.insumoCosto.findMany({
+    where: todos ? undefined : { activo: true },
+    orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
+  });
   return rows.map(mapInsumo);
 };
 
@@ -33,7 +44,42 @@ export const crearInsumo = (data: InsumoInput) =>
 export const actualizarInsumo = (id: number, data: InsumoInput) =>
   prisma.insumoCosto.update({ where: { id }, data }).then(mapInsumo);
 
-export const eliminarInsumo = (id: number) => prisma.insumoCosto.delete({ where: { id } });
+/**
+ * Borra un insumo, pero SOLO si no dejó rastro.
+ *
+ * Se comprueba antes en vez de dejar que reviente la llave foránea: el error de
+ * la base dice "foreign key constraint fails", que no le sirve a nadie. Aquí se
+ * dice qué lo retiene y qué hacer en su lugar — apagarlo, que lo esconde sin
+ * romper el historial contable.
+ */
+export const eliminarInsumo = async (id: number) => {
+  const [movimientos, compras, comoEnvase, comoEsencia, enAccesorios, enPerfumes, enTallas] =
+    await Promise.all([
+      prisma.movimientoInventario.count({ where: { insumo_id: id } }),
+      prisma.compraItem.count({ where: { insumo_id: id } }),
+      prisma.formulaVolumen.count({ where: { envase_insumo_id: id } }),
+      prisma.formulaVolumen.count({ where: { esencia_insumo_id: id } }),
+      prisma.formulaAccesorio.count({ where: { insumo_id: id } }),
+      prisma.perfume.count({ where: { OR: [{ insumo_esencia_id: id }, { insumo_producto_id: id }] } }),
+      prisma.perfumePresentacion.count({ where: { envase_insumo_id: id } }),
+    ]);
+
+  const motivos: string[] = [];
+  if (movimientos > 0) motivos.push(`tiene ${movimientos} movimiento(s) de inventario`);
+  if (compras > 0) motivos.push(`aparece en ${compras} compra(s)`);
+  if (comoEnvase + comoEsencia + enAccesorios > 0) motivos.push('lo usa la receta de algún tamaño');
+  if (enPerfumes > 0) motivos.push(`${enPerfumes} perfume(s) lo tienen asignado`);
+  if (enTallas > 0) motivos.push('es el envase de alguna talla');
+
+  if (motivos.length > 0) {
+    throw badRequest(
+      `No se puede borrar: ${motivos.join(', ')}. `
+      + 'Borrarlo dejaría esos registros sin referencia y descuadraría tu historial. '
+      + 'Apágalo con el interruptor "Activo": deja de aparecer al comprar y producir, y su pasado queda intacto.',
+    );
+  }
+  return prisma.insumoCosto.delete({ where: { id } });
+};
 
 // ── Fórmulas por volumen ────────────────────────────────────────────────────
 const mapFormula = (f: any) => {

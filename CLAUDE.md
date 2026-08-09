@@ -478,6 +478,21 @@ de analizar, no la de registrar.
   de más al servir): lo absorbe el **conteo físico**. La diferencia entre el stock teórico y
   el real ES el desperdicio, y queda registrada como `ajuste`. Pedirle al dueño que anote
   cada gramo garantiza que deje de usar el módulo en una semana.
+- **Jubilar un insumo: APAGAR, no borrar** (2026-08-09). `insumos_costo.activo` ya existía
+  pero no se podía cambiar desde ninguna pantalla, así que había materiales que no se
+  podían borrar *ni* esconder. Ahora en **Insumos y precios** cada fila tiene *Apagar /
+  Encender*.
+  - Apagado = desaparece de los buscadores de compras y producción y de la pantalla de
+    Inventario, **sin tocar su historial**. `GET /costeo/insumos` devuelve solo activos;
+    la pantalla que los administra pide `?todos=1` (si no, no habría cómo reencenderlos).
+    `resumenInventario` ya filtraba por `activo`.
+  - **Borrar sigue existiendo y es lo correcto para lo que nunca se usó.** `eliminarInsumo`
+    comprueba ANTES las 7 relaciones (movimientos, compras, recetas, accesorios, perfumes,
+    tallas) y responde **qué** lo retiene y qué hacer en su lugar. Dejar que reventara la
+    llave foránea daba "foreign key constraint fails", que no le sirve a nadie.
+  - Verificado: borrar el Diluyente (con conteo) se rechaza con el motivo; un insumo recién
+    creado se borra; apagado desaparece de los 10 activos pero sigue en los 11 de la
+    pantalla de administración.
 - **IVA de compras: se configura POR PROVEEDOR, nunca global** (2026-08-08). Los proveedores
   de este negocio facturan distinto y un porcentaje único es un error caro:
   `empresas.iva_modo` = `incluido` (el precio ya lo trae — así factura el distribuidor

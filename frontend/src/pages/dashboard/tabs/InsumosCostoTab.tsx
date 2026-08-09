@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Info, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Info, Pencil, Plus, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -40,7 +40,9 @@ export function InsumosCostoTab({ guardedFetch }: { guardedFetch: GuardedFetch }
   const load = async () => {
     setLoading(true);
     try {
-      const res = await guardedFetch(`${API}/insumos`);
+      // `todos=1`: esta es la pantalla que los administra, así que también ve
+      // los apagados — si no, no habría forma de volver a encenderlos.
+      const res = await guardedFetch(`${API}/insumos?todos=1`);
       if (!res.ok) throw new Error('respuesta no válida');
       setItems((await res.json()).data ?? []);
       setErrorCarga('');
@@ -81,15 +83,46 @@ export function InsumosCostoTab({ guardedFetch }: { guardedFetch: GuardedFetch }
   };
 
   const eliminar = async (i: Insumo) => {
-    if (!window.confirm(`¿Eliminar "${i.nombre}"? Si algún tamaño o fórmula lo usa, no se podrá.`)) return;
+    if (!window.confirm(
+      `¿Eliminar "${i.nombre}"?\n\n`
+      + 'Solo se puede si nunca se usó. Si ya tiene compras o movimientos, el sistema '
+      + 'te lo dirá: en ese caso apágalo en vez de borrarlo.',
+    )) return;
     try {
       const res = await guardedFetch(`${API}/insumos/${i.id}`, { method: 'DELETE' });
       if (!res.ok) {
         const j = await res.json().catch(() => null);
-        // El mensaje del servidor explica la causa mejor que un texto genérico
-        toast.error(j?.error ?? 'No se pudo eliminar: puede estar en uso por un tamaño', { id: 'insumos' });
+        // El servidor dice QUÉ lo retiene y qué hacer; un texto genérico dejaría
+        // al dueño adivinando entre cinco causas posibles.
+        toast.error(j?.error ?? 'No se pudo eliminar', { id: 'insumos', duration: 9000 });
         return;
       }
+      toast.success(`"${i.nombre}" eliminado`);
+      load();
+    } catch { toast.error('No se pudo conectar con el servidor', { id: 'insumos' }); }
+  };
+
+  /**
+   * Apagar un insumo lo esconde de los buscadores de compras y producción, y de
+   * la pantalla de Inventario, SIN tocar su historial. Es lo que hay que usar
+   * para jubilar un material que ya tiene movimientos: borrarlo dejaría esos
+   * registros sin referencia.
+   */
+  const alternarActivo = async (i: Insumo) => {
+    const activo = !(i.activo ?? true);
+    try {
+      const res = await guardedFetch(`${API}/insumos/${i.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          nombre: i.nombre, tipo: i.tipo, unidad: i.unidad,
+          alcance: i.alcance ?? 'unidad', precio: i.precio, activo,
+        }),
+      });
+      const j = await res.json().catch(() => null);
+      if (!res.ok) { toast.error(j?.error ?? 'No se pudo cambiar', { id: 'insumos' }); return; }
+      toast.success(activo
+        ? `"${i.nombre}" vuelve a estar disponible`
+        : `"${i.nombre}" apagado: ya no aparecerá al comprar ni producir`);
       load();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'insumos' }); }
   };
@@ -135,13 +168,39 @@ export function InsumosCostoTab({ guardedFetch }: { guardedFetch: GuardedFetch }
                 </p>
               ) : (
                 <ul className="flex flex-col gap-1.5">
-                  {delGrupo.map((i) => (
-                    <li key={i.id} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-2.5">
-                      <span className="min-w-0 flex-1 truncate text-[14px] font-medium text-foreground">{i.nombre}</span>
-                      <span className="whitespace-nowrap text-[13.5px] tabular-nums text-primary">
+                  {delGrupo.map((i) => {
+                    const activo = i.activo ?? true;
+                    return (
+                    <li key={i.id}
+                      className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 ${
+                        activo ? 'border-border bg-card' : 'border-dashed border-border bg-secondary/40'
+                      }`}>
+                      <span className={`min-w-0 flex-1 truncate text-[14px] font-medium ${
+                        activo ? 'text-foreground' : 'text-muted-foreground'
+                      }`}>
+                        {i.nombre}
+                        {!activo && (
+                          <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            apagado
+                          </span>
+                        )}
+                      </span>
+                      <span className={`whitespace-nowrap text-[13.5px] tabular-nums ${
+                        activo ? 'text-primary' : 'text-muted-foreground'
+                      }`}>
                         {formatPrice(i.precio)}
                         <span className="ml-1 text-[11.5px] text-muted-foreground">/{i.unidad === 'ml' ? 'ml' : 'u'}</span>
                       </span>
+                      {/* Apagar es lo que se usa para jubilar un material con
+                          historial; borrar solo sirve si nunca se usó. */}
+                      <Button size="sm" variant="ghost" className="h-8 text-[12.5px]"
+                        title={activo
+                          ? 'Dejará de aparecer al comprar y producir. Su historial queda intacto.'
+                          : 'Vuelve a estar disponible al comprar y producir.'}
+                        onClick={() => alternarActivo(i)}>
+                        {activo ? <ToggleRight className="size-4 text-primary" /> : <ToggleLeft className="size-4" />}
+                        {activo ? 'Apagar' : 'Encender'}
+                      </Button>
                       <Button size="icon" variant="ghost" className="size-8" onClick={() => abrirEditar(i)}>
                         <Pencil className="size-4" />
                       </Button>
@@ -149,7 +208,8 @@ export function InsumosCostoTab({ guardedFetch }: { guardedFetch: GuardedFetch }
                         <Trash2 className="size-4" />
                       </Button>
                     </li>
-                  ))}
+                    );
+                  })}
                 </ul>
               )}
             </div>
