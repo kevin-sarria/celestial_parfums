@@ -7,6 +7,7 @@ import { DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Modal from '../../../components/Modal';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
+import BuscadorSelect from '../../../components/BuscadorSelect';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
 import { EncabezadoPagina, Section, Field, FieldRow } from '../ui';
@@ -418,14 +419,30 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
               <Input type="number" min="0" step="0.1" value={form.esencia_ml}
                 onChange={(e) => setForm((f) => ({ ...f, esencia_ml: e.target.value }))} />
             </Field>
-            <Field label="¿Cuál esencia usa?">
-              <NativeSelect value={form.esencia_insumo_id}
-                onChange={(e) => setForm((f) => ({ ...f, esencia_insumo_id: e.target.value }))}>
-                <option value="">— Elegir esencia —</option>
-                {esencias.map((i) => (
-                  <option key={i.id} value={i.id}>{i.nombre} ({formatPrice(i.precio)}/ml)</option>
-                ))}
-              </NativeSelect>
+            {/* Con buscador, no `NativeSelect`: hay 216 esencias y una lista de
+                HTML plano obliga a recorrerlas a ojo hasta el final de la
+                pantalla. Regla del proyecto: lista larga → BuscadorSelect. */}
+            <Field label="¿Cuál esencia usa por defecto?">
+              <BuscadorSelect
+                opciones={[
+                  { id: '', nombre: '— Sin elegir —' },
+                  ...esencias.map((i) => ({
+                    id: i.id as number | string,
+                    nombre: `${i.nombre} (${formatPrice(i.precio)}/ml)`,
+                  })),
+                ]}
+                value={form.esencia_insumo_id === '' ? '' : Number(form.esencia_insumo_id)}
+                placeholder="Buscar esencia…"
+                vacio="Ninguna esencia coincide"
+                onSelect={(id) => setForm((f) => ({ ...f, esencia_insumo_id: id === '' ? '' : String(id) }))}
+              />
+              {/* Aclara para qué sirve de verdad: al cotizar manda la esencia
+                  del perfume, no esta. Sin la nota parece que la receta fija
+                  con qué se hacen TODAS las fragancias de ese tamaño. */}
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Solo es el respaldo. Al cotizar, cada perfume se costea con SU esencia; esta
+                se usa cuando el perfume todavía no tiene una asignada.
+              </p>
             </Field>
           </FieldRow>
           <FieldRow>

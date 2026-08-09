@@ -325,10 +325,17 @@ certeza de que la acción funcionó.
 - Estética "sobria": cards minimalistas, sin exceso de info. Inputs/selects: `rounded-md
   border-input bg-card shadow-xs` + focus ring de 3px (`ring-ring/50`). Copiar clases de
   `ui/input.tsx` / `ui/native-select.tsx` al crear controles.
-- Listas largas en formularios → `components/BuscadorSelect.tsx` (combobox con buscador
-  DENTRO del panel; modo valor único con `value`, modo "agregar varios" sin `value`).
-  Selects de 2-5 opciones → `NativeSelect`. Multi-select: control arriba, chips de lo
-  elegido DEBAJO.
+- **NINGÚN desplegable de lista larga puede ser un `<select>` de HTML.** Regla del dueño
+  (2026-08-09), tras encontrarse las 216 esencias en un select nativo: se recorren a ojo, la
+  lista se despliega hasta el borde de la pantalla y no se puede buscar.
+  - **6 opciones o más, o una lista que crece con el negocio** (esencias, perfumes,
+    insumos, clientes) → `components/BuscadorSelect.tsx` (combobox con buscador DENTRO del
+    panel, alto acotado; modo valor único con `value`, modo "agregar varios" sin `value`).
+  - **2 a 5 opciones fijas** (unidad, género, modo de IVA) → `NativeSelect`. Ahí el buscador
+    estorba más de lo que ayuda.
+  - Multi-select: control arriba, chips de lo elegido DEBAJO.
+  - Al revisar una pantalla, comprobarlo: es el fallo que más se repite y se cuela porque
+    con 3 datos de prueba el select nativo se ve bien.
 - Notas olfativas con colores estilo Fragrantica: `domain/entities/aroma.colors.ts`
   (fallback determinístico por hash para aromas nuevos).
 - Símbolos de género con selector de texto U+FE0E (`♂︎`) o iOS los vuelve emoji.
