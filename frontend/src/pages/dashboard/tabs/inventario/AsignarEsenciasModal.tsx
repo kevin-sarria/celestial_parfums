@@ -3,8 +3,8 @@ import { Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
 import Modal from '../../../../components/Modal';
+import BuscadorSelect from '../../../../components/BuscadorSelect';
 import PerfumeSpinner from '../../../../components/PerfumeSpinner';
 import { BASE_URL } from '../../../../infrastructure/api/client';
 import { Field } from '../../ui';
@@ -60,6 +60,13 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
    */
   const [sugeridos, setSugeridos] = useState<Sugerencia[] | null>(null);
   const [buscandoSug, setBuscandoSug] = useState(false);
+  /**
+   * Cuáles de las sugerencias se van a aplicar. Empiezan todas marcadas, pero
+   * el dueño tiene que poder quitar las que no: el buscador acierta por nombre
+   * y hay casos donde la marca engaña — "Paris Hilton – Esencia" es del perfume
+   * clásico, no de "Heiress By Paris Hilton", aunque el nombre la contenga.
+   */
+  const [sugMarcadas, setSugMarcadas] = useState<Set<number>>(new Set());
 
   const pedirSugerencias = async () => {
     setBuscandoSug(true);
@@ -73,18 +80,21 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
         return;
       }
       setSugeridos(lista);
+      setSugMarcadas(new Set(lista.map(x => x.perfume_id)));
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'esencias' }); }
     finally { setBuscandoSug(false); }
   };
 
   const aplicarSugerencias = async () => {
     if (!sugeridos) return;
+    const elegidas = sugeridos.filter(s => sugMarcadas.has(s.perfume_id));
+    if (elegidas.length === 0) { toast.error('No dejaste ninguna marcada', { id: 'esencias' }); return; }
     setGuardando(true);
     try {
       const r = await guardedFetch(`${BASE_URL}/api/parfums/esencia/enlaces`, {
         method: 'PATCH',
         body: JSON.stringify({
-          enlaces: sugeridos.map(s => ({ perfume_id: s.perfume_id, insumo_esencia_id: s.insumo_id })),
+          enlaces: elegidas.map(s => ({ perfume_id: s.perfume_id, insumo_esencia_id: s.insumo_id })),
         }),
       });
       const j = await r.json().catch(() => null);
@@ -92,7 +102,7 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
       toast.success(j?.message ?? 'Enlaces aplicados');
       setSugeridos(null);
       setPerfumes(prev => prev.map(p => {
-        const s = sugeridos.find(x => x.perfume_id === p.id);
+        const s = elegidas.find(x => x.perfume_id === p.id);
         return s ? { ...p, insumo_esencia_id: s.insumo_id } : p;
       }));
       onGuardado();
@@ -221,36 +231,65 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
           ) : (
             <div className="rounded-xl border border-primary/40 bg-brand-soft/60 px-3.5 py-3">
               <p className="text-[13px] font-medium text-primary">
-                Encontré {sugeridos.length} coincidencias. Revísalas antes de aplicar.
+                Encontré {sugeridos.length} coincidencias. <strong>Desmarca las que estén mal.</strong>
               </p>
               <p className="mt-0.5 text-[12px] text-muted-foreground">
-                Solo toca perfumes que hoy NO tienen esencia. Si alguna está mal, cancela y
-                hazlo a mano: un enlace equivocado descuenta la esencia de otra fragancia.
+                Ojo con las marcas: si la esencia se llama como la CASA y no como el perfume,
+                puede engancharse al que no era. Un enlace equivocado descuenta la esencia de
+                otra fragancia y el costo sale falso.
               </p>
-              <ul className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border bg-card">
-                {sugeridos.map(s => (
-                  <li key={s.perfume_id} className="flex flex-wrap items-center gap-2 px-3 py-1.5 text-[12.5px]">
-                    <span className="min-w-32 flex-1 text-foreground">{s.perfume}</span>
-                    <span className="text-muted-foreground">← {s.esencia}</span>
-                  </li>
-                ))}
+              <button type="button"
+                className="mt-1.5 text-[12px] font-medium text-primary hover:underline"
+                onClick={() => setSugMarcadas(prev =>
+                  prev.size === sugeridos.length ? new Set() : new Set(sugeridos.map(x => x.perfume_id)))}>
+                {sugMarcadas.size === sugeridos.length ? 'Desmarcar todas' : 'Marcar todas'}
+              </button>
+              <ul className="mt-1.5 max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border bg-card">
+                {sugeridos.map(s => {
+                  const marcada = sugMarcadas.has(s.perfume_id);
+                  return (
+                    <li key={s.perfume_id}>
+                      <label className={`flex cursor-pointer flex-wrap items-center gap-2 px-3 py-1.5 text-[12.5px] hover:bg-secondary/50 ${marcada ? '' : 'opacity-45'}`}>
+                        <input type="checkbox" className="size-3.5 shrink-0 accent-primary"
+                          checked={marcada}
+                          onChange={() => setSugMarcadas(prev => {
+                            const n = new Set(prev);
+                            if (n.has(s.perfume_id)) n.delete(s.perfume_id); else n.add(s.perfume_id);
+                            return n;
+                          })} />
+                        <span className="min-w-32 flex-1 text-foreground">{s.perfume}</span>
+                        <span className="text-muted-foreground">← {s.esencia}</span>
+                      </label>
+                    </li>
+                  );
+                })}
               </ul>
-              <div className="mt-2.5 flex flex-wrap justify-end gap-2">
+              <div className="mt-2.5 flex flex-wrap items-center justify-end gap-2">
+                <span className="mr-auto text-[12px] text-muted-foreground">
+                  {sugMarcadas.size} de {sugeridos.length} marcadas
+                </span>
                 <Button type="button" size="sm" variant="outline"
                   onClick={() => setSugeridos(null)}>Cancelar</Button>
-                <Button type="button" size="sm" onClick={aplicarSugerencias} disabled={guardando}>
-                  {guardando ? 'Aplicando…' : `Aplicar las ${sugeridos.length}`}
+                <Button type="button" size="sm" onClick={aplicarSugerencias}
+                  disabled={guardando || sugMarcadas.size === 0}>
+                  {guardando ? 'Aplicando…' : `Aplicar ${sugMarcadas.size}`}
                 </Button>
               </div>
             </div>
           )}
 
           <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2.5">
+            {/* Con 200+ esencias un <select> nativo se despliega hasta el borde de
+                la pantalla y obliga a buscar a ojo. La regla del proyecto: listas
+                largas van con buscador dentro del panel. */}
             <Field label="Esencia a aplicar" className="min-w-52 flex-1">
-              <NativeSelect value={esenciaId} onChange={e => setEsenciaId(Number(e.target.value) || '')}>
-                {esencias.length === 0 && <option value="">— No hay materias primas registradas —</option>}
-                {esencias.map(e => <option key={e.id} value={e.id}>{e.nombre}</option>)}
-              </NativeSelect>
+              <BuscadorSelect
+                value={esenciaId}
+                placeholder={esencias.length ? '— Busca la esencia —' : '— No hay materias primas registradas —'}
+                vacio="Ninguna coincide"
+                opciones={esencias.map(e => ({ id: e.id, nombre: e.nombre }))}
+                onSelect={id => setEsenciaId(Number(id) || '')}
+              />
             </Field>
             <Button type="button" onClick={guardar} disabled={guardando || marcados.size === 0}>
               {guardando ? 'Asignando…' : `Asignar a ${marcados.size} ${marcados.size === 1 ? 'marcado' : 'marcados'}`}
