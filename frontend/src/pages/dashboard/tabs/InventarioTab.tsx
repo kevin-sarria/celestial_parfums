@@ -1,13 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, FlaskConical, PackagePlus, Scale, ShoppingCart } from 'lucide-react';
+import { Droplets, FlaskConical, PackagePlus, Pencil, Plus, Scale, ShoppingCart, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import Modal from '../../../components/Modal';
-import BuscadorSelect from '../../../components/BuscadorSelect';
 import ExportMenu from '../../../components/ExportMenu';
 import ImportModal from '../../../components/ImportModal';
 import { SmartTable } from '../../../components/table/SmartTable';
@@ -18,20 +16,13 @@ import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, StatCard } 
 import { SalidaModal } from './inventario/SalidaModal';
 import { PrimerosPasos } from './inventario/PrimerosPasos';
 import { AsignarEsenciasModal } from './inventario/AsignarEsenciasModal';
-import { mlDiluyente } from '../../../application/costeoCotizacion';
+import { MaterialModal } from './inventario/MaterialModal';
+import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
 import type { GuardedFetch, InventarioInsumo } from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
 
-/** Lo mínimo que hace falta del catálogo para elegir qué fragancia se armó. */
-interface PerfumeLite { id: number; nombre: string; insumo_esencia_id: number | null }
-
 const API = `${BASE_URL}/api/inventario`;
 const hoy = () => new Date().toISOString().slice(0, 10);
-
-/** Insumo de la fórmula ubicado por nombre (mismo criterio del motor de costeo). */
-const porNombre = (insumos: Insumo[], clave: string) =>
-  insumos.find((i) => i.tipo === 'materia_prima'
-    && i.nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(clave));
 
 /**
  * Inventario de insumos: qué hay, cuánto vale y por dónde se mueve.
@@ -53,12 +44,7 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
   const [costoAjuste, setCostoAjuste] = useState('');
   const [minimoAjuste, setMinimoAjuste] = useState('');
   const [prodAbierta, setProdAbierta] = useState(false);
-  const [formulaId, setFormulaId] = useState<number | ''>('');
-  const [unidades, setUnidades] = useState('10');
-  // Qué fragancia se arma: de ahí sale la esencia concreta que se descuenta
   const [perfumes, setPerfumes] = useState<PerfumeLite[]>([]);
-  const [perfumeId, setPerfumeId] = useState<number | ''>('');
-  const [envaseId, setEnvaseId] = useState<number | ''>('');
   // Salidas sin venta: rolones del mostrario, minis de regalo, derrames
   const [salidaAbierta, setSalidaAbierta] = useState(false);
   const [salidasMes, setSalidasMes] = useState({ muestras: 0, mermas: 0, ajustes: 0 });
@@ -68,6 +54,10 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
   const [esenciasAbierto, setEsenciasAbierto] = useState(false);
   const [pasosVersion, setPasosVersion] = useState(0);
   const recargarPasos = () => setPasosVersion(v => v + 1);
+  // Alta y edición de materiales: vive aquí desde que se fusionó con la pestaña
+  // "Insumos y precios", que enseñaba estos mismos registros desde otro ángulo.
+  const [material, setMaterial] = useState<{ abierto: boolean; dato: InventarioInsumo | null }>(
+    { abierto: false, dato: null });
 
   const load = async () => {
     setLoading(true);
@@ -125,78 +115,57 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
     finally { setGuardando(false); }
   };
 
-  const perfumeElegido = perfumes.find((p) => p.id === perfumeId) ?? null;
-  /** Envases disponibles: el mismo tamaño puede llevar el normal o el luxury. */
-  const envases = catalogo.filter((i) => i.tipo === 'envase');
-
   /**
-   * Qué consume un lote. La esencia sale del PERFUME elegido (cada fragancia
-   * tiene la suya, con su propio costo); solo si el perfume no la tiene
-   * asignada se cae a la esencia por defecto del tamaño.
+   * Jubila un material sin tocar su historial: deja de aparecer al comprar y
+   * producir, y no suma al valor del inventario. Es lo que hay que usar cuando
+   * ya tiene movimientos — borrarlo dejaría esos registros sin referencia.
    */
-  const consumosDelLote = (f: FormulaVolumen, cant: number) => {
-    const lista: { insumo_id: number; cantidad: number }[] = [];
-    const suma = (id: number | null | undefined, porUnidad: number) => {
-      if (id && porUnidad > 0) lista.push({ insumo_id: id, cantidad: Math.round(porUnidad * cant * 1000) / 1000 });
-    };
-    const esenciaId = perfumeElegido?.insumo_esencia_id
-      ?? f.esencia_insumo_id ?? porNombre(catalogo, 'esencia')?.id;
-    suma(esenciaId, f.esencia_ml);
-    suma(porNombre(catalogo, 'diluyente')?.id, mlDiluyente(f));
-    suma(porNombre(catalogo, 'sellador')?.id, f.sellador_ml);
-    suma(porNombre(catalogo, 'feromonas')?.id, f.feromonas_ml);
-    suma(envaseId || f.envase_insumo_id, 1);
-    (f.accesorios_default ?? []).forEach((a) => suma(a.insumo_id, 1));
-    return lista;
+  const alternarActivo = async (i: InventarioInsumo) => {
+    const activo = !i.activo;
+    const res = await guardedFetch(`${BASE_URL}/api/costeo/insumos/${i.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        nombre: i.nombre, tipo: i.tipo, unidad: i.unidad,
+        alcance: 'unidad', precio: i.costo_promedio, activo,
+      }),
+    });
+    const j = await res.json().catch(() => null);
+    if (!res.ok) { toast.error(j?.error ?? 'No se pudo cambiar', { id: 'insumo-activo' }); return; }
+    toast.success(activo
+      ? `"${i.nombre}" vuelve a estar disponible`
+      : `"${i.nombre}" apagado: ya no aparecerá al comprar ni producir`);
+    load(); recargarPasos();
   };
 
-  const formulaElegida = formulas.find((f) => f.id === formulaId) ?? null;
-  const cant = Number(unidades) || 0;
-  const consumos = formulaElegida && cant > 0 ? consumosDelLote(formulaElegida, cant) : [];
-  /** El costo sale de los consumos reales, no del costo genérico del tamaño. */
-  const costoLote = consumos.reduce((s, c) => {
-    const inv = insumos.find((i) => i.id === c.insumo_id);
-    return s + (inv?.costo_promedio ?? 0) * c.cantidad;
-  }, 0);
-  /** Insumos que no alcanzan para el lote: mejor avisar antes de dejar el stock negativo. */
-  const faltantes = consumos
-    .map((c) => ({ c, inv: insumos.find((i) => i.id === c.insumo_id) }))
-    .filter((x) => x.inv && x.inv.stock < x.c.cantidad)
-    .map((x) => `${x.inv!.nombre} (tienes ${x.inv!.stock}, necesitas ${x.c.cantidad})`);
-
-  const guardarProduccion = async (e: { preventDefault(): void }) => {
-    e.preventDefault();
-    if (!formulaElegida || cant <= 0 || consumos.length === 0) {
-      toast.error('Elige el tamaño y cuántas unidades armaste', { id: 'prod' }); return;
+  /** Solo funciona con lo que nunca se usó; el servidor dice qué lo retiene. */
+  const eliminarInsumo = async (i: InventarioInsumo) => {
+    if (!window.confirm(
+      `¿Eliminar "${i.nombre}"?\n\n`
+      + 'Solo se puede si nunca se usó. Si ya tiene compras o movimientos, el sistema '
+      + 'te lo dirá: en ese caso apágalo en vez de borrarlo.',
+    )) return;
+    const res = await guardedFetch(`${BASE_URL}/api/costeo/insumos/${i.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const j = await res.json().catch(() => null);
+      toast.error(j?.error ?? 'No se pudo eliminar', { id: 'insumo-del', duration: 9000 });
+      return;
     }
-    setGuardando(true);
-    try {
-      const res = await guardedFetch(`${API}/producciones`, {
-        method: 'POST',
-        body: JSON.stringify({
-          fecha: hoy(), formula_volumen_id: formulaElegida.id, cantidad: cant, consumos,
-          perfume_id: perfumeId || null,
-          envase_insumo_id: envaseId || formulaElegida.envase_insumo_id || null,
-        }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo registrar', { id: 'prod' }); return; }
-      // Se dice dónde quedó: el historial de lotes ya no vive en esta pantalla
-      toast.success(`Lote registrado: ${formatPrice(json.data?.costo_total ?? 0)} en insumos. Lo ves en Producciones.`);
-      setProdAbierta(false); load();
-    } catch { toast.error('No se pudo conectar con el servidor', { id: 'prod' }); }
-    finally { setGuardando(false); }
+    toast.success(`"${i.nombre}" eliminado`);
+    load(); recargarPasos();
   };
 
   if (loading) return <Section><PerfumeSpinner /></Section>;
 
-  const sinStock = insumos.filter((i) => i.stock <= 0).length;
+  // Los apagados están jubilados: no cuentan como material de trabajo ni
+  // disparan la alerta de "sin existencias".
+  const activos = insumos.filter((i) => i.activo);
+  const sinStock = activos.filter((i) => i.stock <= 0).length;
   /** Los que ya tocaron su punto de pedido: esta es la lista de compras. */
   const porPedir = insumos.filter((i) => i.bajo_minimo);
 
   return (
     <div className="space-y-4">
-      <EncabezadoPagina titulo="Inventario" count={insumos.length} />
+      <EncabezadoPagina titulo="Inventario" count={activos.length} />
 
       {/* Guía de arranque. Se esconde sola cuando los 4 pasos están hechos. */}
       <PrimerosPasos
@@ -208,6 +177,7 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
           if (primero) abrirAjuste(primero);
         }}
         onAsignarEsencias={() => setEsenciasAbierto(true)}
+        onAgregarMaterial={() => setMaterial({ abierto: true, dato: null })}
       />
 
       {error && (
@@ -220,8 +190,10 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
       <FranjaMetricas>
         <StatCard label="Valor del inventario" value={formatPrice(valorTotal)}
           nota="Lo que tienes guardado, al costo promedio" />
-        <StatCard label="Insumos registrados" value={String(insumos.length)}
-          nota="Materias primas, envases y accesorios" />
+        <StatCard label="Insumos registrados" value={String(activos.length)}
+          nota={insumos.length > activos.length
+            ? `Materias primas, envases y accesorios · ${insumos.length - activos.length} apagado(s)`
+            : 'Materias primas, envases y accesorios'} />
         <StatCard label="Sin existencias" value={String(sinStock)}
           nota={sinStock === 0 ? 'Todo con stock' : 'Insumos en cero: revisa antes de producir'} />
       </FranjaMetricas>
@@ -275,14 +247,47 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
           tarjetaMovil
           emptyText="Todavía no has registrado insumos."
           renderActions={i => (
-            <Button size="sm" variant="ghost" className="h-7" onClick={() => abrirAjuste(i)}>
-              Ajustar
-            </Button>
+            <span className="flex items-center justify-end gap-0.5">
+              {i.activo && (
+                <Button size="sm" variant="ghost" className="h-7" onClick={() => abrirAjuste(i)}>
+                  Ajustar
+                </Button>
+              )}
+              <Button size="icon" variant="ghost" className="size-8 text-muted-foreground"
+                title="Editar nombre, tipo o unidad"
+                onClick={() => setMaterial({ abierto: true, dato: i })}>
+                <Pencil className="size-4" />
+              </Button>
+              <Button size="icon" variant="ghost" className="size-8 text-muted-foreground"
+                title={i.activo
+                  ? 'Apagar: deja de aparecer al comprar y producir. Su historial queda intacto.'
+                  : 'Encender: vuelve a estar disponible.'}
+                onClick={() => alternarActivo(i)}>
+                {i.activo ? <ToggleRight className="size-4" /> : <ToggleLeft className="size-4" />}
+              </Button>
+              <Button size="icon" variant="ghost" className="size-8 text-muted-foreground hover:text-destructive"
+                title="Eliminar (solo si nunca se usó)"
+                onClick={() => eliminarInsumo(i)}>
+                <Trash2 className="size-4" />
+              </Button>
+            </span>
           )}
           accionesMovil={i => (
-            <Button size="sm" variant="outline" onClick={() => abrirAjuste(i)}>
-              <Scale className="size-4" /> Ajustar existencias
-            </Button>
+            <>
+              {i.activo && (
+                <Button size="sm" variant="outline" onClick={() => abrirAjuste(i)}>
+                  <Scale className="size-4" /> Ajustar existencias
+                </Button>
+              )}
+              <Button size="sm" variant="outline" onClick={() => alternarActivo(i)}>
+                {i.activo ? <ToggleRight className="size-4" /> : <ToggleLeft className="size-4" />}
+                {i.activo ? 'Apagar' : 'Encender'}
+              </Button>
+              <Button size="sm" variant="outline" className="text-destructive"
+                onClick={() => eliminarInsumo(i)}>
+                <Trash2 className="size-4" /> Eliminar
+              </Button>
+            </>
           )}
           acciones={
             <>
@@ -300,11 +305,15 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
                   { entity: 'movimientos', label: 'Historial de entradas y salidas', nota: 'Solo se descarga' },
                 ]}
               />
+              <Button size="sm" variant="outline"
+                onClick={() => setMaterial({ abierto: true, dato: null })}>
+                <Plus className="size-4" /> Material
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setSalidaAbierta(true)}>
                 <Droplets className="size-4" /> Salida
               </Button>
               <Button size="sm" variant="outline"
-                onClick={() => { setProdAbierta(true); setFormulaId(formulas[0]?.id ?? ''); }}>
+                onClick={() => setProdAbierta(true)}>
                 <FlaskConical className="size-4" /> Producción
               </Button>
               <Button size="sm" asChild>
@@ -360,6 +369,15 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
         onImported={load}
       />
 
+      {material.abierto && (
+        <MaterialModal
+          guardedFetch={guardedFetch}
+          material={material.dato}
+          onClose={() => setMaterial({ abierto: false, dato: null })}
+          onGuardado={() => { load(); recargarPasos(); }}
+        />
+      )}
+
       {esenciasAbierto && (
         <AsignarEsenciasModal
           guardedFetch={guardedFetch}
@@ -380,84 +398,15 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
 
       {/* Registrar un lote */}
       {prodAbierta && (
-        <Modal open onClose={() => setProdAbierta(false)} title="Registrar producción"
-          onSubmit={guardarProduccion} submitLabel={guardando ? 'Guardando…' : 'Registrar lote'} loading={guardando}>
-          {/* La fragancia decide qué esencia se descuenta: cada una cuesta distinto */}
-          <Field label="¿Qué fragancia armaste?">
-            <BuscadorSelect
-              value={perfumeId}
-              placeholder="— Elige el perfume —"
-              opciones={[
-                { id: '', nombre: '— Sin especificar (usa la esencia del tamaño) —' },
-                ...perfumes.map((p) => ({
-                  id: p.id,
-                  nombre: p.insumo_esencia_id ? p.nombre : `${p.nombre} · sin esencia asignada`,
-                })),
-              ]}
-              onSelect={(id) => setPerfumeId(id === '' ? '' : Number(id))}
-            />
-            {perfumeElegido && !perfumeElegido.insumo_esencia_id && (
-              <p className="mt-1 text-[12px] font-medium text-amber-700">
-                Este perfume no tiene esencia asignada: se descontará la del tamaño y el costo
-                será aproximado. Asígnasela en su ficha del catálogo.
-              </p>
-            )}
-          </Field>
-
-          <FieldRow>
-            <Field label="¿Qué tamaño armaste?">
-              <NativeSelect value={formulaId} onChange={(e) => setFormulaId(Number(e.target.value))}>
-                {formulas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-              </NativeSelect>
-            </Field>
-            <Field label="¿Cuántas unidades?">
-              <Input type="number" min="1" value={unidades} onChange={(e) => setUnidades(e.target.value)} />
-            </Field>
-          </FieldRow>
-
-          <Field label="Envase usado">
-            <NativeSelect value={envaseId || formulaElegida?.envase_insumo_id || ''}
-              onChange={(e) => setEnvaseId(Number(e.target.value) || '')}>
-              <option value="">— El del tamaño —</option>
-              {envases.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-            </NativeSelect>
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              El mismo tamaño puede llevar el envase normal o el luxury; cámbialo si usaste otro.
-            </p>
-          </Field>
-
-          {consumos.length > 0 && (
-            <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2.5">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                Se descontará del inventario
-              </p>
-              <ul className="mt-1.5 space-y-1 text-[12.5px]">
-                {consumos.map((c) => {
-                  const inv = insumos.find((i) => i.id === c.insumo_id);
-                  return (
-                    <li key={c.insumo_id} className="flex justify-between gap-3">
-                      <span className="text-muted-foreground">{inv?.nombre ?? `Insumo ${c.insumo_id}`}</span>
-                      <span className="tabular-nums text-foreground">
-                        {c.cantidad} {inv?.unidad ?? ''}
-                        <span className="ml-1.5 text-muted-foreground">(quedan {((inv?.stock ?? 0) - c.cantidad).toFixed(1)})</span>
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-              <p className="mt-2 border-t border-border/70 pt-1.5 text-[12.5px]">
-                Costo del lote: <strong className="text-primary">{formatPrice(costoLote)}</strong>
-              </p>
-            </div>
-          )}
-
-          {faltantes.length > 0 && (
-            <p className="rounded-lg border border-amber-400/45 bg-amber-400/10 px-3 py-2 text-[12.5px] font-medium text-amber-700">
-              No te alcanza para este lote: {faltantes.join(' · ')}. Puedes registrarlo igual, pero
-              el stock quedará en negativo.
-            </p>
-          )}
-        </Modal>
+        <ProduccionModal
+          guardedFetch={guardedFetch}
+          formulas={formulas}
+          perfumes={perfumes}
+          catalogo={catalogo}
+          insumos={insumos}
+          onClose={() => setProdAbierta(false)}
+          onGuardado={load}
+        />
       )}
     </div>
   );

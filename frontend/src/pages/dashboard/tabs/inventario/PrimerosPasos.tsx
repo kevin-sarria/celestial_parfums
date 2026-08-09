@@ -20,6 +20,8 @@ interface PrimerosPasosProps {
   onContar: () => void;
   /** Abre la asignación de esencias en bloque. */
   onAsignarEsencias: () => void;
+  /** Abre el formulario para dar de alta un material. */
+  onAgregarMaterial: () => void;
   /** Sube al padre cuántos fabricados siguen sin esencia (para el modal). */
   recargar?: number;
 }
@@ -45,7 +47,7 @@ interface Paso {
  * no se bloquea: imponer orden donde no hace falta es la rigidez que el dueño
  * rechazó. Ver docs/superpowers/specs/2026-08-04-primeros-pasos-inventario-design.md
  */
-export function PrimerosPasos({ guardedFetch, onContar, onAsignarEsencias, recargar = 0 }: PrimerosPasosProps) {
+export function PrimerosPasos({ guardedFetch, onContar, onAsignarEsencias, onAgregarMaterial, recargar = 0 }: PrimerosPasosProps) {
   const [p, setP] = useState<Progreso | null>(null);
   const [abierto, setAbierto] = useState(true);
 
@@ -70,7 +72,9 @@ export function PrimerosPasos({ guardedFetch, onContar, onAsignarEsencias, recar
       detalle: p.materiales > 0
         ? `${p.materiales} registrados`
         : 'Las esencias, los envases y los accesorios con los que armas.',
-      accion: <Button size="sm" variant="outline" asChild><Link to="/dashboard/insumos">Empezar</Link></Button>,
+      // Antes llevaba a la pestaña "Insumos y precios"; ahora los materiales se
+      // dan de alta aquí mismo, en Inventario.
+      accion: <Button size="sm" variant="outline" onClick={onAgregarMaterial}>Empezar</Button>,
     },
     {
       n: 2,

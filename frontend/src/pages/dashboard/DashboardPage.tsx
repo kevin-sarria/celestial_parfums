@@ -38,7 +38,6 @@ import { AvisosTab } from './tabs/AvisosTab';
 import { SobreNosotrosTab } from './tabs/SobreNosotrosTab';
 import { BlogTab } from './tabs/BlogTab';
 import { CotizacionesTab } from './tabs/CotizacionesTab';
-import { InsumosCostoTab } from './tabs/InsumosCostoTab';
 import { FormulasVolumenTab } from './tabs/FormulasVolumenTab';
 import { CostosProduccionTab } from './tabs/CostosProduccionTab';
 import { DevolucionesTab } from './tabs/DevolucionesTab';
@@ -78,7 +77,6 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   blog: { label: 'Blog', icon: Newspaper },
   redes: { label: 'Redes sociales', icon: Share2 },
   cotizaciones: { label: 'Cotizaciones', icon: FileText },
-  insumos: { label: 'Insumos y precios', icon: Boxes },
   formulas: { label: 'Tamaños y fórmulas', icon: FlaskConical },
   costos: { label: 'Costos de producción', icon: Calculator },
 };
@@ -88,7 +86,7 @@ const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
   { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones'] },
   { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos', 'inventario', 'producciones'] },
-  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'insumos', 'formulas', 'costos'] },
+  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'formulas', 'costos'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
 ];
@@ -462,7 +460,6 @@ export default function DashboardPage() {
             {tab === 'nosotros' && <SobreNosotrosTab guardedFetch={guardedFetch} />}
             {tab === 'blog' && <BlogTab guardedFetch={guardedFetch} />}
             {tab === 'cotizaciones' && <CotizacionesTab guardedFetch={guardedFetch} />}
-            {tab === 'insumos' && <InsumosCostoTab guardedFetch={guardedFetch} />}
             {tab === 'formulas' && <FormulasVolumenTab guardedFetch={guardedFetch} />}
             {tab === 'costos' && <CostosProduccionTab guardedFetch={guardedFetch} />}
             {tab === 'devoluciones' && <DevolucionesTab guardedFetch={guardedFetch} />}

@@ -120,6 +120,8 @@ export interface Pago {
 /** Una línea del inventario con su valor. */
 export interface InventarioInsumo {
   id: number; nombre: string; tipo: string; unidad: string;
+  /** Apagado = jubilado: no aparece al comprar ni producir, y no suma al total. */
+  activo: boolean;
   stock: number; costo_promedio: number; valor: number;
   /** Punto de pedido; 0 = alerta apagada. */
   stock_minimo: number;
@@ -385,7 +387,7 @@ export interface CodigoValidado {
   venta?: { id: number; persona: string; dia: string } | null;
 }
 
-export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'recompensas' | 'resenas' | 'avisos' | 'nosotros' | 'blog' | 'redes' | 'cotizaciones' | 'insumos' | 'formulas' | 'costos' | 'devoluciones' | 'inventario' | 'producciones' | 'rep_ventas' | 'rep_compras' | 'rep_clientes';
+export type Tab = 'perfumes' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'recompensas' | 'resenas' | 'avisos' | 'nosotros' | 'blog' | 'redes' | 'cotizaciones' | 'formulas' | 'costos' | 'devoluciones' | 'inventario' | 'producciones' | 'rep_ventas' | 'rep_compras' | 'rep_clientes';
 
 /** Tarjeta de recompensas de un cliente (calculada del historial). */
 export interface TarjetaRecompensa {

@@ -142,7 +142,18 @@ export const pagosColumns: ColumnDef<Pago>[] = [
 export const inventarioColumns: ColumnDef<InventarioInsumo>[] = [
   // El tipo NO se repite bajo el nombre: tiene su propia columna, que además filtra.
   { key: 'nombre', header: 'Insumo', type: 'string', getValue: i => i.nombre,
-    className: cellName, movil: 'titulo' },
+    render: i => (
+      <span className={i.activo ? undefined : 'text-muted-foreground'}>
+        {i.nombre}
+        {/* Un apagado sigue en la lista para poder reencenderlo, pero tiene que
+            distinguirse o parece que sigue en uso. */}
+        {!i.activo && (
+          <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+            apagado
+          </span>
+        )}
+      </span>
+    ), className: cellName, movil: 'titulo' },
   { key: 'tipo', header: 'Tipo', type: 'enum', getValue: i => i.tipo.replace('_', ' '),
     enumOptions: ['materia prima', 'envase', 'accesorio'], filterable: true,
     className: cellMeta, movil: 'meta' },

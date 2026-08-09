@@ -350,10 +350,20 @@ export const eliminarProduccion = (id: number) => prisma.$transaction(async (tx)
 });
 
 /** Foto del inventario para el dashboard: qué hay y cuánto vale. */
+/**
+ * Qué hay en bodega.
+ *
+ * Incluye los APAGADOS a propósito, al final y marcados: es la pantalla donde
+ * el dueño trabaja con sus materiales, así que también es donde los jubila y
+ * donde tiene que poder volver a encenderlos. Filtrarlos aquí dejaría un insumo
+ * apagado sin ninguna pantalla desde la cual recuperarlo.
+ *
+ * Los totales sí cuentan SOLO los activos: un material jubilado ya no es parte
+ * de lo que tienes para trabajar.
+ */
 export const resumenInventario = async () => {
   const insumos = await prisma.insumoCosto.findMany({
-    where: { activo: true },
-    orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
+    orderBy: [{ activo: 'desc' }, { tipo: 'asc' }, { nombre: 'asc' }],
   });
   const filas = insumos.map((i) => {
     const stock = num(i.stock);
@@ -364,19 +374,22 @@ export const resumenInventario = async () => {
       nombre: i.nombre,
       tipo: i.tipo,
       unidad: i.unidad,
+      activo: i.activo,
       stock,
       stock_minimo: minimo,
-      // Con mínimo en 0 la alerta está apagada: no todo insumo la necesita
-      bajo_minimo: minimo > 0 && stock <= minimo,
+      // Con mínimo en 0 la alerta está apagada: no todo insumo la necesita.
+      // Un apagado nunca alerta: ya no se compra.
+      bajo_minimo: i.activo && minimo > 0 && stock <= minimo,
       /** Cuánto pedir para volver al doble del mínimo (colchón razonable). */
-      sugerido: minimo > 0 && stock <= minimo ? Math.max(0, Math.round((minimo * 2 - stock) * 1000) / 1000) : 0,
+      sugerido: i.activo && minimo > 0 && stock <= minimo ? Math.max(0, Math.round((minimo * 2 - stock) * 1000) / 1000) : 0,
       costo_promedio: precio,
       valor: Math.round(stock * precio * 100) / 100,
     };
   });
   return {
     insumos: filas,
-    valor_total: Math.round(filas.reduce((s, f) => s + f.valor, 0) * 100) / 100,
+    // Solo lo activo: lo jubilado no cuenta como inventario de trabajo
+    valor_total: Math.round(filas.filter((f) => f.activo).reduce((s, f) => s + f.valor, 0) * 100) / 100,
   };
 };
 

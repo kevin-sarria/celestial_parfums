@@ -478,6 +478,22 @@ de analizar, no la de registrar.
   de más al servir): lo absorbe el **conteo físico**. La diferencia entre el stock teórico y
   el real ES el desperdicio, y queda registrada como `ajuste`. Pedirle al dueño que anote
   cada gramo garantiza que deje de usar el módulo en una semana.
+- **UNA sola pantalla de materiales: Inventario** (2026-08-09). Había DOS pestañas
+  enseñando los mismos registros de `insumos_costo` desde ángulos distintos —
+  "Insumos y precios" (qué existe y cuánto cuesta) e "Inventario" (cuánto tengo). El dueño
+  preguntó *"¿el inventario no es lo mismo que eso de materiales e insumos?"*: sí lo era, y
+  por eso no encontraba dónde estaba cada acción.
+  - **"Insumos y precios" se eliminó** del menú y del código. Inventario absorbió dar de
+    alta y editar (`inventario/MaterialModal.tsx`).
+  - Razón de fondo: esa pestaña nació con el módulo B2B, cuando el precio de cada insumo
+    **se tecleaba**. Desde que existen las compras, el precio ES el costo promedio y se
+    calcula solo — la pantalla se quedó sin trabajo propio.
+  - El precio solo se pide **al crear**, como punto de partida; editando ya no aparece,
+    porque tecleárselo encima falsearía el promedio.
+  - `resumenInventario` ahora devuelve también los apagados (al final y marcados) para
+    poder reencenderlos, pero **los totales cuentan solo activos**.
+  - `InventarioTab` se partió para no pasar de 500: `MaterialModal` y `ProduccionModal`
+    salieron a `tabs/inventario/`. Quedó en 413 líneas.
 - **Jubilar un insumo: APAGAR, no borrar** (2026-08-09). `insumos_costo.activo` ya existía
   pero no se podía cambiar desde ninguna pantalla, así que había materiales que no se
   podían borrar *ni* esconder. Ahora en **Insumos y precios** cada fila tiene *Apagar /
