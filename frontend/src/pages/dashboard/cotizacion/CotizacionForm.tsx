@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import LineasCotizacion from './LineasCotizacion';
+import { MargenPorGama, type PromedioGama } from './MargenPorGama';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
 import { Field, FieldRow, Section } from '../ui';
@@ -60,6 +61,9 @@ export default function CotizacionForm({ guardedFetch, cotizacion, onVolver, onG
   const [lineas, setLineas] = useState<CotizacionItem[]>(cotizacion?.items ?? []);
   // Tamaños incluidos en una cotización GENERAL (solo lista de precios)
   const [volumenesSel, setVolumenesSel] = useState<number[]>([]);
+  // Costo por ml promedio de cada gama de esencia: con eso se costea la lista
+  // de precios, que no dice qué fragancias lleva.
+  const [gamas, setGamas] = useState<PromedioGama[]>([]);
   // Insumos que van UNA vez por pedido (caja de envío…), no por perfume
   const [extras, setExtras] = useState<AccesorioSeleccionado[]>(cotizacion?.extras_pedido ?? []);
   const [descuento, setDescuento] = useState(String(cotizacion?.descuento_pct ?? 0));
@@ -75,12 +79,16 @@ export default function CotizacionForm({ guardedFetch, cotizacion, onVolver, onG
 
   useEffect(() => {
     (async () => {
-      const [rp, rf, ri, rc] = await Promise.all([
+      const [rp, rf, ri, rc, rg] = await Promise.all([
         guardedFetch(`${BASE_URL}/api/parfums`),
         guardedFetch(`${BASE_URL}/api/costeo/formulas`),
         guardedFetch(`${BASE_URL}/api/costeo/insumos`),
         guardedFetch(`${BASE_URL}/api/costeo/config`),
+        guardedFetch(`${BASE_URL}/api/costeo/gamas`),
       ]);
+      // Si falla, el resto del formulario debe seguir sirviendo: sin gamas solo
+      // se pierde el panel de costo, no la posibilidad de cotizar.
+      if (rg.ok) setGamas((await rg.json()).data ?? []);
       // /api/parfums sin paginar responde { data: { data: [...] } }; se
       // desenvuelve tolerando ambas formas por si el endpoint cambia.
       const jp = await rp.json();
@@ -365,6 +373,20 @@ export default function CotizacionForm({ guardedFetch, cotizacion, onVolver, onG
                 </p>
               )}
             </div>
+
+            {/* La lista de precios NO dice qué fragancias lleva, así que no hay
+                una esencia con la cual costear: se usa el promedio de cada gama.
+                Antes esta cotización no mostraba ni costo ni margen. */}
+            {volumenesSel.length > 0 && (
+              <div className="mt-3">
+                <MargenPorGama
+                  formulas={formulas.filter((f) => volumenesSel.includes(f.id))}
+                  insumos={insumos}
+                  gamas={gamas}
+                  descuentoPct={descuentoPct}
+                />
+              </div>
+            )}
           </div>
         )}
 

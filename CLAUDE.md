@@ -492,11 +492,34 @@ Valores: `clasica | arabe | premium | disenador` (null en todo lo que no sea ese
   ("Árabe" = "arabe"), y **avisa si viene mal escrita** en vez de tragárselo.
 - Migración: `20260809140000_gama_esencia`.
 
-**Pendiente (pasos 2 y 3, acordados con el dueño):** (2) que la cotización general se arme
-por gamas ("30 clásicas + 15 árabes + 5 premium") y muestre costo y margen; (3) separar la
-pantalla — la RECETA se queda en Tamaños y fórmulas (la usa toda la app para descontar
-inventario), y la esencia por defecto + los rangos de precio mayorista se van a Mayoreo,
-que es donde se usan. Hoy `formulas_volumen` mezcla las tres cosas.
+### La cotización general ya muestra costo y margen (PASO 2, 2026-08-09)
+
+`cotizacion/MargenPorGama.tsx`, visible solo cuando la cotización es `general`.
+
+- **Antes se cotizaba a ciegas**: el panel de rentabilidad estaba pensado para líneas con
+  producto concreto, así que en la lista de precios se ocultaba entero (`tipo === 'general'
+  ? 'hidden'`). No se veía ni el costo ni el margen.
+- Muestra, por tamaño: lo que cuesta armar UNA unidad con cada gama y el **margen en cada
+  rango de precio** (ámbar bajo 35%, rojo si es negativo).
+- **"¿Cómo crees que va a repartir el pedido?"**: se escriben las unidades por gama y sale
+  el costo del pedido completo, el **promedio por perfume** y la ganancia al precio del
+  rango que aplique según el TOTAL de unidades (así se pacta el mayoreo).
+- **NUNCA viaja al PDF**: costo, utilidad y margen son solo del admin (misma regla de oro
+  del módulo). El payload de una general manda `items: []` y solo `lista_precios`.
+- Si falla `GET /costeo/gamas` el formulario sigue sirviendo: se pierde el panel, no la
+  posibilidad de cotizar.
+- **LO QUE DESTAPÓ, y hay que hablarlo con el dueño**: con la lista de precios actual, un
+  30 ml de esencia **premium cuesta $28.106 y se está cobrando entre $18.000 y $15.000** —
+  margen de **−56% a −87%**. Si un mayorista pide fragancias premium con esa lista, se
+  pierde plata en cada unidad. Las clásicas dejan 38-48% y las árabes 25-37%. Verificado
+  con los datos reales: 30 clásicas + 15 árabes + 5 premium = $588.260 de costo
+  ($11.765 por perfume) contra $750.000 facturados → 21,6% de margen, sostenido solo
+  porque las clásicas subsidian a las premium.
+
+**Pendiente (paso 3, acordado con el dueño):** separar la pantalla — la RECETA se queda en
+Tamaños y fórmulas (la usa toda la app para descontar inventario), y la esencia por defecto
++ los rangos de precio mayorista se van a Mayoreo, que es donde se usan. Hoy
+`formulas_volumen` mezcla las tres cosas.
 
 ### Sacar un perfume de la tienda (`perfumes.publicado`, 2026-08-09)
 
