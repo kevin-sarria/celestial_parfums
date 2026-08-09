@@ -88,6 +88,16 @@ export const asignarEsenciaMasiva = async (perfumeIds: number[], insumoId: numbe
   return count;
 };
 
+export const sugerirEsencias = () => perfumeRepository.sugerirEsencias();
+
+export const aplicarEnlacesEsencia = async (
+  enlaces: { perfume_id: number; insumo_esencia_id: number }[],
+) => {
+  const count = await perfumeRepository.aplicarEnlacesEsencia(enlaces);
+  bustCatalogoCache();
+  return count;
+};
+
 export const patchAgotadoPerfume = async (id: string, agotado: boolean) => {
   const result = await perfumeRepository.patchAgotadoPerfume(id, agotado);
   bustCatalogoCache();

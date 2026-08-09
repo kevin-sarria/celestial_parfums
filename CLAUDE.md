@@ -478,6 +478,22 @@ de analizar, no la de registrar.
   de más al servir): lo absorbe el **conteo físico**. La diferencia entre el stock teórico y
   el real ES el desperdicio, y queda registrada como `ajuste`. Pedirle al dueño que anote
   cada gramo garantiza que deje de usar el módulo en una semana.
+- **Enlace automático perfume → esencia** (2026-08-09). El dueño cargó **213 esencias
+  individuales**, una por fragancia, llamadas `‹Fragancia› – Esencia`. Como el nombre ya
+  dice a qué perfume pertenece, enlazarlas a mano eran 212 visitas.
+  - `GET /parfums/esencia/sugerencias` **propone sin aplicar**; el modal muestra la lista y
+    solo al confirmar se manda `PATCH /parfums/esencia/enlaces` con los pares.
+  - Reutiliza el **matcher de ventas** (`buildPerfumeIndex`/`matchPerfume`), conservador a
+    propósito: ante dos candidatos no elige. Un enlace equivocado descontaría la esencia de
+    otra fragancia y el costo saldría falso sin que nadie lo note.
+  - **Solo toca perfumes fabricados SIN esencia**, y el `updateMany` vuelve a exigir
+    `insumo_esencia_id: null`: si alguien la asignó a mano mientras se revisaba la vista
+    previa, su decisión manda.
+  - Resultado real: **175 de 212 enlazados**, 37 a mano, **cero colisiones** (175 esencias
+    distintas para 175 perfumes).
+  - Lo que destapó: el costo del líquido de un 30 ml va de **$3.450 a $22.500** según la
+    fragancia — y el precio de venta es parejo. Las 4 de $1.500/ml son justo las marcadas
+    `esencia_premium`. Ahí es donde "Margen por fragancia" gana su sitio.
 - **La hoja de conteo CREA los materiales que no existan** (2026-08-09). Antes rechazaba la
   fila con "no existe el insumo", lo que obligaba a darlo de alta a mano antes de poder
   contarlo — justo lo que la hoja venía a evitar. Ahora:

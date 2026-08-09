@@ -127,6 +127,23 @@ export const patchEsenciaMasiva = async (req: Request, res: Response) => {
   }
 };
 
+export const getSugerenciasEsencia = async (_req: Request, res: Response) => {
+  try {
+    res.json({ data: await perfumeService.sugerirEsencias() });
+  } catch (error: any) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
+export const patchEnlacesEsencia = async (req: Request, res: Response) => {
+  try {
+    const count = await perfumeService.aplicarEnlacesEsencia(req.body.enlaces);
+    res.json({ message: `Esencia asignada a ${count} ${count === 1 ? 'perfume' : 'perfumes'}`, count });
+  } catch (error: any) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
 export const patchAgotadoPerfume = async (req: Request, res: Response) => {
   try {
     await perfumeService.patchAgotadoPerfume(req.params.id as string, Boolean(req.body.agotado));

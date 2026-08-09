@@ -66,6 +66,14 @@ export const asignarEsenciaMasivaSchema = z.object({
   insumo_esencia_id: z.number().int().positive().nullable(),
 });
 
+/** Lista de enlaces perfume -> esencia que el dueño confirmó en la vista previa. */
+export const enlacesEsenciaSchema = z.object({
+  enlaces: z.array(z.object({
+    perfume_id: z.number().int().positive(),
+    insumo_esencia_id: z.number().int().positive(),
+  })).min(1, 'No hay enlaces que aplicar').max(500),
+});
+
 export const patchAgotadoSchema = z.object({
   agotado: z.boolean(),
 });

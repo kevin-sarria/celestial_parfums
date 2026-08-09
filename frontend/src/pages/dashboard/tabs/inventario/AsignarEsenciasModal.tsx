@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,12 @@ const esNoEsencia = (nombre: string) => {
   const n = nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
   return ['diluyente', 'sellador', 'feromona', 'alcohol'].some(k => n.includes(k));
 };
+
+/** Un enlace perfume→esencia propuesto por el nombre, aún sin aplicar. */
+interface Sugerencia {
+  perfume_id: number; perfume: string;
+  insumo_id: number; esencia: string;
+}
 
 interface PerfumeFila {
   id: number;
@@ -46,6 +53,52 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
   const [soloFaltan, setSoloFaltan] = useState(true);
   const [esenciaId, setEsenciaId] = useState<number | ''>('');
   const [marcados, setMarcados] = useState<Set<number>>(new Set());
+  /**
+   * Sugerencias del enlace automático. Se piden, se MUESTRAN, y solo se aplican
+   * si el dueño confirma: son 175 cambios de golpe y tiene que poder verlos
+   * antes, no después.
+   */
+  const [sugeridos, setSugeridos] = useState<Sugerencia[] | null>(null);
+  const [buscandoSug, setBuscandoSug] = useState(false);
+
+  const pedirSugerencias = async () => {
+    setBuscandoSug(true);
+    try {
+      const r = await guardedFetch(`${BASE_URL}/api/parfums/esencia/sugerencias`);
+      const j = await r.json().catch(() => null);
+      if (!r.ok) { toast.error(j?.error ?? 'No se pudieron calcular', { id: 'esencias' }); return; }
+      const lista: Sugerencia[] = j?.data?.enlaces ?? [];
+      if (lista.length === 0) {
+        toast('No encontré ninguna esencia que coincida por nombre', { id: 'esencias' });
+        return;
+      }
+      setSugeridos(lista);
+    } catch { toast.error('No se pudo conectar con el servidor', { id: 'esencias' }); }
+    finally { setBuscandoSug(false); }
+  };
+
+  const aplicarSugerencias = async () => {
+    if (!sugeridos) return;
+    setGuardando(true);
+    try {
+      const r = await guardedFetch(`${BASE_URL}/api/parfums/esencia/enlaces`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          enlaces: sugeridos.map(s => ({ perfume_id: s.perfume_id, insumo_esencia_id: s.insumo_id })),
+        }),
+      });
+      const j = await r.json().catch(() => null);
+      if (!r.ok) { toast.error(j?.error ?? 'No se pudo aplicar', { id: 'esencias' }); return; }
+      toast.success(j?.message ?? 'Enlaces aplicados');
+      setSugeridos(null);
+      setPerfumes(prev => prev.map(p => {
+        const s = sugeridos.find(x => x.perfume_id === p.id);
+        return s ? { ...p, insumo_esencia_id: s.insumo_id } : p;
+      }));
+      onGuardado();
+    } catch { toast.error('No se pudo conectar con el servidor', { id: 'esencias' }); }
+    finally { setGuardando(false); }
+  };
 
   useEffect(() => {
     let vivo = true;
@@ -147,6 +200,50 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
             Marca varios perfumes y asígnales la suya de una vez.
             {faltan > 0 && <> Faltan <strong className="text-foreground">{faltan}</strong>.</>}
           </p>
+
+          {/* Enlace automático: tus esencias se llaman como la fragancia, así que
+              el nombre ya dice a qué perfume pertenecen. Se PROPONE y se revisa;
+              nunca se aplica sin confirmar. */}
+          {sugeridos === null ? (
+            faltan > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/30 bg-brand-soft/50 px-3.5 py-2.5">
+                <span className="text-[12.5px] text-primary">
+                  <strong>¿Tus esencias se llaman como el perfume?</strong> Puedo enlazarlas
+                  solas y te muestro qué haría antes de tocar nada.
+                </span>
+                <Button type="button" size="sm" variant="outline"
+                  onClick={pedirSugerencias} disabled={buscandoSug}>
+                  <Wand2 className="size-4" />
+                  {buscandoSug ? 'Revisando…' : 'Enlazar automáticamente'}
+                </Button>
+              </div>
+            )
+          ) : (
+            <div className="rounded-xl border border-primary/40 bg-brand-soft/60 px-3.5 py-3">
+              <p className="text-[13px] font-medium text-primary">
+                Encontré {sugeridos.length} coincidencias. Revísalas antes de aplicar.
+              </p>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                Solo toca perfumes que hoy NO tienen esencia. Si alguna está mal, cancela y
+                hazlo a mano: un enlace equivocado descuenta la esencia de otra fragancia.
+              </p>
+              <ul className="mt-2 max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border bg-card">
+                {sugeridos.map(s => (
+                  <li key={s.perfume_id} className="flex flex-wrap items-center gap-2 px-3 py-1.5 text-[12.5px]">
+                    <span className="min-w-32 flex-1 text-foreground">{s.perfume}</span>
+                    <span className="text-muted-foreground">← {s.esencia}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-2.5 flex flex-wrap justify-end gap-2">
+                <Button type="button" size="sm" variant="outline"
+                  onClick={() => setSugeridos(null)}>Cancelar</Button>
+                <Button type="button" size="sm" onClick={aplicarSugerencias} disabled={guardando}>
+                  {guardando ? 'Aplicando…' : `Aplicar las ${sugeridos.length}`}
+                </Button>
+              </div>
+            </div>
+          )}
 
           <div className="flex flex-wrap items-end gap-2 rounded-xl border border-border bg-secondary/40 px-3 py-2.5">
             <Field label="Esencia a aplicar" className="min-w-52 flex-1">
