@@ -162,7 +162,14 @@
       "Bash(curl -s -X POST http://localhost:4000/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"camilo.bravo.2050@gmail.com\",\"password\":\"claveMala\",\"recaptchaToken\":\"x\"}' --max-time 8)",
       "PowerShell(Stop-Process -Force)",
       "PowerShell(\"mysql detenido\")",
-      "Bash(curl -s -w \"\\\\nHTTP=%{http_code}\\\\n\" --max-time 15 \"http://localhost:4000/api/parfums?page=1&limit=1\")"
+      "Bash(curl -s -w \"\\\\nHTTP=%{http_code}\\\\n\" --max-time 15 \"http://localhost:4000/api/parfums?page=1&limit=1\")",
+      "Bash(./mysql.exe -u root perfumes_db -e ' *)",
+      "Bash(python -c ' *)",
+      "Bash(echo \"salida-tsc:$?\")",
+      "Bash(./mysql.exe --default-character-set=utf8mb4 -u root perfumes_db -e \"SELECT id, nombre, HEX\\(nombre\\) AS bytes FROM gamas_esencia ORDER BY orden;\")",
+      "Bash(./mysql.exe --default-character-set=utf8mb4 -u root perfumes_db -e ' *)",
+      "Bash(/c/xampp/mysql/bin/mysql.exe --default-character-set=utf8mb4 -u root perfumes_db)",
+      "Bash(/c/xampp/mysql/bin/mysql.exe --default-character-set=utf8mb4 -u root perfumes_db -e \"SELECT id, nombre, HEX\\(nombre\\) AS bytes FROM gamas_esencia ORDER BY orden;\")"
     ]
   }
 }
