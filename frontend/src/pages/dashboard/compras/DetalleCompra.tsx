@@ -207,62 +207,88 @@ export default function DetalleCompra({
       )}
 
       {lineas.length > 0 && (
-        <ul className="flex flex-col gap-2.5">
-          {lineas.map((l, idx) => {
-            const costo = costoConFlete(l);
-            return (
-              <li key={l.insumo_id} className="rounded-lg border border-border bg-card p-3">
-                <div className="flex flex-wrap items-end gap-2.5">
-                  <p className="min-w-32 flex-1 text-[13.5px] font-medium text-foreground">{l.insumo_nombre}</p>
+        /* Las etiquetas van UNA vez arriba, no en cada línea: repetirlas por fila
+           obligaba a que cada casilla saltara de renglón dentro del modal y una
+           compra de cinco materiales se volvía una pantalla de scroll. Es la
+           misma forma que ya tienen las líneas de una venta. */
+        <div className="overflow-hidden rounded-lg border border-border bg-card">
+          {/* En pantalla angosta no hay ancho para la rejilla: ahí cada casilla
+              recupera su etiqueta propia y las filas se apilan. */}
+          <div className="hidden bg-secondary/60 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7.5rem_2rem] sm:items-center sm:gap-2">
+            <span>Material</span>
+            <span className="text-right">Cantidad</span>
+            <span>Unidad</span>
+            <span className="text-right">Lo que costó</span>
+            <span />
+          </div>
 
-                  <Field label="Cantidad" className="w-24">
-                    <Input type="number" min="0" step="0.001" className="h-9" value={l.cantidad}
-                      onChange={(e) => actualizar(idx, { cantidad: e.target.value })} />
-                  </Field>
+          <ul className="divide-y divide-border">
+            {lineas.map((l, idx) => {
+              const costo = costoConFlete(l);
+              return (
+                <li key={l.insumo_id} className="px-3 py-2">
+                  <div className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7.5rem_2rem] sm:items-center">
+                    <p className="text-[13px] font-medium text-foreground">{l.insumo_nombre}</p>
 
-                  <Field label="Unidad" className="w-24">
-                    <NativeSelect className="h-9" value={l.unidad_compra}
-                      onChange={(e) => actualizar(idx, { unidad_compra: e.target.value as LineaCompra['unidad_compra'] })}>
-                      <option value="ml">ml</option>
-                      <option value="g">gramos</option>
-                      <option value="l">litros</option>
-                      <option value="kg">kilos</option>
-                      <option value="unidad">unidades</option>
-                    </NativeSelect>
-                  </Field>
+                    <label className="flex items-center gap-2 sm:block">
+                      <span className="w-24 text-[12px] text-muted-foreground sm:hidden">Cantidad</span>
+                      <Input type="number" min="0" step="0.001" aria-label="Cantidad"
+                        className="h-8 text-right text-[12.5px] tabular-nums" value={l.cantidad}
+                        onChange={(e) => actualizar(idx, { cantidad: e.target.value })} />
+                    </label>
 
-                  <Field label="Lo que costó" className="w-32">
-                    <Input type="number" min="0" className="h-9" value={l.subtotal}
-                      onChange={(e) => actualizar(idx, { subtotal: e.target.value })} />
-                  </Field>
+                    <label className="flex items-center gap-2 sm:block">
+                      <span className="w-24 text-[12px] text-muted-foreground sm:hidden">Unidad</span>
+                      <NativeSelect className="h-8 text-[12.5px]" aria-label="Unidad" value={l.unidad_compra}
+                        onChange={(e) => actualizar(idx, { unidad_compra: e.target.value as LineaCompra['unidad_compra'] })}>
+                        <option value="ml">ml</option>
+                        <option value="g">gramos</option>
+                        <option value="l">litros</option>
+                        <option value="kg">kilos</option>
+                        <option value="unidad">unidades</option>
+                      </NativeSelect>
+                    </label>
 
-                  <Button type="button" size="icon" variant="ghost"
-                    className="size-9 text-muted-foreground hover:text-destructive"
-                    onClick={() => onLineas(lineas.filter((_, i) => i !== idx))}>
-                    <Trash2 className="size-4" />
-                  </Button>
-                </div>
-                {costo > 0 && (
-                  <p className="mt-1.5 text-[12px] text-muted-foreground">
-                    Te queda a <strong className="text-primary">{formatPrice(costo)}</strong> por{' '}
-                    {l.unidad_compra === 'unidad' ? 'unidad' : 'ml'}
-                    {flete > 0 && ' (ya con la parte del envío)'}
-                    {/* Los litros se convierten: es donde más fácil se mete un error de 1000× */}
-                    {l.unidad_compra === 'l' && (
-                      <span className="text-primary/80">
-                        {' '}— son {(Number(l.cantidad) * 1000).toLocaleString('es-CO')} ml
-                      </span>
-                    )}
-                  </p>
-                )}
-              </li>
-            );
-          })}
-          <li className="text-right text-[12.5px] text-muted-foreground">
+                    <label className="flex items-center gap-2 sm:block">
+                      <span className="w-24 text-[12px] text-muted-foreground sm:hidden">Lo que costó</span>
+                      <Input type="number" min="0" aria-label="Lo que costó"
+                        className="h-8 text-right text-[12.5px] tabular-nums" value={l.subtotal}
+                        onChange={(e) => actualizar(idx, { subtotal: e.target.value })} />
+                    </label>
+
+                    <Button type="button" size="icon" variant="ghost"
+                      aria-label={`Quitar ${l.insumo_nombre}`}
+                      className="size-8 justify-self-end text-muted-foreground hover:text-destructive"
+                      onClick={() => onLineas(lineas.filter((_, i) => i !== idx))}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+
+                  {/* Segunda línea gris: el costo real por unidad, que es el dato
+                      que de verdad importa y no merece una columna propia. */}
+                  {costo > 0 && (
+                    <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                      Te queda a <strong className="font-semibold text-primary">{formatPrice(costo)}</strong> por{' '}
+                      {l.unidad_compra === 'unidad' ? 'unidad' : 'ml'}
+                      {flete > 0 && ' (ya con la parte del envío)'}
+                      {/* Los litros se convierten: es donde más fácil se mete un error de 1000× */}
+                      {l.unidad_compra === 'l' && (
+                        <span className="text-primary/80">
+                          {' '}— son {(Number(l.cantidad) * 1000).toLocaleString('es-CO')} ml
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+
+          <p className="border-t border-border bg-secondary/40 px-3 py-1.5 text-right text-[12.5px] text-muted-foreground">
             Suma del detalle: <strong className="text-foreground">{formatPrice(totalSinFlete)}</strong>
             {flete > 0 && <> · con envío: <strong className="text-foreground">{formatPrice(totalSinFlete + flete)}</strong></>}
-          </li>
-        </ul>
+          </p>
+        </div>
       )}
 
       {/* Soportes: la factura o remisión de la distribuidora */}

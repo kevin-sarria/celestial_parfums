@@ -122,17 +122,21 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
         </Field>
       )}
 
-      {!editando && (
-        <Field label="¿Cuánto te cuesta hoy? (opcional)">
-          <Input type="number" min="0" step="0.0001" value={precio}
-            placeholder="0"
-            onChange={e => setPrecio(e.target.value)} />
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            Solo el punto de partida. De aquí en adelante lo calcula solo el costo promedio
-            de tus compras. Si no lo sabes, déjalo vacío y se llena con la primera compra.
-          </p>
-        </Field>
-      )}
+      {/* Editable también al editar: es la única forma de corregir un costo que
+          entró mal (un cero de más al sembrar, un dato equivocado en la hoja).
+          De ahí en adelante lo vuelve a llevar el promedio de las compras. */}
+      <Field label={editando
+        ? `Costo por ${unidad === 'ml' ? 'ml' : 'unidad'}`
+        : '¿Cuánto te cuesta hoy? (opcional)'}>
+        <Input type="number" min="0" step="0.0001" value={precio}
+          placeholder="0"
+          onChange={e => setPrecio(e.target.value)} />
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          {editando
+            ? 'Es el costo promedio que lleva hoy. Corrígelo solo si entró mal: cada compra que registres lo vuelve a calcular con lo que pagaste de verdad.'
+            : 'Solo el punto de partida. De aquí en adelante lo calcula solo el costo promedio de tus compras. Si no lo sabes, déjalo vacío y se llena con la primera compra.'}
+        </p>
+      </Field>
 
       <FormError>{error}</FormError>
     </Modal>
