@@ -207,39 +207,40 @@ export default function DetalleCompra({
       )}
 
       {lineas.length > 0 && (
-        /* Las etiquetas van UNA vez arriba, no en cada línea: repetirlas por fila
-           obligaba a que cada casilla saltara de renglón dentro del modal y una
-           compra de cinco materiales se volvía una pantalla de scroll. Es la
-           misma forma que ya tienen las líneas de una venta. */
         <div className="overflow-hidden rounded-lg border border-border bg-card">
-          {/* En pantalla angosta no hay ancho para la rejilla: ahí cada casilla
-              recupera su etiqueta propia y las filas se apilan. */}
-          <div className="hidden bg-secondary/60 px-3 py-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground sm:grid sm:grid-cols-[1fr_5rem_6rem_7.5rem_2rem] sm:items-center sm:gap-2">
-            <span>Material</span>
-            <span className="text-right">Cantidad</span>
-            <span>Unidad</span>
-            <span className="text-right">Lo que costó</span>
-            <span />
-          </div>
-
           <ul className="divide-y divide-border">
             {lineas.map((l, idx) => {
               const costo = costoConFlete(l);
               return (
-                <li key={l.insumo_id} className="px-3 py-2">
-                  <div className="grid gap-2 sm:grid-cols-[1fr_5rem_6rem_7.5rem_2rem] sm:items-center">
-                    <p className="text-[13px] font-medium text-foreground">{l.insumo_nombre}</p>
+                <li key={l.insumo_id} className="px-3 py-2.5">
+                  {/* El nombre ocupa su propio renglón: las esencias se llaman
+                      "212 Heroes Dama – Esencia" y en una columna estrecha se
+                      partían en cuatro líneas. */}
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-[13px] font-medium leading-snug text-foreground">{l.insumo_nombre}</p>
+                    <Button type="button" size="icon" variant="ghost"
+                      aria-label={`Quitar ${l.insumo_nombre}`}
+                      className="-mr-1 size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => onLineas(lineas.filter((_, i) => i !== idx))}>
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
 
-                    <label className="flex items-center gap-2 sm:block">
-                      <span className="w-24 text-[12px] text-muted-foreground sm:hidden">Cantidad</span>
-                      <Input type="number" min="0" step="0.001" aria-label="Cantidad"
+                  {/* Cada casilla lleva SU etiqueta encima, siempre visible.
+                      Antes iban una sola vez en una fila de encabezado: al
+                      angostarse el modal esa fila desaparecía y quedaban tres
+                      casillas mudas, sin forma de saber qué iba en cada una. */}
+                  <div className="mt-1.5 grid grid-cols-3 gap-2">
+                    <label className="block">
+                      <span className="mb-1 block text-[11.5px] font-medium text-muted-foreground">Cantidad</span>
+                      <Input type="number" min="0" step="0.001" placeholder="0"
                         className="h-8 text-right text-[12.5px] tabular-nums" value={l.cantidad}
                         onChange={(e) => actualizar(idx, { cantidad: e.target.value })} />
                     </label>
 
-                    <label className="flex items-center gap-2 sm:block">
-                      <span className="w-24 text-[12px] text-muted-foreground sm:hidden">Unidad</span>
-                      <NativeSelect className="h-8 text-[12.5px]" aria-label="Unidad" value={l.unidad_compra}
+                    <label className="block">
+                      <span className="mb-1 block text-[11.5px] font-medium text-muted-foreground">Unidad</span>
+                      <NativeSelect className="h-8 text-[12.5px]" value={l.unidad_compra}
                         onChange={(e) => actualizar(idx, { unidad_compra: e.target.value as LineaCompra['unidad_compra'] })}>
                         <option value="ml">ml</option>
                         <option value="g">gramos</option>
@@ -249,25 +250,21 @@ export default function DetalleCompra({
                       </NativeSelect>
                     </label>
 
-                    <label className="flex items-center gap-2 sm:block">
-                      <span className="w-24 text-[12px] text-muted-foreground sm:hidden">Lo que costó</span>
-                      <Input type="number" min="0" aria-label="Lo que costó"
-                        className="h-8 text-right text-[12.5px] tabular-nums" value={l.subtotal}
+                    <label className="block">
+                      <span className="mb-1 block text-[11.5px] font-medium text-muted-foreground">Lo que costó</span>
+                      {/* Sin flechitas: en un precio no sirven de nada y en el
+                          celular tapaban un dígito. */}
+                      <Input type="number" min="0" placeholder="$ 0"
+                        className="h-8 text-right text-[12.5px] tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        value={l.subtotal}
                         onChange={(e) => actualizar(idx, { subtotal: e.target.value })} />
                     </label>
-
-                    <Button type="button" size="icon" variant="ghost"
-                      aria-label={`Quitar ${l.insumo_nombre}`}
-                      className="size-8 justify-self-end text-muted-foreground hover:text-destructive"
-                      onClick={() => onLineas(lineas.filter((_, i) => i !== idx))}>
-                      <Trash2 className="size-4" />
-                    </Button>
                   </div>
 
                   {/* Segunda línea gris: el costo real por unidad, que es el dato
                       que de verdad importa y no merece una columna propia. */}
                   {costo > 0 && (
-                    <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+                    <p className="mt-1.5 text-[11.5px] text-muted-foreground">
                       Te queda a <strong className="font-semibold text-primary">{formatPrice(costo)}</strong> por{' '}
                       {l.unidad_compra === 'unidad' ? 'unidad' : 'ml'}
                       {flete > 0 && ' (ya con la parte del envío)'}

@@ -1415,6 +1415,18 @@ subir: respaldo por SSH y verificar que el archivo pese cientos de KB, no 20 byt
 - **Fórmulas**: la receta era un párrafo corrido ("esencia 15 · diluyente 14.3 · …") y
   ahora es una rejilla de 4 casillas etiquetadas, con envase y esencia en su propia línea
   y aviso ámbar si falta elegir la esencia.
+- **Las líneas de la compra llevan la etiqueta EN cada casilla** (2026-08-09). Estaban una
+  sola vez en una fila de encabezado tipo tabla, y el dueño preguntó *"¿cómo sé qué se pone
+  en qué input?"* — con razón: el modal mide 540 px, así que la columna del nombre se
+  aplastaba a **59 px** (el nombre se partía en 4 renglones) y por debajo de 640 px de
+  ventana el encabezado desaparecía dejando tres casillas mudas. Ahora el nombre ocupa su
+  propio renglón con la papelera al lado, y debajo van Cantidad / Unidad / Lo que costó,
+  **cada una con su etiqueta encima y sin depender del ancho de la ventana** (se quitaron
+  los `sm:` que causaban el problema). Se mantiene la frase de confirmación —"Te queda a
+  $708 por ml (ya con la parte del envío)"— que es lo que hace evidente un dato mal puesto.
+  El campo de dinero va sin flechitas: en un precio no sirven y en el celular tapaban un
+  dígito. **Regla (defecto 12 de la skill `dashboard-interno-ux`): una fila de encabezado
+  NO es una etiqueta** — sirve en una tabla ancha, no en un formulario que se angosta.
 
 **Pendientes concretos:**
 1. **Rediseño del dashboard, en 3 olas** (el dueño señaló 9 pantallas el 2026-08-01).
