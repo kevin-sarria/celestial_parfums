@@ -8,6 +8,7 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
+import { PublicarSwitch } from './perfumes/PublicarSwitch';
 import ExportButton from '../../../components/ExportButton';
 import DescargarCatalogoButton from '../../../components/DescargarCatalogoButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
@@ -230,6 +231,9 @@ export function PerfumesTab({
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
           renderActions={p => (
             <>
+              {/* Dos estados distintos y a propósito separados: "Agotado" se
+                  sigue viendo en la tienda; el interruptor la saca de ella. */}
+              <PublicarSwitch perfume={p} guardedFetch={guardedFetch} onCambiado={onMutate} />
               <button onClick={() => handleToggleAgotado(p)} title="Cambiar stock" className="cursor-pointer">
                 {p.agotado ? (
                   <Badge variant="secondary" className="text-muted-foreground">Agotado</Badge>

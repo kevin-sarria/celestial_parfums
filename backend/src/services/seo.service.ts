@@ -3,6 +3,7 @@ import path from 'path';
 import { prisma } from '../config/prisma';
 import { cacheGet, cacheSet } from '../utils/cache';
 import { toSlug } from '../utils/slug';
+import { SOLO_PUBLICADOS } from '../repositories/perfume.repository';
 import * as perfumeService from './perfume.service';
 import * as comboService from './combo.service';
 
@@ -170,7 +171,9 @@ export const sitemap = async (baseUrl: string) => {
   const hit = cacheGet<string>('parfums:sitemap');
   if (hit) return hit;
   const [perfumes, combos] = await Promise.all([
-    prisma.perfume.findMany({ select: { nombre: true, updated_at: true } }),
+    // Sin los despublicados: anunciarle a Google una página que responde
+    // "no existe" son errores 404 en Search Console y posiciones perdidas.
+    prisma.perfume.findMany({ where: SOLO_PUBLICADOS, select: { nombre: true, updated_at: true } }),
     prisma.combo.findMany({ where: { activo: true }, select: { nombre: true, updated_at: true } }),
   ]);
   const urlTag = (loc: string, lastmod?: Date) =>

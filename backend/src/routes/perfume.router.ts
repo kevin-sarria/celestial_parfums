@@ -13,6 +13,8 @@ import {
   getSugerenciasEsencia,
   patchEnlacesEsencia,
   patchAgotadoPerfume,
+  patchPublicadoPerfume,
+  getResumenPublicacion,
   getAromas,
   addAroma,
   removeAroma,
@@ -34,7 +36,7 @@ import {
 } from '../controller/perfume.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { createPerfumeSchema, patchDescuentoSchema, patchDescuentoCategoriaSchema, asignarEsenciaMasivaSchema, enlacesEsenciaSchema, patchAgotadoSchema, nombreSchema, precioListaSchema } from '../schemas/perfume.schema';
+import { createPerfumeSchema, patchDescuentoSchema, patchDescuentoCategoriaSchema, asignarEsenciaMasivaSchema, enlacesEsenciaSchema, patchAgotadoSchema, patchPublicadoSchema, nombreSchema, precioListaSchema } from '../schemas/perfume.schema';
 
 export const perfumeRouter = Router();
 
@@ -57,6 +59,9 @@ perfumeRouter.get('/esencia/sugerencias', requireAdmin, getSugerenciasEsencia);
 perfumeRouter.patch('/esencia/enlaces', requireAdmin, validate(enlacesEsenciaSchema), patchEnlacesEsencia);
 perfumeRouter.patch('/esencia/masiva', requireAdmin, validate(asignarEsenciaMasivaSchema), patchEsenciaMasiva);
 perfumeRouter.patch('/:id/agotado', requireAdmin, validate(patchAgotadoSchema), patchAgotadoPerfume);
+// Sacar de la tienda / devolver a la tienda (distinto de agotado: desaparece)
+perfumeRouter.patch('/:id/publicado', requireAdmin, validate(patchPublicadoSchema), patchPublicadoPerfume);
+perfumeRouter.get('/resumen-publicacion', requireAdmin, getResumenPublicacion);
 
 perfumeRouter.post('/tipos-aroma', requireAdmin, validate(nombreSchema), addAroma);
 perfumeRouter.delete('/tipos-aroma/:id', requireAdmin, removeAroma);

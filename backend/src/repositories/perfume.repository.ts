@@ -85,6 +85,7 @@ export const mapPerfume = (p: PerfumeRow) => {
     /// Costo real por ml de SU esencia (cada fragancia tiene la suya).
     insumo_esencia_precio: p.insumo_esencia ? Number(p.insumo_esencia.precio) : null,
     agotado:      p.agotado,
+    publicado:    p.publicado ?? true,
     es_nuevo:     esNuevo(p.created_at),
     tipos_aroma:    p.tipos_aroma.map((r) => r.tipo_aroma.nombre),
     ocasiones:      p.ocasiones.map((r) => r.ocasion.nombre),
@@ -113,8 +114,21 @@ export const conRatings = async <T extends { id: number }>(perfumes: T[]): Promi
   });
 };
 
-export const selectAllParfums = async () => {
+/**
+ * Filtro de la tienda: solo lo publicado.
+ *
+ * Un perfume despublicado desaparece del catálogo como si no existiera —
+ * listados, búsqueda, destacados, relacionados, detalle y sitemap. Es distinto
+ * de `agotado`, que SÍ se muestra (marcado, con "avísame cuando vuelva").
+ *
+ * Se usa en TODAS las consultas públicas. El dashboard es el único que ve los
+ * apagados, y para eso tiene que pedirlos explícitamente (`todos`).
+ */
+export const SOLO_PUBLICADOS = { publicado: true } as const;
+
+export const selectAllParfums = async (todos = false) => {
   const perfumes = await prisma.perfume.findMany({
+    where: todos ? undefined : SOLO_PUBLICADOS,
     include: perfumeInclude,
     orderBy: { nombre: 'asc' },
   });
@@ -147,9 +161,11 @@ export const selectParfumsPaginated = async (
   limit: number,
   search?: string,
   filtros?: CatalogoFiltros,
+  /** Solo el dashboard: incluir también los que están fuera de la tienda. */
+  todos = false,
 ) => {
   const skip = (page - 1) * limit;
-  const and: Prisma.PerfumeWhereInput[] = [];
+  const and: Prisma.PerfumeWhereInput[] = todos ? [] : [SOLO_PUBLICADOS];
   if (search) {
     and.push({
       OR: [
@@ -177,7 +193,12 @@ export const selectParfumsPaginated = async (
 /** Perfumes por lista de ids, preservando el orden dado (favoritos, etc.). */
 export const selectPerfumesByIds = async (ids: number[]) => {
   if (!ids.length) return [];
-  const rows = await prisma.perfume.findMany({ where: { id: { in: ids } }, include: perfumeInclude });
+  // También filtra: un favorito que se sacó del catálogo no debe reaparecer
+  // como tarjeta que al abrirla da "no encontrado".
+  const rows = await prisma.perfume.findMany({
+    where: { id: { in: ids }, ...SOLO_PUBLICADOS },
+    include: perfumeInclude,
+  });
   const byId = new Map(rows.map((r) => [r.id, r]));
   const ordenados = ids.map((id) => byId.get(id)).filter((p): p is NonNullable<typeof p> => p != null);
   return conRatings(ordenados.map(mapPerfume));
@@ -215,6 +236,8 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       categoria_id: data.categoria_id ?? null,
       descuento:    data.descuento ?? 0,
       agotado:      data.agotado ?? false,
+      // Nace publicado salvo que se pida lo contrario (ficha a medio llenar).
+      publicado:    data.publicado ?? true,
       esencia_premium:  data.esencia_premium ?? false,
       insumo_esencia_id: data.insumo_esencia_id ?? null,
       tipo_producto: data.tipo_producto ?? 'fabricado',
@@ -253,9 +276,12 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
         imagen_url:   data.imagen_url ?? null,
         genero:       data.genero ?? null,
         categoria_id: data.categoria_id ?? null,
-        // El form de edición no envía descuento/agotado: no hay que resetearlos
+        // El form de edición no envía descuento/agotado/publicado: no hay que
+        // resetearlos. Ojo con `publicado`: si se colara un valor por defecto,
+        // editar un perfume lo devolvería solo a la tienda.
         ...(data.descuento !== undefined ? { descuento: data.descuento } : {}),
         ...(data.agotado !== undefined ? { agotado: data.agotado } : {}),
+        ...(data.publicado !== undefined ? { publicado: data.publicado } : {}),
         ...(data.esencia_premium !== undefined ? { esencia_premium: data.esencia_premium } : {}),
         ...(data.insumo_esencia_id !== undefined ? { insumo_esencia_id: data.insumo_esencia_id ?? null } : {}),
         ...(data.tipo_producto !== undefined ? { tipo_producto: data.tipo_producto } : {}),
@@ -292,6 +318,28 @@ export const patchDescuentoPorCategoria = async (categoriaId: number, descuento:
 
 export const patchAgotadoPerfume = (id: string, agotado: boolean) =>
   prisma.perfume.update({ where: { id: Number(id) }, data: { agotado } });
+
+/** Saca un perfume de la tienda o lo devuelve, sin borrar nada. */
+export const patchPublicadoPerfume = (id: string, publicado: boolean) =>
+  prisma.perfume.update({ where: { id: Number(id) }, data: { publicado } });
+
+/**
+ * Lo que hace falta para el aviso de "perfumes por revisar" del dashboard.
+ *
+ * `sin_esencia` cuenta los FABRICADOS sin esencia asignada: esos no descuentan
+ * inventario al venderse y su costo entra en cero, así que la ganancia del mes
+ * sale inflada. Se cuentan solo los que siguen publicados, que son los que de
+ * verdad pueden venderse hoy.
+ */
+export const resumenPublicacion = async () => {
+  const [ocultos, sinEsencia] = await Promise.all([
+    prisma.perfume.count({ where: { publicado: false } }),
+    prisma.perfume.count({
+      where: { publicado: true, tipo_producto: 'fabricado', insumo_esencia_id: null },
+    }),
+  ]);
+  return { ocultos, sin_esencia: sinEsencia };
+};
 
 /**
  * Asigna la misma esencia a varios perfumes de una vez.
@@ -362,6 +410,7 @@ export const findRelatedPerfumes = async (currentId: number, aromaNames: string[
   const candidates = await prisma.perfume.findMany({
     where: {
       id: { not: currentId },
+      ...SOLO_PUBLICADOS,
       ...(aromaNames.length > 0 && {
         tipos_aroma: { some: { tipo_aroma: { nombre: { in: aromaNames } } } },
       }),
@@ -406,7 +455,7 @@ export const getDestacados = async (limitVendidos = 12) => {
   }
 
   const nuevos = await prisma.perfume.findMany({
-    where: { created_at: { gte: desde } },
+    where: { created_at: { gte: desde }, ...SOLO_PUBLICADOS },
     include: perfumeInclude,
   });
   const nuevosOrdenados =
@@ -422,8 +471,13 @@ export const getDestacados = async (limitVendidos = 12) => {
     .sort((a, b) => b[1] - a[1])
     .slice(0, limitVendidos)
     .map(([id]) => id);
+  // Los más vendidos también se filtran: un perfume que se sacó del catálogo
+  // no puede seguir encabezando la home solo porque se vendió mucho antes.
   const topRows = topIds.length
-    ? await prisma.perfume.findMany({ where: { id: { in: topIds } }, include: perfumeInclude })
+    ? await prisma.perfume.findMany({
+        where: { id: { in: topIds }, ...SOLO_PUBLICADOS },
+        include: perfumeInclude,
+      })
     : [];
   const byId = new Map(topRows.map((p) => [p.id, p]));
 
@@ -440,7 +494,12 @@ export const getDestacados = async (limitVendidos = 12) => {
 export const findPerfumeBySlug = async (slug: string) => {
   // El slug no es reversible (pierde apóstrofes, tildes, símbolos…): se compara
   // contra el slug generado del nombre, igual que lo construye el frontend.
-  const nombres = await prisma.perfume.findMany({ select: { id: true, nombre: true } });
+  // Solo publicados: si alguien guardó el enlace de un perfume que se sacó del
+  // catálogo, debe responder "no existe", no abrir una ficha que ya no se vende.
+  const nombres = await prisma.perfume.findMany({
+    where: SOLO_PUBLICADOS,
+    select: { id: true, nombre: true },
+  });
   const match = nombres.find((p) => toSlug(p.nombre) === slug);
   if (!match) return null;
   const perfume = await prisma.perfume.findUnique({

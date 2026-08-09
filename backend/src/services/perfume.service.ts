@@ -7,11 +7,20 @@ import { cacheClear, cacheGet, cacheSet } from '../utils/cache';
  * pesadas y más pedidas: se cachean en memoria y las mutaciones del admin
  * las invalidan de inmediato (los cambios se ven al instante).
  */
-export const allPerfumes = async () => {
-  const hit = cacheGet<Awaited<ReturnType<typeof perfumeRepository.selectAllParfums>>>('parfums:all');
+/**
+ * `todos` = incluir los despublicados. Solo lo pide el dashboard.
+ *
+ * OJO: cada variante tiene SU clave de caché. Compartirla serviría la lista del
+ * admin —con los perfumes que sacó de la tienda— a cualquier visitante que
+ * llegara justo después. Las dos empiezan por `parfums:`, así que
+ * `bustCatalogoCache()` sigue limpiando ambas de un golpe.
+ */
+export const allPerfumes = async (todos = false) => {
+  const clave = todos ? 'parfums:all:todos' : 'parfums:all';
+  const hit = cacheGet<Awaited<ReturnType<typeof perfumeRepository.selectAllParfums>>>(clave);
   if (hit) return hit;
-  const data = await perfumeRepository.selectAllParfums();
-  cacheSet('parfums:all', data, 5 * 60_000);
+  const data = await perfumeRepository.selectAllParfums(todos);
+  cacheSet(clave, data, 5 * 60_000);
   return data;
 };
 
@@ -36,11 +45,14 @@ export const allPerfumesPaginated = async (
   limit: number,
   search?: string,
   filtros?: perfumeRepository.CatalogoFiltros,
+  todos = false,
 ) => {
-  const key = `parfums:page:${JSON.stringify([page, limit, search ?? '', filtros ?? null])}`;
+  // `todos` va DENTRO de la clave: sin eso, la página que pide el dashboard
+  // (con los ocultos) se le serviría al siguiente visitante de la tienda.
+  const key = `parfums:page:${JSON.stringify([page, limit, search ?? '', filtros ?? null, todos])}`;
   const hit = cacheGet<Awaited<ReturnType<typeof perfumeRepository.selectParfumsPaginated>>>(key);
   if (hit) return hit;
-  const data = await perfumeRepository.selectParfumsPaginated(page, limit, search, filtros);
+  const data = await perfumeRepository.selectParfumsPaginated(page, limit, search, filtros, todos);
   cacheSet(key, data, 5 * 60_000);
   return data;
 };
@@ -103,6 +115,16 @@ export const patchAgotadoPerfume = async (id: string, agotado: boolean) => {
   bustCatalogoCache();
   return result;
 };
+
+export const patchPublicadoPerfume = async (id: string, publicado: boolean) => {
+  const result = await perfumeRepository.patchPublicadoPerfume(id, publicado);
+  // Sin esto el catálogo seguiría sirviéndose del caché y el perfume tardaría
+  // hasta 4 minutos en desaparecer (o en volver) de la tienda.
+  bustCatalogoCache();
+  return result;
+};
+
+export const resumenPublicacion = () => perfumeRepository.resumenPublicacion();
 
 export const getPrecios = () => perfumeRepository.selectPrecios();
 

@@ -154,7 +154,9 @@ export default function DashboardPage() {
 
   const loadPerfumes = async (page = perfumesPage, size = perfumesPageSize, search = perfumesSearch) => {
     const searchQs = search ? `&search=${encodeURIComponent(search)}` : '';
-    const res = await guardedFetch(`${API}/?page=${page}&limit=${size}${searchQs}`);
+    // `todos=1`: el dashboard ve TAMBIÉN los que están fuera de la tienda; si no,
+    // no habría forma de devolverlos. El servidor solo lo acepta si eres admin.
+    const res = await guardedFetch(`${API}/?page=${page}&limit=${size}${searchQs}&todos=1`);
     const json = await res.json();
     setPerfumes(json.data ?? []); setPerfumesTotal(json.total ?? 0); setPerfumesPage(page);
   };
@@ -174,7 +176,7 @@ export default function DashboardPage() {
       Promise.all([
         fetch(`${API}/tipos-aroma`), fetch(`${API}/ocasiones`), fetch(`${API}/categorias`), fetch(`${API}/presentaciones`),
       ]).then(rs => Promise.all(rs.map(r => r.json()))),
-      guardedFetch(`${API}/?page=1&limit=${DEFAULT_PAGE_SIZE}`).then(r => r.json()),
+      guardedFetch(`${API}/?page=1&limit=${DEFAULT_PAGE_SIZE}&todos=1`).then(r => r.json()),
       guardedFetch(`${API_COMBOS}?page=1&limit=${DEFAULT_PAGE_SIZE}`).then(r => r.json()),
     ]).then(([[a, o, c, pr], p, co]) => {
       if (!active) return;

@@ -9,6 +9,7 @@
   categoria_id?: number | null;
   descuento?: number;
   agotado?: boolean;
+  publicado?: boolean;
   esencia_premium?: boolean;
   /** Esencia concreta con la que se hace (Eternity, Khamrah…). */
   insumo_esencia_id?: number | null;

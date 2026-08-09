@@ -12,6 +12,7 @@ export const createPerfumeSchema = z.object({
   categoria_id: z.number().int().positive().nullable().optional(),
   descuento: z.number().int().min(0).max(100).optional(),
   agotado: z.boolean().optional(),
+  publicado: z.boolean().optional(),
   // Contratipo de esencia premium: distintivo propio y fuera de los combos
   esencia_premium: z.boolean().optional(),
   /// Esencia concreta con la que se hace (Eternity, Khamrah…). Null = sin asignar.
@@ -76,6 +77,10 @@ export const enlacesEsenciaSchema = z.object({
 
 export const patchAgotadoSchema = z.object({
   agotado: z.boolean(),
+});
+
+export const patchPublicadoSchema = z.object({
+  publicado: z.boolean(),
 });
 
 /** Precio estándar de una categoría en una presentación (null = quitarlo de la lista). */

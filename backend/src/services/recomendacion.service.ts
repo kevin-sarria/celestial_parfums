@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma';
-import { mapPerfume, perfumeInclude } from '../repositories/perfume.repository';
+import { mapPerfume, perfumeInclude, SOLO_PUBLICADOS } from '../repositories/perfume.repository';
 import { FiltrosRecomendacion } from '../schemas/recomendacion.schema';
 
 /**
@@ -146,7 +146,9 @@ const PUNTAJE_MINIMO = 20;
 
 export const calcularRecomendaciones = async (userId: number, filtros: FiltrosRecomendacion) => {
   const perfumes = await prisma.perfume.findMany({
-    where: { agotado: false },
+    // Ni agotados ni fuera del catálogo: no tiene sentido recomendar algo que
+    // el cliente no puede comprar ni siquiera ver.
+    where: { agotado: false, ...SOLO_PUBLICADOS },
     include: { ...perfumeInclude, _count: { select: { ventas: true } } },
   });
   const maxVentas = Math.max(0, ...perfumes.map((p) => p._count.ventas));

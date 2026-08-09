@@ -459,6 +459,41 @@ certeza de que la acción funcionó.
   en voz del admin ("Le repuse el producto") y `etiquetaSolucionCliente` en voz del cliente
   ("Te repusimos el producto") — usar la que corresponda o el texto suena absurdo.
 
+### Sacar un perfume de la tienda (`perfumes.publicado`, 2026-08-09)
+
+Son **DOS estados distintos y no hay que confundirlos** (el dueño lo separó él mismo):
+- **`agotado`** — "no hay ahora mismo". SÍ se ve en la tienda, marcado, y el cliente puede
+  pedir que le avisen cuando vuelva. Sigue haciendo trabajo de vitrina.
+- **`publicado = false`** — desaparece del catálogo **como si no existiera**: listados,
+  búsqueda, destacados, más vendidos, relacionados, favoritos, recomendador, su página
+  (404) y el sitemap. No borra nada: datos, fotos e historial quedan intactos.
+
+- **Nació de un caso real**: 25 de los 212 perfumes no tienen esencia asignada porque el
+  dueño **no tiene esa esencia** (Eros, Sauvage, Good Girl, Fame, Eternity, Light Blue,
+  Boss Bottled…). Seguían visibles y vendibles. Ojo: un perfume fabricado sin esencia
+  **no descuenta NADA al venderse** (`consumirPorVenta` se salta la línea entera, no solo
+  la esencia) y su costo entra en cero, así que la ganancia del mes sale inflada.
+- **`SOLO_PUBLICADOS`** (exportado de `perfume.repository.ts`) es el filtro único; se aplica
+  en TODAS las consultas públicas. Al agregar un endpoint de catálogo, aplicarlo.
+- **El dashboard pide `?todos=1`** (mismo patrón que `GET /costeo/insumos?todos=1`), y el
+  servidor **solo lo honra si eres admin** (`esAdminRequest`): sin esa comprobación
+  cualquiera listaría lo que sacaste de la tienda agregando el parámetro a la URL.
+- **TRAMPA DEL CACHÉ**: `todos` va DENTRO de la clave (`parfums:all:todos`, y en la clave de
+  la página). Compartir clave serviría la lista del admin —con los ocultos— al siguiente
+  visitante. Las dos empiezan por `parfums:`, así que `bustCatalogoCache()` limpia ambas.
+- **Editar un perfume NO lo republica**: `publicado` solo se toca si viene en el cuerpo
+  (mismo criterio que `descuento`/`agotado`). Si se colara un valor por defecto, guardar
+  cualquier cambio devolvería a la tienda algo que se sacó a propósito.
+- **Confirma antes de actuar** (`tabs/perfumes/PublicarSwitch.tsx`): es una acción de cara
+  al público y un clic sin querer en una tabla de 212 filas saca un producto de la venta
+  sin que nada lo grite. El texto explica la consecuencia y recuerda que para "se me acabó"
+  va Agotado, no esto. Cancelar lo deja exactamente igual.
+- Verificado de punta a punta: cancelar no cambia nada; confirmar deja la fila en "Fuera",
+  el catálogo público pasa de 212 a 211 y su página responde 404; un anónimo con `?todos=1`
+  sigue viendo 211; el sitemap deja de anunciarla; y el interruptor la devuelve (212).
+- Migración: `20260809120000_perfume_publicado` (**DEFAULT TRUE**: al aplicarla no
+  desaparece ni un perfume; sacar uno es siempre manual).
+
 ### Inventario y costo promedio (base del futuro POS) — EN CONSTRUCCIÓN
 - **El precio de un insumo ya NO se teclea**: es el **costo promedio ponderado** que sale
   de las compras. `insumos_costo.precio` y `.stock` son una PROYECCIÓN del libro
@@ -1351,6 +1386,9 @@ Migraciones pendientes de aplicar en producción al escribir esto:
   `200/250 ML` y `Combo Personalizado` se quedan en NULL a propósito (adivinar metería un
   dato falso). Verificado sobre producción: 426 de 434 líneas quedaron con talla, 8 sin
   ella, y ni el dinero ni el número de líneas se movieron.
+
+- `20260809120000_perfume_publicado`: `perfumes.publicado` (BOOLEAN, **DEFAULT TRUE**) +
+  índice. Sacar un perfume del catálogo sin borrarlo. Al aplicarla no desaparece ninguno.
 
 **Verificado el 2026-08-01**: la base local se reemplazó por el dump real de producción y
 las 8 migraciones pendientes se aplicaron EN ORDEN sobre esos datos, sin perder una fila

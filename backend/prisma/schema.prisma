@@ -389,7 +389,16 @@ model Perfume {
   /// frasco y en la jeringa. Sin esto el costo del decant sale más barato de
   /// lo real.
   ml_utiles      Int?
+  /// "No hay ahora mismo": SÍ se muestra en la tienda, marcado como agotado, y
+  /// el cliente puede pedir que le avisen cuando vuelva.
   agotado      Boolean            @default(false)
+  /// Si está en la tienda o no. Es DISTINTO de `agotado`: apagado significa que
+  /// el perfume desaparece del catálogo público como si no existiera (no sale
+  /// en listados, búsqueda, destacados, detalle ni sitemap). Sirve para lo que
+  /// no se puede fabricar —no hay esencia de esa fragancia— y para las fichas
+  /// a medio llenar, que no deben verse mientras se completan.
+  /// Por defecto TRUE: los 212 perfumes que ya existían siguen publicados.
+  publicado    Boolean            @default(true)
   created_at   DateTime           @default(now())
   updated_at   DateTime           @updatedAt
   categoria    Categoria?         @relation(fields: [categoria_id], references: [id], onDelete: SetNull)

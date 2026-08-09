@@ -64,6 +64,12 @@ export const perfumeSchema = z.object({
   // % propio del perfume, sin contar el de la categoría (lo usa el dashboard)
   descuento_propio: z.number().optional(),
   agotado: z.boolean().default(false),
+  /**
+   * ¿Está en la tienda? Distinto de `agotado`: un agotado SÍ se muestra (con su
+   * marca y el "avísame cuando vuelva"); uno despublicado no aparece por ningún
+   * lado. Solo el dashboard llega a ver los que están en false.
+   */
+  publicado: z.boolean().default(true),
   // true durante los primeros 30 días del perfume en el catálogo
   es_nuevo: z.boolean().default(false),
   tipos_aroma: z.array(z.string()),

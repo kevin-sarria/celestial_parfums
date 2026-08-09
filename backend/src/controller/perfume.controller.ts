@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as perfumeService from '../services/perfume.service';
 import { parsePagination, parseSearch } from '../utils/pagination';
 import { mensajeSeguro } from '../utils/errorSeguro';
+import { esAdminRequest } from '../middleware/auth.middleware';
 
 export const getRelatedPerfumes = async (req: Request, res: Response) => {
   try {
@@ -50,10 +51,14 @@ export const selectAllPerfumes = async (req: Request, res: Response) => {
         aromas: parseLista(req.query.aromas),
         ocasiones: parseLista(req.query.ocasiones),
         orden: ordenes.includes(ordenRaw) ? (ordenRaw as any) : undefined,
-      });
+      }, req.query.todos === '1' && esAdminRequest(req));
       res.json(result);
     } else {
-      const result = await perfumeService.allPerfumes();
+      // `?todos=1` trae también los que están fuera de la tienda. Se honra SOLO
+      // si quien pregunta es el admin: si no, cualquiera podría listar lo que el
+      // dueño sacó del catálogo con solo agregar el parámetro a la URL.
+      const todos = req.query.todos === '1' && esAdminRequest(req);
+      const result = await perfumeService.allPerfumes(todos);
       res.status(200).json({ message: 'Datos Encontrados Correctamente', data: result });
     }
   } catch (error: any) {
@@ -148,6 +153,24 @@ export const patchAgotadoPerfume = async (req: Request, res: Response) => {
   try {
     await perfumeService.patchAgotadoPerfume(req.params.id as string, Boolean(req.body.agotado));
     res.json({ message: 'Estado de stock actualizado' });
+  } catch (error: any) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
+export const patchPublicadoPerfume = async (req: Request, res: Response) => {
+  try {
+    const publicado = Boolean(req.body.publicado);
+    await perfumeService.patchPublicadoPerfume(req.params.id as string, publicado);
+    res.json({ message: publicado ? 'El perfume volvió a la tienda' : 'El perfume salió de la tienda' });
+  } catch (error: any) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
+export const getResumenPublicacion = async (_req: Request, res: Response) => {
+  try {
+    res.json({ data: await perfumeService.resumenPublicacion() });
   } catch (error: any) {
     res.status(400).json({ error: mensajeSeguro(error) });
   }
