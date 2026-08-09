@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, FlaskConical, PackagePlus, Pencil, Plus, Scale, ShoppingCart, ToggleLeft, ToggleRight, Trash2 } from 'lucide-react';
+import { Droplets, FlaskConical, PackagePlus, Pencil, Plus, Scale, ShoppingCart, ToggleLeft, ToggleRight, Trash2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -308,6 +308,12 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
               <Button size="sm" variant="outline"
                 onClick={() => setMaterial({ abierto: true, dato: null })}>
                 <Plus className="size-4" /> Material
+              </Button>
+              {/* Tiene que vivir aquí y no solo en Primeros Pasos: esa caja
+                  desaparece al completarse, y sin este botón la asignación de
+                  esencias quedaría inalcanzable para el próximo perfume nuevo. */}
+              <Button size="sm" variant="outline" onClick={() => setEsenciasAbierto(true)}>
+                <Wand2 className="size-4" /> Esencias
               </Button>
               <Button size="sm" variant="outline" onClick={() => setSalidaAbierta(true)}>
                 <Droplets className="size-4" /> Salida
