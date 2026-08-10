@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import BuscadorSelect from '../../../../components/BuscadorSelect';
 import Modal from '../../../../components/Modal';
 import { BASE_URL } from '../../../../infrastructure/api/client';
 import { Field, FieldRow, FormError } from '../../ui';
@@ -49,6 +50,7 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
   const [alcance, setAlcance] = useState<InsumoAlcance>('unidad');
   const [precio, setPrecio] = useState(editando ? String(material.costo_promedio) : '');
   const [gamaId, setGamaId] = useState<string>(material?.gama_id ? String(material.gama_id) : '');
+  const [genero, setGenero] = useState<string>(material?.genero ?? '');
   // Las gamas son una tabla que el dueño amplía, así que se piden al servidor
   const [gamas, setGamas] = useState<Gama[]>([]);
   useEffect(() => {
@@ -83,6 +85,7 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
             nombre: nombre.trim(), tipo, unidad, alcance, precio: p,
             // null y no '' : la columna admite nulo y '' no es una gama válida
             gama_id: tipo === 'materia_prima' && esEsencia && gamaId ? Number(gamaId) : null,
+            genero: tipo === 'materia_prima' && esEsencia && genero ? genero : null,
             ...(editando ? { activo: material.activo } : {}),
           }),
         },
@@ -137,17 +140,45 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
           gama. Se pregunta con el nombre delante para que se entienda que va
           por la CALIDAD de la esencia, no por el perfume. */}
       {tipo === 'materia_prima' && esEsencia && (
-        <Field label="¿De qué gama es esta esencia?">
-          <NativeSelect value={gamaId} onChange={e => setGamaId(e.target.value)}>
-            <option value="">— Sin clasificar —</option>
-            {gamas.map(g => <option key={g.id} value={g.id}>{g.nombre}</option>)}
-          </NativeSelect>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            Se usa para cotizar al mayoreo cuando el cliente pide "50 de 30 ml" sin decir
-            qué fragancias: ahí se calcula con el promedio de la gama. Cuando sí se sabe
-            cuál es el perfume, manda el costo de SU esencia.
-          </p>
-        </Field>
+        <>
+          <Field label="¿De qué gama es esta esencia?">
+            {/* Mismo control que en el alta desde una compra: las gamas son una
+                tabla que el dueño amplía, y tener dos desplegables distintos
+                para el mismo dato se nota. */}
+            <BuscadorSelect
+              opciones={[
+                { id: 0, nombre: '— Sin clasificar —' },
+                ...gamas.map(g => ({ id: g.id as number | string, nombre: g.nombre })),
+              ]}
+              value={gamaId ? Number(gamaId) : 0}
+              placeholder="Elegir gama…"
+              onSelect={id => setGamaId(Number(id) ? String(id) : '')}
+              vacio="Todavía no has creado gamas"
+            />
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Se usa para cotizar al mayoreo cuando el cliente pide "50 de 30 ml" sin decir
+              qué fragancias: ahí se calcula con el promedio de la gama. Cuando sí se sabe
+              cuál es el perfume, manda el costo de SU esencia.
+            </p>
+          </Field>
+
+          {/* Solo 3 opciones fijas: aquí el buscador estorbaría. La mayoría de
+              las esencias lo tiene vacío porque el nombre solo lo dice cuando
+              hacía falta desempatar, así que este es el sitio donde se llena. */}
+          <Field label="¿Para quién es esta fragancia?">
+            <NativeSelect value={genero} onChange={e => setGenero(e.target.value)}>
+              <option value="">— Todavía no sé —</option>
+              <option value="dama">Dama</option>
+              <option value="caballero">Caballero</option>
+              <option value="unisex">Unisex</option>
+            </NativeSelect>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Sirve para no confundir dos fragancias de la misma línea (un "212 VIP" de dama
+              y otro de caballero) y para que el perfume que se cree con esta esencia salga
+              ya clasificado.
+            </p>
+          </Field>
+        </>
       )}
 
       {tipo === 'accesorio' && (

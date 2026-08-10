@@ -131,6 +131,8 @@ export interface InventarioInsumo {
   /** Solo esencias: a qué gama pertenece. Null = sin clasificar. */
   gama_id?: number | null;
   gama_nombre?: string | null;
+  /** Solo esencias: para quién es la fragancia. Null = todavía sin decir. */
+  genero?: 'dama' | 'caballero' | 'unisex' | null;
 }
 
 export interface MovimientoInventario {

@@ -378,6 +378,8 @@ export const resumenInventario = async () => {
       /** Solo esencias: su gama. Null en envases, accesorios y el resto. */
       gama_id: i.gama_id ?? null,
       gama_nombre: i.gama?.nombre ?? null,
+      /** Solo esencias: para quién es la fragancia. Null = todavía sin decir. */
+      genero: i.genero ?? null,
       activo: i.activo,
       stock,
       stock_minimo: minimo,
