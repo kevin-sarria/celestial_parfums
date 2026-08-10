@@ -29,6 +29,7 @@ export const filasInsumos = async () => {
     nombre: i.nombre,
     tipo: i.tipo,
     gama: i.gama?.nombre ?? '',
+    genero: i.genero ?? '',
     unidad: i.unidad,
     alcance: i.alcance,
     costo_promedio: Number(i.precio),
@@ -144,6 +145,22 @@ export const importarInsumos = async (rows: any[], result: EntityImportResult) =
       );
     }
 
+    // Mismo criterio que la gama: vacío no toca, "ninguna" borra, y lo mal
+    // escrito se avisa. Esta columna es la forma rápida de clasificar en bloque
+    // las esencias que todavía no dicen para quién son.
+    const generoCrudo = txt(row.genero);
+    let genero: 'dama' | 'caballero' | 'unisex' | null | undefined;
+    if (generoCrudo) {
+      const g = normalizar(generoCrudo);
+      if (g === 'ninguna' || g === 'ninguno' || g === '-') genero = null;
+      else if (g === 'dama' || g === 'mujer' || g === 'femenino') genero = 'dama';
+      else if (g === 'caballero' || g === 'hombre' || g === 'masculino') genero = 'caballero';
+      else if (g === 'unisex') genero = 'unisex';
+      else result.errores.push(
+        `Fila ${fila}: el genero "${generoCrudo}" no vale. Usa dama, caballero o unisex.`,
+      );
+    }
+
     const existente = await prisma.insumoCosto.findFirst({ where: { nombre } });
     if (existente) {
       await prisma.insumoCosto.update({
@@ -151,13 +168,14 @@ export const importarInsumos = async (rows: any[], result: EntityImportResult) =
         // El costo NO se pisa si viene en cero: lo manda el promedio de compras
         data: { tipo: tipo as any, unidad: unidad as any, alcance: alcance as any, activo,
           ...(precio > 0 ? { precio } : {}),
-          ...(gamaId !== undefined ? { gama_id: gamaId } : {}) },
+          ...(gamaId !== undefined ? { gama_id: gamaId } : {}),
+          ...(genero !== undefined ? { genero } : {}) },
       });
       result.actualizados++;
     } else {
       await prisma.insumoCosto.create({
         data: { nombre, tipo: tipo as any, unidad: unidad as any, alcance: alcance as any, precio, activo,
-          gama_id: gamaId ?? null },
+          gama_id: gamaId ?? null, genero: genero ?? null },
       });
       result.insertados++;
     }

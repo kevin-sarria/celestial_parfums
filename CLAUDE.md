@@ -637,6 +637,18 @@ nombre de la esencia.
   "212 VIP Dama" y "212 VIP Caballero", será el desempate.
 - El selector es un `NativeSelect` (3 opciones fijas + "Todavía no sé"), no `BuscadorSelect`:
   la regla del proyecto reserva el buscador para listas que crecen.
+- **Se pone en TRES sitios, y olvidar uno lo deja inservible** (pasó con los dos primeros
+  intentos, y el dueño los cazó): (1) el alta desde una compra, (2) la ficha del material en
+  Inventario —que es donde se editan las 189 que lo tienen vacío— y (3) la **hoja de Excel
+  de insumos**, que es la forma rápida de llenarlas en bloque: exportar, escribir la columna
+  y volver a subir. **Regla: un campo nuevo de un insumo no está terminado hasta que viaja
+  por el Excel**, porque ahí es donde el dueño trabaja en cantidad.
+- El importador acepta sinónimos (`hombre`/`masculino` = caballero, `mujer`/`femenino` =
+  dama), ignora mayúsculas y tildes, **una columna vacía NO borra** lo que ya había (solo
+  `ninguna` lo quita) y **avisa** si el valor no vale en vez de tragárselo — mismo criterio
+  que la gama. Verificado con los cuatro casos.
+- **La hoja de CONTEO (`inventario`) sigue sin gama ni género a propósito**: ahí se cuenta.
+  Un material creado desde el conteo se clasifica después con la hoja de insumos.
 - Migración: `20260810120000_genero_esencia`.
 
 ### Puesta al día: emparejar esencias con su perfume (2026-08-09)
