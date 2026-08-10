@@ -1,5 +1,8 @@
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
+// La creación del perfume a partir de su esencia vive en un solo sitio: la usan
+// el alta desde una compra y la pantalla de puesta al día.
+import { enlazarOCrearPerfume, sinSufijoEsencia } from './emparejarEsencias.repository';
 import type {
   InsumoInput, FormulaInput, EscalaInput, CotizacionConfigInput, CondicionesComerciales,
 } from '../schemas/cotizacion.schema';
@@ -109,58 +112,6 @@ export const eliminarGama = async (id: number) => {
 /** Para comparar nombres sin que una tilde o un espacio de más creen un duplicado. */
 const normalizarNombre = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
-
-/** "Eros Caballero – Esencia" → "Eros Caballero". */
-const sinSufijoEsencia = (s: string) =>
-  s.replace(/\s*[–—-]\s*esencias?\s*$/i, '').replace(/^\s*esencias?\s+(de\s+)?/i, '').trim();
-
-/**
- * Deja el perfume de esta esencia listo en el catálogo: lo enlaza si ya existe
- * o lo crea como borrador si no.
- *
- * **Enlazar antes de crear no es un detalle.** Las esencias se llaman igual que
- * la fragancia, así que crear a ciegas duplicaría en el catálogo un perfume que
- * ya estaba — un daño que después toca limpiar a mano, fila por fila.
- *
- * Si el perfume ya tenía una esencia asignada NO se le cambia: alguien la
- * eligió a mano y su decisión manda (mismo criterio que el enlazador masivo).
- */
-const enlazarOCrearPerfume = async (
-  insumoId: number, nombre: string, genero: 'dama' | 'caballero' | 'unisex' | null,
-) => {
-  const clave = normalizarNombre(nombre);
-  const existentes = await prisma.perfume.findMany({
-    select: { id: true, nombre: true, insumo_esencia_id: true },
-  });
-  const yaEsta = existentes.find((p) => normalizarNombre(p.nombre) === clave);
-
-  if (yaEsta) {
-    if (yaEsta.insumo_esencia_id) {
-      return { id: yaEsta.id, nombre: yaEsta.nombre, accion: 'ya_tenia' as const };
-    }
-    await prisma.perfume.update({
-      where: { id: yaEsta.id }, data: { insumo_esencia_id: insumoId },
-    });
-    return { id: yaEsta.id, nombre: yaEsta.nombre, accion: 'enlazado' as const };
-  }
-
-  const creado = await prisma.perfume.create({
-    data: {
-      nombre,
-      // Sin precio, sin foto y sin categoría: es una ficha a medio llenar. Por
-      // eso nace FUERA de la tienda — publicarla así se vería peor que no
-      // tenerla. El dueño la completa y la publica cuando quiera.
-      precio: 0,
-      publicado: false,
-      tipo_producto: 'fabricado',
-      insumo_esencia_id: insumoId,
-      // Nace ya clasificado: es el dato que la esencia acaba de aportar y uno
-      // menos que completar después en la ficha.
-      genero,
-    },
-  });
-  return { id: creado.id, nombre: creado.nombre, accion: 'creado' as const };
-};
 
 /**
  * Alta de un insumo. Con `crear_perfume` deja además listo su producto del

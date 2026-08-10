@@ -11,6 +11,8 @@ import {
   patchDescuentoCategoria,
   patchEsenciaMasiva,
   getSugerenciasEsencia,
+  getEmparejarEsencias,
+  postEmparejarEsencias,
   patchEnlacesEsencia,
   patchAgotadoPerfume,
   patchPublicadoPerfume,
@@ -37,7 +39,7 @@ import {
 } from '../controller/perfume.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { createPerfumeSchema, patchDescuentoSchema, patchDescuentoCategoriaSchema, asignarEsenciaMasivaSchema, enlacesEsenciaSchema, patchAgotadoSchema, patchPublicadoSchema, nombreSchema, precioListaSchema } from '../schemas/perfume.schema';
+import { createPerfumeSchema, patchDescuentoSchema, patchDescuentoCategoriaSchema, asignarEsenciaMasivaSchema, enlacesEsenciaSchema, emparejarEsenciasSchema, patchAgotadoSchema, patchPublicadoSchema, nombreSchema, precioListaSchema } from '../schemas/perfume.schema';
 
 export const perfumeRouter = Router();
 
@@ -57,6 +59,9 @@ perfumeRouter.delete('/delete/:id', requireAdmin, deletePerfume);
 perfumeRouter.patch('/descuento/por-categoria', requireAdmin, validate(patchDescuentoCategoriaSchema), patchDescuentoCategoria);
 perfumeRouter.patch('/:id/descuento', requireAdmin, validate(patchDescuentoSchema), patchDescuentoPerfume);
 perfumeRouter.get('/esencia/sugerencias', requireAdmin, getSugerenciasEsencia);
+// Puesta al día: las esencias que todavía no tienen su perfume en el catálogo
+perfumeRouter.get('/esencia/emparejar', requireAdmin, getEmparejarEsencias);
+perfumeRouter.post('/esencia/emparejar', requireAdmin, validate(emparejarEsenciasSchema), postEmparejarEsencias);
 perfumeRouter.patch('/esencia/enlaces', requireAdmin, validate(enlacesEsenciaSchema), patchEnlacesEsencia);
 perfumeRouter.patch('/esencia/masiva', requireAdmin, validate(asignarEsenciaMasivaSchema), patchEsenciaMasiva);
 perfumeRouter.patch('/:id/agotado', requireAdmin, validate(patchAgotadoSchema), patchAgotadoPerfume);

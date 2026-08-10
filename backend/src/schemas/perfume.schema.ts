@@ -75,6 +75,20 @@ export const enlacesEsenciaSchema = z.object({
   })).min(1, 'No hay enlaces que aplicar').max(500),
 });
 
+/**
+ * Puesta al día de esencias: por cada una, o se enlaza con un perfume que ya
+ * existe o se crea un borrador con ese nombre. Nunca las dos cosas.
+ */
+export const emparejarEsenciasSchema = z.object({
+  acciones: z.array(z.object({
+    insumo_id: z.number().int().positive(),
+    perfume_id: z.number().int().positive().optional(),
+    crear: z.string().trim().min(1).max(150).optional(),
+  }).refine((a) => (a.perfume_id == null) !== (a.crear == null), {
+    message: 'Cada esencia se enlaza a un perfume o crea uno nuevo, no ambas',
+  })).min(1, 'No elegiste ninguna esencia').max(300),
+});
+
 export const patchAgotadoSchema = z.object({
   agotado: z.boolean(),
 });

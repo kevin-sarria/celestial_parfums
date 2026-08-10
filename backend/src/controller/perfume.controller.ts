@@ -150,6 +150,30 @@ export const patchEnlacesEsencia = async (req: Request, res: Response) => {
   }
 };
 
+/** Qué esencias no tienen perfume y con cuál podrían emparejarse. Solo PROPONE. */
+export const getEmparejarEsencias = async (_req: Request, res: Response) => {
+  try {
+    res.json({ data: await perfumeService.proponerEmparejamientos() });
+  } catch (error: any) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
+export const postEmparejarEsencias = async (req: Request, res: Response) => {
+  try {
+    const r = await perfumeService.aplicarEmparejamientos(req.body.acciones);
+    const partes = [];
+    if (r.enlazados) partes.push(`${r.enlazados} enlazada(s) con su perfume`);
+    if (r.creados) partes.push(`${r.creados} perfume(s) creado(s) fuera de la tienda`);
+    res.json({
+      message: partes.length ? partes.join(' y ') : 'No se aplicó ningún cambio',
+      data: r,
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
 export const patchAgotadoPerfume = async (req: Request, res: Response) => {
   try {
     await perfumeService.patchAgotadoPerfume(req.params.id as string, Boolean(req.body.agotado));

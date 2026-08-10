@@ -639,6 +639,41 @@ nombre de la esencia.
   la regla del proyecto reserva el buscador para listas que crecen.
 - Migración: `20260810120000_genero_esencia`.
 
+### Puesta al día: emparejar esencias con su perfume (2026-08-09)
+
+`emparejarEsencias.repository.ts` + `inventario/EmparejarEsenciasModal.tsx`. El alta desde
+una compra enlaza toda esencia NUEVA, pero no toca las **29 que ya estaban** en el sistema.
+Esta pantalla salda ese atraso. **Sin migración.**
+
+- **PROPONE, NO APLICA.** Medido: acierta 16 de 29 sin duda, pero entre esas hay propuestas
+  equivocadas (*Carolina Herrera Dama* apuntando a Good Girl por la marca; *Mercedes Club
+  **Night*** contra *Club **Black***). Un enlace errado descuenta la fragancia que no era y
+  falsea el costo **en silencio**, que es peor que no tener enlace. Lo dudoso arranca en
+  "dejar así"; solo lo inequívoco viene marcado.
+- **La regla que de verdad desambigua: solo son candidatos los perfumes SIN esencia.**
+  "Eros Caballero" parecía tener dos candidatos (*Eros* y *Eros Flame*), pero Eros Flame ya
+  tiene la suya → queda uno. Igual con *Toy 2* y *Toy 2 Bubble Gum*. Esta regla resolvió
+  más casos que el género.
+- **El emparejador compara PALABRAS, no cadenas** (coeficiente de Dice sobre palabras, sin
+  ruido tipo "by/de/eau/dama"). Los dos lados están escritos al revés: *"Hugo Boss Bottled –
+  Esencia"* contra *"Boss Bottled By Hugo Boss"*. Buscar una cadena dentro de otra acertaba
+  **7 de 29**; por palabras sube a **19**. Umbral 0.34 y ventaja de 0.15 sobre el segundo
+  para considerarlo claro.
+- **El género DESCARTA, nunca elige**: si esencia y perfume lo tienen y no coinciden, ese
+  perfume no puede ser. Es lo que evita proponerle a "360 Dama" dos perfumes de caballero.
+- **CONFLICTO: dos esencias que quieren el MISMO perfume.** Pasa de verdad (*Carolina
+  Herrera Dama* y *Good Girl Blush*). Se detecta en el servidor al proponer Y en el
+  navegador al elegir; sin eso, aplicar ambas dejaría que la segunda pise a la primera.
+- `enlazarOCrearPerfume` se movió de `costeo.repository` a este módulo: la usan los dos
+  caminos por los que una esencia consigue perfume (el alta desde una compra y esta
+  pantalla). `costeo.repository` bajó de 408 a 359 líneas.
+- **El aviso se esconde solo** cuando no queda ninguna (como Primeros pasos) y va como
+  banda ámbar, NO como botón de la barra: esa fila ya tiene seis botones y esta es una tarea
+  que se termina.
+- Verificado contra la base real: enlazar, crear borrador (que hereda el género de su
+  esencia), el rechazo de un perfume que ya tenía esencia, y el rechazo de Zod si llegan las
+  dos acciones juntas. Todo lo de prueba se revirtió.
+
 ### El PDF del catálogo se segmenta antes de generarlo (2026-08-09)
 
 `ExportarCatalogoModal.tsx` + `utils/catalogoFiltros.ts`. Antes salían los 212 con todo y

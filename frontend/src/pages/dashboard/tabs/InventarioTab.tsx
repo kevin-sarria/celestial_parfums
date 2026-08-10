@@ -16,6 +16,7 @@ import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, StatCard } 
 import { SalidaModal } from './inventario/SalidaModal';
 import { PrimerosPasos } from './inventario/PrimerosPasos';
 import { AsignarEsenciasModal } from './inventario/AsignarEsenciasModal';
+import { AvisoEsenciasSinPerfume } from './inventario/EmparejarEsenciasModal';
 import { MaterialModal } from './inventario/MaterialModal';
 import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
 import type { GuardedFetch, InventarioInsumo } from '../types';
@@ -179,6 +180,9 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
         onAsignarEsencias={() => setEsenciasAbierto(true)}
         onAgregarMaterial={() => setMaterial({ abierto: true, dato: null })}
       />
+
+      {/* Se esconde solo cuando ya no queda ninguna esencia sin su perfume. */}
+      <AvisoEsenciasSinPerfume guardedFetch={guardedFetch} onGuardado={recargarPasos} />
 
       {error && (
         <p className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">

@@ -1,4 +1,5 @@
 import * as perfumeRepository from '../repositories/perfume.repository';
+import * as emparejar from '../repositories/emparejarEsencias.repository';
 import { CreatePerfumeDTO } from '../types/perfume.type';
 import { cacheClear, cacheGet, cacheSet } from '../utils/cache';
 
@@ -101,6 +102,16 @@ export const asignarEsenciaMasiva = async (perfumeIds: number[], insumoId: numbe
 };
 
 export const sugerirEsencias = () => perfumeRepository.sugerirEsencias();
+
+/** Puesta al día: qué esencias no tienen perfume y con cuál podrían emparejarse. */
+export const proponerEmparejamientos = () => emparejar.proponerEmparejamientos();
+
+export const aplicarEmparejamientos = async (acciones: emparejar.AccionEmparejar[]) => {
+  const r = await emparejar.aplicarEmparejamientos(acciones);
+  // Se crean perfumes y se cambian enlaces: el catálogo cacheado quedaría viejo
+  if (r.enlazados || r.creados) bustCatalogoCache();
+  return r;
+};
 
 export const aplicarEnlacesEsencia = async (
   enlaces: { perfume_id: number; insumo_esencia_id: number }[],
