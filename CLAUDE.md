@@ -1665,11 +1665,20 @@ npm install                 # solo si hubo dependencias nuevas
 npm run build               # nginx sirve frontend/dist directamente
 ```
 
-**Estado del repositorio (2026-08-10, verificado con `git ls-remote`): TODO está subido a
-GitHub** (`origin/main` = `a64b7a0`). Lo que va atrasado es **el servidor**, que no tiene
-aplicadas las migraciones de abajo. No confundir una cosa con la otra.
+**Estado al 2026-08-10 — TODO AL DÍA, en los dos lados:**
+- **GitHub**: verificado con `git ls-remote` (`origin/main` = `a64b7a0`). No hay trabajo
+  local sin respaldar.
+- **Servidor**: el dueño confirmó que ya está desplegado y con las migraciones aplicadas.
+  (Es dato suyo, que es quien tiene el SSH; desde desarrollo no se puede comprobar.)
 
-Migraciones pendientes de aplicar en producción al escribir esto:
+Para despejar dudas sobre qué hay aplicado de verdad: `npx prisma migrate status` en el
+servidor. Vale la pena por el **histórico de `db push`** de este proyecto — puede pasar que
+el esquema esté bien pero `_prisma_migrations` no lo refleje, y entonces un `migrate deploy`
+falla por historial aunque no falte nada.
+
+La lista de abajo es el **historial ordenado** de migraciones y el orden exacto en que se
+aplicaron (probado sobre una copia real de producción sin perder una fila). Se conserva
+porque es la referencia si alguna vez hay que reconstruir una base desde cero:
 - `anuncios.max_descuento` + `anuncios.max_canjes`
 - `creditos.venta_id` (+ FK única a ventas)
 - `ventas.presentacion` VARCHAR(20)→VARCHAR(100) (los Excel reales traen textos
@@ -1788,9 +1797,11 @@ aplicaron las 8 migraciones. Ojo: el export de TablePlus venía **cortado** a mi
 A la venta 1267 (Esteban Madera) se le completaron `pagada=1` y `user_id=NULL` a mano —
 si el dueño dice otra cosa, corregirla.
 
-**NADA de esto está en producción todavía.** El deploy pendiente incluye el arreglo de
-Prisma (`@prisma/client`), las 8 migraciones y todo el módulo de inventario. Antes de
-subir: respaldo por SSH y verificar que el archivo pese cientos de KB, no 20 bytes.
+~~**NADA de esto está en producción todavía.**~~ **DESACTUALIZADO**: al 2026-08-10 el dueño
+confirmó que el servidor ya está al día (arreglo de Prisma, migraciones y módulo de
+inventario incluidos). Se conserva la nota porque explica el orden en que se hizo. Regla que
+sigue viva: antes de tocar producción, respaldo por SSH y **verificar que el archivo pese
+cientos de KB, no 20 bytes**.
 
 **Hecho en UX (sesión 2026-08-01), después de que el dueño lo reclamara:**
 - **Inventario**: faltaba el botón para registrar que LLEGÓ material — solo había salida y

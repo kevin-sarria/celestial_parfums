@@ -142,23 +142,25 @@ frontend/src/
 **Todo está subido a GitHub** (`origin/main`, repo `kevin-sarria/celestial_parfums`).
 Verificado con `git ls-remote`. No hay trabajo local sin respaldar.
 
-### ⚠️ Lo más importante del traspaso: PRODUCCIÓN VA ATRASADA
+### Producción
 
-El código está en GitHub pero **el servidor no tiene aplicadas las migraciones**. Hay una
-lista larga y ordenada en `CLAUDE.md` → sección *Deploy (runbook)* → "Migraciones pendientes
-de aplicar en producción". Incluye entre otras:
+**El dueño confirmó el 2026-08-10 que el servidor ya está al día**: las migraciones están
+aplicadas y el despliegue hecho. (Dato del dueño, que es quien tiene el acceso SSH; desde el
+entorno de desarrollo no se puede comprobar.)
 
+Todas esas migraciones se probaron antes **en orden sobre una copia real de producción, sin
+perder una sola fila**. Ese sigue siendo el orden correcto si alguna vez hay que rehacerlo.
+
+Para quitar cualquier duda sobre qué hay aplicado de verdad, en el servidor:
+
+```bash
+cd /var/www/celestial-parfums/backend && npx prisma migrate status
 ```
-20260801140000_tallas_en_ml            20260809120000_perfume_publicado
-20260801150000_lineas_de_venta         20260809140000_gama_esencia
-20260801160000_consumo_por_venta       20260809160000_gamas_tabla
-20260801170000_tipos_de_producto       20260810120000_genero_esencia
-20260801180000_envase_por_perfume_talla 20260810140000_minimos_por_gama
-20260801190000_rellenar_talla_historica 20260805120000_iva_por_proveedor
-```
 
-**Se aplicaron todas EN ORDEN sobre una copia real de producción y no se perdió ni una
-fila.** Ese es el orden exacto del deploy.
+Vale la pena mirarlo al menos una vez: este proyecto tiene **histórico de `db push`**, así
+que puede darse el caso de que el esquema esté correcto pero la tabla `_prisma_migrations`
+no lo refleje. Saberlo evita que el siguiente `migrate deploy` falle por historial y que
+alguien crea que falta algo cuando no falta.
 
 **Antes de tocar producción: respaldo por SSH y verificar que el archivo pese MB, no bytes.**
 (Hubo un bug grave en el que el respaldo bajaba vacío y parecía válido; está documentado.)
@@ -264,9 +266,9 @@ En orden de valor para el negocio:
 
 1. **Enlazar los 25 perfumes sin esencia** (con el dueño al lado para los 4 ambiguos). Es
    plata que se está perdiendo hoy en cada venta.
-2. **Aplicar las migraciones en producción**, con respaldo previo verificado.
-3. **Decidir con el dueño los precios premium al mayoreo** (hoy se vende a pérdida).
-4. Configurar los mínimos por gama para que el *Pedido sugerido* empiece a servir.
+2. **Decidir con el dueño los precios premium al mayoreo** (hoy se vende a pérdida).
+3. Configurar los mínimos por gama para que el *Pedido sugerido* empiece a servir.
+4. Llenar el género de las esencias en bloque desde el Excel (*Lista de materiales*).
 
 **Antes de escribir una línea de código, lee `CLAUDE.md` completo.** Está escrito para que
 alguien que llega hoy entienda no solo qué hace el sistema, sino por qué está hecho así y
