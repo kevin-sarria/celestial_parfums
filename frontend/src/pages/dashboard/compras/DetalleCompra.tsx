@@ -47,9 +47,15 @@ interface NuevoInsumo {
   unidad: 'ml' | 'unidad';
   /** Gama de la esencia. Con gama elegida, el insumo ES una esencia. */
   gama_id: number | null;
+  /** Para quién es la fragancia. '' = todavía no se dice. */
+  genero: '' | 'dama' | 'caballero' | 'unisex';
   /** Crear además su producto del catálogo, ya enlazado a esta esencia. */
   crear_perfume: boolean;
 }
+
+const GENERO_TEXTO: Record<string, string> = {
+  dama: 'Dama', caballero: 'Caballero', unisex: 'Unisex',
+};
 
 interface Gama { id: number; nombre: string }
 
@@ -132,7 +138,10 @@ export default function DetalleCompra({
     // Llega una esencia o un envase que nunca habías comprado: se crea aquí
     // mismo. Mandarlo a otra pestaña a mitad de una factura es perder el hilo.
     if (id === 'nuevo') {
-      setNuevo({ nombre: '', tipo: 'materia_prima', unidad: 'ml', gama_id: null, crear_perfume: true });
+      setNuevo({
+        nombre: '', tipo: 'materia_prima', unidad: 'ml',
+        gama_id: null, genero: '', crear_perfume: true,
+      });
       void cargarGamas();
       return;
     }
@@ -160,6 +169,7 @@ export default function DetalleCompra({
           // El sufijo "– Esencia" solo se agrega cuando de verdad lo es
           nombre: esEsencia ? nombres.insumo : nuevo.nombre.trim(),
           gama_id: esEsencia ? nuevo.gama_id : null,
+          genero: esEsencia && nuevo.genero ? nuevo.genero : null,
           crear_perfume: conPerfume,
           ...(conPerfume ? { perfume_nombre: nombres.fragancia } : {}),
           alcance: 'unidad',
@@ -270,6 +280,19 @@ export default function DetalleCompra({
                 />
               </Field>
             )}
+            {/* Solo 3 opciones fijas: aquí el buscador estorbaría más de lo que
+                ayuda (la regla del proyecto lo reserva para listas que crecen). */}
+            {esEsencia && (
+              <Field label="¿Para quién es?" className="w-40">
+                <NativeSelect value={nuevo.genero}
+                  onChange={(e) => setNuevo({ ...nuevo, genero: e.target.value as NuevoInsumo['genero'] })}>
+                  <option value="">Todavía no sé</option>
+                  <option value="dama">Dama</option>
+                  <option value="caballero">Caballero</option>
+                  <option value="unisex">Unisex</option>
+                </NativeSelect>
+              </Field>
+            )}
           </FieldRow>
 
           {/* Con gama elegida es una esencia, y toda esencia tiene su perfume.
@@ -290,9 +313,10 @@ export default function DetalleCompra({
                     <strong className="font-medium text-foreground">{nombres.insumo}</strong>{' '}
                     como material de esta compra, y{' '}
                     <strong className="font-medium text-foreground">{nombres.fragancia}</strong>{' '}
-                    como producto — <strong className="font-medium text-primary">fuera de la
-                    tienda</strong>, con su esencia ya enlazada, para que le pongas precio y foto
-                    cuando quieras. Si ese perfume ya existe, se enlaza en vez de duplicarlo.
+                    {nuevo.genero && ` (${GENERO_TEXTO[nuevo.genero]})`} como producto —{' '}
+                    <strong className="font-medium text-primary">fuera de la tienda</strong>, con su
+                    esencia ya enlazada, para que le pongas precio y foto cuando quieras. Si ese
+                    perfume ya existe, se enlaza en vez de duplicarlo.
                   </span>
                 ) : (
                   <span className="mt-1 block text-muted-foreground">

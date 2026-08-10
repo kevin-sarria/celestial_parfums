@@ -613,6 +613,32 @@ del catálogo. **Sin migración**: usa columnas que ya existían.
   tienda (212) y visible para el admin (213), y los bytes del guion (`E28093`) y de la tilde
   (`C3A9`) correctos. Todo lo de prueba se borró.
 
+### Género de la esencia (`insumos_costo.genero`, 2026-08-09)
+
+Lo pidió el dueño con un caso concreto: *"pueden haber 2 perfumes llamados 212 VIP pero uno
+es de caballero y el otro de dama"*. Él ya lo resolvía escribiendo "Dama"/"Caballero" en el
+nombre de la esencia.
+
+- **Por qué no basta el nombre**: medido sobre los datos reales, de **216 esencias activas
+  solo 27 lo dicen** (21 dama, 6 caballero). Las otras 189 no dicen nada, porque la
+  convención solo se usa cuando hace falta desempatar. Un dato que está el 12% de las veces
+  no sirve para decidir; un campo propio sí. La migración lo **siembra desde el nombre** y
+  deja el resto en NULL — no se inventa lo que no se sabe.
+- **OJO, medido: el género NO resuelve las ambigüedades de hoy.** Se probó contra los 5
+  casos ambiguos del catálogo y resolvió **cero**, porque la confusión real es entre
+  VARIANTES de la misma línea, no entre géneros: *Eros* vs *Eros Flame* (los dos caballero),
+  *Toy 2* vs *Toy 2 Bubble Gum* (las dos dama), los dos *Valentino Donna*. Lo que sí las
+  resuelve es otra regla: **solo son candidatos los perfumes que aún no tienen esencia**
+  (*Eros Flame* ya tiene la suya, así que "Eros Caballero" es de *Eros*).
+- **Dónde sí gana su sitio**: (1) descarta candidatos del género equivocado — "360 Dama"
+  contra *360 Men* y *360 Red*, los dos caballero: la respuesta correcta es "ninguno, es
+  fragancia nueva", no elegir uno; (2) el perfume que nace de una compra sale **ya
+  clasificado** en vez de con el género vacío; (3) el día que existan de verdad
+  "212 VIP Dama" y "212 VIP Caballero", será el desempate.
+- El selector es un `NativeSelect` (3 opciones fijas + "Todavía no sé"), no `BuscadorSelect`:
+  la regla del proyecto reserva el buscador para listas que crecen.
+- Migración: `20260810120000_genero_esencia`.
+
 ### El PDF del catálogo se segmenta antes de generarlo (2026-08-09)
 
 `ExportarCatalogoModal.tsx` + `utils/catalogoFiltros.ts`. Antes salían los 212 con todo y
@@ -1592,6 +1618,10 @@ Migraciones pendientes de aplicar en producción al escribir esto:
   índice. Sacar un perfume del catálogo sin borrarlo. Al aplicarla no desaparece ninguno.
 - `20260809140000_gama_esencia`: `insumos_costo.gama` (ENUM nullable) + siembra por precio
   (61 clásicas, 151 árabes, 4 premium sobre los datos reales).
+- `20260809160000_gamas_tabla`: la gama pasa de ENUM a la tabla `gamas_esencia` (el dueño
+  puede agregar "nicho" sin migración) + `insumos_costo.gama_id` con FK ON DELETE SET NULL.
+- `20260810120000_genero_esencia`: `insumos_costo.genero` (ENUM nullable) + siembra desde el
+  nombre (21 dama, 6 caballero; las otras 189 quedan en NULL a propósito).
 
 **Verificado el 2026-08-01**: la base local se reemplazó por el dump real de producción y
 las 8 migraciones pendientes se aplicaron EN ORDEN sobre esos datos, sin perder una fila

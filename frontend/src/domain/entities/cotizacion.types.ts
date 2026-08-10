@@ -17,6 +17,8 @@ export interface Insumo {
   /** Gama de la esencia. Null en envases, accesorios y el resto de materias primas. */
   gama_id?: number | null;
   gama_nombre?: string | null;
+  /** Para quién es la fragancia de esta esencia. Null = todavía sin decir. */
+  genero?: 'dama' | 'caballero' | 'unisex' | null;
 }
 
 export interface EscalaPrecio {

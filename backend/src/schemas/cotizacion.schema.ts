@@ -26,6 +26,8 @@ export const insumoSchema = z.object({
    * en null. Se usa para costear cuando todavía no se sabe qué fragancia va.
    */
   gama_id: z.number().int().positive().nullish(),
+  /** Para quién es la fragancia de esta esencia. Solo aplica a esencias. */
+  genero: z.enum(['dama', 'caballero', 'unisex']).nullish(),
   /**
    * Crear también, de una vez, el producto del catálogo que se arma con esta
    * esencia. Solo tiene sentido en esencias: un frasco no es un perfume.

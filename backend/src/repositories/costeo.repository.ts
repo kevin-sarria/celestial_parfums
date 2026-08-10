@@ -24,6 +24,8 @@ const mapInsumo = (i: any) => ({
   /** Solo esencias; null en envases, accesorios y el resto de materias primas. */
   gama_id: i.gama_id ?? null,
   gama_nombre: i.gama?.nombre ?? null,
+  /** Para quién es la fragancia de esta esencia. Null = todavía sin decir. */
+  genero: i.genero ?? null,
 });
 
 /**
@@ -123,7 +125,9 @@ const sinSufijoEsencia = (s: string) =>
  * Si el perfume ya tenía una esencia asignada NO se le cambia: alguien la
  * eligió a mano y su decisión manda (mismo criterio que el enlazador masivo).
  */
-const enlazarOCrearPerfume = async (insumoId: number, nombre: string) => {
+const enlazarOCrearPerfume = async (
+  insumoId: number, nombre: string, genero: 'dama' | 'caballero' | 'unisex' | null,
+) => {
   const clave = normalizarNombre(nombre);
   const existentes = await prisma.perfume.findMany({
     select: { id: true, nombre: true, insumo_esencia_id: true },
@@ -150,6 +154,9 @@ const enlazarOCrearPerfume = async (insumoId: number, nombre: string) => {
       publicado: false,
       tipo_producto: 'fabricado',
       insumo_esencia_id: insumoId,
+      // Nace ya clasificado: es el dato que la esencia acaba de aportar y uno
+      // menos que completar después en la ficha.
+      genero,
     },
   });
   return { id: creado.id, nombre: creado.nombre, accion: 'creado' as const };
@@ -187,7 +194,7 @@ export const crearInsumo = async (data: InsumoInput) => {
 
   const nombrePerfume = (perfume_nombre ?? sinSufijoEsencia(insumo.nombre)).trim();
   const perfume = crear_perfume && nombrePerfume
-    ? await enlazarOCrearPerfume(insumo.id, nombrePerfume.slice(0, 150))
+    ? await enlazarOCrearPerfume(insumo.id, nombrePerfume.slice(0, 150), insumo.genero ?? null)
     : null;
 
   return { ...mapInsumo(insumo), perfume };

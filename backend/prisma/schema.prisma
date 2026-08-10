@@ -898,6 +898,13 @@ model InsumoCosto {
   /// lo demás: un frasco o el diluyente no tienen gama.
   gama_id    Int?
   gama       GamaEsencia? @relation(fields: [gama_id], references: [id], onDelete: SetNull)
+  /// Para quién es la fragancia que sale de esta esencia. Solo aplica a
+  /// esencias. Null = todavía no se ha dicho (la mayoría: el dueño solo lo
+  /// escribía en el nombre cuando necesitaba desempatar dos fragancias de la
+  /// misma línea, así que solo 27 de 216 lo traían). Sirve para que el perfume
+  /// que nace de una compra salga ya clasificado y para descartar candidatos
+  /// del género equivocado al emparejar esencias con perfumes.
+  genero     Genero?
   activo     Boolean      @default(true)
   created_at DateTime     @default(now())
   updated_at DateTime     @updatedAt
