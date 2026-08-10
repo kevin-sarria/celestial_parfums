@@ -20,6 +20,14 @@ interface Props {
   disabled?: boolean;
   /** Mensaje cuando no hay coincidencias. */
   vacio?: string;
+  /**
+   * Ids que CIERRAN el panel al elegirse, aunque esté en modo "agregar varios".
+   *
+   * Es para las opciones que no agregan nada a la lista sino que abren otra
+   * cosa —"+ Crear insumo nuevo" despliega un formulario justo debajo— y que
+   * con el panel abierto quedaría tapado por la propia lista.
+   */
+  cierranPanel?: (number | string)[];
 }
 
 /** Búsqueda sin tildes ni mayúsculas: "rose" encuentra "212 VIP Rosé". */
@@ -39,6 +47,7 @@ export default function BuscadorSelect({
   value,
   disabled,
   vacio = 'Sin coincidencias',
+  cierranPanel,
 }: Props) {
   const esSelector = value !== undefined;
   const [abierto, setAbierto] = useState(false);
@@ -78,7 +87,7 @@ export default function BuscadorSelect({
 
   const elegir = (id: number | string) => {
     onSelect(id);
-    if (esSelector) {
+    if (esSelector || cierranPanel?.some((c) => String(c) === String(id))) {
       setAbierto(false);
     } else {
       // Modo "agregar": sigue abierto para encadenar elecciones

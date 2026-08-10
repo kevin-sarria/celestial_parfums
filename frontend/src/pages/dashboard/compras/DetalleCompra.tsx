@@ -45,9 +45,35 @@ interface NuevoInsumo {
   nombre: string;
   tipo: 'materia_prima' | 'envase' | 'accesorio';
   unidad: 'ml' | 'unidad';
+  /** Gama de la esencia. Con gama elegida, el insumo ES una esencia. */
+  gama_id: number | null;
+  /** Crear además su producto del catálogo, ya enlazado a esta esencia. */
+  crear_perfume: boolean;
 }
 
+interface Gama { id: number; nombre: string }
+
 const esPdf = (url: string) => url.toLowerCase().endsWith('.pdf');
+
+/** "Eros Caballero – Esencia" → "Eros Caballero". */
+const sinSufijoEsencia = (s: string) =>
+  s.replace(/\s*[–—-]\s*esencias?\s*$/i, '').replace(/^\s*esencias?\s+(de\s+)?/i, '').trim();
+
+/**
+ * Cómo se llamará cada cosa. El dueño teclea el nombre de la FRAGANCIA una sola
+ * vez y de ahí salen los dos nombres: el material conserva el sufijo
+ * "– Esencia" con el que están guardadas las otras 213, y el producto del
+ * catálogo lleva el nombre limpio, que es el que ve el cliente.
+ */
+const nombresDe = (escrito: string) => {
+  const limpio = escrito.trim();
+  const fragancia = sinSufijoEsencia(limpio);
+  return {
+    fragancia,
+    // Si ya lo escribió con sufijo se respeta tal cual: no se le agrega dos veces
+    insumo: fragancia && fragancia !== limpio ? limpio : (fragancia ? `${fragancia} – Esencia` : ''),
+  };
+};
 
 /**
  * Detalle de una compra: qué insumos entraron, a qué precio y los soportes de
@@ -66,6 +92,7 @@ export default function DetalleCompra({
   // Mini-form para dar de alta un insumo sin salir de la factura
   const [nuevo, setNuevo] = useState<NuevoInsumo | null>(null);
   const [creando, setCreando] = useState(false);
+  const [gamas, setGamas] = useState<Gama[]>([]);
 
   const totalSinFlete = lineas.reduce((s, l) => s + (Number(l.subtotal) || 0), 0);
   /** Mismo prorrateo que hace el backend, para que veas el costo antes de guardar. */
@@ -90,25 +117,54 @@ export default function DetalleCompra({
     }]);
   };
 
+  /** Las gamas se piden al abrir el mini-form, no al montar: casi ninguna
+   *  compra da de alta material nuevo y sería una petición desperdiciada. */
+  const cargarGamas = async () => {
+    if (gamas.length) return;
+    try {
+      const res = await guardedFetch(`${BASE_URL}/api/costeo/gamas/todas`);
+      if (!res.ok) return;
+      setGamas((await res.json()).data ?? []);
+    } catch { /* sin gamas el alta sigue funcionando, solo sin clasificar */ }
+  };
+
   const agregar = (id: number | string) => {
     // Llega una esencia o un envase que nunca habías comprado: se crea aquí
     // mismo. Mandarlo a otra pestaña a mitad de una factura es perder el hilo.
-    if (id === 'nuevo') { setNuevo({ nombre: '', tipo: 'materia_prima', unidad: 'ml' }); return; }
+    if (id === 'nuevo') {
+      setNuevo({ nombre: '', tipo: 'materia_prima', unidad: 'ml', gama_id: null, crear_perfume: true });
+      void cargarGamas();
+      return;
+    }
     const insumo = insumos.find((i) => i.id === Number(id));
     if (insumo) agregarInsumo(insumo);
   };
 
+  /** Con gama elegida el material ES una esencia: solo entonces hay perfume. */
+  const esEsencia = !!nuevo && nuevo.tipo === 'materia_prima' && nuevo.gama_id !== null;
+  const nombres = nombresDe(nuevo?.nombre ?? '');
+  const conPerfume = esEsencia && !!nuevo?.crear_perfume && !!nombres.fragancia;
+
   /** Crea el insumo con precio 0: su costo lo fija ESTA compra al guardarse. */
   const crearInsumo = async () => {
     if (!nuevo) return;
-    const nombre = nuevo.nombre.trim();
-    if (!nombre) { toast.error('Ponle un nombre al insumo', { id: 'insumo-nuevo' }); return; }
+    if (!nombres.insumo) { toast.error('Ponle un nombre al insumo', { id: 'insumo-nuevo' }); return; }
     setCreando(true);
     try {
       const res = await guardedFetch(`${BASE_URL}/api/costeo/insumos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...nuevo, nombre, alcance: 'unidad', precio: 0 }),
+        body: JSON.stringify({
+          tipo: nuevo.tipo,
+          unidad: nuevo.unidad,
+          // El sufijo "– Esencia" solo se agrega cuando de verdad lo es
+          nombre: esEsencia ? nombres.insumo : nuevo.nombre.trim(),
+          gama_id: esEsencia ? nuevo.gama_id : null,
+          crear_perfume: conPerfume,
+          ...(conPerfume ? { perfume_nombre: nombres.fragancia } : {}),
+          alcance: 'unidad',
+          precio: 0,
+        }),
       });
       const json = await res.json().catch(() => null);
       if (!res.ok) { toast.error(json?.error ?? 'No se pudo crear el insumo', { id: 'insumo-nuevo' }); return; }
@@ -116,7 +172,9 @@ export default function DetalleCompra({
       onInsumoCreado(creado);
       agregarInsumo(creado);
       setNuevo(null);
-      toast.success(`"${creado.nombre}" quedó creado y agregado a la compra`);
+      // El mensaje lo redacta el servidor: es el único que sabe si el perfume se
+      // creó, se enlazó a uno que ya existía o se dejó como estaba.
+      toast.success(json?.message ?? `"${creado.nombre}" quedó creado y agregado a la compra`);
     } catch {
       toast.error('No se pudo conectar con el servidor', { id: 'insumo-nuevo' });
     } finally { setCreando(false); }
@@ -165,15 +223,18 @@ export default function DetalleCompra({
         placeholder="Agregar insumo a la compra…"
         onSelect={agregar}
         vacio="Sin insumos que coincidan"
+        // Sin esto la lista se queda abierta y tapa el formulario de alta que
+        // aparece justo debajo: se elige "crear nuevo" y no se ve nada.
+        cierranPanel={['nuevo']}
       />
 
       {nuevo && (
         <div className="rounded-lg border border-primary/40 bg-card p-3">
           <p className="mb-2.5 text-[13px] font-medium text-foreground">Insumo nuevo</p>
           <FieldRow>
-            <Field label="¿Cómo se llama?" className="min-w-52 flex-1">
+            <Field label={esEsencia ? '¿Qué fragancia llegó?' : '¿Cómo se llama?'} className="min-w-52 flex-1">
               <Input autoFocus value={nuevo.nombre} maxLength={120}
-                placeholder="Ej: Esencia Khamrah, Frasco luxury 30 ml"
+                placeholder={esEsencia ? 'Ej: Khamrah, Eros Caballero' : 'Ej: Diluyente, Frasco luxury 30 ml'}
                 onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} />
             </Field>
             <Field label="¿Qué es?" className="w-44">
@@ -191,7 +252,57 @@ export default function DetalleCompra({
                 <option value="unidad">Por unidad</option>
               </NativeSelect>
             </Field>
+            {/* La gama solo aplica a materia prima, y es lo que distingue una
+                ESENCIA del diluyente o el sellador: con gama elegida el sistema
+                ya sabe cuánto cuesta por ml esa calidad y puede cotizar al
+                mayoreo sin saber todavía qué fragancias van. */}
+            {nuevo.tipo === 'materia_prima' && (
+              <Field label="¿De qué gama es?" className="w-52">
+                <BuscadorSelect
+                  opciones={[
+                    { id: 0, nombre: 'No es una esencia (diluyente, sellador…)' },
+                    ...gamas.map((g) => ({ id: g.id as number | string, nombre: g.nombre })),
+                  ]}
+                  value={nuevo.gama_id ?? 0}
+                  placeholder="Elegir gama…"
+                  onSelect={(id) => setNuevo({ ...nuevo, gama_id: Number(id) || null })}
+                  vacio="Todavía no has creado gamas"
+                />
+              </Field>
+            )}
           </FieldRow>
+
+          {/* Con gama elegida es una esencia, y toda esencia tiene su perfume.
+              Crearlo aquí es lo que deja la cadena completa desde que llega el
+              material hasta que se descuenta al vender. */}
+          {esEsencia && (
+            <label className="mt-2.5 flex items-start gap-2 rounded-lg border border-border bg-secondary/50 p-2.5">
+              <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-primary"
+                checked={nuevo.crear_perfume}
+                onChange={(e) => setNuevo({ ...nuevo, crear_perfume: e.target.checked })} />
+              <span className="text-[12.5px] leading-snug">
+                <span className="font-medium text-foreground">
+                  Crear también el perfume en el catálogo
+                </span>
+                {conPerfume ? (
+                  <span className="mt-1 block text-muted-foreground">
+                    Se guardarán dos cosas:{' '}
+                    <strong className="font-medium text-foreground">{nombres.insumo}</strong>{' '}
+                    como material de esta compra, y{' '}
+                    <strong className="font-medium text-foreground">{nombres.fragancia}</strong>{' '}
+                    como producto — <strong className="font-medium text-primary">fuera de la
+                    tienda</strong>, con su esencia ya enlazada, para que le pongas precio y foto
+                    cuando quieras. Si ese perfume ya existe, se enlaza en vez de duplicarlo.
+                  </span>
+                ) : (
+                  <span className="mt-1 block text-muted-foreground">
+                    Escribe el nombre de la fragancia y te digo cómo va a quedar.
+                  </span>
+                )}
+              </span>
+            </label>
+          )}
+
           {/* No se pregunta el precio a propósito: sale del costo promedio que
               calcula esta misma compra. Teclearlo a mano sería inventárselo. */}
           <p className="mt-1.5 text-[12px] text-muted-foreground">

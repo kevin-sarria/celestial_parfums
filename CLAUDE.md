@@ -570,6 +570,56 @@ Son **DOS estados distintos y no hay que confundirlos** (el dueño lo separó é
 - Migración: `20260809120000_perfume_publicado` (**DEFAULT TRUE**: al aplicarla no
   desaparece ni un perfume; sacar uno es siempre manual).
 
+### La esencia y su perfume nacen juntos, en la compra (2026-08-09)
+
+Lo pidió el dueño: *"que quede todo enlazado desde donde entra la esencia en el primer
+contacto, que es cuando llega el pedido, hasta los descuentos que se le hacen con cada
+venta"*. El alta de insumo al vuelo de `DetalleCompra` ahora también deja listo el producto
+del catálogo. **Sin migración**: usa columnas que ya existían.
+
+- **Por qué en la compra y no en Inventario**: la llegada del material es el primer momento
+  en que el negocio sabe que esa fragancia existe. Enlazar ahí evita el trabajo que hoy
+  está sin hacer — y ese trabajo cuesta plata: un perfume sin esencia enlazada **no
+  descuenta nada al venderse y su costo entra en CERO**, así que la ganancia del mes sale
+  inflada.
+- **Un solo tecleo, dos nombres.** Se escribe el nombre de la FRAGANCIA y de ahí salen los
+  dos: el material conserva el sufijo `– Esencia` (guion U+2013, como las otras 213) y el
+  producto lleva el nombre limpio. `nombresDe()` en el front y `sinSufijoEsencia()` en el
+  back; si el dueño ya escribe el sufijo, no se agrega dos veces. El formulario **muestra
+  los dos nombres antes de guardar** — misma regla que la cuenta del IVA: ver el resultado
+  es lo que evita el error.
+- **La gama es lo que distingue una esencia** del diluyente o el sellador (los tres son
+  materia prima). Con gama elegida aparece la casilla del perfume; sin ella, no. El
+  selector es `BuscadorSelect`, no un `<select>`, porque las gamas son una tabla que crece.
+- **ENLAZAR ANTES DE CREAR, y no es un detalle.** Como las esencias se llaman igual que la
+  fragancia, crear a ciegas duplicaría en el catálogo perfumes que ya estaban. Medido sobre
+  los datos reales: de los **25 perfumes fabricados sin esencia**, **19 ya tienen su esencia
+  cargada con otro nombre** ("Eros by Versace" ↔ "Eros Caballero – Esencia"), así que un
+  importador ingenuo habría metido 19 duplicados. `enlazarOCrearPerfume` compara nombres
+  normalizados y responde `creado` | `enlazado` | `ya_tenia`; **si el perfume ya tenía
+  esencia NO se le cambia** (mismo criterio que el enlazador masivo: la decisión manual
+  manda). El mensaje del toast lo redacta el SERVIDOR, que es el único que sabe cuál de los
+  tres casos ocurrió.
+- **El perfume nace `publicado = false`**: es una ficha sin precio, sin foto y sin
+  categoría. Aquí es donde el interruptor de despublicar gana su segundo uso.
+- **Un insumo repetido ahora se RECHAZA** (`crearInsumo`), comparando sin tildes ni
+  mayúsculas. Un material duplicado parte el stock en dos registros y ninguno dice cuánto
+  hay; además el costo promedio se calcularía sobre la mitad de las compras. El mensaje
+  manda a buscarlo en la lista, y distingue el caso "existe pero está apagado".
+- El router llama `bustCatalogoCache()` **solo si hubo perfume**: sin eso el borrador
+  tardaría hasta 5 minutos en aparecer en el dashboard.
+- Verificado de punta a punta contra la base real: los tres casos del enlace, el envase que
+  NO crea perfume, el duplicado rechazado sin borrar lo escrito, el borrador invisible en la
+  tienda (212) y visible para el admin (213), y los bytes del guion (`E28093`) y de la tilde
+  (`C3A9`) correctos. Todo lo de prueba se borró.
+
+**`BuscadorSelect` suma `cierranPanel`** (opcional, apagado por defecto): ids que cierran el
+panel aunque esté en modo "agregar varios". Nació de un defecto real que se vio en la
+captura: al elegir "+ Crear insumo nuevo" la lista **se quedaba abierta y tapaba el
+formulario** que acababa de aparecer debajo. El modo "agregar" mantiene el panel abierto a
+propósito para encadenar elecciones, pero una opción que ABRE otra cosa no es una elección
+más.
+
 ### Inventario y costo promedio (base del futuro POS) — EN CONSTRUCCIÓN
 - **El precio de un insumo ya NO se teclea**: es el **costo promedio ponderado** que sale
   de las compras. `insumos_costo.precio` y `.stock` son una PROYECCIÓN del libro

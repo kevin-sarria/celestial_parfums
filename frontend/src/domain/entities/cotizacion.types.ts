@@ -14,6 +14,9 @@ export interface Insumo {
   /** Costo por ml (materias primas) o por pieza (envases/accesorios). */
   precio: number;
   activo: boolean;
+  /** Gama de la esencia. Null en envases, accesorios y el resto de materias primas. */
+  gama_id?: number | null;
+  gama_nombre?: string | null;
 }
 
 export interface EscalaPrecio {

@@ -104,11 +104,103 @@ export const eliminarGama = async (id: number) => {
   return { desclasificadas: usadas };
 };
 
-export const crearInsumo = (data: InsumoInput) =>
-  prisma.insumoCosto.create({ data: { ...data, activo: data.activo ?? true } }).then(mapInsumo);
+/** Para comparar nombres sin que una tilde o un espacio de más creen un duplicado. */
+const normalizarNombre = (s: string) =>
+  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
-export const actualizarInsumo = (id: number, data: InsumoInput) =>
-  prisma.insumoCosto.update({ where: { id }, data }).then(mapInsumo);
+/** "Eros Caballero – Esencia" → "Eros Caballero". */
+const sinSufijoEsencia = (s: string) =>
+  s.replace(/\s*[–—-]\s*esencias?\s*$/i, '').replace(/^\s*esencias?\s+(de\s+)?/i, '').trim();
+
+/**
+ * Deja el perfume de esta esencia listo en el catálogo: lo enlaza si ya existe
+ * o lo crea como borrador si no.
+ *
+ * **Enlazar antes de crear no es un detalle.** Las esencias se llaman igual que
+ * la fragancia, así que crear a ciegas duplicaría en el catálogo un perfume que
+ * ya estaba — un daño que después toca limpiar a mano, fila por fila.
+ *
+ * Si el perfume ya tenía una esencia asignada NO se le cambia: alguien la
+ * eligió a mano y su decisión manda (mismo criterio que el enlazador masivo).
+ */
+const enlazarOCrearPerfume = async (insumoId: number, nombre: string) => {
+  const clave = normalizarNombre(nombre);
+  const existentes = await prisma.perfume.findMany({
+    select: { id: true, nombre: true, insumo_esencia_id: true },
+  });
+  const yaEsta = existentes.find((p) => normalizarNombre(p.nombre) === clave);
+
+  if (yaEsta) {
+    if (yaEsta.insumo_esencia_id) {
+      return { id: yaEsta.id, nombre: yaEsta.nombre, accion: 'ya_tenia' as const };
+    }
+    await prisma.perfume.update({
+      where: { id: yaEsta.id }, data: { insumo_esencia_id: insumoId },
+    });
+    return { id: yaEsta.id, nombre: yaEsta.nombre, accion: 'enlazado' as const };
+  }
+
+  const creado = await prisma.perfume.create({
+    data: {
+      nombre,
+      // Sin precio, sin foto y sin categoría: es una ficha a medio llenar. Por
+      // eso nace FUERA de la tienda — publicarla así se vería peor que no
+      // tenerla. El dueño la completa y la publica cuando quiera.
+      precio: 0,
+      publicado: false,
+      tipo_producto: 'fabricado',
+      insumo_esencia_id: insumoId,
+    },
+  });
+  return { id: creado.id, nombre: creado.nombre, accion: 'creado' as const };
+};
+
+/**
+ * Alta de un insumo. Con `crear_perfume` deja además listo su producto del
+ * catálogo, ya enlazado a esta esencia.
+ *
+ * Un perfume sin esencia enlazada **no descuenta nada del inventario al
+ * venderse y su costo entra en cero**, así que la ganancia del mes sale
+ * inflada. Hacer el enlace aquí —en el primer contacto con el material— es lo
+ * que evita que eso vuelva a pasar.
+ */
+export const crearInsumo = async (data: InsumoInput) => {
+  const { crear_perfume, perfume_nombre, ...campos } = data;
+
+  // Un material repetido parte el stock en dos registros y ninguno de los dos
+  // dice cuánto hay de verdad; además el costo promedio se calcula sobre la
+  // mitad de las compras. Se compara SIN tildes ni mayúsculas porque
+  // "esencia clasica" y "Esencia Clásica" son el mismo frasco.
+  const clave = normalizarNombre(campos.nombre);
+  const todos = await prisma.insumoCosto.findMany({ select: { id: true, nombre: true, activo: true } });
+  const repetido = todos.find((i) => normalizarNombre(i.nombre) === clave);
+  if (repetido) {
+    throw badRequest(repetido.activo
+      ? `Ya tienes "${repetido.nombre}". Búscalo en la lista y agrégalo a la compra en vez de crearlo otra vez.`
+      : `"${repetido.nombre}" ya existe pero está apagado. Enciéndelo en Inventario para poder comprarlo.`);
+  }
+
+  const insumo = await prisma.insumoCosto.create({
+    data: { ...campos, activo: campos.activo ?? true },
+    include: { gama: true },
+  });
+
+  const nombrePerfume = (perfume_nombre ?? sinSufijoEsencia(insumo.nombre)).trim();
+  const perfume = crear_perfume && nombrePerfume
+    ? await enlazarOCrearPerfume(insumo.id, nombrePerfume.slice(0, 150))
+    : null;
+
+  return { ...mapInsumo(insumo), perfume };
+};
+
+export const actualizarInsumo = (id: number, data: InsumoInput) => {
+  // `crear_perfume`/`perfume_nombre` son del alta, no columnas: pasárselos a
+  // Prisma reventaría con "Unknown argument".
+  const { crear_perfume: _c, perfume_nombre: _p, ...campos } = data;
+  return prisma.insumoCosto.update({
+    where: { id }, data: campos, include: { gama: true },
+  }).then(mapInsumo);
+};
 
 /**
  * Borra un insumo, pero SOLO si no dejó rastro.

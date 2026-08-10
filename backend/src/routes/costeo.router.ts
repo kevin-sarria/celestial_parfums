@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as repo from '../repositories/costeo.repository';
+import { bustCatalogoCache } from '../services/perfume.service';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
@@ -47,8 +48,25 @@ costeoRouter.delete('/gamas/:id', h(async (req, res) => {
     : 'Gama eliminada' });
 }));
 
+/**
+ * Alta de un insumo. Con `crear_perfume` deja además su producto en el catálogo
+ * (creado como borrador fuera de la tienda, o enlazado si ya existía).
+ */
 costeoRouter.post('/insumos', validate(insumoSchema), h(async (req, res) => {
-  res.status(201).json({ message: 'Insumo creado', data: await repo.crearInsumo(req.body) });
+  const data = await repo.crearInsumo(req.body);
+  // El catálogo se sirve de caché: sin esto el perfume nuevo tardaría hasta 5
+  // minutos en aparecer en el dashboard.
+  if (data.perfume) bustCatalogoCache();
+
+  const p = data.perfume;
+  const message = !p ? 'Insumo creado'
+    : p.accion === 'creado'
+      ? `Insumo creado. "${p.nombre}" quedó en el catálogo, fuera de la tienda, para que lo completes.`
+      : p.accion === 'enlazado'
+        ? `Insumo creado y enlazado a "${p.nombre}", que ya estaba en el catálogo.`
+        : `Insumo creado. "${p.nombre}" ya existía y ya tenía su esencia: no se le cambió.`;
+
+  res.status(201).json({ message, data });
 }));
 
 costeoRouter.patch('/insumos/:id', validate(insumoSchema), h(async (req, res) => {

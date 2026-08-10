@@ -26,6 +26,18 @@ export const insumoSchema = z.object({
    * en null. Se usa para costear cuando todavía no se sabe qué fragancia va.
    */
   gama_id: z.number().int().positive().nullish(),
+  /**
+   * Crear también, de una vez, el producto del catálogo que se arma con esta
+   * esencia. Solo tiene sentido en esencias: un frasco no es un perfume.
+   *
+   * Nace del momento REAL en que el negocio se entera de que existe una
+   * fragancia nueva: cuando llega en una compra. Enlazar ahí la esencia con su
+   * perfume deja lista toda la cadena —esencia → perfume → receta → descuento
+   * al vender— sin depender de que alguien se acuerde de hacerlo después.
+   */
+  crear_perfume: z.boolean().optional(),
+  /** Nombre de la fragancia, sin el "– Esencia". Es el que verá el cliente. */
+  perfume_nombre: z.string().max(150).optional(),
 });
 
 /** Accesorios que un tamaño incluye por defecto. */
