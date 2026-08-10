@@ -613,6 +613,52 @@ del catálogo. **Sin migración**: usa columnas que ya existían.
   tienda (212) y visible para el admin (213), y los bytes del guion (`E28093`) y de la tilde
   (`C3A9`) correctos. Todo lo de prueba se borró.
 
+### El PDF del catálogo se segmenta antes de generarlo (2026-08-09)
+
+`ExportarCatalogoModal.tsx` + `utils/catalogoFiltros.ts`. Antes salían los 212 con todo y
+sin opción; ahora se elige QUÉ va y QUÉ información lleva. **Sin migración.**
+
+- **La gama del perfume NO es una columna suya: se HEREDA de su esencia**
+  (`mapPerfume` → `gama`, `gama_id`, `insumo_esencia_stock`). Deducirla es mejor que
+  guardarla: reclasificar una esencia mueve sus perfumes solos, mientras que una copia
+  guardada quedaría mintiendo (mismo criterio que los sellos y el cupo). Reparto real:
+  **Árabe 137, Clásica 46, Premium 4, sin esencia 25**.
+- **"Los árabes" NO es la categoría**: los 212 perfumes están en "Contratipo" y las otras
+  dos categorías están vacías. La única separación posible es por gama. Verificado antes de
+  construir; asumir la categoría habría dado un filtro que no filtra nada.
+- **Qué significa cada gama** (dicho por el dueño): es puramente la CALIDAD y el precio de
+  la esencia, no el tipo de perfume. *Clásicas* = imitan a las de diseñador, tan conocidas
+  que salen baratas. *Árabes* = las de tendencia, precio intermedio. *Premium* = lo mejor
+  del laboratorio, esencia casi pura — y puede imitar a una árabe, una de diseñador o una
+  de nicho. Por eso **la gama NO se imprime junto a cada producto**: verla al lado de la
+  fragancia le dice al cliente cuál es "la barata". Cuando el catálogo va agrupado se dice
+  UNA vez, como título de sección.
+- **Nunca dejar caer perfumes en silencio**: el modal dice cuántos entran Y cuántos quedan
+  fuera con su motivo ("se quedan afuera 25 porque no tienen esencia asignada"). Es la
+  lección del PDF que salía con 100 de 212 sin que nadie lo notara. Los 25 sin esencia
+  tienen **casilla propia con su número**: si solo hubiera filtro por gama, desaparecerían.
+- **"Solo los que puedo armar hoy"** se mide contra la talla MÁS PEQUEÑA de ESE perfume
+  (`esenciaParaUno`): con 3 ml de esencia no sale un frasco de 30 ml, que necesita 15. El
+  corte "stock > 0" prometería lo que no se puede hacer. Los `comprado`/`fraccionado` no se
+  juzgan con esta regla. Medido: de los 137 árabes, **7 no alcanzan ni para uno**.
+- **El filtrado vive en `catalogoFiltros.ts`, en funciones PURAS**, y lo usan el contador en
+  vivo del modal y el generador. Si cada uno filtrara por su cuenta, el número prometido
+  ("vas a exportar 137") y el documento se separarían.
+- `generarCatalogoPdf` ya **no consulta nada**: recibe la lista ya elegida. Además solo baja
+  las fotos si van impresas — con 40 en vez de 212 la espera pasa de minutos a segundos.
+- Sin precio se imprime un texto configurable (**"Precios por WhatsApp"**): dejar el hueco
+  vacío hace ver la fila incompleta, y así el espacio invita a escribir. Verificado: en ese
+  modo **no se escapa ni una cifra** al documento.
+- La portada DICE el segmento ("Premium, Clásica") y el archivo también
+  (`catalogo-...-premium-clasica-2026-08-09.pdf`). Sin eso, mandar una parte con un
+  documento titulado "Catálogo" le hace creer al cliente que eso es todo lo que se vende.
+- **GOTCHA de fecha, otra vez**: `toISOString()` da la fecha **UTC**, así que pasadas las
+  7 p.m. en Colombia el archivo salía fechado un día después que la portada (que usa la
+  hora local). `hoyLocal()` arma la fecha con `getFullYear/getMonth/getDate`. Tercera vez
+  que este error aparece en el proyecto — **nunca usar `toISOString()` para una fecha de
+  calendario**.
+- La última selección se recuerda en `localStorage`: mandar "el de árabes" cada mes es un clic.
+
 **`BuscadorSelect` suma `cierranPanel`** (opcional, apagado por defecto): ids que cierran el
 panel aunque esté en modo "agregar varios". Nació de un defecto real que se vio en la
 captura: al elegir "+ Crear insumo nuevo" la lista **se quedaba abierta y tapaba el

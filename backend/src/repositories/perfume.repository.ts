@@ -8,15 +8,12 @@ import { resumenRatings } from './resena.repository';
 import { badRequest } from '../utils/httpError';
 import { buildPerfumeIndex, matchPerfume } from '../utils/perfumeMatcher';
 
-type PerfumeRow = Prisma.PerfumeGetPayload<{
-  include: {
-    categoria:      { include: { precios: true } };
-    tipos_aroma:    { include: { tipo_aroma: true } };
-    ocasiones:      { include: { ocasion: true } };
-    presentaciones: { include: { presentacion: true } };
-    insumo_esencia: true;
-  };
-}>;
+/**
+ * Se deriva de `perfumeInclude` en vez de repetirlo: eran dos listas que había
+ * que mantener iguales a mano, y al agregarle la gama a una se rompió la otra.
+ * (Los tipos se elevan, así que no importa que `perfumeInclude` esté más abajo.)
+ */
+type PerfumeRow = Prisma.PerfumeGetPayload<{ include: typeof perfumeInclude }>;
 
 // Un perfume cuenta como "nuevo lanzamiento" durante sus primeros 30 días en el catálogo.
 const NUEVO_DIAS = 7;
@@ -84,6 +81,20 @@ export const mapPerfume = (p: PerfumeRow) => {
     insumo_esencia_nombre: p.insumo_esencia?.nombre ?? null,
     /// Costo real por ml de SU esencia (cada fragancia tiene la suya).
     insumo_esencia_precio: p.insumo_esencia ? Number(p.insumo_esencia.precio) : null,
+    /**
+     * Gama del perfume: NO es una columna suya, se HEREDA de su esencia.
+     *
+     * Deducirla es mejor que guardarla — el día que una esencia se reclasifique
+     * de árabe a premium, sus perfumes se mueven solos; una copia guardada
+     * quedaría mintiendo (mismo criterio que los sellos y el cupo). Null = el
+     * perfume todavía no tiene esencia asignada, y entonces NO se puede
+     * segmentar por gama: quien filtre tiene que contarlos aparte, no
+     * dejarlos caer en silencio.
+     */
+    gama:    p.insumo_esencia?.gama?.nombre ?? null,
+    gama_id: p.insumo_esencia?.gama_id ?? null,
+    /// Existencias de SU esencia, para saber si hoy se puede armar uno.
+    insumo_esencia_stock: p.insumo_esencia ? Number(p.insumo_esencia.stock) : null,
     agotado:      p.agotado,
     publicado:    p.publicado ?? true,
     es_nuevo:     esNuevo(p.created_at),
@@ -102,7 +113,8 @@ export const perfumeInclude = {
   ocasiones:      { include: { ocasion: true } },
   presentaciones: { include: { presentacion: true } },
   // Esencia concreta del perfume: su costo real por ml (cada fragancia la suya)
-  insumo_esencia: true,
+  // y su GAMA, que es de donde el perfume hereda si es árabe, clásico o premium.
+  insumo_esencia: { include: { gama: true } },
 } as const;
 
 /** Rellena el promedio/total de reseñas aprobadas de una lista ya mapeada. */

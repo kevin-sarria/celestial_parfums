@@ -4,6 +4,7 @@ import { GENERO_LABELS } from '../domain/entities/perfume.schema';
 import { aromaColor } from '../domain/entities/aroma.colors';
 import { finalPrice } from '@/lib/format';
 import { BASE_URL } from '../infrastructure/api/client';
+import { nombreArchivo, type OpcionesCatalogo } from './catalogoFiltros';
 
 /**
  * Catálogo de perfumes en PDF, generado en el navegador para compartir por
@@ -132,7 +133,7 @@ const piePagina = (doc: jsPDF, pagina: number) => {
   doc.text(String(pagina), PAGE_W - MARGIN, PAGE_H - 7, { align: 'right' });
 };
 
-const portada = (doc: jsPDF, totalPerfumes: number) => {
+const portada = (doc: jsPDF, totalPerfumes: number, descripcion: string) => {
   doc.setFillColor(...MARFIL);
   doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
   marcaDeAgua(doc);
@@ -147,10 +148,31 @@ const portada = (doc: jsPDF, totalPerfumes: number) => {
   doc.setFontSize(13);
   doc.setTextColor(...IRIS);
   doc.text('Catálogo de perfumes', PAGE_W / 2, 142, { align: 'center' });
+  // La portada DICE qué segmento es. Sin esto, mandar solo una parte con un
+  // documento titulado "Catálogo" le hace creer al cliente que eso es todo lo
+  // que se vende.
+  if (descripcion) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(...INK);
+    doc.text(descripcion, PAGE_W / 2, 151, { align: 'center' });
+  }
+  doc.setFont('helvetica', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...MUTED);
   const fecha = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric' });
-  doc.text(`${totalPerfumes} fragancias · ${fecha}`, PAGE_W / 2, 152, { align: 'center' });
+  doc.text(`${totalPerfumes} fragancias · ${fecha}`, PAGE_W / 2, descripcion ? 159 : 152, { align: 'center' });
+};
+
+/** Título de sección cuando el catálogo va agrupado por calidad de esencia. */
+const tituloGama = (doc: jsPDF, texto: string, y: number) => {
+  doc.setFont('times', 'italic');
+  doc.setFontSize(14);
+  doc.setTextColor(...IRIS);
+  doc.text(texto, MARGIN, y + 6);
+  doc.setDrawColor(...IRIS);
+  doc.setLineWidth(0.4);
+  doc.line(MARGIN, y + 8.5, PAGE_W - MARGIN, y + 8.5);
 };
 
 const chip = (doc: jsPDF, x: number, y: number, texto: string, bg: string, fg: string): number => {
@@ -164,19 +186,25 @@ const chip = (doc: jsPDF, x: number, y: number, texto: string, bg: string, fg: s
   return w;
 };
 
-const filaPerfume = (doc: jsPDF, p: Perfume, foto: string | null, y: number) => {
-  const xTexto = MARGIN + 30;
+const filaPerfume = (
+  doc: jsPDF, p: Perfume, foto: string | null, y: number, o: OpcionesCatalogo,
+) => {
+  // Sin foto el texto arranca pegado al margen: dejar el hueco reservado se
+  // vería como si faltara algo en cada fila.
+  const xTexto = o.foto ? MARGIN + 30 : MARGIN;
 
   doc.setDrawColor(232, 228, 220);
   doc.setLineWidth(0.2);
   doc.line(MARGIN, y + ROW_H - 3, PAGE_W - MARGIN, y + ROW_H - 3);
 
-  // Foto sobre recuadro blanco
-  doc.setFillColor(255, 255, 255);
-  doc.setDrawColor(235, 231, 224);
-  doc.roundedRect(MARGIN, y, 25, ROW_H - 6, 2, 2, 'FD');
-  if (foto) {
-    try { doc.addImage(foto, 'JPEG', MARGIN + 1.5, y + 1.5, 22, ROW_H - 9); } catch { /* sin foto */ }
+  if (o.foto) {
+    // Foto sobre recuadro blanco
+    doc.setFillColor(255, 255, 255);
+    doc.setDrawColor(235, 231, 224);
+    doc.roundedRect(MARGIN, y, 25, ROW_H - 6, 2, 2, 'FD');
+    if (foto) {
+      try { doc.addImage(foto, 'JPEG', MARGIN + 1.5, y + 1.5, 22, ROW_H - 9); } catch { /* sin foto */ }
+    }
   }
 
   // Nombre + categoría + género
@@ -191,27 +219,33 @@ const filaPerfume = (doc: jsPDF, p: Perfume, foto: string | null, y: number) => 
   doc.setTextColor(...MUTED);
   const meta = [
     p.categoria,
+    // Ojo: la GAMA no se imprime junto al producto a propósito. Dice la calidad
+    // (y por tanto el precio) de su esencia, así que verla al lado de cada
+    // fragancia invita al cliente a preguntar por qué esta es "la barata".
+    // Cuando el catálogo va agrupado, se dice UNA vez como título de sección.
     // Sin el símbolo: Helvetica (la fuente nativa del PDF) no tiene ♀ ♂ ⚥ y
     // los imprimía como basura ("&Bp Caballero", "&@b Dama") en el catálogo que
     // ve el cliente. La palabra sola dice lo mismo. Mismo problema que el guion
     // tipográfico. En la WEB sí se usan los símbolos: ahí la fuente los tiene.
-    p.genero ? GENERO_LABELS[p.genero].replace(/^\S+\s*/, '') : null,
-    p.duracion ? `Duración ${p.duracion}` : null,
+    o.genero && p.genero ? GENERO_LABELS[p.genero].replace(/^\S+\s*/, '') : null,
+    o.duracion && p.duracion ? `Duración ${p.duracion}` : null,
   ].filter(Boolean).join('  ·  ');
   if (meta) doc.text(meta, xTexto, y + 10.5);
 
   // Notas con su color
-  let x = xTexto;
-  const yChips = y + 16.5;
-  for (const a of p.tipos_aroma.slice(0, 6)) {
-    const c = aromaColor(a);
-    const w = chip(doc, x, yChips, a, c.bg, c.fg);
-    x += w + 1.6;
-    if (x > PAGE_W - MARGIN - 40) break;
+  if (o.notas) {
+    let x = xTexto;
+    const yChips = y + 16.5;
+    for (const a of p.tipos_aroma.slice(0, 6)) {
+      const c = aromaColor(a);
+      const w = chip(doc, x, yChips, a, c.bg, c.fg);
+      x += w + 1.6;
+      if (x > PAGE_W - MARGIN - 40) break;
+    }
   }
 
   // Ocasiones
-  if (p.ocasiones.length > 0) {
+  if (o.ocasiones && p.ocasiones.length > 0) {
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(7.5);
     doc.setTextColor(...MUTED);
@@ -221,6 +255,24 @@ const filaPerfume = (doc: jsPDF, p: Perfume, foto: string | null, y: number) => 
 
   // Precio a la derecha (con tachado si hay descuento). Con varias tallas a
   // distinto precio se anuncia el más barato como "desde".
+  if (!o.precio) {
+    // El hueco no se deja vacío: la fila se vería incompleta. El texto que va
+    // ahí convierte el espacio en una invitación a escribir.
+    if (o.textoSinPrecio) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(...IRIS);
+      doc.text(o.textoSinPrecio, PAGE_W - MARGIN, y + 7, { align: 'right' });
+    }
+    if (p.agotado) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(160, 60, 60);
+      doc.text('AGOTADO', PAGE_W - MARGIN, y + 13, { align: 'right' });
+    }
+    return;
+  }
+
   const precio = finalPrice(p.precio, p.descuento);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
@@ -249,8 +301,8 @@ const filaPerfume = (doc: jsPDF, p: Perfume, foto: string | null, y: number) => 
   }
 };
 
-export const generarCatalogoPdf = async (onProgress: (msg: string) => void): Promise<void> => {
-  onProgress('Cargando catálogo…');
+/** Trae TODO el catálogo publicado, ya listo para filtrar en el modal. */
+export const cargarCatalogo = async (): Promise<Perfume[]> => {
   /**
    * SIN `?page=`: el listado paginado **topa el límite en 100** aunque se pidan
    * 1000, así que el catálogo salía con 100 de los 212 perfumes y los otros 112
@@ -259,45 +311,90 @@ export const generarCatalogoPdf = async (onProgress: (msg: string) => void): Pro
    */
   const res = await fetch(`${BASE_URL}/api/parfums`);
   const json = await res.json();
-  const perfumes: Perfume[] = Array.isArray(json?.data) ? json.data : (json?.data?.data ?? []);
-  if (!perfumes.length) throw new Error('El catálogo está vacío');
+  return Array.isArray(json?.data) ? json.data : (json?.data?.data ?? []);
+};
 
-  // Fotos en tandas de 8 para no saturar el navegador
+const ALTO_TITULO = 13;
+
+/**
+ * Arma el PDF con los perfumes YA elegidos.
+ *
+ * No filtra ni consulta nada: recibe la lista que el modal seleccionó. Así el
+ * número que se le prometió al dueño ("vas a exportar 137") y el documento que
+ * sale no se pueden separar, y de paso solo se bajan las fotos de los que van
+ * — con 40 en vez de 212, la espera baja de minutos a segundos.
+ */
+export const generarCatalogoPdf = async (
+  perfumes: Perfume[],
+  o: OpcionesCatalogo,
+  descripcion: string,
+  onProgress: (msg: string) => void,
+): Promise<void> => {
+  if (!perfumes.length) throw new Error('No hay ningún perfume que cumpla lo que elegiste');
+
+  // Las fotos se piden solo si van a salir impresas
   const fotos = new Map<number, string | null>();
-  for (let i = 0; i < perfumes.length; i += 8) {
-    const tanda = perfumes.slice(i, i + 8);
-    onProgress(`Preparando fotos… ${Math.min(i + 8, perfumes.length)}/${perfumes.length}`);
-    const cargadas = await Promise.all(
-      tanda.map((p) => (p.imagen_url ? cargarImagen(p.imagen_url) : Promise.resolve(null))),
-    );
-    tanda.forEach((p, idx) => fotos.set(p.id, cargadas[idx]));
+  if (o.foto) {
+    for (let i = 0; i < perfumes.length; i += 8) {
+      const tanda = perfumes.slice(i, i + 8);
+      onProgress(`Preparando fotos… ${Math.min(i + 8, perfumes.length)}/${perfumes.length}`);
+      const cargadas = await Promise.all(
+        tanda.map((p) => (p.imagen_url ? cargarImagen(p.imagen_url) : Promise.resolve(null))),
+      );
+      tanda.forEach((p, idx) => fotos.set(p.id, cargadas[idx]));
+    }
   }
 
   onProgress('Armando PDF…');
   const doc = new jsPDF({ unit: 'mm', format: 'a4', compress: true });
-  portada(doc, perfumes.length);
+  portada(doc, perfumes.length, descripcion);
 
-  const porPagina = Math.floor((PAGE_H - MARGIN * 2 - 14) / ROW_H);
+  const yTope = MARGIN + 10;
+  const yLimite = PAGE_H - MARGIN - 6;
   let pagina = 1;
-  perfumes.forEach((p, i) => {
-    const enPagina = i % porPagina;
-    if (enPagina === 0) {
-      doc.addPage();
-      pagina++;
-      doc.setFillColor(...MARFIL);
-      doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
-      marcaDeAgua(doc);
-      doc.setFont('times', 'italic');
-      doc.setFontSize(13);
-      doc.setTextColor(...INK);
-      doc.text(MARCA, MARGIN, MARGIN);
-      doc.setDrawColor(...IRIS);
-      doc.setLineWidth(0.4);
-      doc.line(MARGIN, MARGIN + 2.5, MARGIN + 24, MARGIN + 2.5);
-      piePagina(doc, pagina);
-    }
-    filaPerfume(doc, p, fotos.get(p.id) ?? null, MARGIN + 10 + enPagina * ROW_H);
-  });
+  let y = yLimite; // fuerza la primera página de contenido
+  let gamaActual: string | null = null;
 
-  doc.save(`catalogo-celestial-parfums-${new Date().toISOString().slice(0, 10)}.pdf`);
+  const nuevaPagina = () => {
+    doc.addPage();
+    pagina++;
+    doc.setFillColor(...MARFIL);
+    doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
+    marcaDeAgua(doc);
+    doc.setFont('times', 'italic');
+    doc.setFontSize(13);
+    doc.setTextColor(...INK);
+    doc.text(MARCA, MARGIN, MARGIN);
+    doc.setDrawColor(...IRIS);
+    doc.setLineWidth(0.4);
+    doc.line(MARGIN, MARGIN + 2.5, MARGIN + 24, MARGIN + 2.5);
+    piePagina(doc, pagina);
+    y = yTope;
+  };
+
+  for (const p of perfumes) {
+    if (o.agruparPorGama) {
+      const gama = p.gama ?? 'Otros productos';
+      if (gama !== gamaActual) {
+        // El título no puede quedar solo al final de una página: si no cabe
+        // también la primera fila de su sección, empieza en la siguiente.
+        if (y + ALTO_TITULO + ROW_H > yLimite) nuevaPagina();
+        tituloGama(doc, gama, y);
+        y += ALTO_TITULO;
+        gamaActual = gama;
+      }
+    }
+    if (y + ROW_H > yLimite) {
+      nuevaPagina();
+      // Al cambiar de página se repite el título para no perder el contexto
+      if (o.agruparPorGama && gamaActual) {
+        tituloGama(doc, `${gamaActual} (cont.)`, y);
+        y += ALTO_TITULO;
+      }
+    }
+    filaPerfume(doc, p, fotos.get(p.id) ?? null, y, o);
+    y += ROW_H;
+  }
+
+  doc.save(nombreArchivo(descripcion));
 };

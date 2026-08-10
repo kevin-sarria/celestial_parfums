@@ -1,46 +1,35 @@
-import { useState } from 'react';
-import { FileDown, Loader2 } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
+import { FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '../application/context/useAuthContext';
 
+// El modal arrastra el motor de filtros; se carga al abrirlo, no antes.
+const ExportarCatalogoModal = lazy(() => import('./ExportarCatalogoModal'));
+
 /**
- * Descarga del catálogo en PDF — beneficio exclusivo para cuentas registradas.
- * El generador (jsPDF) se carga bajo demanda para no engordar el bundle.
+ * Descarga del catálogo en PDF (herramienta interna del admin).
+ *
+ * Ya no genera de una: abre el modal donde se elige QUÉ va — solo las árabes,
+ * solo dama, con precio o sin precio. Antes salían los 212 con todo y no había
+ * forma de mandarle a un cliente una parte del catálogo.
  */
 export default function DescargarCatalogoButton() {
   const { user } = useAuthContext();
-  const [progreso, setProgreso] = useState<string | null>(null);
-  const [error, setError] = useState('');
+  const [abierto, setAbierto] = useState(false);
 
   if (!user) return null;
 
-  const descargar = async () => {
-    if (progreso) return;
-    setError('');
-    setProgreso('Preparando…');
-    try {
-      const { generarCatalogoPdf } = await import('../utils/catalogoPdf');
-      await generarCatalogoPdf(setProgreso);
-    } catch {
-      setError('No se pudo generar el catálogo, intenta de nuevo');
-    } finally {
-      setProgreso(null);
-    }
-  };
-
   return (
-    <div className="flex flex-col items-end gap-1">
-      <Button
-        variant="outline"
-        size="sm"
-        className="rounded-full"
-        disabled={!!progreso}
-        onClick={descargar}
-      >
-        {progreso ? <Loader2 className="size-3.5 animate-spin" /> : <FileDown className="size-3.5" />}
-        {progreso ?? 'Descargar catálogo PDF'}
+    <>
+      <Button variant="outline" size="sm" className="rounded-full" onClick={() => setAbierto(true)}>
+        <FileDown className="size-3.5" />
+        Descargar catálogo PDF
       </Button>
-      {error && <span className="text-[11px] text-destructive">{error}</span>}
-    </div>
+      {abierto && (
+        <Suspense fallback={null}>
+          <ExportarCatalogoModal open onClose={() => setAbierto(false)} />
+        </Suspense>
+      )}
+    </>
   );
 }

@@ -50,6 +50,16 @@ export const perfumeSchema = z.object({
   insumo_esencia_id: z.number().nullable().default(null),
   insumo_esencia_nombre: z.string().nullable().default(null),
   insumo_esencia_precio: z.number().nullable().default(null),
+  /** Existencias de su esencia: con esto se sabe si hoy se puede armar uno. */
+  insumo_esencia_stock: z.number().nullable().default(null),
+  /**
+   * Gama HEREDADA de su esencia (árabe, clásica, premium…). No es una columna
+   * del perfume: sale de la esencia a la que está enlazado, así que
+   * reclasificar una esencia mueve sus perfumes solos. Null = todavía sin
+   * esencia asignada; ese perfume no se puede segmentar por gama.
+   */
+  gama: z.string().nullable().default(null),
+  gama_id: z.number().nullable().default(null),
   tipo_producto: z.enum(['fabricado', 'comprado', 'fraccionado']).default('fabricado'),
   insumo_producto_id: z.number().nullable().default(null),
   ml_utiles: z.number().nullable().default(null),
