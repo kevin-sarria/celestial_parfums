@@ -3,6 +3,15 @@
 E-commerce de perfumería (Colombia, COP) con pedidos por WhatsApp (sin pagos en línea).
 Dueño: Kevin — no técnico; explícale en español claro, sin jerga, y dale los comandos listos.
 
+> **¿Llegas nuevo al proyecto? Empieza por [`CONTEXT.md`](CONTEXT.md).** Ahí está el mapa
+> (cómo levantarlo, dónde está cada cosa, en qué estado quedó, cómo se trabaja aquí) y está
+> escrito para cualquier agente, no solo para Claude Code. Este archivo es la **memoria
+> profunda**: qué se decidió, POR QUÉ, y qué trampas ya se pisaron.
+>
+> **Los dos NO se duplican.** Lo reutilizable y el porqué van aquí; el estado general y el
+> arranque van en `CONTEXT.md`. Mantén los dos al día: son la memoria del proyecto entre
+> sesiones y entre modelos.
+
 **Mantén este archivo actualizado**: cada vez que hagas un cambio relevante (regla de
 negocio, migración, convención nueva, gotcha descubierto) agrégalo aquí en la sección
 que corresponda. Este documento es la memoria del proyecto entre sesiones y modelos.
@@ -1655,6 +1664,10 @@ cd ../frontend
 npm install                 # solo si hubo dependencias nuevas
 npm run build               # nginx sirve frontend/dist directamente
 ```
+
+**Estado del repositorio (2026-08-10, verificado con `git ls-remote`): TODO está subido a
+GitHub** (`origin/main` = `a64b7a0`). Lo que va atrasado es **el servidor**, que no tiene
+aplicadas las migraciones de abajo. No confundir una cosa con la otra.
 
 Migraciones pendientes de aplicar en producción al escribir esto:
 - `anuncios.max_descuento` + `anuncios.max_canjes`
