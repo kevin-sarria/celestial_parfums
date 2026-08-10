@@ -613,6 +613,54 @@ del catálogo. **Sin migración**: usa columnas que ya existían.
   tienda (212) y visible para el admin (213), y los bytes del guion (`E28093`) y de la tilde
   (`C3A9`) correctos. Todo lo de prueba se borró.
 
+### Pedido sugerido (`reposicion`, 2026-08-10)
+
+Pantalla **solo informativa**: qué material hay que reponer y cuánto pedir. No mueve stock
+ni registra nada. `reposicion.repository.ts` + `tabs/ReposicionTab.tsx`.
+
+- **El punto de pedido se configura POR GAMA**, y esa es la razón de ser de todo esto. El
+  mínimo por insumo (`insumos_costo.stock_minimo`) existía desde antes, pero **solo 1 de 226
+  materiales lo tenía puesto**: ponerlo a mano en 219 esencias no lo hace nadie. Con el
+  mínimo en la gama se configura una vez para las 151 árabes.
+- **Semántica de `insumos_costo.stock_minimo`, que CAMBIÓ**: `NULL` = hereda el de su gama
+  (nuevo valor por defecto); `0` = sin alerta a propósito; `> 0` = su propio mínimo, que
+  MANDA sobre el de la gama. La migración convierte a NULL los ceros existentes, porque
+  antes significaban "no configurado", no "no avisar".
+- **Cuánto pedir**: con consumo medido, lo que cubra `DIAS_COBERTURA` (60); sin él, volver
+  al doble del mínimo (el colchón que ya usaba la lista de compras de Inventario). El
+  número dice de dónde sale ("por lo que gastas" / "para el colchón").
+- **`ajuste` NO cuenta como consumo.** Es el conteo físico, y ahí caben el stock inicial que
+  se siembra al arrancar (hoy son los 222 movimientos que existen) y el desperdicio del día
+  a día. Proyectar eso como demanda haría pedir de más justo el primer mes. Sí cuentan
+  `venta`, `produccion`, `muestra`, `merma` y `garantia`.
+- **Se dice cuando NO hay datos**: sin salidas registradas sale un aviso ámbar explicando
+  que la cantidad viene del mínimo, no del consumo. Prometer precisión que no existe es
+  peor que no dar el número.
+- **Esencias e implementos van en tablas separadas**: se le piden a proveedores distintos y
+  se deciden con otra cabeza.
+- **Copiar al portapapeles** en el formato que pidió el dueño (`Eternity - 100 ml`), un
+  renglón por material, listo para pegar en WhatsApp. **Se le quita el sufijo "– Esencia"**:
+  existe para no confundir el material con el perfume DENTRO del sistema, y fuera estorba.
+- `PATCH /inventario/minimo/:id` cambia el mínimo **sin tocar existencias**. Antes solo se
+  podía desde el modal de Ajustar, que es un conteo físico y deja movimiento: corregir un
+  mínimo no es contar y no debe ensuciar el libro con algo que no ocurrió.
+- Migración: `20260810140000_minimos_por_gama`.
+
+### El menú se partió en dos: plata y operación (2026-08-10)
+
+Lo señaló el dueño cuando "Ventas y créditos" llegó a ocho pestañas: *"una cosa es la parte
+contable —lo que se vende, lo que sale, lo que se devuelve— y otra muy diferente las
+fórmulas y demás, que no es el core de las ventas sino más de operaciones o de reglas"*.
+
+- **Ventas y créditos** → ventas, créditos, devoluciones, proveedores. Todo es PLATA que
+  entra o sale.
+- **Producción e inventario** → inventario, pedido sugerido, producciones, tamaños y
+  fórmulas, costos de producción. Todo es OPERACIÓN: qué tengo, qué pido, qué armé, con qué
+  receta y cuánto me cuesta.
+- El criterio para futuras pestañas: **si la pregunta es "cuánto dinero", va al primero; si
+  es "cómo lo hago o con qué", al segundo.** Un grupo de ocho pestañas mezcladas obliga a
+  leerlas todas para encontrar una.
+
 ### Género de la esencia (`insumos_costo.genero`, 2026-08-09)
 
 Lo pidió el dueño con un caso concreto: *"pueden haber 2 perfumes llamados 212 VIP pero uno
@@ -1676,6 +1724,10 @@ Migraciones pendientes de aplicar en producción al escribir esto:
   puede agregar "nicho" sin migración) + `insumos_costo.gama_id` con FK ON DELETE SET NULL.
 - `20260810120000_genero_esencia`: `insumos_costo.genero` (ENUM nullable) + siembra desde el
   nombre (21 dama, 6 caballero; las otras 189 quedan en NULL a propósito).
+- `20260810140000_minimos_por_gama`: `gamas_esencia.stock_minimo` +
+  `insumos_costo.stock_minimo` pasa a **admitir NULL** (= hereda el de su gama) y los ceros
+  existentes se convierten a NULL. **Ojo: cambia el significado de la columna**, ver la
+  sección "Pedido sugerido".
 
 **Verificado el 2026-08-01**: la base local se reemplazó por el dump real de producción y
 las 8 migraciones pendientes se aplicaron EN ORDEN sobre esos datos, sin perder una fila

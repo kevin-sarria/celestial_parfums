@@ -94,6 +94,8 @@ export const listarGamas = () =>
     include: { _count: { select: { esencias: true } } },
   }).then((rows) => rows.map((g) => ({
     id: g.id, nombre: g.nombre, orden: g.orden, esencias: g._count.esencias,
+    /** Punto de pedido por defecto de sus esencias (lo usa Pedido sugerido). */
+    stock_minimo: num(g.stock_minimo),
   })));
 
 export const crearGama = (nombre: string, orden: number) =>

@@ -867,6 +867,10 @@ model GamaEsencia {
   nombre     String   @unique @db.VarChar(60)
   /// Para listarlas de la más barata a la más cara, que es como se leen.
   orden      Int      @default(0) @db.SmallInt
+  /// Punto de pedido POR DEFECTO de las esencias de esta gama, en ml. Se
+  /// configura una vez y vale para las 151 árabes; cada esencia puede tener su
+  /// excepción en `InsumoCosto.stock_minimo`. 0 = sin alerta para la gama.
+  stock_minimo Decimal @default(0) @db.Decimal(12, 3)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   esencias   InsumoCosto[]
@@ -891,9 +895,12 @@ model InsumoCosto {
   /// Cantidad disponible en la unidad base del insumo (ml o piezas).
   /// Es una proyección del libro de movimientos, no la verdad última.
   stock      Decimal      @default(0) @db.Decimal(12, 3)
-  /// Punto de pedido: cuando el stock baja de aquí, hay que reponer. En 0 se
-  /// desactiva la alerta (no todo insumo la necesita).
-  stock_minimo Decimal    @default(0) @db.Decimal(12, 3)
+  /// Punto de pedido de ESTE material, que manda sobre el de su gama.
+  /// NULL = hereda el de su gama (lo normal); 0 = sin alerta a propósito;
+  /// > 0 = su propio mínimo. Ponerlo a mano en 219 esencias no lo hace nadie
+  /// —solo 1 de 226 lo tenía—, por eso el valor de verdad vive en la gama y
+  /// esto queda para la excepción.
+  stock_minimo Decimal?   @db.Decimal(12, 3)
   /// Solo para esencias: a qué gama pertenece (ver GamaEsencia). Null en todo
   /// lo demás: un frasco o el diluyente no tienen gama.
   gama_id    Int?

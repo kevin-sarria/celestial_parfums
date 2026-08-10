@@ -17,6 +17,7 @@ export const ajusteSchema = z.object({
   costo_unitario: z.number().min(0).optional(),
   /** Punto de pedido: en 0 se apaga la alerta. */
   stock_minimo: z.number().min(0).nullish(),
+
   fecha,
   nota: z.string().max(255).nullish(),
 });
@@ -54,6 +55,14 @@ export const salidaSchema = z.object({
   motivo: z.enum(['muestra', 'merma']),
   fecha,
   nota: z.string().max(255).nullish(),
+});
+
+/**
+ * Punto de pedido. `null` en un material lo devuelve a heredar el de su gama;
+ * en una gama equivale a apagar la alerta de toda ella.
+ */
+export const minimoSchema = z.object({
+  minimo: z.number().min(0).max(9_999_999).nullish(),
 });
 
 export type SalidaInput = z.infer<typeof salidaSchema>;

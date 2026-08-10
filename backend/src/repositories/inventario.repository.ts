@@ -361,6 +361,24 @@ export const eliminarProduccion = (id: number) => prisma.$transaction(async (tx)
  * Los totales sí cuentan SOLO los activos: un material jubilado ya no es parte
  * de lo que tienes para trabajar.
  */
+/**
+ * El punto de pedido que de verdad aplica a un material.
+ *
+ * El propio MANDA sobre el de su gama; sin él se hereda el de la gama. Esa
+ * herencia es la que hace usable la alerta: configurar 219 esencias a mano no
+ * lo hace nadie (se midió: solo 1 de 226 lo tenía puesto), pero configurar
+ * "las árabes" una vez sí.
+ *
+ * `null` en el material = "no he dicho nada, usa el de mi gama".
+ * `0` = "no me avises nunca", y por eso gana sobre la gama igual que cualquier
+ * otro valor propio.
+ */
+const minimoEfectivo = (i: { stock_minimo: unknown; gama?: { stock_minimo: unknown } | null }) => {
+  if (i.stock_minimo != null) return { minimo: num(i.stock_minimo), heredado: false };
+  if (i.gama) return { minimo: num(i.gama.stock_minimo), heredado: true };
+  return { minimo: 0, heredado: false };
+};
+
 export const resumenInventario = async () => {
   const insumos = await prisma.insumoCosto.findMany({
     include: { gama: true },
@@ -369,7 +387,7 @@ export const resumenInventario = async () => {
   const filas = insumos.map((i) => {
     const stock = num(i.stock);
     const precio = num(i.precio);
-    const minimo = num(i.stock_minimo);
+    const { minimo, heredado } = minimoEfectivo(i);
     return {
       id: i.id,
       nombre: i.nombre,
@@ -383,6 +401,8 @@ export const resumenInventario = async () => {
       activo: i.activo,
       stock,
       stock_minimo: minimo,
+      /** true = el mínimo sale de su gama, no es propio de este material. */
+      minimo_heredado: heredado,
       // Con mínimo en 0 la alerta está apagada: no todo insumo la necesita.
       // Un apagado nunca alerta: ya no se compra.
       bajo_minimo: i.activo && minimo > 0 && stock <= minimo,

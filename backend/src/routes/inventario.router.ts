@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import * as repo from '../repositories/inventario.repository';
+import * as reposicion from '../repositories/reposicion.repository';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
-import { ajusteSchema, produccionSchema, salidaSchema } from '../schemas/inventario.schema';
+import { ajusteSchema, produccionSchema, salidaSchema, minimoSchema } from '../schemas/inventario.schema';
 
 /** Inventario de insumos: 100% interno (lleva costos reales del negocio). */
 export const inventarioRouter = Router();
@@ -20,6 +21,32 @@ inventarioRouter.get('/', h(async (_req, res) => {
  * Un solo endpoint porque son cuatro conteos: pedirlos por separado
  * serían cuatro viajes para pintar una sola caja.
  */
+/** Pedido sugerido: qué reponer y cuánto. Solo lee, no mueve nada. */
+inventarioRouter.get('/reposicion', h(async (_req, res) => {
+  res.json({ data: await reposicion.calcularReposicion() });
+}));
+
+/**
+ * Punto de pedido de UN material, sin tocar existencias. Va aparte del modal de
+ * Ajustar (que es un conteo físico y deja movimiento): corregir un mínimo no es
+ * contar, y no debe ensuciar el libro con un movimiento que no ocurrió.
+ */
+inventarioRouter.patch('/minimo/:id', validate(minimoSchema), h(async (req, res) => {
+  const dato = await reposicion.fijarMinimoInsumo(Number(req.params.id), req.body.minimo ?? null);
+  res.json({
+    message: req.body.minimo == null
+      ? `"${dato.nombre}" vuelve a usar el mínimo de su gama`
+      : `Mínimo de "${dato.nombre}" actualizado`,
+    data: dato,
+  });
+}));
+
+/** Punto de pedido por defecto de todas las esencias de una gama. */
+inventarioRouter.patch('/minimo-gama/:id', validate(minimoSchema), h(async (req, res) => {
+  const dato = await reposicion.fijarMinimoGama(Number(req.params.id), req.body.minimo ?? 0);
+  res.json({ message: `Mínimo de la gama "${dato.nombre}" actualizado`, data: dato });
+}));
+
 inventarioRouter.get('/primeros-pasos', h(async (_req, res) => {
   res.json({ data: await repo.primerosPasos() });
 }));

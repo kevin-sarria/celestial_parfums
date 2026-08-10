@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
   Menu, ChevronDown, SprayCan, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText, Store, LogOut,
-  BellRing, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX, ChartColumn, Layers, type LucideIcon,
+  BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX, ChartColumn, Layers, type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,6 +43,7 @@ import { GamasTab } from './tabs/GamasTab';
 import { CostosProduccionTab } from './tabs/CostosProduccionTab';
 import { DevolucionesTab } from './tabs/DevolucionesTab';
 import { InventarioTab } from './tabs/InventarioTab';
+import { ReposicionTab } from './tabs/ReposicionTab';
 import { ProduccionesTab } from './tabs/ProduccionesTab';
 import { ReportesVentasTab } from './tabs/ReportesVentasTab';
 import { ReportesComprasTab } from './tabs/ReportesComprasTab';
@@ -66,6 +67,7 @@ const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   devoluciones: { label: 'Devoluciones', icon: PackageX },
   pagos: { label: 'Proveedores', icon: Factory },
   inventario: { label: 'Inventario', icon: Boxes },
+  reposicion: { label: 'Pedido sugerido', icon: ShoppingCart },
   producciones: { label: 'Producciones', icon: FlaskConical },
   rep_ventas: { label: 'Reporte de ventas', icon: ChartColumn },
   rep_compras: { label: 'Reporte de compras', icon: ChartColumn },
@@ -88,11 +90,22 @@ const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
   { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones', 'gamas'] },
   /**
+   * DOS grupos, no uno. Lo señaló el dueño cuando "Ventas y créditos" llegó a
+   * ocho pestañas: *"una cosa es la parte contable —lo que se vende, lo que
+   * sale, lo que se devuelve— y otra muy diferente las fórmulas y demás, que no
+   * es el core de las ventas sino más de operaciones o de reglas"*.
+   *
+   * Y tenía razón: mezclaba PLATA (ventas, créditos, devoluciones, lo que se le
+   * paga al proveedor) con OPERACIÓN (qué tengo, qué armé, con qué receta,
+   * cuánto me cuesta, qué pedir). Se busca con cabezas distintas.
+   */
+  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos'] },
+  /**
    * Las RECETAS y el costo de producción viven aquí, no en Mayoreo: de ellas
    * salen los materiales que descuenta cada venta y cada lote, así que las usa
    * todo el negocio. Mayoreo solo cotiza, y para eso las lee.
    */
-  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos', 'inventario', 'producciones', 'formulas', 'costos'] },
+  { id: 'operacion', label: 'Producción e inventario', tabs: ['inventario', 'reposicion', 'producciones', 'formulas', 'costos'] },
   { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
@@ -474,6 +487,7 @@ export default function DashboardPage() {
             {tab === 'costos' && <CostosProduccionTab guardedFetch={guardedFetch} />}
             {tab === 'devoluciones' && <DevolucionesTab guardedFetch={guardedFetch} />}
             {tab === 'inventario' && <InventarioTab guardedFetch={guardedFetch} />}
+            {tab === 'reposicion' && <ReposicionTab guardedFetch={guardedFetch} />}
             {tab === 'producciones' && <ProduccionesTab guardedFetch={guardedFetch} />}
             {tab === 'redes' && <RedesTab guardedFetch={guardedFetch} />}
           </>
