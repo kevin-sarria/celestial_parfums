@@ -44,7 +44,9 @@ export const filasInsumos = async () => {
  */
 export const filasInventario = async () => {
   const rows = await prisma.insumoCosto.findMany({
-    where: { activo: true }, orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
+    where: { activo: true },
+    include: { gama: true },
+    orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
   });
   return rows.map((i) => ({
     insumo: i.nombre,
@@ -52,6 +54,11 @@ export const filasInventario = async () => {
     // escribir: sin el tipo no se puede crear el material al subirla.
     tipo: i.tipo,
     unidad: i.unidad,
+    // Gama y género viajan también en esta hoja: es la que el dueño abre
+    // primero, y como aquí se CREAN materiales, una esencia nacida sin gama
+    // quedaría fuera del costeo al mayoreo sin que nadie lo note.
+    gama: i.gama?.nombre ?? '',
+    genero: i.genero ?? '',
     existencias_sistema: Number(i.stock),
     cantidad_real: Number(i.stock),
     costo_unitario: Number(i.precio),
@@ -114,6 +121,46 @@ const indiceGamas = async () => {
   return new Map(filas.map((g) => [normalizar(g.nombre), g.id]));
 };
 
+/**
+ * Lee la gama de una fila.
+ *
+ * `undefined` = la columna vino vacía y **no se toca** lo que ya tuviera;
+ * `null` = se pidió quitarla a propósito ("ninguna").
+ *
+ * Una gama mal escrita se AVISA en vez de tragársela: dejaría la esencia sin
+ * clasificar y el costeo por gama la ignoraría sin que nadie se entere. El
+ * mensaje lista las que sí existen, leídas de la base — nunca una lista quemada,
+ * porque el dueño puede crear "nicho" cuando quiera.
+ */
+const leerGama = (
+  valor: unknown, gamas: Map<string, number>, fila: number, result: EntityImportResult,
+): number | null | undefined => {
+  const crudo = txt(valor);
+  if (!crudo) return undefined;
+  const clave = normalizar(crudo);
+  if (clave === 'ninguna' || clave === 'ninguno' || clave === '-') return null;
+  if (gamas.has(clave)) return gamas.get(clave)!;
+  result.errores.push(
+    `Fila ${fila}: la gama "${crudo}" no existe. Créala primero o usa una de: ${[...gamas.keys()].join(', ')}`,
+  );
+  return undefined;
+};
+
+/** Mismo criterio que la gama, aceptando cómo se dice en la vida real. */
+const leerGenero = (
+  valor: unknown, fila: number, result: EntityImportResult,
+): 'dama' | 'caballero' | 'unisex' | null | undefined => {
+  const crudo = txt(valor);
+  if (!crudo) return undefined;
+  const g = normalizar(crudo);
+  if (g === 'ninguna' || g === 'ninguno' || g === '-') return null;
+  if (g === 'dama' || g === 'mujer' || g === 'femenino') return 'dama';
+  if (g === 'caballero' || g === 'hombre' || g === 'masculino') return 'caballero';
+  if (g === 'unisex') return 'unisex';
+  result.errores.push(`Fila ${fila}: el genero "${crudo}" no vale. Usa dama, caballero o unisex.`);
+  return undefined;
+};
+
 /** Crea o actualiza insumos por nombre. NO toca existencias (eso va por conteo). */
 export const importarInsumos = async (rows: any[], result: EntityImportResult) => {
   const gamas = await indiceGamas();
@@ -130,36 +177,8 @@ export const importarInsumos = async (rows: any[], result: EntityImportResult) =
     const alcance = txt(row.alcance).toLowerCase() === 'pedido' ? 'pedido' : 'unidad';
     const precio = num(row.costo_promedio);
     const activo = txt(row.activo).toLowerCase() !== 'no';
-    const gamaCruda = txt(row.gama);
-    // undefined = la columna vino vacía y no se toca lo que ya tuviera;
-    // null = se pidió quitarla a propósito.
-    let gamaId: number | null | undefined;
-    if (gamaCruda) {
-      const clave = normalizar(gamaCruda);
-      if (clave === 'ninguna' || clave === '-') gamaId = null;
-      else if (gamas.has(clave)) gamaId = gamas.get(clave)!;
-      // Se avisa en vez de tragárselo: una gama mal escrita deja la esencia sin
-      // clasificar y el costeo por gama la ignora, sin que nadie se entere.
-      else result.errores.push(
-        `Fila ${fila}: la gama "${gamaCruda}" no existe. Créala primero o usa una de: ${[...gamas.keys()].join(', ')}`,
-      );
-    }
-
-    // Mismo criterio que la gama: vacío no toca, "ninguna" borra, y lo mal
-    // escrito se avisa. Esta columna es la forma rápida de clasificar en bloque
-    // las esencias que todavía no dicen para quién son.
-    const generoCrudo = txt(row.genero);
-    let genero: 'dama' | 'caballero' | 'unisex' | null | undefined;
-    if (generoCrudo) {
-      const g = normalizar(generoCrudo);
-      if (g === 'ninguna' || g === 'ninguno' || g === '-') genero = null;
-      else if (g === 'dama' || g === 'mujer' || g === 'femenino') genero = 'dama';
-      else if (g === 'caballero' || g === 'hombre' || g === 'masculino') genero = 'caballero';
-      else if (g === 'unisex') genero = 'unisex';
-      else result.errores.push(
-        `Fila ${fila}: el genero "${generoCrudo}" no vale. Usa dama, caballero o unisex.`,
-      );
-    }
+    const gamaId = leerGama(row.gama, gamas, fila, result);
+    const genero = leerGenero(row.genero, fila, result);
 
     const existente = await prisma.insumoCosto.findFirst({ where: { nombre } });
     if (existente) {
@@ -189,12 +208,15 @@ export const importarInsumos = async (rows: any[], result: EntityImportResult) =
  */
 export const importarInventario = async (rows: any[], result: EntityImportResult) => {
   const hoy = new Date().toISOString().slice(0, 10);
+  const gamas = await indiceGamas();
   for (const [i, row] of rows.entries()) {
     const fila = i + 2;
     const nombre = txt(row.insumo);
     if (!nombre) { result.omitidos++; continue; }
     const real = num(row.cantidad_real);
     const costo = num(row.costo_unitario);
+    const gamaId = leerGama(row.gama, gamas, fila, result);
+    const genero = leerGenero(row.genero, fila, result);
 
     // Se busca sin distinguir mayúsculas ni espacios de sobra: "Esencia  Khamrah"
     // y "esencia khamrah" son el mismo material, y crear un duplicado partiría
@@ -227,9 +249,21 @@ export const importarInventario = async (rows: any[], result: EntityImportResult
           // El precio arranca en lo que se teclee y de ahí en adelante lo lleva
           // el costo promedio de las compras.
           precio: costo > 0 ? costo : 0,
+          gama_id: gamaId ?? null,
+          genero: genero ?? null,
         },
       });
       result.insertados++;
+    } else if (gamaId !== undefined || genero !== undefined) {
+      // El material ya existía y la hoja trae clasificación: se aprovecha. Es
+      // lo que hace que contar y clasificar puedan ir en la misma pasada.
+      await prisma.insumoCosto.update({
+        where: { id: insumo.id },
+        data: {
+          ...(gamaId !== undefined ? { gama_id: gamaId } : {}),
+          ...(genero !== undefined ? { genero } : {}),
+        },
+      });
     }
 
     try {

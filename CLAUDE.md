@@ -647,8 +647,15 @@ nombre de la esencia.
   dama), ignora mayúsculas y tildes, **una columna vacía NO borra** lo que ya había (solo
   `ninguna` lo quita) y **avisa** si el valor no vale en vez de tragárselo — mismo criterio
   que la gama. Verificado con los cuatro casos.
-- **La hoja de CONTEO (`inventario`) sigue sin gama ni género a propósito**: ahí se cuenta.
-  Un material creado desde el conteo se clasifica después con la hoja de insumos.
+- **LAS DOS hojas llevan gama y género** (`insumos` y la de CONTEO). Primero se pusieron solo
+  en la de insumos, razonando que la de conteo "es para contar" — y el dueño respondió *"en
+  el excel no está, lo acabo de revisar"*: había abierto la de conteo, que es **la primera
+  del menú**. La decisión estaba mal por dos motivos: es la hoja que se abre primero, y
+  sobre todo **ahí se CREAN materiales**, así que una esencia nacida por conteo quedaba sin
+  gama y desaparecía del costeo al mayoreo en silencio. Ahora se puede contar y clasificar
+  en la misma pasada, y clasificar una existente **no mueve su stock**.
+- `leerGama` y `leerGenero` son helpers compartidos por los dos importadores: la regla de
+  "vacío no toca / ninguna borra / lo mal escrito avisa" se escribe UNA vez.
 - Migración: `20260810120000_genero_esencia`.
 
 ### Puesta al día: emparejar esencias con su perfume (2026-08-09)

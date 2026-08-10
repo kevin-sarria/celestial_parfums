@@ -183,7 +183,11 @@ export const IMPORT_SPECS: Record<string, ImportSpec> = {
     columnas: [
       { key: 'nombre', required: true, descripcion: 'Nombre del insumo (Esencia Eternity, Envase 30 ml...)', ejemplo: 'Esencia Eternity' },
       { key: 'tipo', required: true, descripcion: 'materia_prima, envase o accesorio', ejemplo: 'materia_prima' },
-      { key: 'gama', required: false, descripcion: 'Solo esencias: clasica, arabe, premium o disenador. Vacio en lo demas', ejemplo: 'arabe' },
+      // La lista NO se escribe aqui: las gamas son una tabla que el dueno amplia
+      // ("nicho", "nicho premium"), asi que cualquier lista quemada en el texto
+      // miente en cuanto crea una. Si el valor no existe, el importador responde
+      // con las que SI hay, leidas de la base.
+      { key: 'gama', required: false, descripcion: 'Solo esencias: el nombre de la gama tal como la creaste. Vacio en lo demas', ejemplo: 'Arabe' },
       { key: 'genero', required: false, descripcion: 'Solo esencias: dama, caballero o unisex. Vacio si no lo sabes', ejemplo: 'dama' },
       { key: 'unidad', required: false, descripcion: 'ml (liquidos) o unidad (piezas)', ejemplo: 'ml' },
       { key: 'alcance', required: false, descripcion: 'unidad (por perfume) o pedido (una vez por envio)', ejemplo: 'unidad' },
@@ -208,6 +212,11 @@ export const IMPORT_SPECS: Record<string, ImportSpec> = {
       { key: 'insumo', required: true, descripcion: 'Nombre del material. Si no existe se CREA', ejemplo: 'Esencia Eternity' },
       { key: 'tipo', required: false, descripcion: 'Solo si el material es nuevo: materia_prima, envase o accesorio', ejemplo: 'materia_prima' },
       { key: 'unidad', required: false, descripcion: 'ml o unidad (solo pesa al crear uno nuevo)', ejemplo: 'ml' },
+      // Van aqui tambien, y no solo en la hoja de materiales: esta hoja CREA
+      // materiales, y una esencia nacida sin gama queda fuera del costeo por
+      // gama en silencio. Ademas es la hoja que el dueno abre primero.
+      { key: 'gama', required: false, descripcion: 'Solo esencias: el nombre de la gama tal como la creaste', ejemplo: 'Arabe' },
+      { key: 'genero', required: false, descripcion: 'Solo esencias: dama, caballero o unisex', ejemplo: 'dama' },
       { key: 'existencias_sistema', required: false, descripcion: 'Lo que el sistema cree que hay (informativo)', ejemplo: 100 },
       { key: 'cantidad_real', required: true, descripcion: 'Lo que hay DE VERDAD tras contar', ejemplo: 96.5 },
       { key: 'costo_unitario', required: false, descripcion: 'Costo por unidad; solo se usa si el ajuste SUMA material', ejemplo: 1200 },
@@ -215,6 +224,7 @@ export const IMPORT_SPECS: Record<string, ImportSpec> = {
     notas: [
       'Es la forma comoda de sembrar el stock inicial: exporta la hoja, escribe lo que hay en cantidad_real y vuelvela a subir.',
       'Puedes AGREGAR filas de materiales que todavia no existen: se crean solos. En ese caso pon el "tipo" (materia_prima, envase o accesorio).',
+      'Si la fila es una ESENCIA, aprovecha y ponle la gama y el genero: sin gama no entra en el costeo al mayoreo, y no se entera nadie. Una columna vacia no borra lo que ya tenias.',
       'Los nombres se comparan ignorando mayusculas y tildes, asi que "esencia khamrah" y "Esencia Khamrah" son el mismo material y NO se duplica.',
       'El sistema calcula la diferencia contra lo que tenia y la registra como movimiento de ajuste (queda auditable).',
       'La diferencia entre lo teorico y lo real ES el desperdicio del dia a dia: no hace falta anotar cada gramo que se va de mas.',
