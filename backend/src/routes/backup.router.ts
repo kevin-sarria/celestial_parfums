@@ -5,6 +5,9 @@ import fs from 'fs';
 import path from 'path';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { generarSecretoBase32, otpauthUrl, verificarTotp } from '../utils/totp';
+import {
+  leerJsonSeguro, escribirJsonSeguro, marcaFile, totpFile, ultimaCopia, totpConfigurado,
+} from '../utils/estadoRespaldo';
 import logger from '../config/logger';
 
 /**
@@ -21,30 +24,21 @@ import logger from '../config/logger';
  */
 export const backupRouter = Router();
 
-const dataDir = path.join(__dirname, '../../backups');
-const marcaFile = path.join(dataDir, 'ultima.json');
-const totpFile = path.join(dataDir, 'totp.json');
-
-const leerJson = <T>(file: string): T | null => {
-  try {
-    return JSON.parse(fs.readFileSync(file, 'utf8')) as T;
-  } catch {
-    return null;
-  }
-};
-
-const escribirJson = (file: string, data: unknown) => {
-  fs.mkdirSync(dataDir, { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(data));
-};
-
-const leerSecreto = () => leerJson<{ secret: string }>(totpFile)?.secret ?? null;
+/**
+ * Las rutas de los archivos y sus lectores viven en `utils/estadoRespaldo`
+ * porque el centro de notificaciones también necesita saber cuándo fue la
+ * última copia. Duplicarlas aquí haría que el aviso mirara un archivo distinto
+ * el día que la carpeta se mueva.
+ */
+const leerJson = leerJsonSeguro;
+const escribirJson = escribirJsonSeguro;
+const leerSecreto = () => leerJsonSeguro<{ secret: string }>(totpFile)?.secret ?? null;
 
 backupRouter.get('/estado', requireAdmin, (_req: Request, res: Response) => {
   res.json({
     data: {
-      ultima: leerJson<{ fecha: string }>(marcaFile)?.fecha ?? null,
-      totp_configurado: leerSecreto() !== null,
+      ultima: ultimaCopia(),
+      totp_configurado: totpConfigurado(),
     },
   });
 });

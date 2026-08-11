@@ -22,6 +22,7 @@ import { useSeo } from '../../application/hooks/useSeo';
 import { API, API_COMBOS, DEFAULT_PAGE_SIZE } from './helpers';
 import type { Tab, Lookup } from './types';
 import BackupSeguridad from './BackupSeguridad';
+import CentroNotificaciones from './CentroNotificaciones';
 import { PerfumesTab } from './tabs/PerfumesTab';
 import { CombosTab } from './tabs/CombosTab';
 import { PreciosTab } from './tabs/PreciosTab';
@@ -356,15 +357,30 @@ export default function DashboardPage() {
                 })}
               </nav>
 
-              {/* En pantallas pequeñas estas acciones no caben en el header */}
-              <div className="border-t border-border/70 p-4 sm:hidden">
+              {/**
+                * Acciones que no son navegación.
+                *
+                * El **respaldo** vive aquí en TODOS los tamaños desde el
+                * 2026-08-11: en la barra de arriba, con la campana al lado, el
+                * nombre de la tienda se truncaba a "Celestial Parfu…" y el dueño
+                * lo rechazó. Además es mantenimiento semanal, no trabajo del día
+                * — mismo criterio que las descargas de Excel en Inventario. El
+                * recordatorio de que hace días no se hace copia NO se perdió al
+                * esconderlo: pasó a ser una línea del centro de notificaciones.
+                *
+                * Ver catálogo y Salir siguen apareciendo solo en pantalla
+                * pequeña, porque arriba sí caben.
+                */}
+              <div className="border-t border-border/70 p-4">
                 <div className="flex flex-col gap-2">
-                  <Button variant="ghost" className="w-full justify-start" asChild>
+                  <BackupSeguridad guardedFetch={guardedFetch} enMenu />
+                  <Button variant="ghost" className="w-full justify-start sm:hidden" asChild>
                     <Link to="/catalog" onClick={() => setDrawerOpen(false)}>
                       <Store className="size-4" /> Ver catalogo
                     </Link>
                   </Button>
-                  <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
+                  <Button variant="outline" className="w-full justify-start sm:hidden"
+                    onClick={handleLogout}>
                     <LogOut className="size-4" /> Salir
                   </Button>
                 </div>
@@ -388,8 +404,10 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          {/* Respaldo de la base: visible en todos los tamaños */}
-          <BackupSeguridad guardedFetch={guardedFetch} />
+          {/* Lo único que queda a la derecha en pantalla pequeña: lo que está
+              pendiente. El respaldo se movió al menú lateral porque los dos
+              juntos truncaban el nombre de la tienda. */}
+          <CentroNotificaciones guardedFetch={guardedFetch} />
           {/* En celular estas acciones viven dentro del drawer */}
           <div className="hidden items-center gap-1.5 sm:flex">
             <Button variant="ghost" size="sm" asChild>

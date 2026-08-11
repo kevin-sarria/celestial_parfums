@@ -12,6 +12,13 @@ const DIAS_AVISO = 7;
 
 interface Props {
   guardedFetch: GuardedFetch;
+  /**
+   * Dentro del menú lateral el botón ocupa el ancho completo y siempre lleva
+   * texto. En la barra superior no cabía: con la campana al lado, el nombre de
+   * la tienda se truncaba a "Celestial Parfu…" en pantallas pequeñas y el dueño
+   * lo rechazó. Desde el 2026-08-11 el respaldo vive en el menú.
+   */
+  enMenu?: boolean;
 }
 
 /**
@@ -19,7 +26,7 @@ interface Props {
  * TOTP de app authenticator. Descarga el SQL completo comprimido al navegador
  * y recuerda (punto rojo) cuando pasan más de 7 días sin hacer copia.
  */
-export default function BackupSeguridad({ guardedFetch }: Props) {
+export default function BackupSeguridad({ guardedFetch, enMenu = false }: Props) {
   const [open, setOpen] = useState(false);
   const [ultima, setUltima] = useState<string | null>(null);
   const [totpListo, setTotpListo] = useState<boolean | null>(null);
@@ -93,16 +100,22 @@ export default function BackupSeguridad({ guardedFetch }: Props) {
   return (
     <>
       <Button
-        variant="outline"
-        size="sm"
-        className="relative"
+        variant={enMenu ? 'ghost' : 'outline'}
+        size={enMenu ? undefined : 'sm'}
+        className={enMenu ? 'relative w-full justify-start' : 'relative'}
         onClick={() => { setOpen(true); setError(''); setExito(''); }}
         title="Copia de seguridad de la base de datos"
       >
         <DatabaseBackup className="size-4" />
-        <span className="hidden md:inline">Respaldo</span>
+        <span className={enMenu ? undefined : 'hidden md:inline'}>Respaldo</span>
         {urgente && (
-          <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-destructive" aria-label="Respaldo pendiente" />
+          enMenu
+            // En el menú el punto pegado al borde se pierde: aquí va al lado del
+            // texto, donde se lee. El recordatorio de verdad vive en la campana.
+            ? <span className="ml-auto rounded-full bg-destructive/10 px-2 py-0.5 text-[10.5px] font-semibold text-destructive">
+                pendiente
+              </span>
+            : <span className="absolute -right-1 -top-1 size-2.5 rounded-full bg-destructive" aria-label="Respaldo pendiente" />
         )}
       </Button>
 
