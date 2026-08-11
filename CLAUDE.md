@@ -18,7 +18,20 @@ que corresponda. Este documento es la memoria del proyecto entre sesiones y mode
 
 ## Skills del proyecto (leerlas antes de trabajar)
 
-Viven en `~/.claude/skills/` (fuera del repositorio, en la máquina del dueño):
+Viven en **`C:\Users\Estaduardo\.claude\skills\`** (fuera del repositorio, en la máquina del
+dueño). La ruta va completa a propósito: **no las des por cargadas.** Desde el 2026-08-11 el
+dueño trabaja con otra cuenta de Claude Code, cuya configuración está en
+`.claude-perfumeria\` y **no tiene carpeta `skills\`** — así que estas no se activan solas
+ni se pueden invocar escribiendo `/celestial-sistema`. **Ábrelas como archivos** (Read sobre
+su `SKILL.md` y sus `references/`); funcionan igual de bien leídas que invocadas. Decisión
+del dueño el 2026-08-11: se quedan donde están, sin enlazar ni duplicar.
+
+> **Ninguna pantalla se entrega sin abrirla en un navegador y mirarla.** El procedimiento
+> ejecutable está en `dashboard-interno-ux/references/verificacion-visual.md` y el script
+> listo para usar en `dashboard-interno-ux/scripts/revisar-pantalla.mjs` (login, medición en
+> píxeles y capturas en escritorio y celular). Vale para toda la aplicación, no solo para el
+> dashboard. Lo que aporta y no se puede improvisar: **medir en vez de opinar** — "quedó más
+> compacto" no se verifica, "pasó de 55 renglones a 41 píxeles" sí.
 
 - **`celestial-sistema`** — skill BASE. Funciona como un comité de departamentos
   (Desarrollo, QA, Contabilidad, Legal, Diseño, Marketing, Viabilidad): antes de dar algo
@@ -263,6 +276,25 @@ lo que no puede esconderse son las acciones reales (registrar llegada, producci�
 Los comparativos entre meses **no van en las cajas**: van a Reportes, que es la pantalla
 de analizar, no la de registrar.
 
+**`MenuAcciones`** (`components/MenuAcciones.tsx`, 2026-08-11) es el hermano genérico de
+`ExportMenu`: agrupa acciones emparentadas bajo un botón desplegable. Nació porque la barra
+de Inventario llegó a **seis botones del mismo peso** —uno por cada función nueva— y el
+dueño lo señaló al pedir dónde meter uno más: *"me gustaría que estuviese en inventario
+pero ya tiene muchos botones"*.
+- Quedó en cuatro: `[Excel ▾] [Materiales ▾] [Registrar uso ▾] [Registrar llegada]`, con
+  **una sola acción destacada**. Se eligió cuál mirando los datos, no por intuición: hay
+  **61 compras registradas contra 0 producciones**, así que la del día a día es registrar
+  la llegada.
+- El agrupado es **por la pregunta que responde cada acción**: *Materiales* = dar de alta y
+  clasificar; *Registrar uso* = material que salió (armar perfumes, muestra o daño).
+- **Los nombres van en el idioma del negocio.** El menú NO se llama "Movimientos": esa
+  palabra es del sistema y el departamento de Diseño la rechaza explícitamente.
+- Cada opción lleva su nota corta ("Descuenta la receta del tamaño"), que es lo que evita
+  tener que explicar el botón.
+- Al agregar una acción a Inventario, entra en el menú que le corresponda; **no se suma otro
+  botón a la barra**. El botón de "armé uno suelto" (producción de 1 unidad) va en
+  *Registrar uso* cuando se construya.
+
 ## Reportes — selector de periodo (Ola 3, 2026-08-02)
 
 - `ReporteShell` acepta `acciones` para los controles del reporte. En Ventas hay un
@@ -282,7 +314,44 @@ de analizar, no la de registrar.
   `toast.error(msg)` / `toast.success(msg)`. **No inventar un toast propio**: sonner ya
   resuelve apilado, colapso, deslizar para descartar, accesibilidad y animaciones (se probó
   una implementación casera y se descartó: apilaba avisos duplicados y en móvil se montaba
-  sobre el formulario). `richColors` activo para que el error se vea rojo de un vistazo.
+  sobre el formulario).
+- **`richColors` se QUITÓ (2026-08-11)** y no hay que reactivarlo. Lo rechazó el dueño:
+  *"se ve feísimo […] no tiene nada que ver ese estilo con el resto de mi app"*, y la causa
+  es concreta: `richColors` pinta con **la paleta de sonner** —verde menta, rosa saturado—
+  que no conoce el marfil ni el iris. Al lado de una pantalla sobria parecía de otra
+  aplicación.
+  - Se conserva lo que resolvía (distinguir un fallo de una confirmación de un vistazo)
+    pero con el lenguaje que la app ya usa: **fondo marfil siempre**, tinta violácea,
+    Manrope, y el **color solo en el icono y en una franja lateral de 4px** — iris para lo
+    bueno, rojo para lo que falló, ámbar para lo que hay que mirar.
+  - **Las clases van con `!`**: sonner trae sus colores en variables propias y sin la marca
+    de prioridad gana la librería.
+  - **`!items-start` y `!text-left` no son cosmética**: sonner centra el contenido, y los
+    mensajes del servidor son de varias líneas — centrados quedan ilegibles y el icono
+    flota a media altura. Se vio en pantalla, no en el código.
+  - **UNA sola caja, siempre.** La tarjeta (fondo, borde, redondeo y sombra) la pone el
+    contenedor de sonner; un `toast.custom` aporta **solo su contenido**. `avisoAgregado.tsx`
+    traía su propio recuadro y, al darle caja al contenedor, quedó **una caja dentro de
+    otra** — lo cazó el dueño en una captura. Al escribir un toast propio, nada de
+    `border`/`bg-card`/`shadow` en su div raíz.
+  - **El aspa va DENTRO de la caja**, arriba a la derecha. Sonner la saca a medias por fuera
+    del borde, como una insignia pegada; el dueño lo describió como *"se ve muy forzada"*.
+    **Colocarla bien exigió pelear con DOS estilos de la librería, y los dos se cazaron
+    midiendo, no mirando** (el dueño detectó el segundo a ojo: *"no se ve bien posicionada
+    si te pones a ver bien"*):
+    1. **`!transform-none`** — sonner la desplaza con `transform: translate(-35%,-35%)` y
+       las utilidades `translate-*` de Tailwind v4 NO lo anulan (escriben otra propiedad).
+       Sin esto quedaba 8px fuera de sitio: medido, 5px del borde superior cuando el
+       contenido respeta 14, y 11px desalineada del texto.
+    2. **`!p-3.5 !pr-12`** — sonner impone `padding: 16px` y sin la marca de prioridad gana
+       la librería. El `pr` no aplicaba y en los mensajes largos del servidor **el texto
+       pasaba por debajo del aspa: 22px de solape**. A ojo parecía que "casi se tocan"; el
+       número dijo que se montaban.
+    Resultado verificado: 0-2px de desalineación con el texto, 15px a cada borde y 10px de
+    aire entre el texto y el aspa.
+  - **Lección de método**: al estilar una librería con Tailwind, comprobar el valor
+    COMPUTADO (`getComputedStyle`) en vez de confiar en que la clase se aplicó. Dos de tres
+    ajustes de este toast no estaban haciendo nada.
 - **Deduplicar los avisos repetibles**: `toast.error(msg, { id: msg })` — si el usuario
   pulsa el botón varias veces, el aviso se reemplaza en vez de apilarse (probado: 6 clics
   seguidos = 1 solo aviso).
@@ -538,6 +607,13 @@ Valores: `clasica | arabe | premium | disenador` (null en todo lo que no sea ese
   con los datos reales: 30 clásicas + 15 árabes + 5 premium = $588.260 de costo
   ($11.765 por perfume) contra $750.000 facturados → 21,6% de margen, sostenido solo
   porque las clásicas subsidian a las premium.
+- **DECIDIDO POR EL DUEÑO (2026-08-11): la lista de precios se queda como está por ahora.**
+  Remedido ese día contra producción y da lo mismo ($28.106 = esencia 15 ml × $1.500 +
+  diluyente $286 + sellador $40 + feromonas $30 + envase $2.850 + accesorios $2.400). Es un
+  **riesgo aceptado a conciencia**, no un pendiente: no volver a levantarlo como hallazgo.
+  Sí hay que avisarle si cambia alguna de las dos cosas que lo sostienen: que **suba el
+  precio de la esencia premium**, o que llegue **un mayorista que pida casi puro premium**
+  — ahí el subsidio de las clásicas y las árabes deja de alcanzar.
 
 **Pendiente (paso 3, acordado con el dueño):** separar la pantalla — la RECETA se queda en
 Tamaños y fórmulas (la usa toda la app para descontar inventario), y la esencia por defecto
@@ -650,6 +726,55 @@ ni registra nada. `reposicion.repository.ts` + `tabs/ReposicionTab.tsx`.
 - **Copiar al portapapeles** en el formato que pidió el dueño (`Eternity - 100 ml`), un
   renglón por material, listo para pegar en WhatsApp. **Se le quita el sufijo "– Esencia"**:
   existe para no confundir el material con el perfume DENTRO del sistema, y fuera estorba.
+- **La lista se puede ajustar antes de mandarla** (`reposicion/useAjustesPedido.ts`,
+  2026-08-11). Lo pidió el dueño: *"poder editar el pedido sugerido para agregar o quitar
+  cantidades"*. La cantidad de cada material se teclea encima de la sugerida y cualquiera se
+  puede sacar de ESE pedido.
+  - **Los ajustes viven en `localStorage`, no en la base** (decisión hablada con él). Esta
+    pantalla se recalcula del inventario en cada visita; guardarlos en el servidor la
+    convertiría en un documento de *orden de compra* con su ciclo de vida, que es otro
+    módulo y no lo pidió. En el navegador sobreviven a cerrar la pestaña, que era lo que
+    hacía falta: ajustar hoy y copiar mañana.
+  - **Quitar ≠ resolver**: el material sigue bajo mínimo, sigue contando en la campana y en
+    la alerta de Inventario. Solo no entra en este pedido. Los quitados se listan al pie de
+    su tabla como chips para devolverlos de un clic — **nada se cae en silencio**.
+  - **Las cajas de arriba cuentan el pedido REAL**, no la lista cruda: si se sacan cinco y
+    se sube una cantidad, el total de plata lo refleja y la nota lo dice ("De 55 que tocaron
+    su mínimo", "Con tus ajustes"). Y el texto que se copia para WhatsApp usa lo ajustado.
+  - **Los ajustes se PODAN contra la lista de hoy**: un material que ya se repuso deja de
+    estar bajo mínimo, y su ajuste viejo no debe revivir si vuelve a bajar en tres meses.
+  - Siempre hay **"Volver a lo sugerido"** cuando hay ajustes: sin eso, un retoque de hace
+    tres semanas seguiría mandando en silencio.
+  - Verificado en navegador: cambiar 40→999 movió el total de $577.300 a $845.820; quitar
+    uno dejó 54 de 55; **tras recargar la página los dos ajustes seguían ahí**; el texto
+    copiado llevaba el 999 y no el quitado; y "Volver a lo sugerido" devolvió los tres
+    números a su valor original.
+- **Los mínimos se configuran en un MODAL y se guardan de una sola vez** (2026-08-11).
+  Estaban desplegados en la pantalla como una franja con cuatro casillas y cuatro botones
+  "ok"; el dueño pidió esconderlos tras un botón. Es configuración: se toca una vez y
+  luego se consulta la lista cien veces — mismo criterio que sacó las descargas de Excel de
+  la barra de Inventario. El botón vive en `EncabezadoPagina` porque configura toda la
+  pantalla, no una de las dos tablas.
+- **`PATCH /inventario/minimos-gama` guarda las cuatro gamas Y DEVUELVE la lista
+  recalculada.** Antes era un PATCH por gama más otra llamada para recargar: cinco viajes
+  para un formulario de cuatro campos, y si una fallaba la pantalla quedaba a medio guardar
+  (ahora va en transacción).
+  - **Devolver la reposición en la misma respuesta no es un lujo de rendimiento**: cambiar
+    un mínimo cambia la pantalla entera —qué está bajo mínimo, cuánto pedir, cuánto
+    costará— y ese cálculo necesita el consumo de 90 días, que solo tiene el servidor. Sin
+    esto habría que volver a pedir la lista igual.
+  - **Es PATCH, no PUT**: el CORS de esta app no permite PUT y moriría en el preflight del
+    navegador. Con `curl` sí funcionaría, así que probar por consola no detecta el fallo.
+  - Verificado en el navegador contando peticiones: **1 sola** al guardar, el modal se
+    cierra, la lista pasó de 55 a 91 materiales sola y **sin recargar la página**.
+- **PATRÓN A SEGUIR — no vuelvas a pedir lo que el servidor ya te devolvió.** En el
+  dashboard hay ~62 sitios que llaman a `load()`/`cargar()` después de guardar: una petición
+  extra y un parpadeo de "Cargando…" cada vez. (Ojo: **nunca se recarga la PÁGINA** — no hay
+  un solo `location.reload()` en el proyecto —, se vuelven a pedir los datos.) Cuando una
+  mutación cambia poco, basta actualizar el estado con la respuesta; cuando cambia toda la
+  pantalla, que el endpoint **devuelva el estado nuevo**, como este. Y no hace falta redux:
+  el proyecto no lo usa y aquí el problema no es compartir estado entre pantallas sino
+  evitar un viaje de más.
 - `PATCH /inventario/minimo/:id` cambia el mínimo **sin tocar existencias**. Antes solo se
   podía desde el modal de Ajustar, que es un conteo físico y deja movimiento: corregir un
   mínimo no es contar y no debe ensuciar el libro con algo que no ocurrió.
@@ -819,6 +944,12 @@ más.
 - **Editar o borrar una compra revierte sus movimientos** (`revertirMovimientos`) y los
   vuelve a aplicar. Sin eso el stock se contaría dos veces. `recalcularPromedio` reconstruye
   todo desde el libro y es la red de seguridad si algo se descuadra.
+  - **CASO DE BORDE ABIERTO (medido el 2026-08-10)**: `recalcularPromedio` solo escribe el
+    precio `if (movs.length)`. Si al borrar la compra el insumo se queda **sin ningún
+    movimiento**, conserva el costo que fijó la compra borrada en vez de volver al precio de
+    partida. Se auto-corrige en la siguiente entrada, pero mientras tanto muestra un costo
+    que ya no corresponde. Es lo que se observó en agosto (Esencia Clásica en 383,18 en vez
+    de 380) y se creía cerrado: el caso general SÍ está resuelto, este no.
 - **Unidades de compra** (`UnidadCompra`): **ml y gramos van 1 a 1** (así factura el sector);
   NO meter densidades para "arreglarlo", descuadraría contra la factura del proveedor.
   Los **litros SÍ multiplican ×1000** (`FACTOR_UNIDAD` / `aBase`): sin eso, teclear "20 L"
@@ -1553,6 +1684,12 @@ Orden acordado: (0) unificar tallas → (1) consumo por venta + ganancia real �
 
 ## Gotchas (dolores ya vividos — no repetirlos)
 
+- **El respaldo de producción no carga tal cual en XAMPP** (2026-08-11). MariaDB 10.11
+  escribe como PRIMERA línea del dump un `/*M!999999\- enable the sandbox mode */` y el
+  `mysql.exe` de XAMPP (más viejo) corta con `ERROR at line 1: Unknown command '\-'`.
+  **No es corrupción del respaldo**: se le quita esa línea (`tail -n +2 dump.sql > limpio.sql`)
+  y carga entero. Antes de creer que un respaldo vino malo, comprobar `gzip -t`, el número
+  de `CREATE TABLE` y que termine en `-- Dump completed on`.
 - **Cargar un .sql con tildes desde la consola de Windows los CORROMPE** (2026-08-09).
   `mysql.exe < migracion.sql` sin `--default-character-set=utf8mb4` reinterpreta el archivo
   con el codepage de la consola: 'Clásica' se guardó como 'Cl├ísica' (bytes E2949C C3AD en
@@ -1765,6 +1902,68 @@ NO se ve con `prisma db push` (nunca ejecuta los .sql): solo aparece corriendo l
 migraciones de verdad — por eso vale la pena probarlas contra una copia de producción antes
 de subir.
 
+## Centro de notificaciones (campana del header, 2026-08-11)
+
+Lo pidió el dueño con una captura: la lista de material bajo mínimo se pintaba ENTERA
+encima de Inventario y eran **55 renglones** tapando la pantalla. Su queja, textual:
+*"se me hace muy feo ese mensaje ultra largo […] que el mensaje sea muy breve, me parece
+muy exagerado lo que se hizo allí"*.
+
+- **Por qué se rompió, y es la lección que importa**: la banda se escribió el 2026-08-10,
+  cuando **solo 1 de 226 materiales tenía mínimo configurado**. Con un renglón se veía
+  perfecta. Al configurar los mínimos por gama —que era justo el objetivo de esa pantalla—
+  saltó a 55 de golpe. **Una lista sin tope se prueba con los datos del día que funcione,
+  no con los de hoy**: preguntarse "¿cuántas filas tendrá esto cuando el módulo esté bien
+  usado?" es lo que evita el muro.
+- **Y estaba duplicando una pantalla**: el detalle (cuánto pedir, a qué costo, copiar para
+  WhatsApp) ya vive en `reposicion`, creada el MISMO día. La banda no había que
+  embellecerla, había que quitarla.
+- **`notificacion.repository.ts`** junta en un solo sitio lo que estaba regado por el
+  panel: créditos vencidos, stock en negativo, perfumes que no descuentan, garantías sin
+  resolver, material en el mínimo, esencias sin perfume, reseñas por aprobar y clientes
+  esperando reposición. Cada aviso es **UNA línea que empieza por el número**; el detalle
+  vive en la pestaña a la que lleva.
+- **El número sale de la MISMA función que usa la pantalla** (`calcularReposicion`), no de
+  una consulta parecida escrita aparte. Si la campana dijera 55 y el pedido sugerido 53,
+  no se podría confiar en ninguno. Mismo criterio que `GET /creditos/totales`. Igual con
+  los créditos vencidos: se replica el criterio de saldo de `mapCredito`.
+- **Nada se guarda, se recalcula** (como los sellos, el cupo y los promedios por gama):
+  una notificación guardada seguiría avisando de algo que el dueño ya resolvió.
+- **Si la carga falla se dice DENTRO del panel**, no con un toast: un aviso flotante en
+  cada entrada al dashboard molestaría, pero dejar la campana muda haría creer que no hay
+  nada pendiente, que es peor.
+- El plural va escrito completo (`plural(n, 'material llegó', 'materiales llegaron')`),
+  no derivado con sufijos — misma decisión que en Clasificaciones.
+- Verificado en navegador con los datos reales: la banda de Inventario pasó de 55 renglones
+  a **41 px** en escritorio y **60 px** en celular; la campana marca 2 y el clic lleva a
+  `/dashboard/reposicion`; sin sesión el endpoint responde 401.
+
+**La barra de arriba quedó con la campana y nada más** (2026-08-11). El dueño mandó la
+captura: con la campana y el botón de Respaldo juntos, en pantalla pequeña el nombre se
+truncaba a *"Celestial Parfu…"* y todo quedaba pegado. Su decisión: *"dejar solo el icono de
+las notificaciones y pasar el de la copia de base de datos al sidebar"*.
+- **El respaldo vive ahora en el menú lateral, en TODOS los tamaños** (`enMenu` de
+  `BackupSeguridad`: ancho completo, con texto, y el aviso como etiqueta "pendiente" al
+  lado en vez de un punto pegado al borde). Encaja con el criterio de siempre: hacer una
+  copia es mantenimiento semanal, no trabajo del día.
+- **Esconder el botón habría escondido el recordatorio**, así que el aviso de los 7 días
+  pasó a ser **una línea de la campana** ("Llevas N días sin hacer copia de la base", o
+  "Nunca has hecho una copia" si no hay ninguna, que va en rojo). Perder la base es lo
+  único de esa lista que no se puede deshacer.
+- Esa notificación va con **`tab: ''`**: el respaldo no es una pestaña. El panel pinta la
+  línea sin flecha y no navega ni se cierra al tocarla.
+- `utils/estadoRespaldo.ts` guarda las rutas de `backups/ultima.json` y `totp.json` y sus
+  lectores, porque ahora los usan DOS sitios (el router del respaldo y las notificaciones).
+  Con la ruta escrita en dos lados, el día que la carpeta se mueva uno se queda mirando un
+  archivo que no existe y **falla en silencio**, diciendo "nunca has hecho copia" para
+  siempre.
+- Verificado en 390 px: el nombre ya no se corta, arriba solo queda la campana, el respaldo
+  aparece en el menú marcado como pendiente, y la campana pasó a 3 avisos.
+
+**Al agregar un aviso nuevo**: va en `calcularNotificaciones` con su `tab` y su tono
+(`urgente` = cuesta plata mientras nadie mira · `aviso` = hay que atenderlo pronto ·
+`info` = trabajo de rutina). **No** volver a pintar la lista completa en la pantalla.
+
 ## Reportes (dashboard → sección Reportes)
 
 - **Tres pestañas, no una** (`rep_ventas`, `rep_compras`, `rep_clientes`): son preguntas
@@ -1849,10 +2048,10 @@ cientos de KB, no 20 bytes**.
    (no se sabe si fue el de 200 o el de 250) y la 1219 es un "Combo Personalizado" con dos
    tallas en una línea. Solo el dueño puede decir cuál era.
 3. Separar "200/250ML" en dos tallas reales y sembrar el stock inicial.
-4. La skill **`catalogo-recompra`** existe en la cuenta de claude.ai del dueño pero NO en
-   disco, así que Claude Code no la ve (`Unknown skill`). Para usarla hay que copiarla a
-   `C:\Users\Estaduardo\.claude\skills\catalogo-recompra\SKILL.md`. No decirle que "no
-   existe": existe, simplemente no llega hasta acá.
+4. ~~La skill `catalogo-recompra` no está en disco~~ — **RESUELTO** (verificado el
+   2026-08-11): está completa en `C:\Users\Estaduardo\.claude\skills\catalogo-recompra\`
+   con su `SKILL.md`. Como ninguna skill del proyecto se carga sola en la cuenta actual,
+   se lee como archivo igual que las demás.
 
 ## Cómo trabajamos (preferencias del dueño)
 

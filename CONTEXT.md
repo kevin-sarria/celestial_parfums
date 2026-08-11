@@ -125,17 +125,24 @@ frontend/src/
 
 ## 4. Estado actual del proyecto
 
-### Datos reales en la base local (= copia de producción)
+### Datos reales de PRODUCCIÓN (respaldo del 2026-08-11)
 
 | | |
 |---|---|
-| Perfumes | **212** (todos publicados) |
-| Perfumes fabricados **sin esencia asignada** | **25** ⚠️ |
-| Ventas / créditos / usuarios | 261 / 5 / 22 |
-| Insumos (materiales) | 226 |
-| Movimientos de inventario | 222 (**todos son ajustes de conteo**; aún no hay consumo real) |
+| Perfumes | **222** (2 despublicados) |
+| Perfumes fabricados **sin esencia asignada** | **0** ✅ |
+| Ventas / créditos / usuarios | 269 / 5 / 28 |
+| Insumos (materiales) | 232 |
+| Movimientos de inventario | 270 (223 ajustes · 12 de compra · 35 de venta) |
+| Líneas de venta | 464 (12 sin talla) |
 | Recetas por tamaño | 5 |
 | Tablas | 49 |
+
+> **La base local se atrasa rápido.** El 2026-08-11 iba una semana por detrás y reportaba
+> como rotos cuatro pendientes que el dueño ya había cerrado en producción. **Pídele el
+> respaldo antes de medir nada.** Para cargarlo: descomprimir, **quitar la primera línea**
+> (los MariaDB nuevos escriben un `/*M!999999\- ...*/` que el cliente de XAMPP rechaza con
+> `Unknown command '\-'`) y cargar con `mysql --default-character-set=utf8mb4`.
 
 ### Git
 
@@ -157,30 +164,39 @@ Para quitar cualquier duda sobre qué hay aplicado de verdad, en el servidor:
 cd /var/www/celestial-parfums/backend && npx prisma migrate status
 ```
 
-Vale la pena mirarlo al menos una vez: este proyecto tiene **histórico de `db push`**, así
-que puede darse el caso de que el esquema esté correcto pero la tabla `_prisma_migrations`
-no lo refleje. Saberlo evita que el siguiente `migrate deploy` falle por historial y que
-alguien crea que falta algo cuando no falta.
+**Duda resuelta el 2026-08-11**: se cargó el respaldo de producción en local y
+`npx prisma migrate status` respondió **"48 migrations found — Database schema is up to
+date!"**. O sea que el histórico de `db push` NO dejó deuda: `_prisma_migrations` refleja
+la realidad y el próximo `migrate deploy` no va a fallar por historial. Si alguna vez
+vuelve a haber dudas, esta es la comprobación (y ya no hace falta el SSH: basta cargar el
+respaldo en local y correrla ahí).
 
 **Antes de tocar producción: respaldo por SSH y verificar que el archivo pese MB, no bytes.**
 (Hubo un bug grave en el que el respaldo bajaba vacío y parecía válido; está documentado.)
 
 ### Lo que quedó a medias y por qué
 
-1. **25 perfumes fabricados sin esencia enlazada.** Es el pendiente más caro: un perfume sin
-   esencia **no descuenta nada del inventario al venderse y su costo entra en CERO**, así
-   que la ganancia del mes sale inflada. Ya existe la herramienta para arreglarlo
-   (Inventario → banda ámbar → *Emparejarlas*), pero **las decisiones son del dueño**: hay
-   4 casos ambiguos que solo él puede resolver (Good Girl / Good Girl Blush, Mercedes Club
-   Black / Club Night, y los dos Valentino Donna).
-2. **189 esencias sin género** y **todas las gamas con mínimo en 0**. No es un fallo: son
-   datos que el dueño va a ir llenando. La forma rápida es el Excel (*Lista de materiales*).
-3. **8 líneas de venta históricas sin talla** (ventas 1179, 1180, 1181, 1249, 1219). Solo
-   el dueño sabe si fue el de 200 o el de 250 ml.
-4. **Márgenes negativos en premium al mayoreo** (−56% a −87% con la lista de precios
-   actual). Está medido y documentado; **falta que el dueño decida** qué hacer.
-5. **El pedido sugerido no tiene consumo real todavía** porque no hay salidas registradas.
-   Funciona con el mínimo configurado y lo avisa en pantalla.
+**El grueso se cerró entre el 10 y el 11 de agosto** y lo cerró el dueño a mano: ya no
+quedan perfumes sin esencia (eran 25), las 4 gamas tienen su mínimo, el género de las
+esencias está lleno salvo 3, y **el sistema empezó a moverse solo**: 12 líneas de compra
+alimentando el costo promedio y 2 ventas que descontaron material y congelaron su costo
+($34.582 y $22.105). Lo que sigue abierto:
+
+1. **12 líneas de venta sin talla**, de las cuales **4 son rellenables**: las ventas 1269
+   ("30ML") y 1272 ("50ML") dicen la talla sin ambigüedad en el texto de la venta, pero sus
+   líneas quedaron sin el número — cayeron en el hueco entre la migración que rellenó las
+   históricas y el despliegue del consumo. Las otras 8 (ventas 1179, 1180, 1181, 1249 y
+   1219) son ambiguas de verdad y solo el dueño sabe si fue el de 200 o el de 250 ml.
+   **Rellenar la talla NO recupera el descuento de inventario** (el consumo no es
+   retroactivo, por diseño): sirve para que el histórico quede completo.
+2. **3 esencias sin género** (eran 189). Se llenan desde el Excel *Lista de materiales*.
+3. **Los precios premium al mayoreo se venden por debajo del costo** (−56% a −87%).
+   **Decidido el 2026-08-11: se mantienen así por ahora.** No es un pendiente, es un
+   riesgo aceptado a conciencia — las clásicas y las árabes lo subsidian. Se vuelve a
+   plantear solo si sube la esencia premium o si llega un mayorista que pida casi puro
+   premium.
+4. La gama **"Diseñador" tiene mínimo configurado y cero esencias**: o se le cuelgan
+   esencias o se borra.
 
 ---
 

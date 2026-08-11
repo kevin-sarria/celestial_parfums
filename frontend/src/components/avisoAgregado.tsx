@@ -26,9 +26,13 @@ interface Agregado {
  * les caía encima justo cuando el cliente quiere ver que el contador subió.
  */
 export const avisarAgregado = (item: Agregado) => {
+  // SIN caja propia: la tarjeta (fondo, borde, redondeo y sombra) la pone el
+  // contenedor de sonner, igual que en el resto de avisos. Cuando este
+  // componente traía su propio recuadro quedaba UNA CAJA DENTRO DE OTRA — lo
+  // cazó el dueño en una captura. Aquí solo va el contenido.
   toast.custom(
     () => (
-      <div className="flex w-full max-w-sm items-center gap-3 rounded-xl border border-border bg-card px-3 py-2.5 shadow-lg">
+      <div className="flex w-full items-center gap-3">
         {item.imagen_url ? (
           <img
             src={item.imagen_url}
