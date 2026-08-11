@@ -4,7 +4,9 @@ import * as reposicion from '../repositories/reposicion.repository';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
-import { ajusteSchema, produccionSchema, salidaSchema, minimoSchema } from '../schemas/inventario.schema';
+import {
+  ajusteSchema, produccionSchema, salidaSchema, minimoSchema, minimosGamasSchema,
+} from '../schemas/inventario.schema';
 
 /** Inventario de insumos: 100% interno (lleva costos reales del negocio). */
 export const inventarioRouter = Router();
@@ -41,10 +43,26 @@ inventarioRouter.patch('/minimo/:id', validate(minimoSchema), h(async (req, res)
   });
 }));
 
-/** Punto de pedido por defecto de todas las esencias de una gama. */
-inventarioRouter.patch('/minimo-gama/:id', validate(minimoSchema), h(async (req, res) => {
-  const dato = await reposicion.fijarMinimoGama(Number(req.params.id), req.body.minimo ?? 0);
-  res.json({ message: `Mínimo de la gama "${dato.nombre}" actualizado`, data: dato });
+/**
+ * Los puntos de pedido de TODAS las gamas, en una sola petición, y **devuelve
+ * la lista ya recalculada**.
+ *
+ * Antes era un `PATCH` por gama y luego otra llamada para volver a pedir la
+ * lista: cinco viajes para guardar cuatro casillas de un mismo formulario. Y
+ * peor, si una fallaba la pantalla quedaba a medio guardar.
+ *
+ * Devolver la reposición aquí no es un capricho de rendimiento: cambiar un
+ * mínimo **cambia la pantalla entera** (qué está bajo mínimo, cuánto pedir,
+ * cuánto costará), y eso solo se puede calcular en el servidor, que es quien
+ * tiene el consumo de los últimos 90 días.
+ *
+ * Es PATCH y no PUT a propósito: **el CORS de esta app no permite PUT** y
+ * moriría en el preflight del navegador (con `curl` sí funcionaría, así que el
+ * fallo no se ve probando por consola).
+ */
+inventarioRouter.patch('/minimos-gama', validate(minimosGamasSchema), h(async (req, res) => {
+  const data = await reposicion.fijarMinimosGamas(req.body.minimos);
+  res.json({ message: 'Listo: te avisaremos con esos mínimos', data });
 }));
 
 inventarioRouter.get('/primeros-pasos', h(async (_req, res) => {

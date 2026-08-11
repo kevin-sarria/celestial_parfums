@@ -65,6 +65,21 @@ export const minimoSchema = z.object({
   minimo: z.number().min(0).max(9_999_999).nullish(),
 });
 
+/**
+ * Los puntos de pedido de VARIAS gamas de una sola vez.
+ *
+ * Se guardan juntos a propósito: son cuatro casillas de un mismo formulario y
+ * el dueño las ajusta en una sentada. Una petición por casilla dejaba la
+ * pantalla a medio guardar si una fallaba, y obligaba a volver a pedir la lista
+ * cuatro veces.
+ */
+export const minimosGamasSchema = z.object({
+  minimos: z.array(z.object({
+    id: z.number().int().positive(),
+    minimo: z.number().min(0).max(9_999_999),
+  })).min(1, 'No mandaste ningún mínimo'),
+});
+
 export type SalidaInput = z.infer<typeof salidaSchema>;
 export type AjusteInput = z.infer<typeof ajusteSchema>;
 export type ProduccionInput = z.infer<typeof produccionSchema>;

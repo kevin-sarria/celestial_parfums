@@ -164,3 +164,29 @@ export const fijarMinimoGama = (id: number, minimo: number) =>
     data: { stock_minimo: minimo },
     select: { id: true, nombre: true, stock_minimo: true },
   });
+
+/**
+ * Guarda los puntos de pedido de varias gamas **y devuelve la lista ya
+ * recalculada**.
+ *
+ * Las dos mitades van juntas por una razón de fondo: cambiar un mínimo no
+ * cambia una casilla, **cambia la pantalla entera** — qué materiales están bajo
+ * mínimo, cuánto pedir de cada uno y cuánto costará el pedido. Ese cálculo no
+ * se puede rehacer en el navegador porque necesita el consumo de los últimos 90
+ * días, que vive aquí.
+ *
+ * Devolviéndola en la misma respuesta, guardar cuesta **un solo viaje** en vez
+ * de uno por gama más otro para volver a pedir la lista.
+ *
+ * Va en transacción: si una gama falla, no se guarda ninguna. Cuatro casillas
+ * de un mismo formulario no pueden quedar a medio guardar.
+ */
+export const fijarMinimosGamas = async (minimos: { id: number; minimo: number }[]) => {
+  await prisma.$transaction(
+    minimos.map(({ id, minimo }) => prisma.gamaEsencia.update({
+      where: { id },
+      data: { stock_minimo: minimo },
+    })),
+  );
+  return calcularReposicion();
+};
