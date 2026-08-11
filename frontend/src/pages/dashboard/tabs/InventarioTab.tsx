@@ -8,6 +8,7 @@ import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import Modal from '../../../components/Modal';
 import ExportMenu from '../../../components/ExportMenu';
 import ImportModal from '../../../components/ImportModal';
+import MenuAcciones from '../../../components/MenuAcciones';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
@@ -202,25 +203,28 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
           nota={sinStock === 0 ? 'Todo con stock' : 'Insumos en cero: revisa antes de producir'} />
       </FranjaMetricas>
 
-      {/* Lista de pedido: lo que hay que encargar, con cuánto */}
+      {/**
+        * UNA línea, no la lista.
+        *
+        * Aquí se pintaban todos los materiales bajo mínimo, uno por renglón. Se
+        * escribió cuando solo 1 de 226 tenía mínimo configurado, así que se veía
+        * bien; en cuanto se configuraron los mínimos por gama pasó a **55
+        * renglones** tapando la pantalla y el dueño lo rechazó. El detalle
+        * (cuánto pedir, a qué costo, listo para WhatsApp) ya tiene su propia
+        * pestaña desde el 2026-08-10: repetirlo aquí era duplicar una pantalla.
+        */}
       {porPedir.length > 0 && (
-        <div className="rounded-xl border border-amber-400/45 bg-amber-400/10 px-3.5 py-3">
-          <p className="flex items-center gap-2 text-[13.5px] font-medium text-amber-800">
-            <ShoppingCart className="size-4" />
-            Hora de pedir: {porPedir.length} {porPedir.length === 1 ? 'insumo está' : 'insumos están'} en el mínimo
-          </p>
-          <ul className="mt-2 flex flex-col gap-1 text-[12.5px] text-amber-900">
-            {porPedir.map((i) => (
-              <li key={i.id} className="flex flex-wrap justify-between gap-2">
-                <span>
-                  <strong>{i.nombre}</strong> — te quedan {i.stock} {i.unidad}
-                  <span className="text-amber-700"> (mínimo {i.stock_minimo})</span>
-                </span>
-                <span className="font-medium">Pide ~{i.sugerido} {i.unidad}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+        <Link
+          to="/dashboard/reposicion"
+          className="flex w-full items-center gap-2 rounded-lg border border-amber-400/45 bg-amber-400/10 px-3.5 py-2.5 text-left text-[12.5px] text-amber-900 transition-colors hover:bg-amber-400/20"
+        >
+          <ShoppingCart className="size-4 shrink-0 text-amber-700" />
+          <span className="flex-1">
+            <strong className="font-medium">{porPedir.length}</strong>{' '}
+            {porPedir.length === 1 ? 'material llegó' : 'materiales llegaron'} a su mínimo
+          </span>
+          <span className="shrink-0 font-medium text-amber-800">Ver el pedido sugerido →</span>
+        </Link>
       )}
 
       {/* Lo que se fue sin vender: muestras es marketing, merma es pérdida */}
@@ -309,23 +313,52 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
                   { entity: 'movimientos', label: 'Historial de entradas y salidas', nota: 'Solo se descarga' },
                 ]}
               />
-              <Button size="sm" variant="outline"
-                onClick={() => setMaterial({ abierto: true, dato: null })}>
-                <Plus className="size-4" /> Material
-              </Button>
-              {/* Tiene que vivir aquí y no solo en Primeros Pasos: esa caja
-                  desaparece al completarse, y sin este botón la asignación de
-                  esencias quedaría inalcanzable para el próximo perfume nuevo. */}
-              <Button size="sm" variant="outline" onClick={() => setEsenciasAbierto(true)}>
-                <Wand2 className="size-4" /> Esencias
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => setSalidaAbierta(true)}>
-                <Droplets className="size-4" /> Salida
-              </Button>
-              <Button size="sm" variant="outline"
-                onClick={() => setProdAbierta(true)}>
-                <FlaskConical className="size-4" /> Producción
-              </Button>
+              {/**
+                * Agrupados por la PREGUNTA que responden, no por orden de llegada.
+                *
+                * Esta barra había crecido a seis botones del mismo peso —uno por
+                * cada función nueva— y encontrar lo que se hace a diario costaba
+                * lo mismo que encontrar lo de una vez al mes. Ahora: lo que se
+                * configura de vez en cuando en un menú, lo que consume material
+                * en otro, y **una sola acción destacada**, que es la que de
+                * verdad se usa (61 compras registradas contra 0 producciones).
+                *
+                * Los nombres van en el idioma del dueño: "Registrar uso", nunca
+                * "Movimientos" — esa palabra es del sistema, no del negocio.
+                */}
+              <MenuAcciones
+                label="Materiales" icon={Plus} titulo="Dar de alta y clasificar"
+                acciones={[
+                  {
+                    label: 'Material nuevo', icon: Plus,
+                    nota: 'Una esencia, un frasco, un accesorio',
+                    onSelect: () => setMaterial({ abierto: true, dato: null }),
+                  },
+                  {
+                    // Vive aquí y no solo en Primeros pasos: esa caja desaparece
+                    // al completarse, y sin esto la asignación quedaría
+                    // inalcanzable para el próximo perfume nuevo.
+                    label: 'Asignar esencias', icon: Wand2,
+                    nota: 'Enlazar varias fragancias de una vez',
+                    onSelect: () => setEsenciasAbierto(true),
+                  },
+                ]}
+              />
+              <MenuAcciones
+                label="Registrar uso" icon={Droplets} titulo="Material que salió"
+                acciones={[
+                  {
+                    label: 'Armé perfumes', icon: FlaskConical,
+                    nota: 'Descuenta la receta del tamaño',
+                    onSelect: () => setProdAbierta(true),
+                  },
+                  {
+                    label: 'Muestra, regalo o daño', icon: Droplets,
+                    nota: 'Salió sin venta: mostrario o pérdida',
+                    onSelect: () => setSalidaAbierta(true),
+                  },
+                ]}
+              />
               <Button size="sm" asChild>
                 <Link to="/dashboard/pagos?nueva=1">
                   <PackagePlus className="size-4" /> Registrar llegada
