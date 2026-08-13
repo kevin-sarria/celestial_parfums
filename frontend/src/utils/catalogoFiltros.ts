@@ -1,5 +1,4 @@
 import type { Perfume } from '../domain/entities/perfume.schema';
-import type { FormulaVolumen } from '../domain/entities/cotizacion.types';
 
 /**
  * Qué entra al catálogo PDF y qué se imprime de cada perfume.
@@ -57,44 +56,8 @@ export const gamasDelCatalogo = (perfumes: Perfume[]) => {
   return [...mapa.values()].sort((a, b) => b.total - a.total);
 };
 
-/**
- * Cuánta esencia hace falta para armar UNA unidad de la talla más pequeña que
- * ofrece ese perfume.
- *
- * Se mide contra la talla más pequeña —no contra una fija— porque un perfume
- * que solo se vende en 100 ml necesita 50 ml de esencia, no los 15 del 30 ml.
- * Null = no se puede saber (no tiene tallas con ml, o falta esa receta).
- */
-export const esenciaParaUno = (p: Perfume, formulas: FormulaVolumen[]): number | null => {
-  const mls = p.precios.map((x) => x.ml).filter((m): m is number => m != null && m > 0);
-  if (!mls.length) return null;
-  const menor = Math.min(...mls);
-  const receta = formulas.find((f) => f.ml_total === menor);
-  return receta ? receta.esencia_ml : null;
-};
-
-/**
- * ¿Alcanza la esencia para armar uno hoy?
- *
- * El corte NO es "tiene algo de stock": con 3 ml de esencia no sale un frasco
- * de 30 ml (necesita 15). Si el catálogo lo incluyera, le estaría prometiendo
- * al cliente algo que no se puede hacer.
- *
- * Los que no se fabrican (una gorra, un splash comprado) no se juzgan con esta
- * regla: su existencia no depende de ninguna esencia.
- */
-export const puedeArmarHoy = (p: Perfume, formulas: FormulaVolumen[]): boolean => {
-  if (p.tipo_producto !== 'fabricado') return true;
-  if (p.insumo_esencia_stock == null) return false;
-  const necesita = esenciaParaUno(p, formulas);
-  if (necesita == null) return p.insumo_esencia_stock > 0;
-  return p.insumo_esencia_stock >= necesita;
-};
-
 /** Motivo por el que un perfume se queda fuera, o null si entra. */
-const motivoDeExclusion = (
-  p: Perfume, o: OpcionesCatalogo, formulas: FormulaVolumen[],
-): string | null => {
+const motivoDeExclusion = (p: Perfume, o: OpcionesCatalogo): string | null => {
   if (p.gama_id == null) {
     if (!o.sinGama) return 'no tienen esencia asignada';
   } else if (!o.gamas.includes(p.gama_id)) {
@@ -109,7 +72,10 @@ const motivoDeExclusion = (
 
   if (!o.incluirAgotados && p.agotado) return 'están agotados';
   if (o.soloConFoto && !p.imagen_url) return 'no tienen foto';
-  if (o.soloFabricablesHoy && !puedeArmarHoy(p, formulas)) {
+  // `sin_esencia` lo calcula el SERVIDOR (mide contra la talla más pequeña de
+  // cada perfume). Antes esta regla estaba escrita aquí también, y dos copias
+  // de la misma regla se separan el día que alguien toque una.
+  if (o.soloFabricablesHoy && p.sin_esencia) {
     return 'no tienes esencia suficiente para armar ni uno';
   }
   return null;
@@ -123,14 +89,12 @@ export interface SeleccionCatalogo {
   total: number;
 }
 
-export const seleccionar = (
-  perfumes: Perfume[], o: OpcionesCatalogo, formulas: FormulaVolumen[],
-): SeleccionCatalogo => {
+export const seleccionar = (perfumes: Perfume[], o: OpcionesCatalogo): SeleccionCatalogo => {
   const incluidos: Perfume[] = [];
   const porMotivo = new Map<string, number>();
 
   for (const p of perfumes) {
-    const motivo = motivoDeExclusion(p, o, formulas);
+    const motivo = motivoDeExclusion(p, o);
     if (motivo) porMotivo.set(motivo, (porMotivo.get(motivo) ?? 0) + 1);
     else incluidos.push(p);
   }

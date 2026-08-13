@@ -73,7 +73,19 @@ export const perfumeSchema = z.object({
   descuento: z.number(),
   // % propio del perfume, sin contar el de la categoría (lo usa el dashboard)
   descuento_propio: z.number().optional(),
+  /**
+   * Lo que ve la tienda: lo marcó el dueño **o** no alcanza la esencia para
+   * armar ni uno. Lo calcula el servidor en cada consulta; no hay ninguna
+   * columna que diga esto, a propósito (un valor guardado quedaría mintiendo
+   * en cuanto entre una compra de esencia).
+   */
   agotado: z.boolean().default(false),
+  /** La marca manual, cruda: es lo único que el dashboard puede desmarcar. */
+  agotado_manual: z.boolean().default(false),
+  /** Se quedó sin esencia para armar ni uno de su talla más pequeña. */
+  sin_esencia: z.boolean().default(false),
+  /** Cuánta esencia pide una unidad de su talla más pequeña, para explicarlo. */
+  esencia_necesaria: z.number().nullable().default(null),
   /**
    * ¿Está en la tienda? Distinto de `agotado`: un agotado SÍ se muestra (con su
    * marca y el "avísame cuando vuelva"); uno despublicado no aparece por ningún

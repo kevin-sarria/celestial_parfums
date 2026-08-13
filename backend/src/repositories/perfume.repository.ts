@@ -48,8 +48,49 @@ const resolverPrecios = (p: PerfumeRow) => {
   }));
 };
 
+/**
+ * Cuánta esencia hace falta para armar UNA unidad de la talla más pequeña que
+ * ofrece este perfume.
+ *
+ * Se mide contra la más pequeña —y no contra una fija— porque un perfume que
+ * solo se vende en 100 ml necesita 50 ml de esencia, no los 15 del 30 ml.
+ * Null = no se puede saber: la talla no tiene receta enlazada, o lo que ofrece
+ * no son tallas ("Combo Personalizado", "200/250ML" vienen sin `ml` a propósito).
+ */
+const esenciaParaUno = (p: PerfumeRow): number | null => {
+  const tallas = p.presentaciones
+    .map((r) => r.presentacion)
+    .filter((x) => x.ml != null && x.ml > 0);
+  if (!tallas.length) return null;
+  const menor = tallas.reduce((a, b) => (a.ml! <= b.ml! ? a : b));
+  return menor.formula ? Number(menor.formula.esencia_ml) : null;
+};
+
+/**
+ * ¿Se quedó sin esencia para armar ni uno?
+ *
+ * El corte NO es "tiene algo de stock": con 3 ml de esencia no sale un frasco
+ * de 30 ml, que necesita 15. Si el catálogo lo mostrara disponible le estaría
+ * prometiendo al cliente algo que no se puede armar.
+ *
+ * Solo se juzga a los que se FABRICAN: una gorra o un splash comprado no
+ * dependen de ninguna esencia. Un perfume sin esencia asignada cuenta como sin
+ * esencia — uno recién creado nace así, y hasta que no se le asigne no se sabe
+ * con qué armarlo.
+ */
+export const sinEsenciaParaUno = (p: PerfumeRow): boolean => {
+  if ((p.tipo_producto ?? 'fabricado') !== 'fabricado') return false;
+  if (!p.insumo_esencia) return true;
+  const stock = Number(p.insumo_esencia.stock);
+  const necesita = esenciaParaUno(p);
+  // Sin receta enlazada, lo único afirmable es que quede algo: inventar aquí un
+  // número marcaría agotado a quien sí puede vender.
+  return necesita == null ? stock <= 0 : stock < necesita;
+};
+
 export const mapPerfume = (p: PerfumeRow) => {
   const precios = resolverPrecios(p);
+  const sinEsencia = sinEsenciaParaUno(p);
   // El precio "de portada" (cards, PDF, SEO) es el más barato de sus
   // presentaciones: es el que acompaña al "desde $X" cuando hay varias.
   const desde = precios.length ? Math.min(...precios.map((x) => x.precio)) : Number(p.precio);
@@ -95,7 +136,21 @@ export const mapPerfume = (p: PerfumeRow) => {
     gama_id: p.insumo_esencia?.gama_id ?? null,
     /// Existencias de SU esencia, para saber si hoy se puede armar uno.
     insumo_esencia_stock: p.insumo_esencia ? Number(p.insumo_esencia.stock) : null,
-    agotado:      p.agotado,
+    /**
+     * Lo que ve la tienda: lo marcó el dueño **o** no alcanza la esencia.
+     *
+     * El sistema NUNCA escribe la columna; esto se recalcula en cada consulta
+     * (mismo criterio que los sellos, el cupo y la gama). Un valor guardado
+     * quedaría mintiendo en cuanto entre una compra de esencia, y el dueño
+     * tendría que acordarse de desmarcar a mano lo que ya puede vender.
+     */
+    agotado:      p.agotado || sinEsencia,
+    /** La marca manual, cruda: es lo único que el dashboard puede desmarcar. */
+    agotado_manual: p.agotado,
+    /** Motivo calculado, para poder EXPLICARLO en vez de solo marcarlo. */
+    sin_esencia:  sinEsencia,
+    /** Cuánta esencia pide una unidad de su talla más pequeña (para el motivo). */
+    esencia_necesaria: esenciaParaUno(p),
     publicado:    p.publicado ?? true,
     es_nuevo:     esNuevo(p.created_at),
     tipos_aroma:    p.tipos_aroma.map((r) => r.tipo_aroma.nombre),
@@ -111,7 +166,12 @@ export const perfumeInclude = {
   categoria:      { include: { precios: true } },
   tipos_aroma:    { include: { tipo_aroma: true } },
   ocasiones:      { include: { ocasion: true } },
-  presentaciones: { include: { presentacion: true } },
+  // La receta viaja con la talla para poder saber, sin una segunda consulta, si
+  // hoy alcanza la esencia para armar uno (ver `sinEsenciaParaUno`). Traerla
+  // aquí es lo que deja a `mapPerfume` puro y síncrono: cargarla aparte
+  // obligaría a acordarse de aplicarla en cada consulta del catálogo, y la que
+  // se olvidara mostraría como disponible algo que no se puede armar.
+  presentaciones: { include: { presentacion: { include: { formula: true } } } },
   // Esencia concreta del perfume: su costo real por ml (cada fragancia la suya)
   // y su GAMA, que es de donde el perfume hereda si es árabe, clásico o premium.
   insumo_esencia: { include: { gama: true } },

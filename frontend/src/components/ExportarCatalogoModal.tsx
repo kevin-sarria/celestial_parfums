@@ -10,7 +10,6 @@ import {
   type OpcionesCatalogo,
 } from '../utils/catalogoFiltros';
 import type { Perfume } from '../domain/entities/perfume.schema';
-import type { FormulaVolumen } from '../domain/entities/cotizacion.types';
 
 const GENEROS = [
   { id: 'dama', label: 'Dama' },
@@ -59,7 +58,6 @@ export default function ExportarCatalogoModal({ open, onClose }: {
   open: boolean; onClose: () => void;
 }) {
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);
-  const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
   const [progreso, setProgreso] = useState<string | null>(null);
@@ -82,17 +80,14 @@ export default function ExportarCatalogoModal({ open, onClose }: {
     setError('');
     (async () => {
       try {
-        const [resCat, resFor] = await Promise.all([
-          fetch(`${BASE_URL}/api/parfums`, { credentials: 'include' }),
-          // Si fallan las recetas no se cae el modal: el filtro de "puedo armar
-          // hoy" se vuelve menos fino, pero todo lo demás sigue sirviendo.
-          fetch(`${BASE_URL}/api/costeo/formulas`, { credentials: 'include' }).catch(() => null),
-        ]);
+        // Antes aquí se pedían también las recetas, solo para saber de cuáles
+        // alcanza la esencia. Ese cálculo lo hace ahora el servidor y viene en
+        // `sin_esencia`, así que abrir el modal cuesta una petición menos.
+        const resCat = await fetch(`${BASE_URL}/api/parfums`, { credentials: 'include' });
         const json = await resCat.json();
         const lista: Perfume[] = Array.isArray(json?.data) ? json.data : (json?.data?.data ?? []);
         if (!vivo) return;
         setPerfumes(lista);
-        if (resFor?.ok) setFormulas((await resFor.json()).data ?? []);
 
         // Arranca con TODO marcado: exportar el catálogo completo es lo normal,
         // y así el primer estado que ve coincide con lo que había antes.
@@ -112,7 +107,7 @@ export default function ExportarCatalogoModal({ open, onClose }: {
 
   const gamas = useMemo(() => gamasDelCatalogo(perfumes), [perfumes]);
   const sinGamaTotal = useMemo(() => perfumes.filter((p) => p.gama_id == null).length, [perfumes]);
-  const sel = useMemo(() => seleccionar(perfumes, o, formulas), [perfumes, o, formulas]);
+  const sel = useMemo(() => seleccionar(perfumes, o), [perfumes, o]);
   const descripcion = useMemo(() => describirSeleccion(o, gamas), [o, gamas]);
 
   const generar = async () => {

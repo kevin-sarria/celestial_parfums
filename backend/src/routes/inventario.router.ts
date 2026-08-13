@@ -2,6 +2,11 @@ import { Router } from 'express';
 import * as repo from '../repositories/inventario.repository';
 import * as reposicion from '../repositories/reposicion.repository';
 import { requireAdmin } from '../middleware/auth.middleware';
+// Mover el stock de una esencia cambia qué perfumes se pueden armar hoy, y de
+// eso depende cuáles salen agotados en la tienda. Sin limpiar el caché, el
+// dueño registra la llegada de una esencia y el perfume sigue diciendo
+// "agotado" varios minutos — y concluye, con razón, que no funcionó.
+import { bustCatalogoCache } from '../services/perfume.service';
 import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
 import {
@@ -76,12 +81,16 @@ inventarioRouter.get('/movimientos/:insumoId', h(async (req, res) => {
 
 /** Conteo físico: "tengo X". El sistema calcula la diferencia. */
 inventarioRouter.post('/ajustes', validate(ajusteSchema), h(async (req, res) => {
-  res.status(201).json({ message: 'Inventario ajustado', data: await repo.ajustarStock(req.body) });
+  const data = await repo.ajustarStock(req.body);
+  bustCatalogoCache();
+  res.status(201).json({ message: 'Inventario ajustado', data });
 }));
 
 /** Salida sin venta: muestra del mostrario, mini de regalo o merma. */
 inventarioRouter.post('/salidas', validate(salidaSchema), h(async (req, res) => {
-  res.status(201).json({ message: 'Salida registrada', data: await repo.registrarSalida(req.body) });
+  const data = await repo.registrarSalida(req.body);
+  bustCatalogoCache();
+  res.status(201).json({ message: 'Salida registrada', data });
 }));
 
 inventarioRouter.get('/producciones', h(async (_req, res) => {
@@ -90,10 +99,13 @@ inventarioRouter.get('/producciones', h(async (_req, res) => {
 
 /** Registra un lote armado y descuenta sus insumos. */
 inventarioRouter.post('/producciones', validate(produccionSchema), h(async (req, res) => {
-  res.status(201).json({ message: 'Producción registrada', data: await repo.registrarProduccion(req.body) });
+  const data = await repo.registrarProduccion(req.body);
+  bustCatalogoCache();
+  res.status(201).json({ message: 'Producción registrada', data });
 }));
 
 inventarioRouter.delete('/producciones/:id', h(async (req, res) => {
   await repo.eliminarProduccion(Number(req.params.id));
+  bustCatalogoCache();
   res.json({ message: 'Producción eliminada; los insumos volvieron al inventario' });
 }));

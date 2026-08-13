@@ -3,12 +3,12 @@ import { Pencil, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { NativeSelect } from '@/components/ui/native-select';
 import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
 import { PublicarSwitch } from './perfumes/PublicarSwitch';
+import { EstadoStock } from './perfumes/EstadoStock';
 import ExportButton from '../../../components/ExportButton';
 import DescargarCatalogoButton from '../../../components/DescargarCatalogoButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
@@ -203,11 +203,6 @@ export function PerfumesTab({
     onMutate();
   };
 
-  const handleToggleAgotado = async (p: Perfume) => {
-    await guardedFetch(`${API}/${p.id}/agotado`, { method: 'PATCH', body: JSON.stringify({ agotado: !p.agotado }) });
-    onMutate();
-  };
-
   return (
     <>
       <Section>
@@ -234,13 +229,7 @@ export function PerfumesTab({
               {/* Dos estados distintos y a propósito separados: "Agotado" se
                   sigue viendo en la tienda; el interruptor la saca de ella. */}
               <PublicarSwitch perfume={p} guardedFetch={guardedFetch} onCambiado={onMutate} />
-              <button onClick={() => handleToggleAgotado(p)} title="Cambiar stock" className="cursor-pointer">
-                {p.agotado ? (
-                  <Badge variant="secondary" className="text-muted-foreground">Agotado</Badge>
-                ) : (
-                  <Badge variant="outline" className="border-primary/30 bg-brand-soft text-primary">En stock</Badge>
-                )}
-              </button>
+              <EstadoStock perfume={p} guardedFetch={guardedFetch} onCambiado={onMutate} />
               {p.imagen_url && (
                 <img src={p.imagen_url} alt={p.nombre} className="size-8 rounded-md border border-border object-cover" />
               )}
