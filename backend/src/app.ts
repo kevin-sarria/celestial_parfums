@@ -195,6 +195,13 @@ app.use('/api/backup', backupRouter);
 // (404/409...), un Error de servicio mantiene el 400 histórico.
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+/**
+ * Se exporta para poder APAGARLO. En producción nadie lo usa: arrancar sigue
+ * siendo `node dist/app.js` y nada cambia. Lo necesitan los recorridos de
+ * navegador, que levantan el servidor dentro de su propio proceso y tienen que
+ * cerrarlo al terminar; sin el handle quedaría un puerto ocupado tras cada
+ * corrida y la siguiente fallaría con EADDRINUSE.
+ */
+export const server = app.listen(PORT, () => {
   logger.info(`Servidor corriendo en http://localhost:${PORT}`);
 });

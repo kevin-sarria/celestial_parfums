@@ -59,7 +59,16 @@ cd frontend && npm install && npm run dev
 cd backend  && npx tsc --noEmit                      # tipos del backend
 cd frontend && npx tsc --noEmit -p tsconfig.app.json # tipos del frontend
 cd frontend && npx eslint src                        # LÍNEA BASE: 47 errores, 3 avisos
+
+cd backend  && npm test                              # 72 pruebas (necesita MySQL)
+cd backend  && npm run test:unidad                   # 43, sin MySQL, medio segundo
+cd backend  && npm run test:e2e                      # 11 recorridos en navegador
+cd frontend && npm test                              # 63 pruebas
 ```
+
+Las que tocan base corren contra **`perfumes_test`**, que se arma sola desde las migraciones.
+`perfumes_db` no se abre nunca — hay un seguro que lo impide. Detalle en `CLAUDE.md` →
+"Pruebas automatizadas".
 
 **Los 47 errores del linter son la línea base heredada, no los introdujiste tú.** Anota el
 número antes de empezar y compruébalo al final: si sube, ensuciaste algo.
@@ -285,9 +294,13 @@ Diseños y planes históricos: `docs/superpowers/specs/` y `docs/superpowers/pla
 
 En orden de valor para el negocio:
 
-1. **Segunda ola de pruebas.** La primera (motores de precios, 91 pruebas) ya está. Falta lo
-   que toca base de datos —cupones, consumo por venta, costo promedio, IVA por proveedor— y
-   los caminos completos con Playwright. Ver la sección de pruebas en `CLAUDE.md`.
+1. **Decidir el caso de borde del costo promedio** (lo único que dejó abierto la ola 2 de
+   pruebas). Al borrar la única compra de un material, su costo se queda en el de la compra
+   borrada en vez de volver al de partida. Arreglarlo exige una columna nueva
+   (`precio_inicial`) y su migración, así que es decisión del dueño. Está medido y con dos
+   pruebas puestas: ver `CLAUDE.md` → "Inventario y costo promedio".
+   **Las dos olas de pruebas YA ESTÁN** (146 en total: aritmética, base de datos y cuatro
+   recorridos en navegador). Lo que falta es cobertura de más módulos, no montar nada.
 2. **Rellenar la talla de las 4 líneas de venta que sí se pueden** (ventas 1269 y 1272). Las
    otras 8 son ambiguas y solo el dueño sabe si fue el de 200 o el de 250 ml.
 3. **3 esencias sin género** (eran 189). Se llenan desde el Excel *Lista de materiales*.

@@ -57,30 +57,95 @@ criterio general reutilizable.
 ## Pruebas automatizadas (desde 2026-08-12)
 
 ```bash
-cd backend  && npm test        # o npm run test:watch
+cd backend  && npm test          # aritmética + base de datos (~40 s)
+cd backend  && npm run test:unidad   # solo aritmética, sin MySQL (~0,5 s)
+cd backend  && npm run test:bd       # solo las que tocan base
+cd backend  && npm run test:e2e      # recorridos en navegador (~35 s)
 cd frontend && npm test
 ```
 
+**146 pruebas** al 2026-08-13: 63 en el frontend, 72 en el backend (43 puras + 29 contra
+base, 1 marcada como discrepancia) y 11 recorridos completos.
+
 **Vitest, NO Jest.** El frontend es Vite 8: Vitest reutiliza esa configuración (alias `@/`,
 TypeScript) sin una capa paralela que se rompe en cada actualización. Usarlo también en el
-backend deja UNA herramienta en vez de dos. Para E2E, cuando toque, **Playwright y no
-Cypress**: ya se usa `playwright-core` sobre el Edge instalado (ver `revisar-pantalla.mjs`),
-justamente para no descargar navegadores.
+backend deja UNA herramienta en vez de dos. **Playwright y no Cypress**, con
+`playwright-core` sobre el Edge instalado (igual que `revisar-pantalla.mjs`): cero
+navegadores descargados. Y corre **bajo Vitest**, así que sigue habiendo una sola
+herramienta de pruebas en todo el proyecto.
 
 - **Solo `*.test.ts`.** El patrón por defecto de Vitest también recoge `.spec.ts`, y
   `src/schemas/import.spec.ts` **NO es una prueba**: es la definición de columnas del
   importador. Está acotado en los dos `vitest.config`.
-- **El `tsconfig.json` del backend EXCLUYE los tests**: si no, `npm run build` los mete en
-  `dist/` y suben al servidor con un `import` de vitest que allá no existe.
+- **El `tsconfig.json` del backend EXCLUYE los tests** y también `src/test/` y `e2e/`: si no,
+  `npm run build` los mete en `dist/` y suben al servidor con un `import` de vitest —y del
+  CLI de Prisma— que allá no existe.
 - **Los archivos van junto al código** que prueban y **los nombres de las pruebas en
   español**: el dueño tiene que poder leer la salida cuando algo falle.
 - **Se escriben desde la REGLA de negocio, no desde el código.** Si el código hace otra cosa,
   no se fuerza la prueba para que pase: se marca la discrepancia y se le pregunta al dueño.
   Así se encontró el fallo de `matchPerfumes` con los nombres que llevan coma.
-- Cubierto (91 pruebas): `finalPrice`, `detectarCombos`, `costeoCotizacion`, `lineasPedido`,
-  `catalogoFiltros`, `perfumeMatcher` y `sinEsenciaParaUno`. **Todo son funciones puras**:
-  no hay base de datos ni pantallas todavía. Diseño en
+- **Ola 1** (funciones puras): `finalPrice`, `detectarCombos`, `costeoCotizacion`,
+  `lineasPedido`, `catalogoFiltros`, `perfumeMatcher` y `sinEsenciaParaUno`. Diseño en
   `docs/superpowers/specs/2026-08-12-pruebas-motores-precios-design.md`.
+- **Ola 2** (lo que escribe + recorridos): costo promedio, consumo por venta, cupones e IVA
+  por proveedor. Diseño en `…/2026-08-12-pruebas-integracion-y-e2e-design.md`.
+
+### La base de pruebas: `perfumes_test`, vacía y desde las migraciones
+
+**Nunca `perfumes_db`.** Se crea vacía y se le aplican las migraciones. Dos motivos, y el
+segundo no es obvio: (1) los datos del negocio no se abren, y estas pruebas TRUNCAN tablas;
+(2) **armarla desde las migraciones las prueba a ellas**. Nadie verificaba que el juego
+completo levante el sistema desde cero, y eso se descubriría el día que haya que reconstruir
+el servidor — el peor día. Verificado el 2026-08-12: **lo levanta, y el resultado es idéntico
+a la copia de producción** salvo un default cosmético (`curdate()` frente a `now()`).
+
+- **El seguro está por partida doble**: `prepararBase.ts` se niega a correr si el nombre de
+  la base no termina en `_test`, y `limpiarBase()` —la que de verdad borra— lo vuelve a
+  comprobar antes de truncar. Probado apuntándolo a `perfumes_db`: se niega y los datos
+  quedan intactos. **No quitar la segunda comprobación** por parecer redundante: es la
+  última oportunidad de parar si alguien corre las pruebas con otra configuración.
+- **Dos grupos** (`projects` de Vitest): `unidad` no necesita MySQL prendido, `base` sí. Los
+  archivos que tocan base se llaman `*.bd.test.ts`.
+- **El stock se siembra con un movimiento de `ajuste`, nunca escribiendo la columna.** `stock`
+  y `precio` son una PROYECCIÓN del libro de movimientos, así que un valor puesto a mano
+  desaparece en cuanto algo obliga a reconstruir — y la prueba falla culpando al código de un
+  descuadre que creó la siembra. Ya pasó.
+- `descuento_codigos.venta_id` **sí tiene llave foránea** (a diferencia de
+  `movimientos_inventario.referencia_id`, que es un número suelto): para enlazar un cupón hace
+  falta una venta de verdad.
+
+### Los recorridos (`backend/e2e/`)
+
+Levantan el sistema entero: base sembrada, backend en el **4100** y tienda en el **5273**.
+Puertos y base propios, así que **el dueño puede tener sus servidores de siempre corriendo**
+mientras pasan, y ningún recorrido escribe en `perfumes_db`.
+
+- **El `.env` NO se toca.** El backend salta el captcha cuando `RECAPTCHA_SECRET_KEY` viene
+  vacía, y `dotenv` **no sobreescribe** una variable que ya existe en el entorno: basta
+  arrancarlo con esa variable en blanco. Editar el `.env` del dueño y restaurarlo después es
+  justo lo que se queda a medias cuando una prueba revienta.
+- **La sesión de admin se pide por HTTP y se inyecta como cookie**, sin pasar por el
+  formulario. Así no se carga el script de reCAPTCHA (que exigiría internet y añadiría un
+  fallo intermitente que no dice nada del sistema) y se gasta **una sola** entrada — el
+  servidor corta a los 10 intentos cada 15 minutos y eso ya bloqueó pruebas antes.
+- **La tienda arranca con `--mode e2e`** para tomar `frontend/.env.e2e`, que la apunta al
+  backend de pruebas.
+- **Cada recorrido trabaja sobre su propia categoría** (Carrito, Precios, Ventas). El catálogo
+  público va por caché en memoria, así que resembrar con el servidor andando enseñaría datos
+  viejos; con una categoría por recorrido el orden de los archivos da igual.
+- **Un fabricado sin esencia sale AGOTADO** (regla del 2026-08-12) y una card agotada no tiene
+  botón de agregar. Al sembrar productos de prueba hay que darles esencia con stock, o la
+  tienda queda llena de cosas que no se pueden comprar.
+- `src/app.ts` **exporta `server`** solo para poder apagarlo al terminar; en producción nadie
+  lo usa y arrancar sigue siendo `node dist/app.js`.
+- Cubren: combo en el carrito, venta con líneas que descuenta inventario, cupón amarrado a su
+  venta (por pantalla **y** por API, porque la pantalla se puede saltar) y lista de precios
+  que mueve a toda la categoría sin tocar los precios propios.
+- **`getByLabel` no funciona en el dashboard**: `Field` (`dashboard/ui.tsx`) pinta un `<label>`
+  suelto, sin `htmlFor` y sin envolver el campo, así que el navegador no los relaciona. Es un
+  hueco de accesibilidad real —un lector de pantalla tampoco los asocia— pendiente de hablar
+  con el dueño. Mientras exista, los recorridos usan el ayudante `campo()`.
 
 ## Stack y estructura
 
@@ -1006,12 +1071,22 @@ más.
 - **Editar o borrar una compra revierte sus movimientos** (`revertirMovimientos`) y los
   vuelve a aplicar. Sin eso el stock se contaría dos veces. `recalcularPromedio` reconstruye
   todo desde el libro y es la red de seguridad si algo se descuadra.
-  - **CASO DE BORDE ABIERTO (medido el 2026-08-10)**: `recalcularPromedio` solo escribe el
-    precio `if (movs.length)`. Si al borrar la compra el insumo se queda **sin ningún
-    movimiento**, conserva el costo que fijó la compra borrada en vez de volver al precio de
-    partida. Se auto-corrige en la siguiente entrada, pero mientras tanto muestra un costo
-    que ya no corresponde. Es lo que se observó en agosto (Esencia Clásica en 383,18 en vez
-    de 380) y se creía cerrado: el caso general SÍ está resuelto, este no.
+  - **CASO DE BORDE ABIERTO (medido el 2026-08-10, con números el 2026-08-13)**:
+    `recalcularPromedio` solo escribe el precio `if (movs.length)`. Si al borrar la compra el
+    insumo se queda **sin ningún movimiento**, conserva el costo que fijó la compra borrada en
+    vez de volver al precio de partida. Se auto-corrige en la siguiente entrada, pero mientras
+    tanto muestra un costo que ya no corresponde. Es lo que se observó en agosto (Esencia
+    Clásica en 383,18 en vez de 380) y se creía cerrado: el caso general SÍ está resuelto,
+    este no.
+    - Hay **dos pruebas** en `inventario.costoPromedio.bd.test.ts`: la del comportamiento
+      correcto está en `it.skip` con la etiqueta `DISCREPANCIA` (esperado 380, real 420) y
+      **otra que fija lo que hace HOY**, para que el día que se arregle el cambio salte a la
+      vista en vez de pasar callado.
+    - **NO se arregló, y no por pereza**: el precio de arranque **no se guarda en ninguna
+      parte** — la primera compra lo sobreescribe—, así que "volver al de partida" no es una
+      línea de código sino una columna nueva (`precio_inicial`) con su migración. La otra
+      salida sería dejarlo en 0, pero eso hace ver márgenes inflados sin avisar. **Decisión
+      pendiente con el dueño.**
 - **Unidades de compra** (`UnidadCompra`): **ml y gramos van 1 a 1** (así factura el sector);
   NO meter densidades para "arreglarlo", descuadraría contra la factura del proveedor.
   Los **litros SÍ multiplican ×1000** (`FACTOR_UNIDAD` / `aBase`): sin eso, teclear "20 L"
