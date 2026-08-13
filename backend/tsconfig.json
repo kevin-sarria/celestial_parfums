@@ -15,5 +15,7 @@
   // Las pruebas NO van a `dist/`: se subirían al servidor junto con un `import`
   // de vitest, que allá no está instalado (es dependencia de desarrollo).
   // Vitest no usa este tsconfig para correrlas, así que excluirlas no las rompe.
-  "exclude": ["src/**/*.test.ts"]
+  // `src/test/` es el andamiaje de las pruebas contra base (siembra y limpieza):
+  // mismo motivo, y además importa el CLI de Prisma, que en el servidor no corre.
+  "exclude": ["src/**/*.test.ts", "src/test/**"]
 }

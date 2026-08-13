@@ -4,6 +4,8 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
+    "test:unidad": "vitest run --project unidad",
+    "test:bd": "vitest run --project base",
     "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
     "build": "prisma generate && tsc",
     "start": "node dist/app.js",
