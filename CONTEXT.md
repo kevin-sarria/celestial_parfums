@@ -278,13 +278,24 @@ Diseños y planes históricos: `docs/superpowers/specs/` y `docs/superpowers/pla
 
 ## 8. Por dónde empezar mañana
 
+> Actualizado el **2026-08-12**. Lo que decía antes (enlazar 25 perfumes sin esencia,
+> configurar los mínimos por gama) **ya está hecho** — el dueño lo cerró el 10 y 11 de
+> agosto. Si esta sección manda a hacer algo que ya funciona, es que se quedó vieja otra vez:
+> compruébalo contra la sección 4 antes de trabajar.
+
 En orden de valor para el negocio:
 
-1. **Enlazar los 25 perfumes sin esencia** (con el dueño al lado para los 4 ambiguos). Es
-   plata que se está perdiendo hoy en cada venta.
-2. **Decidir con el dueño los precios premium al mayoreo** (hoy se vende a pérdida).
-3. Configurar los mínimos por gama para que el *Pedido sugerido* empiece a servir.
-4. Llenar el género de las esencias en bloque desde el Excel (*Lista de materiales*).
+1. **Segunda ola de pruebas.** La primera (motores de precios, 91 pruebas) ya está. Falta lo
+   que toca base de datos —cupones, consumo por venta, costo promedio, IVA por proveedor— y
+   los caminos completos con Playwright. Ver la sección de pruebas en `CLAUDE.md`.
+2. **Rellenar la talla de las 4 líneas de venta que sí se pueden** (ventas 1269 y 1272). Las
+   otras 8 son ambiguas y solo el dueño sabe si fue el de 200 o el de 250 ml.
+3. **3 esencias sin género** (eran 189). Se llenan desde el Excel *Lista de materiales*.
+4. **La gama "Diseñador" tiene mínimo configurado y cero esencias**: o se le cuelgan esencias
+   o se borra.
+5. **Paso 3 del costeo por gama**: separar la pantalla — la receta se queda en *Tamaños y
+   fórmulas* y los rangos de precio mayorista se van a *Mayoreo*. Hoy `formulas_volumen`
+   mezcla tres cosas.
 
 **Antes de escribir una línea de código, lee `CLAUDE.md` completo.** Está escrito para que
 alguien que llega hoy entienda no solo qué hace el sistema, sino por qué está hecho así y

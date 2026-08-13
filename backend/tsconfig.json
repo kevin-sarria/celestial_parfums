@@ -11,5 +11,9 @@
 
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  // Las pruebas NO van a `dist/`: se subirían al servidor junto con un `import`
+  // de vitest, que allá no está instalado (es dependencia de desarrollo).
+  // Vitest no usa este tsconfig para correrlas, así que excluirlas no las rompe.
+  "exclude": ["src/**/*.test.ts"]
 }

@@ -54,6 +54,34 @@ criterio general reutilizable.
   pártelo en piezas con una sola responsabilidad (hooks, componentes, helpers, servicios)
   antes de seguir agregándole. Evita la sobrecarga de código en un mismo archivo.
 
+## Pruebas automatizadas (desde 2026-08-12)
+
+```bash
+cd backend  && npm test        # o npm run test:watch
+cd frontend && npm test
+```
+
+**Vitest, NO Jest.** El frontend es Vite 8: Vitest reutiliza esa configuración (alias `@/`,
+TypeScript) sin una capa paralela que se rompe en cada actualización. Usarlo también en el
+backend deja UNA herramienta en vez de dos. Para E2E, cuando toque, **Playwright y no
+Cypress**: ya se usa `playwright-core` sobre el Edge instalado (ver `revisar-pantalla.mjs`),
+justamente para no descargar navegadores.
+
+- **Solo `*.test.ts`.** El patrón por defecto de Vitest también recoge `.spec.ts`, y
+  `src/schemas/import.spec.ts` **NO es una prueba**: es la definición de columnas del
+  importador. Está acotado en los dos `vitest.config`.
+- **El `tsconfig.json` del backend EXCLUYE los tests**: si no, `npm run build` los mete en
+  `dist/` y suben al servidor con un `import` de vitest que allá no existe.
+- **Los archivos van junto al código** que prueban y **los nombres de las pruebas en
+  español**: el dueño tiene que poder leer la salida cuando algo falle.
+- **Se escriben desde la REGLA de negocio, no desde el código.** Si el código hace otra cosa,
+  no se fuerza la prueba para que pase: se marca la discrepancia y se le pregunta al dueño.
+  Así se encontró el fallo de `matchPerfumes` con los nombres que llevan coma.
+- Cubierto (91 pruebas): `finalPrice`, `detectarCombos`, `costeoCotizacion`, `lineasPedido`,
+  `catalogoFiltros`, `perfumeMatcher` y `sinEsenciaParaUno`. **Todo son funciones puras**:
+  no hay base de datos ni pantallas todavía. Diseño en
+  `docs/superpowers/specs/2026-08-12-pruebas-motores-precios-design.md`.
+
 ## Stack y estructura
 
 - `backend/`: Express + TypeScript + Prisma 6 + MySQL. Build: `npm run build`
@@ -654,6 +682,40 @@ Son **DOS estados distintos y no hay que confundirlos** (el dueño lo separó é
   sigue viendo 211; el sitemap deja de anunciarla; y el interruptor la devuelve (212).
 - Migración: `20260809120000_perfume_publicado` (**DEFAULT TRUE**: al aplicarla no
   desaparece ni un perfume; sacar uno es siempre manual).
+
+### Agotado AUTOMÁTICO cuando no alcanza la esencia (2026-08-12)
+
+Lo pidió el dueño: si la esencia se acabó, el perfume no puede seguir ofreciéndose. **Sin
+migración**: no hay columna nueva y la de `agotado` **no la escribe nunca el sistema**.
+
+```
+agotado (lo que ve la tienda) = agotado_manual  OR  sin_esencia
+```
+
+- **Se calcula en cada consulta, no se guarda** (mismo criterio que los sellos, el cupo y la
+  gama): un valor guardado quedaría mintiendo en cuanto entre una compra de esencia, y
+  obligaría al dueño a desmarcar a mano lo que ya puede vender.
+- **El corte es "no alcanza ni para UNO"** de la talla **más pequeña de ese perfume** — uno
+  que solo se vende en 100 ml necesita 50 ml, no los 15 del 30 ml. Se descartaron un colchón
+  de 3 unidades (escondía 86 de 220) y cortar en cero (dejaba vender un 30 ml con 3 ml de
+  esencia). Al encenderlo: **14 de 220**.
+- **La receta viaja con el perfume** (`perfumeInclude` incluye `presentacion.formula`), y por
+  eso `mapPerfume` sigue puro y síncrono. Cargarla aparte al estilo de `conRatings` obligaría
+  a acordarse de aplicarla en cada consulta, y la que se olvidara mostraría disponible algo
+  que no se puede armar.
+- **NO hay interruptor para forzar "disponible"** (decisión del dueño): si el sistema se
+  equivoca es porque el stock está mal, y ese número manda también en costos, pedido sugerido
+  y campana. Se corrige el inventario y se arregla en los cuatro sitios.
+- **Mover inventario tira el caché del catálogo** (`bustCatalogoCache` en ajustes, salidas,
+  producciones y compras). Sin eso registras la llegada de una esencia y el perfume sigue
+  diciendo "agotado" varios minutos: parece que no funcionó.
+- `recomendacion.service` filtraba `agotado: false` **en SQL**, que solo ve la marca manual;
+  ahora descarta además los sin esencia tras mapear. El quiz recomendando lo que no se puede
+  armar es el caso más caro: el cliente se ilusiona y toca decirle que no hay.
+- **En el dashboard se distinguen los dos motivos** (`tabs/perfumes/EstadoStock.tsx`): el
+  botón alterna la marca MANUAL y una insignia ámbar aparte explica *"tienes 10 ml y
+  necesitas 15"*. Sin eso el dueño vería agotados que no puede desmarcar y parecería roto.
+- La regla vivía duplicada en el navegador (`puedeArmarHoy`, solo para el PDF): se borró.
 
 ### La esencia y su perfume nacen juntos, en la compra (2026-08-09)
 
@@ -1776,6 +1838,22 @@ Orden acordado: (0) unificar tallas → (1) consumo por venta + ganancia real �
     acumula. **Detener MySQL siempre desde el panel de XAMPP** (o `mysqladmin shutdown`), nunca
     matando el proceso ni apagando Windows con MySQL prendido.
   - La base `perfumes_db` NO se tocó: las 94 tablas quedaron sin errores y los datos intactos.
+- **LA CAUSA RAÍZ ERA `innodb_log_file_size=5M` (2026-08-12).** Reparar las tablas Aria era
+  tratar el síntoma: volvieron a corromperse y el servidor dejó de arrancar. El delator:
+  el offset que fallaba, **5.275.648**, es exactamente **5 MB + 32 KB** — MySQL leía pasado
+  el final de su registro, y leer más allá del final devuelve 0 bytes ("*was only able to
+  read 0*"). Por eso arrancaba bien y moría **al escribir**, y por eso salía el MISMO offset
+  el 4 de agosto: es una constante de configuración, no un disco dañado al azar. Cada muerte
+  de golpe iba rompiendo las tablas de permisos.
+  - **Prueba controlada**: con la carpeta de datos ya limpia, cargar el dump **falló**; se
+    cambió solo el tamaño a **128M** (y se borraron `ib_logfile0/1` para que los recree) y
+    la misma carga **pasó completa**. Una sola variable de diferencia.
+  - **Antes de culpar al disco, mirar la aritmética del offset.** Se llegó a sospechar del
+    SSD y de un evento real de "disco extraído de forma imprevista" — que existía, pero era
+    de OTRA unidad y no tenía nada que ver.
+  - Si hay que reconstruir: XAMPP trae una copia limpia del sistema en `C:\xampp\mysql\backup`
+    (renombrar `data`, copiar `backup` como `data`, y recargar la base desde un dump).
+    `REPAIR TABLE ... USE_FRM` rehace el índice de una tabla Aria cuando el normal se rinde.
 - **`prisma generate` falla con EPERM** si el dev server (ts-node-dev) está corriendo:
   tiene tomado `query_engine-windows.dll.node`. Detener node antes de compilar.
 - **Límite de 10 logins cada 15 min** (`authLimiter` en app.ts): las pruebas E2E que

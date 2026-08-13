@@ -105,6 +105,23 @@ export const matchPerfume = (referencia: string, index: PerfumeIndexEntry[]): nu
  * si el nombre real del perfume contiene comas.
  */
 export const matchPerfumes = (referencia: string, index: PerfumeIndexEntry[]): number[] => {
+  /**
+   * Si el texto COMPLETO es exactamente el nombre de un perfume, es ese y UNA
+   * unidad: partirlo por sus comas lo contaría varias veces.
+   *
+   * Caso real: "Thank U, Next By Ariana Grande" se partía en "Thank U" y
+   * "Next By Ariana Grande", y las dos mitades enlazaban con ÉL MISMO, así que
+   * la venta quedaba con cantidad 2 y descontaba el doble de esencia.
+   *
+   * Se exige igualdad EXACTA del nombre normalizado, no contención: con
+   * contención, "Eros" se comería una venta de "Eros, Sauvage". Y por eso esto
+   * no afecta a los repetidos de verdad ("360 Men, 360 Men, Eros" no es el
+   * nombre de ningún perfume, así que sigue por el camino de abajo).
+   */
+  const refNorm = tokenize(referencia).join(' ');
+  const exactoCompleto = index.filter((p) => p.normalizado === refNorm);
+  if (exactoCompleto.length === 1) return [exactoCompleto[0].id];
+
   const partes = referencia
     .split(/[,;+]|\sy\s/i)
     .map((s) => s.trim())
