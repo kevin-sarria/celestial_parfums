@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../../components/Modal';
 import BuscadorSelect from '../../../../components/BuscadorSelect';
 import { BASE_URL } from '../../../../infrastructure/api/client';
@@ -88,19 +88,19 @@ export function SalidaModal({ insumos, guardedFetch, onClose, onGuardado }: Sali
             onChange={e => setCantidad(e.target.value)} />
         </Field>
         <Field label="Unidad">
-          <NativeSelect value={unidad} onChange={e => setUnidad(e.target.value as Unidad)}>
+          <SelectSimple value={unidad} onChange={e => setUnidad(e.target.value as Unidad)}>
             <option value="ml">ml</option>
             <option value="g">gramos</option>
             <option value="l">litros</option>
             <option value="kg">kilos</option>
             <option value="unidad">unidades</option>
-          </NativeSelect>
+          </SelectSimple>
         </Field>
         <Field label="¿Por qué?">
-          <NativeSelect value={motivo} onChange={e => setMotivo(e.target.value as 'muestra' | 'merma')}>
+          <SelectSimple value={motivo} onChange={e => setMotivo(e.target.value as 'muestra' | 'merma')}>
             <option value="muestra">Muestra / mostrario / regalo</option>
             <option value="merma">Se derramó o dañó</option>
-          </NativeSelect>
+          </SelectSimple>
         </Field>
       </FieldRow>
 

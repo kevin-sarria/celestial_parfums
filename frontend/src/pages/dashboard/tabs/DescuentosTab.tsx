@@ -3,7 +3,7 @@ import { Plus, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -347,18 +347,18 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
         {modo === 'individual' && (
           <div className="space-y-3">
             <Field label="Tipo de producto">
-              <NativeSelect
+              <SelectSimple
                 value={tipoSel}
                 onChange={e => { setTipoSel(e.target.value as '' | TipoProd); setCatInd(''); setProdSel(''); }}
               >
                 <option value="">— Elige el tipo —</option>
                 <option value="p">Perfume</option>
                 <option value="c">Combo</option>
-              </NativeSelect>
+              </SelectSimple>
             </Field>
             {tipoSel && (
               <Field label="Categoría">
-                <NativeSelect
+                <SelectSimple
                   value={catInd}
                   onChange={e => { setCatInd(e.target.value); setProdSel(''); }}
                 >
@@ -368,7 +368,7 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
                     <option key={c.id} value={c.id}>{c.nombre}</option>
                   ))}
                   {haySinCategoria && <option value="sin">Sin categoría</option>}
-                </NativeSelect>
+                </SelectSimple>
               </Field>
             )}
             {tipoSel && catInd && (
@@ -415,14 +415,14 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
         {modo === 'categoria' && (
           <div className="space-y-3">
             <Field label="Categoría">
-              <NativeSelect value={catSel} onChange={e => setCatSel(e.target.value)}>
+              <SelectSimple value={catSel} onChange={e => setCatSel(e.target.value)}>
                 <option value="">— Elige una categoría —</option>
                 {categorias.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.nombre}{(c.descuento ?? 0) > 0 ? ` (hoy ${c.descuento}%)` : ''}
                   </option>
                 ))}
-              </NativeSelect>
+              </SelectSimple>
             </Field>
             <Field label="Descuento %">
               <Input

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Info, Pencil, Plus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Modal from '../../../components/Modal';
@@ -418,13 +418,13 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
           </FieldRow>
           <FieldRow>
             <Field label="Envase">
-              <NativeSelect value={form.envase_insumo_id}
+              <SelectSimple value={form.envase_insumo_id}
                 onChange={(e) => setForm((f) => ({ ...f, envase_insumo_id: e.target.value }))}>
                 <option value="">— Sin envase —</option>
                 {envases.map((i) => (
                   <option key={i.id} value={i.id}>{i.nombre} ({formatPrice(i.precio)})</option>
                 ))}
-              </NativeSelect>
+              </SelectSimple>
             </Field>
           </FieldRow>
 

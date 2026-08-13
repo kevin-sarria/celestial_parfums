@@ -18,6 +18,13 @@ import { abrirDashboard, campo, cerrarNavegador, elegirProducto, irA } from './n
 
 afterAll(cerrarNavegador);
 
+/**
+ * Stock de un material, redondeado a 3 decimales como lo guarda la base.
+ * Sin redondear, restar 28,6 en JavaScript da 99957.09999999999 y la
+ * comparación falla por un error de coma flotante de la PRUEBA, no del sistema.
+ */
+const r3 = (n: number) => Math.round(n * 1000) / 1000;
+
 const stockDe = async (nombre: string) => {
   const i = await prisma.insumoCosto.findFirstOrThrow({ where: { nombre } });
   return Number(i.stock);
@@ -52,11 +59,11 @@ describe('registrar una venta desde el dashboard', () => {
     await contexto.close();
 
     // ── El inventario bajó exactamente la receta × 2 unidades ──
-    expect(await stockDe(`${perfume} – Esencia`)).toBe(antes.esencia - 30);
-    expect(await stockDe('Diluyente')).toBe(antes.diluyente - 28.6);
-    expect(await stockDe('Sellador')).toBe(antes.sellador - 0.8);
-    expect(await stockDe('Feromonas')).toBe(antes.feromonas - 0.6);
-    expect(await stockDe('Frasco 30 ml')).toBe(antes.frasco - 2);
+    expect(await stockDe(`${perfume} – Esencia`)).toBe(r3(antes.esencia - 30));
+    expect(await stockDe('Diluyente')).toBe(r3(antes.diluyente - 28.6));
+    expect(await stockDe('Sellador')).toBe(r3(antes.sellador - 0.8));
+    expect(await stockDe('Feromonas')).toBe(r3(antes.feromonas - 0.6));
+    expect(await stockDe('Frasco 30 ml')).toBe(r3(antes.frasco - 2));
 
     // ── Y la venta guardó su costo, que es de donde sale la ganancia real ──
     const venta = await prisma.venta.findFirstOrThrow({

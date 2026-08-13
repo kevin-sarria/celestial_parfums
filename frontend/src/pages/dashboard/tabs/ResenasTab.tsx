@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check, Star, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { DEFAULT_PAGE_SIZE, fmtInstante } from '../helpers';
@@ -66,12 +66,12 @@ export function ResenasTab({ guardedFetch }: Props) {
       <Toolbar>
         <SectionTitle count={total}>Reseñas</SectionTitle>
         <ToolbarActions>
-          <NativeSelect value={estado} onChange={(e) => setEstado(e.target.value)} className="w-44">
+          <SelectSimple value={estado} onChange={(e) => setEstado(e.target.value)} className="w-44">
             <option value="pendiente">Pendientes</option>
             <option value="aprobada">Publicadas</option>
             <option value="rechazada">Rechazadas</option>
             <option value="">Todas</option>
-          </NativeSelect>
+          </SelectSimple>
           {/* Exportar es el respaldo del contenido de los clientes (y como se
               responde un derecho de acceso a datos). Importar SOLO modera. */}
           <ExportButton entity="resenas" guardedFetch={guardedFetch} />

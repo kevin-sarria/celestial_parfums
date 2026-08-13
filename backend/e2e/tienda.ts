@@ -45,9 +45,20 @@ export const sembrarCategoria = async (
     data: { categoria_id: categoria.id, presentacion_id: presentacionId, precio: PRECIOS.unidad },
   });
 
+  const gama = await prisma.gamaEsencia.upsert({
+    where: { nombre: 'Árabe' },
+    update: {},
+    create: { nombre: 'Árabe' },
+  });
+
   const perfumes = [];
   for (const nombrePerfume of nombresPerfumes(nombre)) {
-    const esencia = await crearInsumo(`${nombrePerfume} – Esencia`, { precio: 400, stock: 1000 });
+    // Con GAMA, que es lo que marca un material como esencia. Sin ella no
+    // aparecería en el selector del formulario de perfume, por más que se
+    // llame "– Esencia": lo que manda es la clasificación, no el nombre.
+    const esencia = await crearInsumo(`${nombrePerfume} – Esencia`, {
+      precio: 400, stock: 1000, gama_id: gama.id,
+    });
     const perfume = await prisma.perfume.create({
       data: {
         nombre: nombrePerfume,
@@ -132,13 +143,28 @@ export const sembrarTienda = async () => {
     data: { nombre: '30ml', ml: 30, formula_volumen_id: formula.id },
   });
 
+  /**
+   * Una esencia REAL que no lleva la palabra "esencia" en el nombre.
+   *
+   * Es el caso que el dueño encontró el 2026-08-13: tenía tres así (Herod,
+   * Perseus y Layton, de Parfums de Marly), clasificadas y con stock, y el
+   * formulario del perfume no las listaba porque las buscaba por el nombre.
+   * Queda sembrada para que ese fallo no pueda volver sin que una prueba lo grite.
+   */
+  const gamaArabe = await prisma.gamaEsencia.upsert({
+    where: { nombre: 'Árabe' }, update: {}, create: { nombre: 'Árabe' },
+  });
+  const esenciaSinLaPalabra = await crearInsumo('Herod by Parfums de Marly', {
+    precio: 350, stock: 500, gama_id: gamaArabe.id,
+  });
+
   const carrito = await sembrarCategoria('Carrito', presentacion.id);
   const precios = await sembrarCategoria('Precios', presentacion.id, {
     precioPropioDelUltimo: PRECIOS.propio,
   });
   const ventas = await sembrarCategoria('Ventas', presentacion.id);
 
-  return { admin, presentacion, carrito, precios, ventas };
+  return { admin, presentacion, carrito, precios, ventas, esenciaSinLaPalabra };
 };
 
 export type TiendaSembrada = Awaited<ReturnType<typeof sembrarTienda>>;

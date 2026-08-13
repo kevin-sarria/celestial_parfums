@@ -3,7 +3,7 @@ import { Pencil, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
@@ -12,6 +12,7 @@ import { EstadoStock } from './perfumes/EstadoStock';
 import ExportButton from '../../../components/ExportButton';
 import DescargarCatalogoButton from '../../../components/DescargarCatalogoButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
+import { esEsencia } from '../../../domain/entities/insumo';
 import { SmartTable } from '../../../components/table/SmartTable';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import { BASE_URL } from '../../../infrastructure/api/client';
@@ -83,7 +84,9 @@ export function PerfumesTab({
       const r = await guardedFetch(`${BASE_URL}/api/costeo/insumos`);
       if (!r.ok) return;
       const todos: Insumo[] = (await r.json()).data ?? [];
-      setEsencias(todos.filter(i => i.tipo === 'materia_prima' && /esencia/i.test(i.nombre)));
+      // Se reconocen por su GAMA, no por el nombre: ver `esEsencia`. Colgarlo de
+      // la palabra "esencia" dejaba fuera a las que se llaman como su fragancia.
+      setEsencias(todos.filter(esEsencia));
       // Para comprados/fraccionados: cualquier insumo puede SER el producto
       setInsumosProducto(todos);
       setEnvases(todos.filter(i => i.tipo === 'envase'));
@@ -285,19 +288,19 @@ export function PerfumesTab({
         </FieldRow>
         <FieldRow>
           <Field label="Genero">
-            <NativeSelect value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value as PerfumeForm['genero'] }))}>
+            <SelectSimple value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value as PerfumeForm['genero'] }))}>
               <option value="">— Sin especificar —</option>
               <option value="dama">Dama</option>
               <option value="caballero">Caballero</option>
               <option value="unisex">Unisex</option>
-            </NativeSelect>
+            </SelectSimple>
           </Field>
           <Field label="Categoria">
-            <NativeSelect value={form.categoria_id}
+            <SelectSimple value={form.categoria_id}
               onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value === '' ? '' : Number(e.target.value) }))}>
               <option value="">— Sin especificar —</option>
               {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </NativeSelect>
+            </SelectSimple>
           </Field>
         </FieldRow>
 
@@ -385,7 +388,7 @@ export function PerfumesTab({
                       {/* El frasco cambia según la referencia: un 1.1 de Sauvage
                           no usa el mismo que uno de Bleu. Vacío = el del tamaño. */}
                       {form.tipo_producto !== 'comprado' && (
-                        <NativeSelect
+                        <SelectSimple
                           className="h-8 max-w-40 text-[12.5px]"
                           value={form.envases_talla[pr.id] ?? ''}
                           onChange={e => setForm(f => ({
@@ -395,7 +398,7 @@ export function PerfumesTab({
                         >
                           <option value="">Frasco del tamaño</option>
                           {envases.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-                        </NativeSelect>
+                        </SelectSimple>
                       )}
                     </>
                   )}
@@ -407,12 +410,12 @@ export function PerfumesTab({
 
         {/* Cómo se abastece: define con qué motor se costea */}
         <Field label="¿Cómo consigues este producto?">
-          <NativeSelect value={form.tipo_producto}
+          <SelectSimple value={form.tipo_producto}
             onChange={e => setForm(f => ({ ...f, tipo_producto: e.target.value as PerfumeForm['tipo_producto'] }))}>
             <option value="fabricado">Lo fabrico yo (contratipo, 1.1)</option>
             <option value="comprado">Lo compro hecho y lo revendo (splash, gorra, perfumero vacío)</option>
             <option value="fraccionado">Compro una botella y saco decants</option>
-          </NativeSelect>
+          </SelectSimple>
           <p className="mt-1 text-[12px] text-muted-foreground">
             {form.tipo_producto === 'fabricado'
               ? 'Se costea con la receta del tamaño: esencia, diluyente, sellador, feromonas y envase.'

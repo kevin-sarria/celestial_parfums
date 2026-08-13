@@ -3,7 +3,7 @@ import { FileText, ImagePlus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice } from '../helpers';
@@ -248,19 +248,19 @@ export default function DetalleCompra({
                 onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} />
             </Field>
             <Field label="¿Qué es?" className="w-44">
-              <NativeSelect value={nuevo.tipo}
+              <SelectSimple value={nuevo.tipo}
                 onChange={(e) => setNuevo({ ...nuevo, tipo: e.target.value as NuevoInsumo['tipo'] })}>
                 <option value="materia_prima">Materia prima (esencia, alcohol…)</option>
                 <option value="envase">Envase (frasco, tapa)</option>
                 <option value="accesorio">Accesorio (bolsa, tarjeta)</option>
-              </NativeSelect>
+              </SelectSimple>
             </Field>
             <Field label="¿Cómo se mide?" className="w-40">
-              <NativeSelect value={nuevo.unidad}
+              <SelectSimple value={nuevo.unidad}
                 onChange={(e) => setNuevo({ ...nuevo, unidad: e.target.value as NuevoInsumo['unidad'] })}>
                 <option value="ml">Por mililitro o gramo</option>
                 <option value="unidad">Por unidad</option>
-              </NativeSelect>
+              </SelectSimple>
             </Field>
             {/* La gama solo aplica a materia prima, y es lo que distingue una
                 ESENCIA del diluyente o el sellador: con gama elegida el sistema
@@ -284,13 +284,13 @@ export default function DetalleCompra({
                 ayuda (la regla del proyecto lo reserva para listas que crecen). */}
             {esEsencia && (
               <Field label="¿Para quién es?" className="w-40">
-                <NativeSelect value={nuevo.genero}
+                <SelectSimple value={nuevo.genero}
                   onChange={(e) => setNuevo({ ...nuevo, genero: e.target.value as NuevoInsumo['genero'] })}>
                   <option value="">Todavía no sé</option>
                   <option value="dama">Dama</option>
                   <option value="caballero">Caballero</option>
                   <option value="unisex">Unisex</option>
-                </NativeSelect>
+                </SelectSimple>
               </Field>
             )}
           </FieldRow>
@@ -380,14 +380,14 @@ export default function DetalleCompra({
 
                     <label className="block">
                       <span className="mb-1 block text-[11.5px] font-medium text-muted-foreground">Unidad</span>
-                      <NativeSelect className="h-8 text-[12.5px]" value={l.unidad_compra}
+                      <SelectSimple className="h-8 text-[12.5px]" value={l.unidad_compra}
                         onChange={(e) => actualizar(idx, { unidad_compra: e.target.value as LineaCompra['unidad_compra'] })}>
                         <option value="ml">ml</option>
                         <option value="g">gramos</option>
                         <option value="l">litros</option>
                         <option value="kg">kilos</option>
                         <option value="unidad">unidades</option>
-                      </NativeSelect>
+                      </SelectSimple>
                     </label>
 
                     <label className="block">

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import BuscadorSelect from '../../../../components/BuscadorSelect';
 import Modal from '../../../../components/Modal';
 import { BASE_URL } from '../../../../infrastructure/api/client';
@@ -10,11 +10,6 @@ import type { GuardedFetch, InventarioInsumo } from '../../types';
 import type { InsumoAlcance, InsumoTipo, InsumoUnidad } from '../../../../domain/entities/cotizacion.types';
 
 interface Gama { id: number; nombre: string; esencias: number }
-
-/** Las esencias se reconocen por el nombre, igual que en el resto del módulo:
- *  el diluyente, el sellador y las feromonas también son materia prima. */
-const pareceEsencia = (n: string) =>
-  n.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes('esencia');
 
 const TIPOS: { valor: InsumoTipo; etiqueta: string; ayuda: string }[] = [
   { valor: 'materia_prima', etiqueta: 'Materia prima', ayuda: 'Esencia, diluyente, sellador, feromonas. Se miden en ml.' },
@@ -62,8 +57,6 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 
-  const esEsencia = pareceEsencia(nombre);
-
   /** Al cambiar el tipo se propone la unidad natural, sin encerrar la elección. */
   const cambiarTipo = (t: InsumoTipo) => {
     setTipo(t);
@@ -84,8 +77,8 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
           body: JSON.stringify({
             nombre: nombre.trim(), tipo, unidad, alcance, precio: p,
             // null y no '' : la columna admite nulo y '' no es una gama válida
-            gama_id: tipo === 'materia_prima' && esEsencia && gamaId ? Number(gamaId) : null,
-            genero: tipo === 'materia_prima' && esEsencia && genero ? genero : null,
+            gama_id: tipo === 'materia_prima' && gamaId ? Number(gamaId) : null,
+            genero: tipo === 'materia_prima' && genero ? genero : null,
             ...(editando ? { activo: material.activo } : {}),
           }),
         },
@@ -121,25 +114,28 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
 
       <FieldRow>
         <Field label="¿Qué es?">
-          <NativeSelect value={tipo} onChange={e => cambiarTipo(e.target.value as InsumoTipo)}>
+          <SelectSimple value={tipo} onChange={e => cambiarTipo(e.target.value as InsumoTipo)}>
             {TIPOS.map(t => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
-          </NativeSelect>
+          </SelectSimple>
           <p className="mt-1 text-[12px] text-muted-foreground">
             {TIPOS.find(t => t.valor === tipo)?.ayuda}
           </p>
         </Field>
         <Field label="¿Cómo se mide?">
-          <NativeSelect value={unidad} onChange={e => setUnidad(e.target.value as InsumoUnidad)}>
+          <SelectSimple value={unidad} onChange={e => setUnidad(e.target.value as InsumoUnidad)}>
             <option value="ml">Mililitros</option>
             <option value="unidad">Unidades</option>
-          </NativeSelect>
+          </SelectSimple>
         </Field>
       </FieldRow>
 
-      {/* Solo tiene sentido en esencias: un frasco o el diluyente no tienen
-          gama. Se pregunta con el nombre delante para que se entienda que va
-          por la CALIDAD de la esencia, no por el perfume. */}
-      {tipo === 'materia_prima' && esEsencia && (
+      {/* Se pregunta a TODA materia prima, no solo a las que llevan "esencia"
+          en el nombre. Antes se decidía por el nombre y eso cerraba un círculo:
+          una esencia llamada como su fragancia no veía esta casilla, así que no
+          se podía clasificar, y sin gama tampoco aparecía al crear el perfume.
+          Quedaba inservible sin decir por qué. El diluyente, el sellador y las
+          feromonas simplemente se dejan sin clasificar. */}
+      {tipo === 'materia_prima' && (
         <>
           <Field label="¿De qué gama es esta esencia?">
             {/* Mismo control que en el alta desde una compra: las gamas son una
@@ -156,9 +152,14 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
               vacio="Todavía no has creado gamas"
             />
             <p className="mt-1 text-[12px] text-muted-foreground">
-              Se usa para cotizar al mayoreo cuando el cliente pide "50 de 30 ml" sin decir
-              qué fragancias: ahí se calcula con el promedio de la gama. Cuando sí se sabe
-              cuál es el perfume, manda el costo de SU esencia.
+              <strong>La gama es lo que marca este material como esencia</strong>: sin ella no
+              aparecerá en la lista de "¿con qué esencia se hace?" al crear un perfume. Déjala
+              sin clasificar solo si NO es una esencia (diluyente, sellador, feromonas).
+            </p>
+            <p className="mt-1 text-[12px] text-muted-foreground">
+              Además se usa para cotizar al mayoreo cuando el cliente pide "50 de 30 ml" sin
+              decir qué fragancias: ahí se calcula con el promedio de la gama. Cuando sí se
+              sabe cuál es el perfume, manda el costo de SU esencia.
             </p>
           </Field>
 
@@ -166,12 +167,12 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
               las esencias lo tiene vacío porque el nombre solo lo dice cuando
               hacía falta desempatar, así que este es el sitio donde se llena. */}
           <Field label="¿Para quién es esta fragancia?">
-            <NativeSelect value={genero} onChange={e => setGenero(e.target.value)}>
+            <SelectSimple value={genero} onChange={e => setGenero(e.target.value)}>
               <option value="">— Todavía no sé —</option>
               <option value="dama">Dama</option>
               <option value="caballero">Caballero</option>
               <option value="unisex">Unisex</option>
-            </NativeSelect>
+            </SelectSimple>
             <p className="mt-1 text-[12px] text-muted-foreground">
               Sirve para no confundir dos fragancias de la misma línea (un "212 VIP" de dama
               y otro de caballero) y para que el perfume que se cree con esta esencia salga
@@ -183,10 +184,10 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
 
       {tipo === 'accesorio' && (
         <Field label="¿Se cobra por perfume o por pedido?">
-          <NativeSelect value={alcance} onChange={e => setAlcance(e.target.value as InsumoAlcance)}>
+          <SelectSimple value={alcance} onChange={e => setAlcance(e.target.value as InsumoAlcance)}>
             <option value="unidad">Por cada perfume (bolsa, perfumero, tarjeta)</option>
             <option value="pedido">Una vez por pedido (caja de envío)</option>
-          </NativeSelect>
+          </SelectSimple>
         </Field>
       )}
 

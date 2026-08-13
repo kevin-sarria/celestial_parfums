@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
 import { GARANTIA } from '../../config/negocio';
 import {
@@ -204,10 +204,10 @@ function FormularioReclamo({ compraId, onListo }: { compraId: number; onListo: (
     <div className="mt-3 rounded-xl border border-primary/25 bg-brand-soft/40 px-3.5 py-3.5">
       <p className="text-[13px] font-medium text-foreground">¿Qué pasó con tu pedido?</p>
 
-      <NativeSelect className="mt-2" value={motivo}
+      <SelectSimple className="mt-2" value={motivo}
         onChange={(e) => setMotivo(e.target.value as DevolucionMotivo)}>
         {MOTIVOS.map((m) => <option key={m.v} value={m.v}>{m.label}</option>)}
-      </NativeSelect>
+      </SelectSimple>
 
       <Textarea rows={2} maxLength={2000} value={detalle} className="mt-2"
         placeholder="Cuéntanos con tus palabras: qué llegó mal, cómo lo notaste…"

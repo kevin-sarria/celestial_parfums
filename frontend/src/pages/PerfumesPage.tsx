@@ -9,7 +9,7 @@ import CatalogHero from '../components/catalog/CatalogHero';
 import EmptyState from '../components/catalog/EmptyState';
 import { Chip, FilterGroup } from '../components/catalog/FilterChips';
 import { FilterSidebar, FilterToggleBar } from '../components/catalog/FilterSidebar';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { usePerfumes, PERFUMES_PAGE_SIZE } from '../application/hooks/usePerfumes';
 import { GENEROS, GENERO_LABELS } from '../domain/entities/perfume.schema';
 
@@ -102,7 +102,7 @@ export default function PerfumesPage() {
           {/* Barra de orden */}
           <div className="mb-4 flex items-center justify-end gap-2">
             <label htmlFor="orden" className="text-[13px] text-muted-foreground">Ordenar por</label>
-            <NativeSelect
+            <SelectSimple
               id="orden"
               value={catalog.orden}
               onChange={(e) => catalog.onOrdenChange(e.target.value)}
@@ -112,7 +112,7 @@ export default function PerfumesPage() {
               <option value="precio_asc">Precio: menor a mayor</option>
               <option value="precio_desc">Precio: mayor a menor</option>
               <option value="nombre">Nombre (A-Z)</option>
-            </NativeSelect>
+            </SelectSimple>
           </div>
 
           {catalog.error && <p className="py-6 text-center text-sm text-destructive">{catalog.error}</p>}

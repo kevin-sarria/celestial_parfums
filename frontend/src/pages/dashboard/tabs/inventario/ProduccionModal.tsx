@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../../components/Modal';
 import BuscadorSelect from '../../../../components/BuscadorSelect';
 import { BASE_URL } from '../../../../infrastructure/api/client';
@@ -139,9 +139,9 @@ export function ProduccionModal({
 
       <FieldRow>
         <Field label="¿Qué tamaño armaste?">
-          <NativeSelect value={formulaId} onChange={(e) => setFormulaId(Number(e.target.value))}>
+          <SelectSimple value={formulaId} onChange={(e) => setFormulaId(Number(e.target.value))}>
             {formulas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-          </NativeSelect>
+          </SelectSimple>
         </Field>
         <Field label="¿Cuántas unidades?">
           <Input type="number" min="1" value={unidades} onChange={(e) => setUnidades(e.target.value)} />
@@ -149,11 +149,11 @@ export function ProduccionModal({
       </FieldRow>
 
       <Field label="Envase usado">
-        <NativeSelect value={envaseId || formulaElegida?.envase_insumo_id || ''}
+        <SelectSimple value={envaseId || formulaElegida?.envase_insumo_id || ''}
           onChange={(e) => setEnvaseId(Number(e.target.value) || '')}>
           <option value="">— El del tamaño —</option>
           {envases.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-        </NativeSelect>
+        </SelectSimple>
         <p className="mt-1 text-[12px] text-muted-foreground">
           El mismo tamaño puede llevar el envase normal o el luxury; cámbialo si usaste otro.
         </p>

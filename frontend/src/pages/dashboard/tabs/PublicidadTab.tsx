@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../components/Modal';
 import ExportButton from '../../../components/ExportButton';
 import ImportModal from '../../../components/ImportModal';
@@ -288,20 +288,20 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
       >
         <FieldRow>
           <Field label="Tipo *">
-            <NativeSelect value={form.tipo}
+            <SelectSimple value={form.tipo}
               onChange={e => setForm(f => ({ ...f, tipo: e.target.value as AnuncioForm['tipo'] }))}>
               <option value="mensaje">Mensaje / información</option>
               <option value="imagen">Solo imagen</option>
               <option value="descuento">Cupón de descuento</option>
-            </NativeSelect>
+            </SelectSimple>
           </Field>
           <Field label="Audiencia *">
-            <NativeSelect value={form.audiencia}
+            <SelectSimple value={form.audiencia}
               onChange={e => setForm(f => ({ ...f, audiencia: e.target.value as AnuncioForm['audiencia'] }))}>
               <option value="todos">Todos los visitantes</option>
               <option value="no_registrados">Solo quienes NO se han registrado</option>
               <option value="registrados">Solo cuentas registradas</option>
-            </NativeSelect>
+            </SelectSimple>
           </Field>
         </FieldRow>
 
@@ -384,18 +384,18 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
 
         <FieldRow>
           <Field label="Se muestra">
-            <NativeSelect value={form.una_vez ? 'una' : 'siempre'}
+            <SelectSimple value={form.una_vez ? 'una' : 'siempre'}
               onChange={e => setForm(f => ({ ...f, una_vez: e.target.value === 'una' }))}>
               <option value="una">Una sola vez por persona</option>
               <option value="siempre">En cada visita</option>
-            </NativeSelect>
+            </SelectSimple>
           </Field>
           <Field label="Estado">
-            <NativeSelect value={form.activo ? 'on' : 'off'}
+            <SelectSimple value={form.activo ? 'on' : 'off'}
               onChange={e => setForm(f => ({ ...f, activo: e.target.value === 'on' }))}>
               <option value="on">Activo</option>
               <option value="off">Inactivo</option>
-            </NativeSelect>
+            </SelectSimple>
           </Field>
         </FieldRow>
 

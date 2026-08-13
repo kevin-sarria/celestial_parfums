@@ -1,4 +1,4 @@
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { formatPrice } from '../helpers';
 import { Field } from '../ui';
 import type { IvaModo } from '../types';
@@ -29,9 +29,9 @@ export function IvaDeLaCompra({ valor, modo, tasa, modoDelProveedor, onModo }: P
   return (
     <div className="space-y-2.5 rounded-xl border border-border bg-secondary/40 px-3.5 py-3">
       <Field label="¿Cómo te factura el IVA este proveedor?">
-        <NativeSelect value={modo} onChange={e => onModo(e.target.value as IvaModo)}>
+        <SelectSimple value={modo} onChange={e => onModo(e.target.value as IvaModo)}>
           {IVA_MODOS.map(m => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
-        </NativeSelect>
+        </SelectSimple>
         <p className="mt-1 text-[12px] text-muted-foreground">
           {IVA_MODOS.find(m => m.valor === modo)?.ayuda}
           {corregido && (

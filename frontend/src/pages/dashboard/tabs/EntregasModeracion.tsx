@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Check, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import SubirFotosEntrega, { type EntregaCliente } from '../../../components/recompensas/SubirFotosEntrega';
 import { BASE_URL } from '../../../infrastructure/api/client';
 import { fmtInstante } from '../helpers';
@@ -53,12 +53,12 @@ export default function EntregasModeracion({ guardedFetch }: Props) {
       <Toolbar>
         <SectionTitle count={rows.length}>Fotos de ganadores</SectionTitle>
         <ToolbarActions>
-          <NativeSelect value={estado} onChange={(e) => setEstado(e.target.value)} className="w-44">
+          <SelectSimple value={estado} onChange={(e) => setEstado(e.target.value)} className="w-44">
             <option value="">Todas</option>
             <option value="pendiente">Pendientes</option>
             <option value="aprobada">Publicadas</option>
             <option value="rechazada">Rechazadas</option>
-          </NativeSelect>
+          </SelectSimple>
         </ToolbarActions>
       </Toolbar>
 

@@ -3,7 +3,7 @@ import { Pencil, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
@@ -190,18 +190,18 @@ export function CombosTab({
         </Field>
         <FieldRow>
           <Field label="Categoria">
-            <NativeSelect value={form.categoria_id}
+            <SelectSimple value={form.categoria_id}
               onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value !== '' ? Number(e.target.value) : '' }))}>
               <option value="">Sin categoria</option>
               {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </NativeSelect>
+            </SelectSimple>
           </Field>
           <Field label="Presentacion de los perfumes">
-            <NativeSelect value={form.presentacion_id}
+            <SelectSimple value={form.presentacion_id}
               onChange={e => setForm(f => ({ ...f, presentacion_id: e.target.value !== '' ? Number(e.target.value) : '' }))}>
               <option value="">Cualquier tamaño</option>
               {presentaciones.map(p => <option key={p.id} value={p.id}>{p.nombre}</option>)}
-            </NativeSelect>
+            </SelectSimple>
           </Field>
         </FieldRow>
         <p className="-mt-1 text-[12px] leading-relaxed text-muted-foreground">
@@ -225,11 +225,11 @@ export function CombosTab({
               onChange={e => setForm(f => ({ ...f, descuento: e.target.value }))} />
           </Field>
           <Field label="Estado">
-            <NativeSelect value={form.activo ? 'true' : 'false'}
+            <SelectSimple value={form.activo ? 'true' : 'false'}
               onChange={e => setForm(f => ({ ...f, activo: e.target.value === 'true' }))}>
               <option value="true">Activo</option>
               <option value="false">Inactivo</option>
-            </NativeSelect>
+            </SelectSimple>
           </Field>
         </FieldRow>
         <FormError>{formError}</FormError>

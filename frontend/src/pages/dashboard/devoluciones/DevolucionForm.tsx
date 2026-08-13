@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { Button } from '@/components/ui/button';
 import Modal from '../../../components/Modal';
 import BuscadorSelect from '../../../components/BuscadorSelect';
@@ -213,9 +213,9 @@ export default function DevolucionForm({ guardedFetch, devolucion, onClose, onGu
             <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
           </Field>
           <Field label="Motivo *">
-            <NativeSelect value={motivo} onChange={(e) => setMotivo(e.target.value as DevolucionMotivo)}>
+            <SelectSimple value={motivo} onChange={(e) => setMotivo(e.target.value as DevolucionMotivo)}>
               {MOTIVOS.map((m) => <option key={m.v} value={m.v}>{m.label}</option>)}
-            </NativeSelect>
+            </SelectSimple>
           </Field>
         </FieldRow>
 
@@ -228,19 +228,19 @@ export default function DevolucionForm({ guardedFetch, devolucion, onClose, onGu
         {/* 3. Cómo se cerró */}
         <FieldRow>
           <Field label="Estado">
-            <NativeSelect value={estado} onChange={(e) => setEstado(e.target.value as DevolucionEstado)}>
+            <SelectSimple value={estado} onChange={(e) => setEstado(e.target.value as DevolucionEstado)}>
               {ESTADOS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
-            </NativeSelect>
+            </SelectSimple>
           </Field>
           <Field label="¿Qué hiciste?">
-            <NativeSelect value={solucion} onChange={(e) => {
+            <SelectSimple value={solucion} onChange={(e) => {
               const v = e.target.value as DevolucionSolucion | '';
               setSolucion(v);
               if (v !== 'devolucion_dinero') setMonto('0');
             }}>
               <option value="">Todavía nada</option>
               {SOLUCIONES.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
-            </NativeSelect>
+            </SelectSimple>
           </Field>
         </FieldRow>
 
@@ -254,11 +254,11 @@ export default function DevolucionForm({ guardedFetch, devolucion, onClose, onGu
             </p>
             <FieldRow className="mt-2">
               <Field label="Tamaño repuesto">
-                <NativeSelect value={repoFormula}
+                <SelectSimple value={repoFormula}
                   onChange={(e) => setRepoFormula(Number(e.target.value) || '')}>
                   <option value="">— Elige —</option>
                   {formulas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-                </NativeSelect>
+                </SelectSimple>
               </Field>
               <Field label="Unidades">
                 <Input type="number" min="1" value={repoCantidad}

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import type { ColumnDef, FilterValue, StringOp, NumberOp, DateOp } from './tableTypes';
 
 interface Props<T> {
@@ -106,11 +106,11 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
       <div className="space-y-2">
         {column.type === 'string' && (
           <>
-            <NativeSelect value={strOp} onChange={e => setStrOp(e.target.value as StringOp)}>
+            <SelectSimple value={strOp} onChange={e => setStrOp(e.target.value as StringOp)}>
               <option value="contains">Contiene</option>
               <option value="equals">Es igual a</option>
               <option value="starts">Empieza con</option>
-            </NativeSelect>
+            </SelectSimple>
             <Input
               placeholder="Escribe la palabra a buscar..."
               value={strVal}
@@ -124,11 +124,11 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
 
         {(column.type === 'number' || column.type === 'currency') && (
           <>
-            <NativeSelect value={numOp} onChange={e => setNumOp(e.target.value as NumberOp)}>
+            <SelectSimple value={numOp} onChange={e => setNumOp(e.target.value as NumberOp)}>
               <option value="eq">Igual a</option>
               <option value="gt">Mayor que</option>
               <option value="lt">Menor que</option>
-            </NativeSelect>
+            </SelectSimple>
             <Input
               type="number"
               placeholder={column.type === 'currency' ? 'Valor en COP...' : 'Valor...'}
@@ -142,11 +142,11 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
 
         {column.type === 'date' && (
           <>
-            <NativeSelect value={dateOp} onChange={e => setDateOp(e.target.value as DateOp)}>
+            <SelectSimple value={dateOp} onChange={e => setDateOp(e.target.value as DateOp)}>
               <option value="eq">Igual a</option>
               <option value="before">Antes de</option>
               <option value="after">Después de</option>
-            </NativeSelect>
+            </SelectSimple>
             <Input type="date" value={dateVal} onChange={e => setDateVal(e.target.value)} autoFocus />
           </>
         )}

@@ -6,7 +6,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
 import type { ColumnDef, FilterValue } from './tableTypes';
 import { useTableControls } from './useTableControls';
@@ -422,7 +422,7 @@ export function SmartTable<T>({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <label htmlFor="st-ps">Filas:</label>
-            <NativeSelect
+            <SelectSimple
               id="st-ps"
               className="w-18"
               value={tamanoActual}
@@ -431,7 +431,7 @@ export function SmartTable<T>({
               {PAGE_SIZE_OPTIONS.map(n => (
                 <option key={n} value={n}>{n}</option>
               ))}
-            </NativeSelect>
+            </SelectSimple>
           </div>
 
           {totalPages > 1 && (

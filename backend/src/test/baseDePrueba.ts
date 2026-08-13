@@ -62,7 +62,11 @@ type TipoInsumo = 'materia_prima' | 'envase' | 'accesorio';
  */
 export const crearInsumo = async (
   nombre: string,
-  opciones: { tipo?: TipoInsumo; unidad?: 'ml' | 'unidad'; precio?: number; stock?: number } = {},
+  opciones: {
+    tipo?: TipoInsumo; unidad?: 'ml' | 'unidad'; precio?: number; stock?: number;
+    /** Con gama = es una esencia. Es lo que la distingue del diluyente. */
+    gama_id?: number;
+  } = {},
 ) => {
   const precio = opciones.precio ?? 0;
   const insumo = await prisma.insumoCosto.create({
@@ -72,6 +76,7 @@ export const crearInsumo = async (
       unidad: opciones.unidad ?? (opciones.tipo === 'envase' || opciones.tipo === 'accesorio' ? 'unidad' : 'ml'),
       precio,
       stock: 0,
+      gama_id: opciones.gama_id ?? null,
     },
   });
 

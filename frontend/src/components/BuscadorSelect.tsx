@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,7 +29,28 @@ interface Props {
    * con el panel abierto quedaría tapado por la propia lista.
    */
   cierranPanel?: (number | string)[];
+  /**
+   * Mostrar la caja de búsqueda. Por defecto solo con **6 opciones o más**.
+   *
+   * Es el mismo corte que ya usaba el proyecto para decidir entre desplegable
+   * nativo y buscador: con tres opciones fijas (unidad, género, modo de IVA) el
+   * buscador estorba más de lo que ayuda. Al unificar TODOS los desplegables en
+   * este componente, la regla se conserva escondiendo el buscador en vez de
+   * cambiando de componente — así el aspecto es siempre el mismo.
+   */
+  conBuscador?: boolean;
+  /** Clases para el disparador, para los sitios que lo necesitan más angosto. */
+  className?: string;
+  id?: string;
+  'aria-label'?: string;
 }
+
+/** Alto máximo del panel (buscador + lista), aire respecto al campo y al borde. */
+const ALTO_PANEL = 246;
+const MARGEN = 4;
+const AIRE_BORDE = 12;
+/** A partir de cuántas opciones aparece la caja de búsqueda. */
+const MINIMO_PARA_BUSCAR = 6;
 
 /** Búsqueda sin tildes ni mayúsculas: "rose" encuentra "212 VIP Rosé". */
 const normalizar = (s: string) =>
@@ -48,13 +70,44 @@ export default function BuscadorSelect({
   disabled,
   vacio = 'Sin coincidencias',
   cierranPanel,
+  conBuscador,
+  className,
+  id,
+  'aria-label': ariaLabel,
 }: Props) {
   const esSelector = value !== undefined;
+  // Con pocas opciones la caja de búsqueda sobra: se leen todas de un vistazo.
+  const buscador = conBuscador ?? opciones.length >= MINIMO_PARA_BUSCAR;
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState('');
   const [resaltada, setResaltada] = useState(0);
   const contRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [caja, setCaja] = useState({ top: 0, left: 0, width: 0, alto: ALTO_PANEL, arriba: false });
+  /**
+   * Dónde se cuelga el panel: dentro del diálogo si lo hay, si no en el <body>.
+   *
+   * **Dentro de un modal tiene que ser el diálogo, y no es cosmético.** Radix
+   * atrapa el foco dentro del diálogo: colgando del <body>, al escribir en el
+   * buscador Radix devolvía el foco al campo anterior y las letras se iban ahí
+   * — en un recorrido el nombre del cliente quedó guardado como
+   * "Cliente del recorridoVentas 1".
+   *
+   * Se resuelve al ABRIR, en el manejador del clic, y no en un efecto
+   * posterior: React agrupa ese `setState` con el de abrir, así que el panel ya
+   * nace en su sitio definitivo. Calculado después, se montaba primero en el
+   * <body> y se remontaba en el diálogo — y al remontarse el campo de búsqueda
+   * es otro nodo del DOM, así que el foco se perdía: justo el fallo que esto
+   * venía a arreglar.
+   */
+  const [anfitrion, setAnfitrion] = useState<HTMLElement | null>(null);
+
+  /** Abre el panel dejando resuelto de quién va a colgar. */
+  const abrir = () => {
+    setAnfitrion(contRef.current?.closest<HTMLElement>('[data-slot="dialog-content"]') ?? null);
+    setAbierto(true);
+  };
 
   const seleccionada = esSelector
     ? opciones.find((o) => String(o.id) === String(value ?? ''))
@@ -66,20 +119,76 @@ export default function BuscadorSelect({
     return opciones.filter((o) => normalizar(o.nombre).includes(q));
   }, [opciones, texto]);
 
-  // Al abrir: foco directo en el buscador del panel
+  /**
+   * Dónde pintar el panel, en coordenadas de pantalla.
+   *
+   * Se calcula a mano porque el panel se pinta FUERA del formulario (ver el
+   * portal, más abajo) y por tanto ya no puede colocarse solo respecto al campo.
+   */
+  const recolocar = useCallback(() => {
+    const r = contRef.current?.getBoundingClientRect();
+    if (!r) return;
+    // Colgado del diálogo, las coordenadas van respecto a ÉL, no a la pantalla.
+    const dialogo = contRef.current?.closest<HTMLElement>('[data-slot="dialog-content"]');
+    const origen = dialogo?.getBoundingClientRect();
+    const dx = origen?.left ?? 0;
+    const dy = origen?.top ?? 0;
+
+    // El alto se ACOTA al hueco disponible en vez de fiarse de una constante:
+    // así el panel nunca se sale de la pantalla ni queda pegado al borde, y la
+    // lista scrollea por dentro. Fijar un alto "que suele caber" es lo que deja
+    // el último renglón cortado en las pantallas bajas.
+    const abajo = window.innerHeight - r.bottom - MARGEN - AIRE_BORDE;
+    const arriba = r.top - MARGEN - AIRE_BORDE;
+    // Se despliega hacia arriba solo si abajo no cabe y arriba se ve más.
+    const haciaArriba = abajo < ALTO_PANEL && arriba > abajo;
+
+    setCaja({
+      top: (haciaArriba ? r.top - MARGEN : r.bottom + MARGEN) - dy,
+      left: r.left - dx,
+      width: r.width,
+      alto: Math.max(120, Math.min(ALTO_PANEL, haciaArriba ? arriba : abajo)),
+      arriba: haciaArriba,
+    });
+  }, []);
+
+  // Al abrir: colocar el panel y poner el foco en el buscador
   useEffect(() => {
     if (abierto) {
       setTexto('');
       setResaltada(0);
-      inputRef.current?.focus();
+      recolocar();
+      // Sin buscador el foco va al panel: si no, las flechas y Enter no
+      // tendrían dónde escucharse y el desplegable quedaría solo para ratón.
+      (buscador ? inputRef.current : panelRef.current)?.focus();
     }
-  }, [abierto]);
+  }, [abierto, buscador, recolocar]);
 
-  // Clic fuera del componente: se cierra
+  /**
+   * Mientras está abierto, el panel sigue al campo.
+   *
+   * El `true` del listener es lo que importa: captura el scroll de CUALQUIER
+   * contenedor, no solo el de la ventana. Sin eso, al desplazar un modal el
+   * campo se movería y el panel se quedaría flotando en su sitio.
+   */
+  useEffect(() => {
+    if (!abierto) return;
+    window.addEventListener('scroll', recolocar, true);
+    window.addEventListener('resize', recolocar);
+    return () => {
+      window.removeEventListener('scroll', recolocar, true);
+      window.removeEventListener('resize', recolocar);
+    };
+  }, [abierto, recolocar]);
+
+  // Clic fuera: se cierra. El panel cuenta como "dentro" aunque viva en otra
+  // parte del documento — si no, elegir una opción lo cerraría antes de tiempo.
   useEffect(() => {
     if (!abierto) return;
     const onDoc = (e: PointerEvent) => {
-      if (!contRef.current?.contains(e.target as Node)) setAbierto(false);
+      const destino = e.target as Node;
+      if (contRef.current?.contains(destino) || panelRef.current?.contains(destino)) return;
+      setAbierto(false);
     };
     document.addEventListener('pointerdown', onDoc);
     return () => document.removeEventListener('pointerdown', onDoc);
@@ -114,9 +223,11 @@ export default function BuscadorSelect({
 
   return (
     <div ref={contRef} className="relative w-full">
-      {/* Disparador con la apariencia exacta de NativeSelect */}
+      {/* Disparador con la apariencia exacta de SelectSimple */}
       <button
         type="button"
+        id={id}
+        aria-label={ariaLabel}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={abierto}
@@ -126,12 +237,13 @@ export default function BuscadorSelect({
           'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
           'disabled:cursor-not-allowed disabled:opacity-50',
           seleccionada ? 'text-foreground' : 'text-muted-foreground',
+          className,
         )}
-        onClick={() => setAbierto((v) => !v)}
+        onClick={() => (abierto ? setAbierto(false) : abrir())}
         onKeyDown={(e) => {
           if (!abierto && (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ')) {
             e.preventDefault();
-            setAbierto(true);
+            abrir();
           }
         }}
       >
@@ -144,15 +256,46 @@ export default function BuscadorSelect({
         )}
       />
 
-      {abierto && (
-        // left/right en línea: si `inset-x-0` no aplica, el panel se encogería
-        // al ancho del texto más largo y quedaría desalineado del campo.
+      {abierto && createPortal(
+        /**
+         * El panel se pinta en el `<body>`, no aquí dentro.
+         *
+         * Dentro del formulario era un `absolute`, y en un modal —que tiene su
+         * propio scroll— eso lo dejaba RECORTADO por el borde del modal: la
+         * lista se veía a medias y había que desplazar el formulario entero
+         * para leerla. Sacándolo al documento flota por encima de todo, que es
+         * como se comporta un desplegable de verdad.
+         *
+         * A cambio hay que colocarlo a mano (`recolocar`) y contarlo como
+         * "dentro" al detectar el clic fuera.
+         */
         <div
-          className="absolute z-50 mt-1 overflow-hidden rounded-md border border-border bg-card shadow-lg"
-          style={{ left: 0, right: 0, width: '100%' }}
+          ref={panelRef}
+          tabIndex={-1}
+          onKeyDown={buscador ? undefined : onKeyDown}
+          className="z-[60] flex flex-col overflow-hidden rounded-md border border-border bg-card shadow-lg outline-none"
+          style={{
+            // `absolute` dentro del diálogo (que ya es su bloque contenedor) y
+            // `fixed` cuando cuelga del documento.
+            position: anfitrion ? 'absolute' : 'fixed',
+            top: caja.top,
+            left: caja.left,
+            width: caja.width,
+            maxHeight: caja.alto,
+            // Desplegado hacia arriba: se ancla por abajo para que crezca en
+            // esa dirección sin taparle el campo al usuario.
+            transform: caja.arriba ? 'translateY(-100%)' : undefined,
+            // IMPRESCINDIBLE dentro de un modal: mientras hay un diálogo abierto,
+            // Radix apaga los clics de todo lo que cuelga del <body> fuera de él.
+            // Como el panel vive ahí, se VEÍA pero no se podía tocar: las opciones
+            // no respondían al clic. Se descubrió porque los recorridos empezaron
+            // a reintentar el clic hasta agotar el tiempo.
+            pointerEvents: 'auto',
+          }}
         >
-          {/* El buscador vive dentro del panel */}
-          <div className="relative border-b border-border/70">
+          {/* El buscador vive dentro del panel, y solo si hay bastante que filtrar */}
+          {buscador && (
+          <div className="relative shrink-0 border-b border-border/70">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <input
               ref={inputRef}
@@ -165,8 +308,11 @@ export default function BuscadorSelect({
               onKeyDown={onKeyDown}
             />
           </div>
+          )}
 
-          <div className="overflow-y-auto p-1" style={{ maxHeight: '12.5rem' }} role="listbox">
+          {/* Ocupa el hueco que quede: si el panel se achica por falta de sitio,
+              es la lista la que scrollea, no el buscador el que desaparece. */}
+          <div className="min-h-0 flex-1 overflow-y-auto p-1" role="listbox">
             {filtradas.length === 0 ? (
               <p className="px-2.5 py-2 text-sm text-muted-foreground">{vacio}</p>
             ) : (
@@ -192,7 +338,8 @@ export default function BuscadorSelect({
               ))
             )}
           </div>
-        </div>
+        </div>,
+        anfitrion ?? document.body,
       )}
     </div>
   );

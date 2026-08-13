@@ -1,7 +1,7 @@
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import { formatPrice } from '../helpers';
 import { Field } from '../ui';
@@ -123,13 +123,13 @@ export default function LineasCotizacion({
                   </div>
 
                   <Field label="Tamaño" className="w-32">
-                    <NativeSelect
+                    <SelectSimple
                       className="h-9"
                       value={l.formula_volumen_id ?? ''}
                       onChange={(e) => actualizar(idx, { formula_volumen_id: Number(e.target.value) }, false)}
                     >
                       {formulas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-                    </NativeSelect>
+                    </SelectSimple>
                   </Field>
 
                   <Field label="Cantidad" className="w-24">

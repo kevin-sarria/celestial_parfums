@@ -3,7 +3,7 @@ import { CheckCircle2, Lock, TriangleAlert, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../components/Modal';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import { detectarCombos } from '../../../application/hooks/useComboDetector';
@@ -368,11 +368,11 @@ export function VentaForm({
               onChange={e => { setCuponAplicado(false); setForm(f => ({ ...f, valor_venta: e.target.value })); }} />
           </Field>
           <Field label="Estado de pago">
-            <NativeSelect value={form.pagada ? 'pagada' : 'pendiente'}
+            <SelectSimple value={form.pagada ? 'pagada' : 'pendiente'}
               onChange={e => setForm(f => ({ ...f, pagada: e.target.value === 'pagada' }))}>
               <option value="pagada">Pagada</option>
               <option value="pendiente">Pendiente de pago</option>
-            </NativeSelect>
+            </SelectSimple>
           </Field>
         </FieldRow>
 

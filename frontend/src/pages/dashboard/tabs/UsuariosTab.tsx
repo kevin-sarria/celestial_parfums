@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../components/Modal';
 import { SmartTable } from '../../../components/table/SmartTable';
 import type { ColumnDef } from '../../../components/table/tableTypes';
@@ -265,14 +265,14 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
         {modal.editId != null && !editando?.sin_cuenta && (
           <BloqueCampos titulo="Cuenta web" descripcion="Solo aplica a quien se registró en la página.">
             <Field label="Estado">
-              <NativeSelect
+              <SelectSimple
                 value={form.activo ? 'activo' : 'pendiente'}
                 disabled={modal.editId === adminUser?.id}
                 onChange={e => setForm(f => ({ ...f, activo: e.target.value === 'activo' }))}
               >
                 <option value="activo">Activo</option>
                 <option value="pendiente">Pendiente de verificar</option>
-              </NativeSelect>
+              </SelectSimple>
             </Field>
             <Field label="Nueva contraseña (dejar vacío para no cambiarla)">
               <div className="relative">

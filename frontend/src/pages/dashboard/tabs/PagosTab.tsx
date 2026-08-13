@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../components/Modal';
 import DetalleCompra, { type LineaCompra } from '../compras/DetalleCompra';
 import { BASE_URL } from '../../../infrastructure/api/client';
@@ -316,10 +316,10 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
                 onChange={e => setForm(f => ({ ...f, nueva_direccion: e.target.value }))} />
             </Field>
             <Field label="Como te factura el IVA">
-              <NativeSelect value={form.nueva_iva_modo}
+              <SelectSimple value={form.nueva_iva_modo}
                 onChange={e => setForm(f => ({ ...f, nueva_iva_modo: e.target.value as IvaModo }))}>
                 {IVA_MODOS.map(m => <option key={m.valor} value={m.valor}>{m.etiqueta}</option>)}
-              </NativeSelect>
+              </SelectSimple>
             </Field>
           </div>
         )}

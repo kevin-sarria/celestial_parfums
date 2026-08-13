@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import GraficoBarras, { SERIE_A, SERIE_B } from '../GraficoBarras';
 import { Panel, Ranking, ReporteShell, useReporte } from '../reportes/comun';
 import { formatPrice } from '../helpers';
@@ -78,7 +78,7 @@ export function ReportesVentasTab({ guardedFetch }: { guardedFetch: GuardedFetch
       acciones={
         <label className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
           Ver
-          <NativeSelect
+          <SelectSimple
             className="h-9 w-40"
             value={meses}
             onChange={(e) => setMeses(Number(e.target.value))}
@@ -87,7 +87,7 @@ export function ReportesVentasTab({ guardedFetch }: { guardedFetch: GuardedFetch
             <option value={3}>Últimos 3 meses</option>
             <option value={6}>Últimos 6 meses</option>
             <option value={12}>Últimos 12 meses</option>
-          </NativeSelect>
+          </SelectSimple>
         </label>
       }
     >

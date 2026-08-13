@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
@@ -427,10 +427,10 @@ export function RedesTab({ guardedFetch }: Props) {
             <p className="pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Fondo</p>
             <FieldRow>
               <Field label="Tipo de fondo">
-                <NativeSelect value={form.fondo_tipo} onChange={e => set('fondo_tipo', e.target.value as 'color' | 'imagen')}>
+                <SelectSimple value={form.fondo_tipo} onChange={e => set('fondo_tipo', e.target.value as 'color' | 'imagen')}>
                   <option value="color">Color sólido</option>
                   <option value="imagen">Imagen</option>
-                </NativeSelect>
+                </SelectSimple>
               </Field>
               {form.fondo_tipo === 'color' ? (
                 <ColorField label="Color de fondo" value={form.fondo_color} onChange={v => set('fondo_color', v)} />
@@ -466,22 +466,22 @@ export function RedesTab({ guardedFetch }: Props) {
             </p>
             <FieldRow>
               <Field label="Sección superior · perfil y botones">
-                <NativeSelect
+                <SelectSimple
                   value={form.contenido_posicion}
                   onChange={e => set('contenido_posicion', e.target.value as ConfigForm['contenido_posicion'])}
                 >
                   <option value="centro">Centrada en su mitad</option>
                   <option value="arriba">Pegada arriba</option>
-                </NativeSelect>
+                </SelectSimple>
               </Field>
               <Field label="Sección inferior · redes sociales">
-                <NativeSelect
+                <SelectSimple
                   value={form.redes_posicion}
                   onChange={e => set('redes_posicion', e.target.value as ConfigForm['redes_posicion'])}
                 >
                   <option value="centro">Centrada en su mitad</option>
                   <option value="abajo">Pegada abajo</option>
-                </NativeSelect>
+                </SelectSimple>
               </Field>
             </FieldRow>
 
@@ -490,10 +490,10 @@ export function RedesTab({ guardedFetch }: Props) {
             </p>
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Forma">
-                <NativeSelect value={form.boton_forma} onChange={e => set('boton_forma', e.target.value as ContactoForma)}>
+                <SelectSimple value={form.boton_forma} onChange={e => set('boton_forma', e.target.value as ContactoForma)}>
                   <option value="redondo">Bordes redondos</option>
                   <option value="cuadrado">Cuadrado</option>
-                </NativeSelect>
+                </SelectSimple>
               </Field>
               <ColorField label="Color del botón" value={form.boton_color_fondo} onChange={v => set('boton_color_fondo', v)} />
               <ColorField label="Color del texto" value={form.boton_color_texto} onChange={v => set('boton_color_texto', v)} />
@@ -555,7 +555,7 @@ export function RedesTab({ guardedFetch }: Props) {
           <FormError>{linkError}</FormError>
 
           <Field label="Tipo">
-            <NativeSelect
+            <SelectSimple
               value={linkForm.tipo}
               onChange={e => {
                 const tipo = e.target.value as 'boton' | 'red';
@@ -565,7 +565,7 @@ export function RedesTab({ guardedFetch }: Props) {
             >
               <option value="boton">Botón de link</option>
               <option value="red">Icono de red social</option>
-            </NativeSelect>
+            </SelectSimple>
           </Field>
 
           {linkForm.tipo === 'boton' ? (
@@ -577,14 +577,14 @@ export function RedesTab({ guardedFetch }: Props) {
               </Field>
               <FieldRow>
                 <Field label="Icono del botón">
-                  <NativeSelect
+                  <SelectSimple
                     value={linkForm.iconoTipo}
                     onChange={e => setLink('iconoTipo', e.target.value as LinkForm['iconoTipo'])}
                   >
                     <option value="ninguno">Sin icono</option>
                     <option value="emoji">Emoji o texto</option>
                     <option value="red">Icono de red social</option>
-                  </NativeSelect>
+                  </SelectSimple>
                 </Field>
                 {linkForm.iconoTipo === 'emoji' && (
                   <Field label="Emoji o texto">
@@ -594,11 +594,11 @@ export function RedesTab({ guardedFetch }: Props) {
                 )}
                 {linkForm.iconoTipo === 'red' && (
                   <Field label="Red social">
-                    <NativeSelect value={linkForm.iconoRed} onChange={e => setLink('iconoRed', e.target.value)}>
+                    <SelectSimple value={linkForm.iconoRed} onChange={e => setLink('iconoRed', e.target.value)}>
                       {RED_OPTIONS.map(o => (
                         <option key={o.value} value={o.value}>{o.label}</option>
                       ))}
-                    </NativeSelect>
+                    </SelectSimple>
                   </Field>
                 )}
               </FieldRow>
@@ -606,21 +606,21 @@ export function RedesTab({ guardedFetch }: Props) {
           ) : (
             <FieldRow>
               <Field label="Plataforma">
-                <NativeSelect value={linkForm.plataforma} onChange={e => setLink('plataforma', e.target.value)}>
+                <SelectSimple value={linkForm.plataforma} onChange={e => setLink('plataforma', e.target.value)}>
                   {RED_OPTIONS.map(o => (
                     <option key={o.value} value={o.value}>{o.label}</option>
                   ))}
-                </NativeSelect>
+                </SelectSimple>
               </Field>
               <Field label="Contenido del círculo">
                 <div className="flex gap-2">
-                  <NativeSelect
+                  <SelectSimple
                     value={linkForm.iconoTipo === 'emoji' ? 'emoji' : 'red'}
                     onChange={e => setLink('iconoTipo', e.target.value as LinkForm['iconoTipo'])}
                   >
                     <option value="red">Icono de la plataforma</option>
                     <option value="emoji">Emoji o letras</option>
-                  </NativeSelect>
+                  </SelectSimple>
                   {linkForm.iconoTipo === 'emoji' && (
                     <Input value={linkForm.emoji} maxLength={8} placeholder="Ej: KD"
                       className="max-w-24"
@@ -650,10 +650,10 @@ export function RedesTab({ guardedFetch }: Props) {
               {!linkForm.usarGlobal && (
                 <div className={cn('grid gap-3 sm:grid-cols-3')}>
                   <Field label="Forma">
-                    <NativeSelect value={linkForm.forma} onChange={e => setLink('forma', e.target.value as ContactoForma)}>
+                    <SelectSimple value={linkForm.forma} onChange={e => setLink('forma', e.target.value as ContactoForma)}>
                       <option value="redondo">Bordes redondos</option>
                       <option value="cuadrado">Cuadrado</option>
-                    </NativeSelect>
+                    </SelectSimple>
                   </Field>
                   <ColorField label="Color del botón" value={linkForm.color_fondo} onChange={v => setLink('color_fondo', v)} />
                   <ColorField label="Color del texto" value={linkForm.color_texto} onChange={v => setLink('color_texto', v)} />

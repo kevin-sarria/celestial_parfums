@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, TrendingDown } from 'lucide-react';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import { formatPrice } from '../helpers';
 import { calcularDesgloseCosto } from '../../../application/costeoCotizacion';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
@@ -67,10 +67,10 @@ export default function MargenPorFragancia({ perfumes, formulas, insumos }: Prop
         <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
           <TrendingDown className="size-3.5" /> Margen por fragancia
         </h3>
-        <NativeSelect className="h-8 w-32" value={volumenId}
+        <SelectSimple className="h-8 w-32" value={volumenId}
           onChange={(e) => setVolumenId(Number(e.target.value) || '')}>
           {formulas.map((f) => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-        </NativeSelect>
+        </SelectSimple>
       </div>
 
       <p className="mb-3 text-[12.5px] leading-relaxed text-muted-foreground">

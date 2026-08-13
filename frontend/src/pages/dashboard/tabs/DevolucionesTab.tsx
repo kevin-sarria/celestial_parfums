@@ -3,7 +3,7 @@ import { AlertTriangle, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import ExportButton from '../../../components/ExportButton';
 import DevolucionForm from '../devoluciones/DevolucionForm';
@@ -76,11 +76,11 @@ export function DevolucionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
       <Toolbar>
         <SectionTitle count={rows.length}>Devoluciones y garantías</SectionTitle>
         <ToolbarActions>
-          <NativeSelect className="h-9 w-40" value={filtro}
+          <SelectSimple className="h-9 w-40" value={filtro}
             onChange={(e) => setFiltro(e.target.value as typeof filtro)}>
             <option value="todas">Todos los estados</option>
             {ESTADOS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
-          </NativeSelect>
+          </SelectSimple>
           <ExportButton entity="devoluciones" guardedFetch={guardedFetch} />
           <Button size="sm" onClick={() => { setEditando(null); setAbierto(true); }}>
             <Plus className="size-4" /> Registrar devolución

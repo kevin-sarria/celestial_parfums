@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { NativeSelect } from '@/components/ui/native-select';
+import { SelectSimple } from '@/components/ui/select-simple';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import { formatPrice } from '../helpers';
@@ -111,7 +111,7 @@ export function ArmadorPedido({
 
                 {/* Un producto sin tallas (una gorra) no muestra selector */}
                 {tallas.length > 0 && (
-                  <NativeSelect
+                  <SelectSimple
                     className="h-8 w-26 text-[12.5px]"
                     value={l.presentacion ?? ''}
                     aria-label="Talla"
@@ -127,7 +127,7 @@ export function ArmadorPedido({
                     {tallas.map(t => (
                       <option key={t.presentacion} value={t.presentacion}>{t.presentacion}</option>
                     ))}
-                  </NativeSelect>
+                  </SelectSimple>
                 )}
 
                 <Input
