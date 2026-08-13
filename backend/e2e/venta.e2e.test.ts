@@ -51,6 +51,20 @@ describe('registrar una venta desde el dashboard', () => {
     await elegirProducto(pagina, perfume);
     await pagina.getByLabel('Cantidad').first().fill('2');
 
+    // El desplegable de talla es ANGOSTO (lleva su propia clase de ancho): su
+    // panel tiene que medir lo mismo que el campo. Al unificar los selects, la
+    // clase se aplicó al botón y no al contenedor, así que el campo se encogía
+    // pero la caja y la lista seguían midiendo el ancho completo de la fila.
+    const talla = pagina.getByLabel('Talla').first();
+    await talla.click();
+    const panel = pagina.getByRole('listbox');
+    await panel.waitFor();
+    const cajaTalla = (await talla.boundingBox())!;
+    const cajaPanel = (await panel.boundingBox())!;
+    expect(Math.abs(cajaPanel.width - cajaTalla.width)).toBeLessThanOrEqual(2);
+    expect(cajaTalla.width).toBeLessThan(200); // sigue siendo el campo angosto
+    await pagina.keyboard.press('Escape');
+
     await campo(pagina, 'Valor de la venta (COP) *').fill('120000');
     await pagina.getByRole('button', { name: /^Registrar$/ }).click();
 

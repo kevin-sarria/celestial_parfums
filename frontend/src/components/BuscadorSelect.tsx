@@ -39,7 +39,12 @@ interface Props {
    * cambiando de componente — así el aspecto es siempre el mismo.
    */
   conBuscador?: boolean;
-  /** Clases para el disparador, para los sitios que lo necesitan más angosto. */
+  /**
+   * Clases del CONTENEDOR, no del botón — igual que hacía el select nativo al
+   * que reemplaza. De ahí salen el ancho y el alto del campo, y también la
+   * medida con la que se dibuja el panel: puestas en el botón, el botón se
+   * encogía pero la caja y la lista seguían midiendo el ancho completo.
+   */
   className?: string;
   id?: string;
   'aria-label'?: string;
@@ -217,12 +222,15 @@ export default function BuscadorSelect({
       e.preventDefault();
       if (filtradas[resaltada]) elegir(filtradas[resaltada].id);
     } else if (e.key === 'Escape') {
+      // Dentro de un modal, quien impide que Escape cierre el formulario
+      // entero es `Modal` (Radix lo escucha en captura y desde aquí no se puede
+      // parar). Aquí solo se cierra el desplegable.
       setAbierto(false);
     }
   };
 
   return (
-    <div ref={contRef} className="relative w-full">
+    <div ref={contRef} className={cn('relative w-full', className)}>
       {/* Disparador con la apariencia exacta de SelectSimple */}
       <button
         type="button"
@@ -237,7 +245,6 @@ export default function BuscadorSelect({
           'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
           'disabled:cursor-not-allowed disabled:opacity-50',
           seleccionada ? 'text-foreground' : 'text-muted-foreground',
-          className,
         )}
         onClick={() => (abierto ? setAbierto(false) : abrir())}
         onKeyDown={(e) => {

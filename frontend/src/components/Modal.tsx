@@ -100,6 +100,17 @@ export default function Modal({
         className="flex max-h-[88svh] flex-col gap-0 p-0 sm:max-w-135"
         // min() evita que un maxWidth grande desborde la pantalla en ventanas angostas
         style={maxWidth ? { maxWidth: `min(${maxWidth}px, calc(100vw - 2rem))` } : undefined}
+        /**
+         * Con un desplegable abierto, Escape lo cierra a ÉL y no al formulario.
+         *
+         * Radix escucha Escape en fase de CAPTURA, o sea antes que cualquier
+         * hijo, así que el desplegable no puede pararlo por su cuenta: el
+         * formulario entero se cerraba y se perdía lo escrito. Aquí sí se puede
+         * decirle a Radix que no actúe.
+         */
+        onEscapeKeyDown={(e) => {
+          if (document.querySelector('[role="listbox"]')) e.preventDefault();
+        }}
       >
         {onSubmit ? (
           // El <form> tiene que ser la columna, no un envoltorio suelto: si no,
