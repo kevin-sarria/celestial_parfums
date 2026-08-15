@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import { produccionesColumns } from '../columns';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import type { GuardedFetch, Produccion } from '../types';
 
-const API = `${BASE_URL}/api/inventario`;
 
 /** Corte del mes en curso en UTC: las fechas @db.Date se leen a medianoche UTC. */
 const inicioDeMes = () => {
@@ -35,9 +35,9 @@ export function ProduccionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
   const load = async () => {
     setLoading(true);
     try {
-      const res = await guardedFetch(`${API}/producciones`);
-      if (!res.ok) throw new Error();
-      setProducciones((await res.json()).data ?? []);
+      const res = await http.get<{ data: Produccion[] }>(urls.inventario.producciones);
+      if (!res.ok) throw new Error(res.error);
+      setProducciones(res.cuerpo?.data ?? []);
       setError('');
     } catch {
       setError('No se pudieron cargar las producciones. Revisa tu conexión y reintenta.');
@@ -46,14 +46,20 @@ export function ProduccionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const borrar = async (p: Produccion) => {
-    if (!window.confirm(`¿Borrar el lote de ${p.cantidad} × ${p.volumen_nombre}? Los insumos vuelven al inventario.`)) return;
-    const res = await guardedFetch(`${API}/producciones/${p.id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const j = await res.json().catch(() => null);
-      toast.error(j?.error ?? 'No se pudo borrar', { id: 'prod-del' });
-      return;
-    }
-    toast.success('Lote borrado: los insumos volvieron al inventario');
+    // Borrar un lote deshace las DOS cosas que hizo al registrarse: devuelve el
+    // material y quita los frascos armados. Decirlo importa: si esos frascos ya
+    // se vendieron, el conteo queda en negativo y hay que ajustarlo a mano.
+    const aviso = p.perfume_nombre
+      ? `¿Borrar el lote de ${p.cantidad} × ${p.perfume_nombre} ${p.volumen_nombre}?\n\n`
+        + 'El material vuelve al inventario y se quitan esos frascos de "Frascos ya armados". '
+        + 'Si alguno ya se vendió, el conteo quedará en negativo.'
+      : `¿Borrar el lote de ${p.cantidad} × ${p.volumen_nombre}? Los insumos vuelven al inventario.`;
+    if (!window.confirm(aviso)) return;
+    const res = await http.borrar(urls.inventario.produccion(p.id));
+    if (!res.ok) { toast.error(res.error, { id: 'prod-del' }); return; }
+    toast.success(p.perfume_nombre
+      ? 'Lote borrado: el material volvió al inventario y esos frascos ya no están armados'
+      : 'Lote borrado: los insumos volvieron al inventario');
     load();
   };
 
@@ -86,10 +92,13 @@ export function ProduccionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
 
       <Section>
         <p className="text-[12.5px] text-muted-foreground">
-          Cada lote descontó sus insumos del inventario al registrarse. Si borras uno,
-          <strong className="text-foreground"> los insumos vuelven</strong>. Para registrar
-          uno nuevo, usa el botón <strong className="text-foreground">Producción</strong> en{' '}
-          <Link to="/dashboard/inventario" className="text-primary hover:underline">Inventario</Link>.
+          Cada lote descontó sus insumos al registrarse y dejó sus frascos listos en{' '}
+          <Link to="/dashboard/inventario" className="text-primary hover:underline">Inventario</Link>
+          , en <strong className="text-foreground">Frascos ya armados</strong> — al venderlos no se
+          vuelve a descontar material. Si borras un lote,
+          <strong className="text-foreground"> el material vuelve y los frascos se quitan</strong>.
+          Para registrar uno nuevo, usa <strong className="text-foreground">Registrar uso → Armé
+          perfumes</strong> en Inventario.
         </p>
 
         <SmartTable

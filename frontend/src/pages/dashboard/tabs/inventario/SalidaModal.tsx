@@ -4,16 +4,16 @@ import { Input } from '@/components/ui/input';
 import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../../components/Modal';
 import BuscadorSelect from '../../../../components/BuscadorSelect';
-import { BASE_URL } from '../../../../infrastructure/api/client';
+import { http } from '../../../../infrastructure/api/http';
+import { urls } from '../../../../infrastructure/api/urls';
 import { formatPrice } from '../../helpers';
 import { Field, FieldRow } from '../../ui';
-import type { GuardedFetch, InventarioInsumo } from '../../types';
+import type { InventarioInsumo } from '../../types';
 
 type Unidad = 'ml' | 'g' | 'l' | 'kg' | 'unidad';
 
 interface SalidaModalProps {
   insumos: InventarioInsumo[];
-  guardedFetch: GuardedFetch;
   onClose: () => void;
   /** Se llama tras guardar bien, para recargar el inventario. */
   onGuardado: () => void;
@@ -26,7 +26,7 @@ interface SalidaModalProps {
  * marketing (cuánto te cuesta dar a probar) y la merma es pérdida. Mezclarlas
  * esconde lo primero dentro de lo segundo.
  */
-export function SalidaModal({ insumos, guardedFetch, onClose, onGuardado }: SalidaModalProps) {
+export function SalidaModal({ insumos, onClose, onGuardado }: SalidaModalProps) {
   const [insumoId, setInsumoId] = useState<number | ''>('');
   const [cantidad, setCantidad] = useState('');
   const [unidad, setUnidad] = useState<Unidad>('ml');
@@ -41,17 +41,13 @@ export function SalidaModal({ insumos, guardedFetch, onClose, onGuardado }: Sali
     }
     setGuardando(true);
     try {
-      const res = await guardedFetch(`${BASE_URL}/api/inventario/salidas`, {
-        method: 'POST',
-        body: JSON.stringify({
-          insumo_id: insumoId, cantidad: Number(cantidad), unidad, motivo,
-          fecha: new Date().toISOString().slice(0, 10),
-          nota: nota.trim() || null,
-        }),
+      const res = await http.post<{ data?: { costo?: number } }>(urls.inventario.salidas, {
+        insumo_id: insumoId, cantidad: Number(cantidad), unidad, motivo,
+        fecha: new Date().toISOString().slice(0, 10),
+        nota: nota.trim() || null,
       });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo registrar', { id: 'salida' }); return; }
-      toast.success(`Salida registrada: ${formatPrice(json.data?.costo ?? 0)}`);
+      if (!res.ok) { toast.error(res.error, { id: 'salida' }); return; }
+      toast.success(`Salida registrada: ${formatPrice(res.cuerpo?.data?.costo ?? 0)}`);
       onGuardado();
       onClose();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'salida' }); }

@@ -4,11 +4,12 @@ import { Input } from '@/components/ui/input';
 import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../../components/Modal';
 import BuscadorSelect from '../../../../components/BuscadorSelect';
-import { BASE_URL } from '../../../../infrastructure/api/client';
+import { http } from '../../../../infrastructure/api/http';
+import { urls } from '../../../../infrastructure/api/urls';
 import { formatPrice } from '../../helpers';
 import { Field, FieldRow } from '../../ui';
 import { mlDiluyente } from '../../../../application/costeoCotizacion';
-import type { GuardedFetch, InventarioInsumo } from '../../types';
+import type { InventarioInsumo } from '../../types';
 import type { FormulaVolumen, Insumo } from '../../../../domain/entities/cotizacion.types';
 
 /** Lo mínimo que hace falta del catálogo para elegir qué fragancia se armó. */
@@ -20,7 +21,6 @@ const porNombre = (insumos: Insumo[], clave: string) =>
     && i.nombre.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(clave));
 
 interface Props {
-  guardedFetch: GuardedFetch;
   formulas: FormulaVolumen[];
   perfumes: PerfumeLite[];
   /** Catálogo de insumos, para ubicar diluyente/sellador/feromonas por nombre. */
@@ -39,7 +39,7 @@ interface Props {
  * reimplementa en dos lenguajes.
  */
 export function ProduccionModal({
-  guardedFetch, formulas, perfumes, catalogo, insumos, onClose, onGuardado,
+  formulas, perfumes, catalogo, insumos, onClose, onGuardado,
 }: Props) {
   const [formulaId, setFormulaId] = useState<number | ''>(formulas[0]?.id ?? '');
   const [unidades, setUnidades] = useState('10');
@@ -93,19 +93,25 @@ export function ProduccionModal({
     }
     setGuardando(true);
     try {
-      const res = await guardedFetch(`${BASE_URL}/api/inventario/producciones`, {
-        method: 'POST',
-        body: JSON.stringify({
-          fecha: new Date().toISOString().slice(0, 10),
-          formula_volumen_id: formulaElegida.id, cantidad: cant, consumos,
-          perfume_id: perfumeId || null,
-          envase_insumo_id: envaseId || formulaElegida.envase_insumo_id || null,
-        }),
+      const res = await http.post<{ data?: { costo_total?: number } }>(urls.inventario.producciones, {
+        fecha: new Date().toISOString().slice(0, 10),
+        formula_volumen_id: formulaElegida.id, cantidad: cant, consumos,
+        perfume_id: perfumeId || null,
+        envase_insumo_id: envaseId || formulaElegida.envase_insumo_id || null,
       });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo registrar', { id: 'prod' }); return; }
-      // Se dice dónde quedó: el historial de lotes ya no vive en esta pantalla
-      toast.success(`Lote registrado: ${formatPrice(json.data?.costo_total ?? 0)} en insumos. Lo ves en Producciones.`);
+      if (!res.ok) { toast.error(res.error, { id: 'prod' }); return; }
+      const json = res.cuerpo;
+      // Se dice dónde quedó la plata Y dónde quedaron los frascos. Lo segundo
+      // importa desde que el producto terminado existe: el material sale del
+      // inventario y **no desaparece**, se convierte en frascos que se ven
+      // arriba en esta misma pantalla y que al venderse ya no descuentan receta.
+      toast.success(
+        perfumeId
+          ? `Listo: ${cant} ${cant === 1 ? 'frasco armado' : 'frascos armados'} · `
+            + `${formatPrice(json?.data?.costo_total ?? 0)} de material. Los ves arriba, en "Frascos ya armados".`
+          : `Lote registrado: ${formatPrice(json?.data?.costo_total ?? 0)} en insumos. `
+            + 'Sin fragancia no se suman frascos: solo se descontó el material.',
+      );
       onGuardado();
       onClose();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'prod' }); }

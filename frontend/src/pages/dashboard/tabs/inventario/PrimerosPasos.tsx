@@ -2,8 +2,8 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, ChevronDown, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BASE_URL } from '../../../../infrastructure/api/client';
-import type { GuardedFetch } from '../../types';
+import { http } from '../../../../infrastructure/api/http';
+import { urls } from '../../../../infrastructure/api/urls';
 
 /** Los cuatro contadores con los que se deduce el progreso. */
 interface Progreso {
@@ -15,7 +15,6 @@ interface Progreso {
 }
 
 interface PrimerosPasosProps {
-  guardedFetch: GuardedFetch;
   /** Abre el modal de Ajustar del primer insumo sin existencias. */
   onContar: () => void;
   /** Abre la asignación de esencias en bloque. */
@@ -47,20 +46,18 @@ interface Paso {
  * no se bloquea: imponer orden donde no hace falta es la rigidez que el dueño
  * rechazó. Ver docs/superpowers/specs/2026-08-04-primeros-pasos-inventario-design.md
  */
-export function PrimerosPasos({ guardedFetch, onContar, onAsignarEsencias, onAgregarMaterial, recargar = 0 }: PrimerosPasosProps) {
+export function PrimerosPasos({ onContar, onAsignarEsencias, onAgregarMaterial, recargar = 0 }: PrimerosPasosProps) {
   const [p, setP] = useState<Progreso | null>(null);
   const [abierto, setAbierto] = useState(true);
 
   useEffect(() => {
     let vivo = true;
-    guardedFetch(`${BASE_URL}/api/inventario/primeros-pasos`)
-      .then(r => (r.ok ? r.json() : null))
-      .then(j => { if (vivo && j?.data) setP(j.data); })
-      // Silencioso a propósito: es una ayuda, no la pantalla. Si falla, la
-      // pestaña sigue sirviendo igual y no tiene sentido alarmar.
-      .catch(() => {});
+    // Silencioso a propósito: es una ayuda, no la pantalla. Si falla, la
+    // pestaña sigue sirviendo igual y no tiene sentido alarmar.
+    http.get<{ data?: Progreso }>(urls.inventario.primerosPasos)
+      .then(r => { if (vivo && r.ok && r.cuerpo?.data) setP(r.cuerpo.data); });
     return () => { vivo = false; };
-  }, [guardedFetch, recargar]);
+  }, [recargar]);
 
   if (!p) return null;
 

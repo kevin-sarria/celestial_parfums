@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import Modal from '../../../../components/Modal';
-import { BASE_URL } from '../../../../infrastructure/api/client';
+import { http } from '../../../../infrastructure/api/http';
+import { urls } from '../../../../infrastructure/api/urls';
 import { Field, FieldRow } from '../../ui';
-import type { GuardedFetch } from '../../types';
 
 export interface Gama { id: number; nombre: string; esencias: number; stock_minimo?: number }
 
 interface Props {
-  guardedFetch: GuardedFetch;
   gamas: Gama[];
   onClose: () => void;
   /**
@@ -31,7 +30,7 @@ interface Props {
  * otra para recargar la lista): cinco viajes para un formulario de cuatro
  * campos, y si una fallaba la pantalla quedaba a medio guardar.
  */
-export function MinimosModal({ guardedFetch, gamas, onClose, onGuardado }: Props) {
+export function MinimosModal({ gamas, onClose, onGuardado }: Props) {
   const [valores, setValores] = useState<Record<number, string>>(
     () => Object.fromEntries(gamas.map((g) => [g.id, String(g.stock_minimo ?? 0)])),
   );
@@ -53,15 +52,12 @@ export function MinimosModal({ guardedFetch, gamas, onClose, onGuardado }: Props
 
     setGuardando(true);
     try {
-      const res = await guardedFetch(`${BASE_URL}/api/inventario/minimos-gama`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ minimos }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudieron guardar', { id: 'minimos' }); return; }
-      toast.success(json?.message ?? 'Listo');
-      onGuardado(json.data, Object.fromEntries(minimos.map((m) => [m.id, m.minimo])));
+      const res = await http.patch<{ message?: string; data: unknown }>(
+        urls.inventario.minimosGama, { minimos },
+      );
+      if (!res.ok) { toast.error(res.error, { id: 'minimos' }); return; }
+      toast.success(res.cuerpo?.message ?? 'Listo');
+      onGuardado(res.cuerpo!.data, Object.fromEntries(minimos.map((m) => [m.id, m.minimo])));
       onClose();
     } catch {
       toast.error('No se pudo conectar con el servidor', { id: 'minimos' });

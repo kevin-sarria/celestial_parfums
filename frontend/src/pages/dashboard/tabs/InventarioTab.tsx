@@ -10,20 +10,22 @@ import ExportMenu from '../../../components/ExportMenu';
 import ImportModal from '../../../components/ImportModal';
 import MenuAcciones from '../../../components/MenuAcciones';
 import { SmartTable } from '../../../components/table/SmartTable';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
-import { inventarioColumns } from '../columns';
-import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, StatCard } from '../ui';
+import { inventarioColumns, terminadoColumns } from '../columns';
+import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, SectionTitle, StatCard } from '../ui';
 import { SalidaModal } from './inventario/SalidaModal';
 import { PrimerosPasos } from './inventario/PrimerosPasos';
 import { AsignarEsenciasModal } from './inventario/AsignarEsenciasModal';
 import { AvisoEsenciasSinPerfume } from './inventario/EmparejarEsenciasModal';
 import { MaterialModal } from './inventario/MaterialModal';
 import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
-import type { GuardedFetch, InventarioInsumo } from '../types';
+import type {
+  CatalogoItem, CatalogoRespuesta, FrascoArmado, GuardedFetch, InventarioInsumo, ResumenInventario,
+} from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
 
-const API = `${BASE_URL}/api/inventario`;
 const hoy = () => new Date().toISOString().slice(0, 10);
 
 /**
@@ -38,6 +40,9 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
   const [catalogo, setCatalogo] = useState<Insumo[]>([]);
   const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
   const [valorTotal, setValorTotal] = useState(0);
+  // Frascos ya armados: inventario que hasta el 2026-08-14 no se veía en ningún lado
+  const [terminado, setTerminado] = useState<{ filas: FrascoArmado[]; unidades: number; valor: number }>(
+    { filas: [], unidades: 0, valor: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -65,22 +70,25 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
     setLoading(true);
     try {
       const [ri, rc, rf, rpf] = await Promise.all([
-        guardedFetch(API),
-        guardedFetch(`${BASE_URL}/api/costeo/insumos`),
-        guardedFetch(`${BASE_URL}/api/costeo/formulas`),
-        guardedFetch(`${BASE_URL}/api/parfums`),
+        http.get<{ data: ResumenInventario }>(urls.inventario.resumen),
+        http.get<{ data: Insumo[] }>(urls.costeo.insumos),
+        http.get<{ data: FormulaVolumen[] }>(urls.costeo.formulas),
+        http.get<CatalogoRespuesta>(urls.perfumes.todos),
       ]);
-      if (!ri.ok || !rc.ok || !rf.ok) throw new Error();
-      const inv = (await ri.json()).data;
-      setInsumos(inv.insumos ?? []);
-      setValorTotal(inv.valor_total ?? 0);
-      setSalidasMes(inv.salidas_mes ?? { muestras: 0, mermas: 0, ajustes: 0 });
-      setCatalogo((await rc.json()).data ?? []);
-      setFormulas((await rf.json()).data ?? []);
+      if (!ri.ok || !rc.ok || !rf.ok) throw new Error(ri.error || rc.error || rf.error);
+      const inv = ri.cuerpo?.data;
+      setInsumos(inv?.insumos ?? []);
+      setValorTotal(inv?.valor_total ?? 0);
+      setSalidasMes(inv?.salidas_mes ?? { muestras: 0, mermas: 0, ajustes: 0 });
+      setTerminado(inv?.terminado ?? { filas: [], unidades: 0, valor: 0 });
+      setCatalogo(rc.cuerpo?.data ?? []);
+      setFormulas(rf.cuerpo?.data ?? []);
       // /api/parfums sin paginar responde { data: { data: [...] } }
-      const jp = rpf.ok ? await rpf.json() : null;
-      const lista = Array.isArray(jp?.data) ? jp.data : (jp?.data?.data ?? []);
-      setPerfumes(lista.map((p: any) => ({ id: p.id, nombre: p.nombre, insumo_esencia_id: p.insumo_esencia_id ?? null })));
+      const jp = rpf.cuerpo?.data;
+      const lista = Array.isArray(jp) ? jp : (jp?.data ?? []);
+      setPerfumes(lista.map((p: CatalogoItem) => ({
+        id: p.id, nombre: p.nombre, insumo_esencia_id: p.insumo_esencia_id ?? null,
+      })));
       setError('');
     } catch {
       setError('No se pudo cargar el inventario. Revisa tu conexión y reintenta.');
@@ -98,23 +106,18 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
     if (!ajuste) return;
     setGuardando(true);
     try {
-      const res = await guardedFetch(`${API}/ajustes`, {
-        method: 'POST',
-        body: JSON.stringify({
-          insumo_id: ajuste.id,
-          cantidad_final: Number(cantidadFinal) || 0,
-          costo_unitario: Number(costoAjuste) || 0,
-          stock_minimo: Number(minimoAjuste) || 0,
-          fecha: hoy(),
-          nota: 'Conteo físico',
-        }),
+      const res = await http.post(urls.inventario.ajustes, {
+        insumo_id: ajuste.id,
+        cantidad_final: Number(cantidadFinal) || 0,
+        costo_unitario: Number(costoAjuste) || 0,
+        stock_minimo: Number(minimoAjuste) || 0,
+        fecha: hoy(),
+        nota: 'Conteo físico',
       });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo ajustar', { id: 'ajuste' }); return; }
+      if (!res.ok) { toast.error(res.error, { id: 'ajuste' }); return; }
       toast.success('Inventario ajustado');
       setAjuste(null); load(); recargarPasos();
-    } catch { toast.error('No se pudo conectar con el servidor', { id: 'ajuste' }); }
-    finally { setGuardando(false); }
+    } finally { setGuardando(false); }
   };
 
   /**
@@ -124,15 +127,11 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
    */
   const alternarActivo = async (i: InventarioInsumo) => {
     const activo = !i.activo;
-    const res = await guardedFetch(`${BASE_URL}/api/costeo/insumos/${i.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({
-        nombre: i.nombre, tipo: i.tipo, unidad: i.unidad,
-        alcance: 'unidad', precio: i.costo_promedio, activo,
-      }),
+    const res = await http.patch(urls.costeo.insumo(i.id), {
+      nombre: i.nombre, tipo: i.tipo, unidad: i.unidad,
+      alcance: 'unidad', precio: i.costo_promedio, activo,
     });
-    const j = await res.json().catch(() => null);
-    if (!res.ok) { toast.error(j?.error ?? 'No se pudo cambiar', { id: 'insumo-activo' }); return; }
+    if (!res.ok) { toast.error(res.error, { id: 'insumo-activo' }); return; }
     toast.success(activo
       ? `"${i.nombre}" vuelve a estar disponible`
       : `"${i.nombre}" apagado: ya no aparecerá al comprar ni producir`);
@@ -146,12 +145,8 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
       + 'Solo se puede si nunca se usó. Si ya tiene compras o movimientos, el sistema '
       + 'te lo dirá: en ese caso apágalo en vez de borrarlo.',
     )) return;
-    const res = await guardedFetch(`${BASE_URL}/api/costeo/insumos/${i.id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const j = await res.json().catch(() => null);
-      toast.error(j?.error ?? 'No se pudo eliminar', { id: 'insumo-del', duration: 9000 });
-      return;
-    }
+    const res = await http.borrar(urls.costeo.insumo(i.id));
+    if (!res.ok) { toast.error(res.error, { id: 'insumo-del', duration: 9000 }); return; }
     toast.success(`"${i.nombre}" eliminado`);
     load(); recargarPasos();
   };
@@ -171,7 +166,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
 
       {/* Guía de arranque. Se esconde sola cuando los 4 pasos están hechos. */}
       <PrimerosPasos
-        guardedFetch={guardedFetch}
         recargar={pasosVersion}
         onContar={() => {
           // Lleva al primero sin existencias, que es por donde se empieza a contar
@@ -201,6 +195,14 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
             : 'Materias primas, envases y accesorios'} />
         <StatCard label="Sin existencias" value={String(sinStock)}
           nota={sinStock === 0 ? 'Todo con stock' : 'Insumos en cero: revisa antes de producir'} />
+        {/* Va aparte del valor del inventario a propósito: son dos cifras que el
+            dueño lee distinto ("material que puedo usar" contra "producto listo
+            para vender"), y meterlas en una sola cambiaría en silencio un número
+            que él ya venía siguiendo. */}
+        {terminado.unidades !== 0 && (
+          <StatCard label="Frascos armados" value={String(terminado.unidades)}
+            nota={`${formatPrice(terminado.valor)} en producto listo para vender`} />
+        )}
       </FranjaMetricas>
 
       {/**
@@ -236,6 +238,33 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
           {salidasMes.ajustes > 0 && <> · <strong className="text-foreground">{formatPrice(salidasMes.ajustes)}</strong> de diferencia en conteos</>}
           . Las muestras son inversión en vender; las mermas y las diferencias, plata perdida.
         </p>
+      )}
+
+      {/**
+        * Los frascos ya armados, cuando los hay.
+        *
+        * Se esconde en cero (mismo criterio que el resto de la pantalla: solo se
+        * pinta lo que hay que mirar). Va ARRIBA de los materiales porque es lo
+        * que se puede vender hoy mismo, y porque la tabla de materiales tiene
+        * 226 renglones: debajo de ella no lo vería nadie.
+        */}
+      {terminado.filas.length > 0 && (
+        <Section>
+          <SectionTitle count={terminado.filas.length}>Frascos ya armados</SectionTitle>
+          <p className="text-[12.5px] text-muted-foreground">
+            Producto terminado, listo para entregar. Su material ya se descontó el día que lo
+            armaste, así que al venderlo <strong className="text-foreground">no se vuelve a
+            descontar</strong>. El costo de cada uno quedó congelado en ese momento.
+          </p>
+          <SmartTable
+            columns={terminadoColumns}
+            rows={terminado.filas}
+            rowKey={f => `${f.perfume_id}-${f.presentacion_id}`}
+            paginadoLocal
+            tarjetaMovil
+            emptyText="Todavía no has armado frascos por adelantado."
+          />
+        </Section>
       )}
 
       <Section>
@@ -433,7 +462,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
       {salidaAbierta && (
         <SalidaModal
           insumos={insumos}
-          guardedFetch={guardedFetch}
           onClose={() => setSalidaAbierta(false)}
           onGuardado={load}
         />
@@ -442,7 +470,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
       {/* Registrar un lote */}
       {prodAbierta && (
         <ProduccionModal
-          guardedFetch={guardedFetch}
           formulas={formulas}
           perfumes={perfumes}
           catalogo={catalogo}

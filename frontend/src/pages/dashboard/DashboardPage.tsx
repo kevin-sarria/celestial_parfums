@@ -19,7 +19,7 @@ import type { Combo } from '../../domain/entities/combo.schema';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import { useGuardedFetch } from './useGuardedFetch';
 import { useSeo } from '../../application/hooks/useSeo';
-import { API, API_COMBOS, DEFAULT_PAGE_SIZE } from './helpers';
+import { API, API_COMBOS, DEFAULT_PAGE_SIZE, conNotaDeTalla } from './helpers';
 import type { Tab, Lookup } from './types';
 import BackupSeguridad from './BackupSeguridad';
 import CentroNotificaciones from './CentroNotificaciones';
@@ -170,7 +170,8 @@ export default function DashboardPage() {
       fetch(`${API}/tipos-aroma`), fetch(`${API}/ocasiones`), fetch(`${API}/categorias`), fetch(`${API}/presentaciones`),
     ]);
     const [a, o, c, p] = await Promise.all([aRes.json(), oRes.json(), cRes.json(), pRes.json()]);
-    setAromas(a.data ?? []); setOcasiones(o.data ?? []); setCategorias(c.data ?? []); setPresentaciones(p.data ?? []);
+    setAromas(a.data ?? []); setOcasiones(o.data ?? []); setCategorias(c.data ?? []);
+    setPresentaciones(conNotaDeTalla(p.data ?? []));
   };
 
   const loadPerfumes = async (page = perfumesPage, size = perfumesPageSize, search = perfumesSearch) => {
@@ -201,7 +202,8 @@ export default function DashboardPage() {
       guardedFetch(`${API_COMBOS}?page=1&limit=${DEFAULT_PAGE_SIZE}`).then(r => r.json()),
     ]).then(([[a, o, c, pr], p, co]) => {
       if (!active) return;
-      setAromas(a.data ?? []); setOcasiones(o.data ?? []); setCategorias(c.data ?? []); setPresentaciones(pr.data ?? []);
+      setAromas(a.data ?? []); setOcasiones(o.data ?? []); setCategorias(c.data ?? []);
+      setPresentaciones(conNotaDeTalla(pr.data ?? []));
       setPerfumes(p.data ?? []); setPerfumesTotal(p.total ?? 0);
       setCombos(co.data ?? []); setCombosTotal(co.total ?? 0);
       setLoading(false);
@@ -463,7 +465,8 @@ export default function DashboardPage() {
             )}
             {tab === 'presentaciones' && (
               <LookupTab title="Presentaciones" nuevo="Nueva presentación" editar="Editar presentación"
-                ejemplo="Ej: 30ML, 50 ml, 100 ml" items={presentaciones}
+                ejemplo="Escribe el tamaño DELANTE: 30ML, 90 ML, 125 ml. De ahí sale el número con el que el sistema la costea y le enlaza su receta."
+                items={presentaciones}
                 onAdd={handleLookupAdd('presentaciones')} onDelete={handleLookupDelete('presentaciones', '¿Eliminar esta talla? Los perfumes que la ofrezcan dejarán de tenerla, junto con su precio para esa talla.')} onEdit={handleLookupEdit('presentaciones')}
                 importEntity="presentaciones" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
@@ -505,7 +508,7 @@ export default function DashboardPage() {
             {tab === 'costos' && <CostosProduccionTab guardedFetch={guardedFetch} />}
             {tab === 'devoluciones' && <DevolucionesTab guardedFetch={guardedFetch} />}
             {tab === 'inventario' && <InventarioTab guardedFetch={guardedFetch} />}
-            {tab === 'reposicion' && <ReposicionTab guardedFetch={guardedFetch} />}
+            {tab === 'reposicion' && <ReposicionTab />}
             {tab === 'producciones' && <ProduccionesTab guardedFetch={guardedFetch} />}
             {tab === 'redes' && <RedesTab guardedFetch={guardedFetch} />}
           </>
