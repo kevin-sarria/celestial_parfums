@@ -17,11 +17,7 @@ import { DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { EncabezadoPagina, Field, FranjaMetricas, Section, StatCard } from '../ui';
-import type { GuardedFetch, Credito, PerfilCredito, Usuario } from '../types';
-
-interface CreditosTabProps {
-  guardedFetch: GuardedFetch;
-}
+import type { Credito, PerfilCredito, Usuario } from '../types';
 
 interface TotalesCartera {
   total_en_deuda: number;
@@ -31,7 +27,7 @@ interface TotalesCartera {
   abonado_mes: number;
 }
 
-export function CreditosTab({ guardedFetch }: CreditosTabProps) {
+export function CreditosTab() {
   const [creditos, setCreditos] = useState<Credito[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -249,7 +245,7 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
             accionesMovil={c => acciones(c, true)}
             acciones={
               <>
-                <ExportButton entity="creditos" guardedFetch={guardedFetch} />
+                <ExportButton entity="creditos" />
                 <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                   <Upload className="size-4" /> Importar
                 </Button>
@@ -266,7 +262,6 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="creditos"
-        guardedFetch={guardedFetch}
         onImported={() => load(1)}
       />
 

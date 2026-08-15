@@ -236,7 +236,7 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
           accionesMovil={p => acciones(p, true)}
           acciones={
             <>
-              <ExportButton entity="proveedores" guardedFetch={guardedFetch} />
+              <ExportButton entity="proveedores" />
               <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                 <Upload className="size-4" /> Importar
               </Button>
@@ -250,7 +250,6 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="proveedores"
-        guardedFetch={guardedFetch}
         onImported={() => load(1)}
       />
 

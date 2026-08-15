@@ -22,7 +22,7 @@ import { AvisoEsenciasSinPerfume } from './inventario/EmparejarEsenciasModal';
 import { MaterialModal } from './inventario/MaterialModal';
 import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
 import type {
-  CatalogoItem, CatalogoRespuesta, FrascoArmado, GuardedFetch, InventarioInsumo, ResumenInventario,
+  CatalogoItem, CatalogoRespuesta, FrascoArmado, InventarioInsumo, ResumenInventario,
 } from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
 
@@ -35,7 +35,7 @@ const hoy = () => new Date().toISOString().slice(0, 10);
  * producción. Aquí solo se siembra el arranque (conteo físico) y se registra
  * lo que se arma.
  */
-export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export function InventarioTab() {
   const [insumos, setInsumos] = useState<InventarioInsumo[]>([]);
   const [catalogo, setCatalogo] = useState<Insumo[]>([]);
   const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
@@ -177,7 +177,7 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
       />
 
       {/* Se esconde solo cuando ya no queda ninguna esencia sin su perfume. */}
-      <AvisoEsenciasSinPerfume guardedFetch={guardedFetch} onGuardado={recargarPasos} />
+      <AvisoEsenciasSinPerfume onGuardado={recargarPasos} />
 
       {error && (
         <p className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/40 bg-destructive/10 px-3.5 py-3 text-[13px] font-medium text-destructive">
@@ -333,7 +333,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
                   del dueño, no del sistema: "Movimientos" e "Insumos" no le dicen
                   nada a quien no construyó esto. */}
               <ExportMenu
-                guardedFetch={guardedFetch}
                 onImportar={() => setImportOpen(true)}
                 importarLabel="Subir hoja de conteo"
                 descargas={[
@@ -437,7 +436,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="inventario"
-        guardedFetch={guardedFetch}
         onImported={load}
       />
 
@@ -451,7 +449,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
 
       {esenciasAbierto && (
         <AsignarEsenciasModal
-          guardedFetch={guardedFetch}
           onClose={() => setEsenciasAbierto(false)}
           onGuardado={recargarPasos}
         />

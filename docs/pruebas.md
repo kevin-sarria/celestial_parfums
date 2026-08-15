@@ -8,10 +8,10 @@ cd backend  && npm run test:e2e      # recorridos en navegador (~35 s)
 cd frontend && npm test
 ```
 
-**209 pruebas** al 2026-08-15 (contadas corriéndolas): **68 en el frontend**, **115 en el
-backend** (1 marcada como discrepancia) y **26 recorridos** en navegador repartidos en 13 archivos
+**212 pruebas** al 2026-08-15 (contadas corriéndolas): **68 en el frontend**, **115 en el
+backend** (1 marcada como discrepancia) y **29 recorridos** en navegador repartidos en 14 archivos
 (`arranque`, `combo`, `cupon`, `desplegable`, `disponibilidad`, `esenciaEnPerfume`, `listaPrecios`,
-`menuLateral`, `modal`, `paginaPublica`, `pedidoSugerido`, `tallas`, `venta`).
+`mayoreo`, `menuLateral`, `modal`, `paginaPublica`, `pedidoSugerido`, `tallas`, `venta`).
 
 ## Por qué estas herramientas
 
@@ -101,7 +101,11 @@ pasan, y ningún recorrido escribe en `perfumes_db`.
   (`disponibilidad.e2e.test.ts`: se crea desde el formulario con la casilla marcada, la tabla dice
   "Sin armar" y la card sale agotada aunque su esencia esté llena; después se arma el lote desde
   el modal y se comprueba que aparece en Inventario y pasa a vendible), **una talla nueva que
-  nace con sus ml** (`tallas.e2e.test.ts`) y **Blog y Contáctame** (`paginaPublica.e2e.test.ts`).
+  nace con sus ml** (`tallas.e2e.test.ts`), **Blog y Contáctame** (`paginaPublica.e2e.test.ts`) y
+  **el camino del mayoreo** (`mayoreo.e2e.test.ts`: un rango de precio por cantidad, el costo de
+  producción que sale de él, y una cotización de lista de precios que vuelve con su número).
+- **`formatPrice` mete un espacio DURO entre el `$` y el número** (es `Intl` es-CO). Buscar
+  `text=$19.000` no encuentra nada nunca; hay que buscar solo el número.
 - **Un refactor de red se comprueba guardando y volviendo a leer.** `paginaPublica` no mira el
   diseño: crea una entrada de blog y la busca en la lista, y guarda el nombre de Contáctame,
   **recarga** y comprueba que sigue ahí. Es el fallo típico al mover una pantalla de librería —se

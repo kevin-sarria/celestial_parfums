@@ -7,14 +7,12 @@ import { DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import Modal from '../../../components/Modal';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import { EncabezadoPagina, Section, Field, FieldRow } from '../ui';
 import { mlDiluyente } from '../../../application/costeoCotizacion';
-import type { GuardedFetch } from '../types';
 import type { EscalaPrecio, FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
-
-const API = `${BASE_URL}/api/costeo`;
 
 const formVacio = {
   nombre: '', ml_total: '', esencia_ml: '', sellador_ml: '0', feromonas_ml: '0',
@@ -26,7 +24,7 @@ const escalaVacia = { cantidad_min: '', cantidad_max: '', precio: '' };
  * Tamaños fabricables (30/50/100 ml…) con su fórmula y sus precios mayoristas
  * por rango de cantidad. El diluyente nunca se teclea: es el resto del volumen.
  */
-export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export function FormulasVolumenTab() {
   const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,21 +38,19 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
   const [escalaEditId, setEscalaEditId] = useState<number | null>(null);
   const [escala, setEscala] = useState(escalaVacia);
 
-  // Siempre en try/finally: si una llamada falla (sin conexión, 429…) la vista
+  // Siempre en finally: si una llamada falla (sin conexión, 429…) la vista
   // NO puede quedarse cargando para siempre; hay que mostrar el error.
   const load = async () => {
     setLoading(true);
     try {
       const [rf, ri] = await Promise.all([
-        guardedFetch(`${API}/formulas`),
-        guardedFetch(`${API}/insumos`),
+        http.get<{ data?: FormulaVolumen[] }>(urls.costeo.formulas),
+        http.get<{ data?: Insumo[] }>(urls.costeo.insumos),
       ]);
-      if (!rf.ok || !ri.ok) throw new Error('respuesta no válida');
-      setFormulas((await rf.json()).data ?? []);
-      setInsumos((await ri.json()).data ?? []);
+      if (!rf.ok || !ri.ok) { setError(rf.error || ri.error); return; }
+      setFormulas(rf.cuerpo?.data ?? []);
+      setInsumos(ri.cuerpo?.data ?? []);
       setError('');
-    } catch {
-      setError('No se pudieron cargar los datos. Revisa tu conexión y reintenta.');
     } finally {
       setLoading(false);
     }
@@ -104,28 +100,27 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
     if (sobrepasa) { setError('La suma de esencia, sellador y feromonas supera el volumen total'); return; }
     setSaving(true); setError('');
     try {
-      const url = modal.id ? `${API}/formulas/${modal.id}` : `${API}/formulas`;
-      const res = await guardedFetch(url, {
-        method: modal.id ? 'PATCH' : 'POST',
-        body: JSON.stringify({
-          nombre: form.nombre.trim(),
-          ml_total: Number(form.ml_total),
-          esencia_ml: Number(form.esencia_ml) || 0,
-          sellador_ml: Number(form.sellador_ml) || 0,
-          feromonas_ml: Number(form.feromonas_ml) || 0,
-          envase_insumo_id: form.envase_insumo_id ? Number(form.envase_insumo_id) : null,
-        }),
-      });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? 'No se pudo guardar'); return; }
+      const cuerpo = {
+        nombre: form.nombre.trim(),
+        ml_total: Number(form.ml_total),
+        esencia_ml: Number(form.esencia_ml) || 0,
+        sellador_ml: Number(form.sellador_ml) || 0,
+        feromonas_ml: Number(form.feromonas_ml) || 0,
+        envase_insumo_id: form.envase_insumo_id ? Number(form.envase_insumo_id) : null,
+      };
+      const res = modal.id
+        ? await http.patch(urls.costeo.formula(modal.id), cuerpo)
+        : await http.post(urls.costeo.crearFormula, cuerpo);
+      if (!res.ok) { setError(res.error); return; }
       setModal({ open: false, id: null }); load();
     } finally { setSaving(false); }
   };
 
   const eliminar = async (f: FormulaVolumen) => {
     if (!window.confirm(`¿Eliminar el tamaño "${f.nombre}" y sus precios mayoristas?`)) return;
-    const res = await guardedFetch(`${API}/formulas/${f.id}`, { method: 'DELETE' });
-    if (!res.ok) { toast.error('No se pudo eliminar: puede estar usado en una cotización', { id: 'No se pudo eliminar: puede estar usado en una cotización' }); return; }
+    const res = await http.borrar(urls.costeo.formula(f.id));
+    // El servidor explica el motivo real (suele ser que una cotización lo usa).
+    if (!res.ok) { toast.error(res.error, { id: 'formulas' }); return; }
     load();
   };
 
@@ -139,18 +134,14 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
     if (isNaN(precio) || precio < 0) { toast.error('Escribe un precio válido', { id: 'Escribe un precio válido' }); return; }
     if (max !== null && max < min) { toast.error('La cantidad máxima no puede ser menor que la mínima', { id: 'La cantidad máxima no puede ser menor que la mínima' }); return; }
 
+    const cuerpo = { formula_volumen_id: formulaId, cantidad_min: min, cantidad_max: max, precio };
+    const res = escalaEditId != null
+      ? await http.patch(urls.costeo.escala(escalaEditId), cuerpo)
+      : await http.post(urls.costeo.escalas, cuerpo);
+    // Si el servidor rechaza, se muestra SU mensaje (no se pierde en la consola).
+    // El id fijo hace que el mismo error se reemplace en vez de apilarse.
+    if (!res.ok) { toast.error(res.error, { id: 'escalas' }); return; }
     const editando = escalaEditId != null;
-    const res = await guardedFetch(editando ? `${API}/escalas/${escalaEditId}` : `${API}/escalas`, {
-      method: editando ? 'PATCH' : 'POST',
-      body: JSON.stringify({ formula_volumen_id: formulaId, cantidad_min: min, cantidad_max: max, precio }),
-    });
-    // Si el servidor rechaza, se muestra SU mensaje (no se pierde en la consola)
-    if (!res.ok) {
-      const json = await res.json().catch(() => null);
-      const msg = json?.error ?? 'No se pudo guardar el rango de precio';
-      toast.error(msg, { id: msg }); // mismo error = reemplaza, no se apila
-      return;
-    }
     cerrarEditorEscala(); load();
     toast.success(editando ? 'Rango de precio actualizado' : 'Rango de precio agregado');
   };
@@ -182,8 +173,8 @@ export function FormulasVolumenTab({ guardedFetch }: { guardedFetch: GuardedFetc
   const cantidadSospechosa = Number(escala.cantidad_min) >= 1000;
 
   const borrarEscala = async (id: number) => {
-    const res = await guardedFetch(`${API}/escalas/${id}`, { method: 'DELETE' });
-    if (!res.ok) { toast.error('No se pudo eliminar el rango', { id: 'No se pudo eliminar el rango' }); return; }
+    const res = await http.borrar(urls.costeo.escala(id));
+    if (!res.ok) { toast.error(res.error, { id: 'escalas' }); return; }
     load();
   };
 

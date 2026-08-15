@@ -12,10 +12,9 @@ import { formatPrice } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
-import type { GuardedFetch, Lookup, PrecioLista } from '../types';
+import type { Lookup, PrecioLista } from '../types';
 
 interface Props {
-  guardedFetch: GuardedFetch;
   categorias: Lookup[];
   presentaciones: Lookup[];
   onMutate: () => void;
@@ -29,7 +28,7 @@ const headCell = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-mut
  * que cambiar una casilla mueve a todos de una vez (salvo los que tienen precio
  * propio en su ficha, como los de esencia premium).
  */
-export function PreciosTab({ guardedFetch, categorias, presentaciones, onMutate }: Props) {
+export function PreciosTab({ categorias, presentaciones, onMutate }: Props) {
   const [precios, setPrecios] = useState<PrecioLista[]>([]);
   const [loading, setLoading] = useState(true);
   const [edits, setEdits] = useState<Record<string, string>>({});
@@ -85,7 +84,7 @@ export function PreciosTab({ guardedFetch, categorias, presentaciones, onMutate 
       <Toolbar>
         <SectionTitle>Lista de precios</SectionTitle>
         <ToolbarActions>
-          <ExportButton entity="precios" guardedFetch={guardedFetch} />
+          <ExportButton entity="precios" />
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="size-4" /> Importar
           </Button>
@@ -96,7 +95,6 @@ export function PreciosTab({ guardedFetch, categorias, presentaciones, onMutate 
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="precios"
-        guardedFetch={guardedFetch}
         onImported={() => { load(); onMutate(); }}
       />
 

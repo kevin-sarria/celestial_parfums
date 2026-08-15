@@ -47,12 +47,34 @@ export const urls = {
   /** Materiales, sus costos y las recetas por tamaño. */
   costeo: {
     insumos: '/costeo/insumos',
+    crearInsumo: '/costeo/insumos',
     insumo: (id: number) => `/costeo/insumos/${id}`,
+    /** Recetas por tamaño: qué lleva y cuánto de cada cosa. */
     formulas: '/costeo/formulas',
+    crearFormula: '/costeo/formulas',
+    formula: (id: number) => `/costeo/formulas/${id}`,
+    /** Los accesorios fijos de un tamaño (van con cada frasco de ese tamaño). */
+    accesoriosFormula: (id: number) => `/costeo/formulas/${id}/accesorios`,
+    /** Precio mayorista por cantidad ("de 10 a 49 unidades, tanto"). */
+    escalas: '/costeo/escalas',
+    escala: (id: number) => `/costeo/escalas/${id}`,
     /** Gamas de esencia con su punto de pedido. */
     gamas: '/costeo/gamas/todas',
+    /** OJO, no es la misma: esta da el COSTO POR ML promedio de cada gama. */
+    promediosPorGama: '/costeo/gamas',
     gama: (id: number) => `/costeo/gamas/${id}`,
     crearGama: '/costeo/gamas',
+    /** Datos de la empresa y condiciones comerciales que salen en el PDF. */
+    config: '/costeo/config',
+  },
+
+  /** Cotizaciones mayoristas (B2B). */
+  cotizaciones: {
+    lista: '/cotizaciones',
+    crear: '/cotizaciones',
+    cotizacion: (id: number) => `/cotizaciones/${id}`,
+    /** Borrador → enviada, al mandarla por WhatsApp. */
+    estado: (id: number) => `/cotizaciones/${id}/estado`,
   },
 
   perfumes: {
@@ -70,6 +92,19 @@ export const urls = {
     descuento: (id: number) => `/parfums/${id}/descuento`,
     /** Pone el mismo % a TODOS los perfumes de una categoría. */
     descuentoPorCategoria: '/parfums/descuento/por-categoria',
+
+    /**
+     * Enlazar cada perfume con la esencia de la que se fabrica. Sin ese enlace
+     * la venta no descuenta material y el costo no es real, así que hay tres
+     * caminos: proponer por nombre, aplicar los propuestos, y asignar a mano.
+     */
+    esencia: {
+      sugerencias: '/parfums/esencia/sugerencias',
+      enlaces: '/parfums/esencia/enlaces',
+      masiva: '/parfums/esencia/masiva',
+      /** Esencias que aún no tienen su perfume en el catálogo (GET propone, POST crea). */
+      emparejar: '/parfums/esencia/emparejar',
+    },
   },
 
   ventas: {
@@ -215,4 +250,16 @@ export const urls = {
     admin: '/resenas/admin',
     moderar: (id: number) => `/resenas/admin/${id}`,
   },
+
+  /**
+   * Excel: el mismo juego de rutas para cada entidad (perfumes, ventas,
+   * inventario…), por eso se generan igual que las clasificaciones.
+   */
+  excel: (entidad: string) => ({
+    /** Qué columnas espera el archivo, para pintarlas en el modal. */
+    spec: `/import/${entidad}/spec`,
+    plantilla: `/import/${entidad}/template`,
+    exportar: `/import/${entidad}/export`,
+    importar: `/import/${entidad}`,
+  }),
 } as const;

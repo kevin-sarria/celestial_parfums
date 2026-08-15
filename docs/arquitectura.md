@@ -93,14 +93,21 @@ vuelo), **Perfumes** (ficha, publicar/agotar, lista de precios), **Créditos** (
 perfil de cupo), **Proveedores** (compras con sus líneas, IVA por proveedor, alta de empresa) y
 **Clasificaciones** (las cuatro listas + la carga inicial del dashboard), **Devoluciones**,
 **Usuarios**, **Reposiciones (avisos)**, **Reseñas**, **Sobre nosotros**, **los tres reportes**,
-**la campana**, **Gamas**, **Combos**, **Precios**, **Descuentos**, **Blog** y **Contáctame
-(Redes)**. Van 90 rutas centralizadas y **57 llamadas por `http`; quedan 94** por el camino viejo
-(el total bajó de 151 porque varias se fusionaron: ver *Menos viajes al servidor*).
+**la campana**, **Gamas**, **Combos**, **Precios**, **Descuentos**, **Blog**, **Contáctame
+(Redes)**, **Cotizaciones** (con su formulario), **Tamaños y fórmulas**, **Costos de producción**
+y los **dos modales de esencias** del inventario. Van 111 rutas centralizadas y **67 llamadas por
+`http`; quedan 59** por el camino viejo (el total bajó de 151 porque varias se fusionaron: ver
+*Menos viajes al servidor*).
 
-`subirImagenAdmin` (`dashboard/helpers.ts`) también pasó a `http.subir`, así que las cuatro
-pantallas que suben imágenes (Perfumes, Combos, Publicidad y Contáctame) ya no necesitan la
-función de red como prop para eso. El 413 se sigue traduciendo a mano: **lo corta nginx antes de
-llegar al backend**, así que no trae mensaje propio.
+**Lo compartido se migra una vez y libera muchas pantallas.** Dos casos:
+
+- `subirImagenAdmin` (`dashboard/helpers.ts`) usa `http.subir`. El 413 se sigue traduciendo a
+  mano porque **lo corta nginx antes de llegar al backend**, así que no trae mensaje propio.
+- **`ImportModal`, `ExportButton` y `ExportMenu`** (el Excel de todo el dashboard) hablan por
+  `urls.excel(entidad)`. Eso solo dejó **nueve pestañas sin ninguna atadura** con la red vieja
+  —Perfumes, Combos, Precios, Descuentos, Ventas, Créditos, Reseñas, Inventario y Producciones—,
+  que ya no reciben `guardedFetch` como prop. Detalle que importa: **un Excel a medias responde
+  207**, que para axios es éxito, así que el resumen con sus errores línea a línea sigue llegando.
 
 Las cuatro clasificaciones comparten juego de rutas, así que `urls.clasificaciones(tipo)` las
 genera en vez de escribirlas cuatro veces — y el tipo `Clasificacion` hace que TypeScript

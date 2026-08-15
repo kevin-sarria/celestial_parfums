@@ -6,9 +6,9 @@ import { Input } from '@/components/ui/input';
 import Modal from '../../../../components/Modal';
 import BuscadorSelect from '../../../../components/BuscadorSelect';
 import PerfumeSpinner from '../../../../components/PerfumeSpinner';
-import { BASE_URL } from '../../../../infrastructure/api/client';
+import { http } from '../../../../infrastructure/api/http';
+import { urls } from '../../../../infrastructure/api/urls';
 import { Field } from '../../ui';
-import type { GuardedFetch } from '../../types';
 import type { Insumo } from '../../../../domain/entities/cotizacion.types';
 
 /** Materias primas que NO son la fragancia (mismo criterio que el costeo). */
@@ -31,7 +31,6 @@ interface PerfumeFila {
 }
 
 interface Props {
-  guardedFetch: GuardedFetch;
   onClose: () => void;
   /** Se llama tras guardar, para refrescar el contador de primeros pasos. */
   onGuardado: () => void;
@@ -44,7 +43,7 @@ interface Props {
  * esencia asignada la venta no descuenta material ni el costo es real. Solo
  * lista los FABRICADOS: un splash comprado o una gorra no llevan receta.
  */
-export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Props) {
+export function AsignarEsenciasModal({ onClose, onGuardado }: Props) {
   const [perfumes, setPerfumes] = useState<PerfumeFila[]>([]);
   const [esencias, setEsencias] = useState<Insumo[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -71,18 +70,16 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
   const pedirSugerencias = async () => {
     setBuscandoSug(true);
     try {
-      const r = await guardedFetch(`${BASE_URL}/api/parfums/esencia/sugerencias`);
-      const j = await r.json().catch(() => null);
-      if (!r.ok) { toast.error(j?.error ?? 'No se pudieron calcular', { id: 'esencias' }); return; }
-      const lista: Sugerencia[] = j?.data?.enlaces ?? [];
+      const r = await http.get<{ data?: { enlaces?: Sugerencia[] } }>(urls.perfumes.esencia.sugerencias);
+      if (!r.ok) { toast.error(r.error, { id: 'esencias' }); return; }
+      const lista = r.cuerpo?.data?.enlaces ?? [];
       if (lista.length === 0) {
         toast('No encontré ninguna esencia que coincida por nombre', { id: 'esencias' });
         return;
       }
       setSugeridos(lista);
       setSugMarcadas(new Set(lista.map(x => x.perfume_id)));
-    } catch { toast.error('No se pudo conectar con el servidor', { id: 'esencias' }); }
-    finally { setBuscandoSug(false); }
+    } finally { setBuscandoSug(false); }
   };
 
   const aplicarSugerencias = async () => {
@@ -91,23 +88,18 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
     if (elegidas.length === 0) { toast.error('No dejaste ninguna marcada', { id: 'esencias' }); return; }
     setGuardando(true);
     try {
-      const r = await guardedFetch(`${BASE_URL}/api/parfums/esencia/enlaces`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          enlaces: elegidas.map(s => ({ perfume_id: s.perfume_id, insumo_esencia_id: s.insumo_id })),
-        }),
+      const r = await http.patch<{ message?: string }>(urls.perfumes.esencia.enlaces, {
+        enlaces: elegidas.map(s => ({ perfume_id: s.perfume_id, insumo_esencia_id: s.insumo_id })),
       });
-      const j = await r.json().catch(() => null);
-      if (!r.ok) { toast.error(j?.error ?? 'No se pudo aplicar', { id: 'esencias' }); return; }
-      toast.success(j?.message ?? 'Enlaces aplicados');
+      if (!r.ok) { toast.error(r.error, { id: 'esencias' }); return; }
+      toast.success(r.cuerpo?.message ?? 'Enlaces aplicados');
       setSugeridos(null);
       setPerfumes(prev => prev.map(p => {
         const s = elegidas.find(x => x.perfume_id === p.id);
         return s ? { ...p, insumo_esencia_id: s.insumo_id } : p;
       }));
       onGuardado();
-    } catch { toast.error('No se pudo conectar con el servidor', { id: 'esencias' }); }
-    finally { setGuardando(false); }
+    } finally { setGuardando(false); }
   };
 
   useEffect(() => {
@@ -115,14 +107,14 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
     (async () => {
       try {
         const [rp, ri] = await Promise.all([
-          guardedFetch(`${BASE_URL}/api/parfums`),
-          guardedFetch(`${BASE_URL}/api/costeo/insumos`),
+          http.get<{ data?: PerfumeFila[] | { data?: PerfumeFila[] } }>(urls.perfumes.todos),
+          http.get<{ data?: Insumo[] }>(urls.costeo.insumos),
         ]);
-        const jp = rp.ok ? await rp.json() : null;
-        // /api/parfums sin paginar responde { data: { data: [...] } }
-        const lista = Array.isArray(jp?.data) ? jp.data : (jp?.data?.data ?? []);
-        const ji = ri.ok ? await ri.json() : null;
         if (!vivo) return;
+        if (!rp.ok) { toast.error(rp.error, { id: 'esencias' }); return; }
+        // /api/parfums sin paginar responde { data: { data: [...] } }
+        const jp = rp.cuerpo?.data;
+        const lista = Array.isArray(jp) ? jp : (jp?.data ?? []);
         setPerfumes(lista
           .filter((x: PerfumeFila) => (x.tipo_producto ?? 'fabricado') === 'fabricado')
           .map((x: PerfumeFila) => ({
@@ -134,17 +126,15 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
         // también son materia prima, pero no son la fragancia: si el selector
         // abre en "Diluyente" invita a asignar el insumo equivocado. Se ordenan
         // con el mismo criterio por nombre que usa el motor de costeo.
-        const ins: Insumo[] = (ji?.data ?? []).filter((i: Insumo) => i.tipo === 'materia_prima');
+        const ins = (ri.cuerpo?.data ?? []).filter((i) => i.tipo === 'materia_prima');
         const ordenadas = [...ins].sort((a, b) =>
           Number(esNoEsencia(a.nombre)) - Number(esNoEsencia(b.nombre)) || a.nombre.localeCompare(b.nombre));
         setEsencias(ordenadas);
         setEsenciaId(ordenadas[0]?.id ?? '');
-      } catch {
-        toast.error('No se pudieron cargar los perfumes', { id: 'esencias' });
       } finally { if (vivo) setCargando(false); }
     })();
     return () => { vivo = false; };
-  }, [guardedFetch]);
+  }, []);
 
   const nombreEsencia = (id: number | null) => esencias.find(e => e.id === id)?.nombre ?? null;
 
@@ -176,20 +166,17 @@ export function AsignarEsenciasModal({ guardedFetch, onClose, onGuardado }: Prop
     if (!esenciaId) { toast.error('Elige la esencia que vas a asignar', { id: 'esencias' }); return; }
     setGuardando(true);
     try {
-      const res = await guardedFetch(`${BASE_URL}/api/parfums/esencia/masiva`, {
-        method: 'PATCH',
-        body: JSON.stringify({ perfume_ids: [...marcados], insumo_esencia_id: Number(esenciaId) }),
+      const res = await http.patch<{ message?: string }>(urls.perfumes.esencia.masiva, {
+        perfume_ids: [...marcados], insumo_esencia_id: Number(esenciaId),
       });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo asignar', { id: 'esencias' }); return; }
-      toast.success(json?.message ?? 'Esencia asignada');
+      if (!res.ok) { toast.error(res.error, { id: 'esencias' }); return; }
+      toast.success(res.cuerpo?.message ?? 'Esencia asignada');
       // Se refleja en la lista sin recargar todo el catálogo
       setPerfumes(prev => prev.map(p =>
         marcados.has(p.id) ? { ...p, insumo_esencia_id: Number(esenciaId) } : p));
       setMarcados(new Set());
       onGuardado();
-    } catch { toast.error('No se pudo conectar con el servidor', { id: 'esencias' }); }
-    finally { setGuardando(false); }
+    } finally { setGuardando(false); }
   };
 
   return (

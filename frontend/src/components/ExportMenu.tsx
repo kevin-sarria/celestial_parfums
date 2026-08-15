@@ -6,10 +6,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useExportEntity } from './useExportEntity';
 
-type GuardedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
 interface ExportMenuProps {
-  guardedFetch: GuardedFetch;
   /** Cada descarga: la entidad del backend y cómo se llama para el dueño. */
   descargas: { entity: string; label: string; nota?: string }[];
   /** Si viene, agrega la opción de subir un archivo al final del menú. */
@@ -27,9 +24,9 @@ interface ExportMenuProps {
  * cabe detrás de un clic.
  */
 export default function ExportMenu({
-  guardedFetch, descargas, onImportar, importarLabel = 'Importar', label = 'Excel',
+  descargas, onImportar, importarLabel = 'Importar', label = 'Excel',
 }: ExportMenuProps) {
-  const { exportar, exportando } = useExportEntity(guardedFetch);
+  const { exportar, exportando } = useExportEntity();
 
   return (
     <DropdownMenu>

@@ -18,10 +18,9 @@ import { formatPrice } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field } from '../ui';
-import type { GuardedFetch, Lookup } from '../types';
+import type { Lookup } from '../types';
 
 interface DescuentosTabProps {
-  guardedFetch: GuardedFetch;
   onMutate: () => void;
 }
 
@@ -46,7 +45,7 @@ const rowKey = (r: { tipo: TipoProd; id: number }) => `${r.tipo}-${r.id}`;
 const tipoLabel = (r: Row) =>
   `${r.tipo === 'c' ? 'Combo' : 'Perfume'}${r.categoria ? ` — ${r.categoria}` : ''}`;
 
-export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
+export function DescuentosTab({ onMutate }: DescuentosTabProps) {
   // El tab carga el catálogo COMPLETO por su cuenta: la lista paginada del
   // dashboard solo trae una página y dejaba fuera productos del selector.
   const [rows, setRows] = useState<Row[]>([]);
@@ -219,7 +218,7 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
           <Button size="sm" onClick={abrirModal}>
             <Plus className="size-4" /> Agregar descuento
           </Button>
-          <ExportButton entity="descuentos" guardedFetch={guardedFetch} />
+          <ExportButton entity="descuentos" />
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="size-4" /> Importar
           </Button>
@@ -454,7 +453,6 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="descuentos"
-        guardedFetch={guardedFetch}
         onImported={refresh}
       />
     </Section>

@@ -143,7 +143,7 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
         <Toolbar>
           <SectionTitle count={anuncios.length}>Publicidad</SectionTitle>
           <ToolbarActions>
-            <ExportButton entity="publicidad" guardedFetch={guardedFetch} />
+            <ExportButton entity="publicidad" />
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Upload className="size-4" /> Importar
             </Button>
@@ -274,7 +274,6 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="publicidad"
-        guardedFetch={guardedFetch}
         onImported={load}
       />
 

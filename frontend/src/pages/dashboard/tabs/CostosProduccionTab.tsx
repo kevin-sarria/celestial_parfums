@@ -5,15 +5,13 @@ import { toast } from 'sonner';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import CostoDeProduccion from '../cotizacion/CostoDeProduccion';
 import MargenPorFragancia from '../cotizacion/MargenPorFragancia';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import type { PromedioGama } from '../cotizacion/MargenPorGama';
 import { EncabezadoPagina, Section } from '../ui';
-import type { GuardedFetch } from '../types';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
-
-const API = `${BASE_URL}/api/costeo`;
 
 /**
  * Cuánto cuesta producir cada presentación, ya con los accesorios que la
@@ -23,7 +21,7 @@ const API = `${BASE_URL}/api/costeo`;
  * Es la vista que alimentará el futuro módulo de inventario: el costo unitario
  * por presentación sale de aquí y se recalcula solo al mover precios de insumos.
  */
-export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export function CostosProduccionTab() {
   const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);
@@ -43,27 +41,25 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
     setLoading(true);
     try {
       const [rf, ri, rp, rg] = await Promise.all([
-        guardedFetch(`${API}/formulas`),
-        guardedFetch(`${API}/insumos`),
-        guardedFetch(`${BASE_URL}/api/parfums`),
-        guardedFetch(`${API}/gamas`),
+        http.get<{ data?: FormulaVolumen[] }>(urls.costeo.formulas),
+        http.get<{ data?: Insumo[] }>(urls.costeo.insumos),
+        http.get<{ data?: Perfume[] | { data?: Perfume[] } }>(urls.perfumes.todos),
+        http.get<{ data?: PromedioGama[] }>(urls.costeo.promediosPorGama),
       ]);
       if (rg.ok) {
-        const gs: PromedioGama[] = (await rg.json()).data ?? [];
+        const gs = rg.cuerpo?.data ?? [];
         setGamas(gs);
         // Arranca en la gama con MÁS esencias: es la que representa lo que de
         // verdad se fabrica casi siempre.
         setGamaId((prev) => prev ?? gs.slice().sort((a, b) => b.esencias - a.esencias)[0]?.gama_id ?? null);
       }
-      if (!rf.ok || !ri.ok) throw new Error('respuesta no válida');
-      setFormulas((await rf.json()).data ?? []);
-      setInsumos((await ri.json()).data ?? []);
+      if (!rf.ok || !ri.ok) { setError(rf.error || ri.error); return; }
+      setFormulas(rf.cuerpo?.data ?? []);
+      setInsumos(ri.cuerpo?.data ?? []);
       // /api/parfums sin paginar responde { data: { data: [...] } }
-      const jp = rp.ok ? await rp.json() : null;
-      setPerfumes(Array.isArray(jp?.data) ? jp.data : (jp?.data?.data ?? []));
+      const jp = rp.cuerpo?.data;
+      setPerfumes(Array.isArray(jp) ? jp : (jp?.data ?? []));
       setError('');
-    } catch {
-      setError('No se pudieron cargar los datos. Revisa tu conexión y reintenta.');
     } finally {
       setLoading(false);
     }
@@ -80,19 +76,15 @@ export function CostosProduccionTab({ guardedFetch }: { guardedFetch: GuardedFet
     setFormulas((prev) => prev.map((f) => (f.id === formulaId
       ? { ...f, accesorios_default: accesoriosDe(ids) }
       : f)));
-    try {
-      const res = await guardedFetch(`${API}/formulas/${formulaId}/accesorios`, {
-        method: 'PATCH', body: JSON.stringify({ insumo_ids: ids }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) throw new Error(json?.error ?? 'No se pudo guardar los accesorios');
-      setFormulas((prev) => prev.map((f) => (f.id === formulaId ? json.data : f)));
-    } catch (e) {
+    const res = await http.patch<{ data: FormulaVolumen }>(urls.costeo.accesoriosFormula(formulaId), {
+      insumo_ids: ids,
+    });
+    if (!res.ok || !res.cuerpo) {
       setFormulas(previas);
-      toast.error(e instanceof Error ? e.message : 'No se pudo guardar los accesorios', {
-        id: 'accesorios-formula',
-      });
+      toast.error(res.error || 'No se pudo guardar los accesorios', { id: 'accesorios-formula' });
+      return;
     }
+    setFormulas((prev) => prev.map((f) => (f.id === formulaId ? res.cuerpo!.data : f)));
   };
 
   /** Convierte ids de insumo en el formato congelado que usa el costeo. */

@@ -21,7 +21,7 @@ import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { perfumesColumns } from '../columns';
 import { formatPrice, subirImagenAdmin } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
-import type { GuardedFetch, Lookup, PerfumeForm, PrecioLista } from '../types';
+import type { Lookup, PerfumeForm, PrecioLista } from '../types';
 import { emptyPerfumeForm } from '../types';
 
 interface PerfumesTabProps {
@@ -33,7 +33,6 @@ interface PerfumesTabProps {
   ocasiones: Lookup[];
   categorias: Lookup[];
   presentaciones: Lookup[];
-  guardedFetch: GuardedFetch;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   /** Búsqueda global contra el backend (toda la data, no solo la página cargada). */
@@ -71,7 +70,7 @@ function CheckGroup({ items, selected, onToggle }: CheckGroupProps) {
 
 export function PerfumesTab({
   perfumes, page, total, pageSize, aromas, ocasiones, categorias, presentaciones,
-  guardedFetch, onPageChange, onPageSizeChange, onSearch, onMutate,
+  onPageChange, onPageSizeChange, onSearch, onMutate,
 }: PerfumesTabProps) {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<PerfumeForm>(emptyPerfumeForm());
@@ -218,7 +217,7 @@ export function PerfumesTab({
           <SectionTitle count={perfumes.length}>Perfumes</SectionTitle>
           <ToolbarActions>
             <DescargarCatalogoButton />
-            <ExportButton entity="perfumes" guardedFetch={guardedFetch} />
+            <ExportButton entity="perfumes" />
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Upload className="size-4" /> Importar
             </Button>
@@ -251,7 +250,6 @@ export function PerfumesTab({
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="perfumes"
-        guardedFetch={guardedFetch}
         onImported={onMutate}
       />
 

@@ -3,8 +3,8 @@ import { AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import Modal from '../../../../components/Modal';
 import { Button } from '@/components/ui/button';
-import { BASE_URL } from '../../../../infrastructure/api/client';
-import type { GuardedFetch } from '../../types';
+import { http } from '../../../../infrastructure/api/http';
+import { urls } from '../../../../infrastructure/api/urls';
 
 interface Candidato { id: number; nombre: string; genero: string | null; parecido: number }
 
@@ -41,10 +41,10 @@ const GENERO_TEXTO: Record<string, string> = {
  * fragancia que no era y falsea el costo en silencio. Por eso lo dudoso arranca
  * en "no hacer nada" y solo lo inequívoco viene marcado.
  */
-export function EmparejarEsenciasModal({ guardedFetch, onClose, onGuardado }: {
-  guardedFetch: GuardedFetch; onClose: () => void; onGuardado: () => void;
+export function EmparejarEsenciasModal({ onClose, onGuardado }: {
+  onClose: () => void; onGuardado: () => void;
 }) {
-  return <Contenido guardedFetch={guardedFetch} onClose={onClose} onGuardado={onGuardado} />;
+  return <Contenido onClose={onClose} onGuardado={onGuardado} />;
 }
 
 /**
@@ -55,9 +55,7 @@ export function EmparejarEsenciasModal({ guardedFetch, onClose, onGuardado }: {
  * una tarea que se termina. Un botón permanente para algo que deja de existir
  * ocupa sitio para siempre.
  */
-export function AvisoEsenciasSinPerfume({ guardedFetch, onGuardado }: {
-  guardedFetch: GuardedFetch; onGuardado: () => void;
-}) {
+export function AvisoEsenciasSinPerfume({ onGuardado }: { onGuardado: () => void }) {
   const [pendientes, setPendientes] = useState<number | null>(null);
   const [abierto, setAbierto] = useState(false);
   const [version, setVersion] = useState(0);
@@ -65,15 +63,12 @@ export function AvisoEsenciasSinPerfume({ guardedFetch, onGuardado }: {
   useEffect(() => {
     let vivo = true;
     (async () => {
-      try {
-        const res = await guardedFetch(`${BASE_URL}/api/parfums/esencia/emparejar`);
-        if (!res.ok || !vivo) return;
-        const datos = (await res.json()).data ?? [];
-        if (vivo) setPendientes(datos.length);
-      } catch { /* sin aviso; la pantalla sigue funcionando igual */ }
+      // Si falla no se avisa: es un recordatorio, y la pantalla sirve igual sin él.
+      const res = await http.get<{ data?: Pendiente[] }>(urls.perfumes.esencia.emparejar);
+      if (res.ok && vivo) setPendientes((res.cuerpo?.data ?? []).length);
     })();
     return () => { vivo = false; };
-  }, [guardedFetch, version]);
+  }, [version]);
 
   if (!pendientes) return null;
 
@@ -91,7 +86,6 @@ export function AvisoEsenciasSinPerfume({ guardedFetch, onGuardado }: {
       </div>
       {abierto && (
         <Contenido
-          guardedFetch={guardedFetch}
           onClose={() => setAbierto(false)}
           onGuardado={() => { setVersion((v) => v + 1); onGuardado(); }}
         />
@@ -100,9 +94,7 @@ export function AvisoEsenciasSinPerfume({ guardedFetch, onGuardado }: {
   );
 }
 
-function Contenido({ guardedFetch, onClose, onGuardado }: {
-  guardedFetch: GuardedFetch; onClose: () => void; onGuardado: () => void;
-}) {
+function Contenido({ onClose, onGuardado }: { onClose: () => void; onGuardado: () => void }) {
   const [filas, setFilas] = useState<Pendiente[]>([]);
   const [decisiones, setDecisiones] = useState<Record<number, Decision>>({});
   const [cargando, setCargando] = useState(true);
@@ -113,11 +105,10 @@ function Contenido({ guardedFetch, onClose, onGuardado }: {
     let vivo = true;
     (async () => {
       try {
-        const res = await guardedFetch(`${BASE_URL}/api/parfums/esencia/emparejar`);
-        const json = await res.json().catch(() => null);
+        const res = await http.get<{ data?: Pendiente[] }>(urls.perfumes.esencia.emparejar);
         if (!vivo) return;
-        if (!res.ok) { setError(json?.error ?? 'No se pudo cargar la lista'); return; }
-        const datos: Pendiente[] = json.data ?? [];
+        if (!res.ok) { setError(res.error); return; }
+        const datos = res.cuerpo?.data ?? [];
         setFilas(datos);
         // Solo lo inequívoco viene marcado. Lo dudoso y lo que se disputan dos
         // esencias arranca en "no hacer nada": elegir por el dueño ahí sería
@@ -128,14 +119,12 @@ function Contenido({ guardedFetch, onClose, onGuardado }: {
             ? { tipo: 'enlazar', perfume_id: f.candidatos[0].id }
             : { tipo: 'nada' },
         ])));
-      } catch {
-        if (vivo) setError('No se pudo conectar con el servidor');
       } finally {
         if (vivo) setCargando(false);
       }
     })();
     return () => { vivo = false; };
-  }, [guardedFetch]);
+  }, []);
 
   const decidir = (insumo_id: number, d: Decision) =>
     setDecisiones((prev) => ({ ...prev, [insumo_id]: d }));
@@ -169,19 +158,16 @@ function Contenido({ guardedFetch, onClose, onGuardado }: {
     }
     setGuardando(true);
     try {
-      const res = await guardedFetch(`${BASE_URL}/api/parfums/esencia/emparejar`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ acciones }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo aplicar', { id: 'emparejar' }); return; }
-      toast.success(json?.message ?? 'Listo');
-      (json?.data?.omitidos ?? []).forEach((m: string) => toast.warning(m));
+      const res = await http.post<{ message?: string; data?: { omitidos?: string[] } }>(
+        urls.perfumes.esencia.emparejar, { acciones },
+      );
+      if (!res.ok) { toast.error(res.error, { id: 'emparejar' }); return; }
+      toast.success(res.cuerpo?.message ?? 'Listo');
+      // Las que el servidor no pudo aplicar se dicen una por una: si se
+      // resumieran, el dueño creería que entraron todas.
+      (res.cuerpo?.data?.omitidos ?? []).forEach((m) => toast.warning(m));
       onGuardado();
       onClose();
-    } catch {
-      toast.error('No se pudo conectar con el servidor', { id: 'emparejar' });
     } finally { setGuardando(false); }
   };
 

@@ -6,9 +6,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 import Modal from './Modal';
-import { BASE_URL } from '../infrastructure/api/client';
-
-type GuardedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
+import { guardarArchivo } from './useExportEntity';
 
 interface ImportColumn {
   key: string;
@@ -37,16 +37,13 @@ interface ImportModalProps {
   onClose: () => void;
   /** Entidad del backend: perfumes, aromas, ocasiones, categorias, presentaciones, combos, descuentos, ventas, creditos, proveedores */
   entity: string;
-  guardedFetch: GuardedFetch;
   /** Se llama cuando la importacion inserto o actualizo al menos un registro. */
   onImported: () => void;
 }
 
-const API_IMPORT = `${BASE_URL}/api/import`;
-
 const headCell = 'text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground';
 
-export default function ImportModal({ open, onClose, entity, guardedFetch, onImported }: ImportModalProps) {
+export default function ImportModal({ open, onClose, entity, onImported }: ImportModalProps) {
   const [spec, setSpec] = useState<ImportSpec | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,12 +56,14 @@ export default function ImportModal({ open, onClose, entity, guardedFetch, onImp
     if (!open) return;
     setFile(null); setResult(null); setError('');
     let active = true;
-    guardedFetch(`${API_IMPORT}/${entity}/spec`)
-      .then(r => r.json())
-      .then(j => { if (active) setSpec(j.data ?? null); })
-      .catch(() => { if (active) setError('No se pudo cargar la estructura de importacion'); });
+    (async () => {
+      const res = await http.get<{ data?: ImportSpec }>(urls.excel(entity).spec);
+      if (!active) return;
+      if (!res.ok) { setError(res.error); return; }
+      setSpec(res.cuerpo?.data ?? null);
+    })();
     return () => { active = false; };
-  }, [open, entity, guardedFetch]);
+  }, [open, entity]);
 
   const handleFile = (files: FileList | null) => {
     const f = files?.[0];
@@ -81,19 +80,9 @@ export default function ImportModal({ open, onClose, entity, guardedFetch, onImp
   const handleTemplate = async () => {
     setDownloading(true); setError('');
     try {
-      const res = await guardedFetch(`${API_IMPORT}/${entity}/template`);
-      if (!res.ok) throw new Error('No se pudo descargar la plantilla');
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `plantilla_${entity}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo descargar la plantilla');
+      const res = await http.descargar(urls.excel(entity).plantilla);
+      if (!res.ok || !res.cuerpo) { setError(res.error || 'No se pudo descargar la plantilla'); return; }
+      guardarArchivo(res.cuerpo, `plantilla_${entity}.xlsx`);
     } finally { setDownloading(false); }
   };
 
@@ -103,22 +92,19 @@ export default function ImportModal({ open, onClose, entity, guardedFetch, onImp
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await guardedFetch(`${API_IMPORT}/${entity}`, { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok && res.status !== 207) {
-        setError(json.error ?? 'Error al importar el archivo');
-        return;
-      }
+      // Un archivo a medias responde 207: para axios es éxito (2xx), así que el
+      // resumen con sus errores línea a línea llega igual y se pinta completo.
+      const res = await http.subir<Partial<ImportResult>>(urls.excel(entity).importar, fd);
+      if (!res.ok || !res.cuerpo) { setError(res.error || 'Error al importar el archivo'); return; }
+      const j = res.cuerpo;
       setResult({
-        insertados: json.insertados ?? 0,
-        actualizados: json.actualizados ?? 0,
-        omitidos: json.omitidos ?? 0,
-        errores: json.errores ?? [],
-        info: json.info ?? [],
+        insertados: j.insertados ?? 0,
+        actualizados: j.actualizados ?? 0,
+        omitidos: j.omitidos ?? 0,
+        errores: j.errores ?? [],
+        info: j.info ?? [],
       });
-      if ((json.insertados ?? 0) > 0 || (json.actualizados ?? 0) > 0) onImported();
-    } catch {
-      setError('No se pudo conectar con el servidor');
+      if ((j.insertados ?? 0) > 0 || (j.actualizados ?? 0) > 0) onImported();
     } finally { setLoading(false); }
   };
 

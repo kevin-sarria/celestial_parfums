@@ -11,9 +11,7 @@ import { toast } from 'sonner';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
-import type { GuardedFetch } from '../types';
 
-interface Props { guardedFetch: GuardedFetch }
 
 interface ResenaAdmin {
   id: number;
@@ -33,7 +31,7 @@ const ESTADO: Record<string, string> = {
 };
 
 /** Moderación de reseñas: aprobar (se publican), rechazar (se ocultan) o eliminar. */
-export function ResenasTab({ guardedFetch }: Props) {
+export function ResenasTab() {
   const [rows, setRows] = useState<ResenaAdmin[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -81,7 +79,7 @@ export function ResenasTab({ guardedFetch }: Props) {
           </SelectSimple>
           {/* Exportar es el respaldo del contenido de los clientes (y como se
               responde un derecho de acceso a datos). Importar SOLO modera. */}
-          <ExportButton entity="resenas" guardedFetch={guardedFetch} />
+          <ExportButton entity="resenas" />
           <Button size="sm" variant="outline" onClick={() => setImportOpen(true)}>
             <Upload className="size-4" /> Moderar en lote
           </Button>
@@ -154,7 +152,6 @@ export function ResenasTab({ guardedFetch }: Props) {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="resenas"
-        guardedFetch={guardedFetch}
         onImported={load}
       />
     </Section>

@@ -11,7 +11,7 @@ import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import { produccionesColumns } from '../columns';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
-import type { GuardedFetch, Produccion } from '../types';
+import type { Produccion } from '../types';
 
 
 /** Corte del mes en curso en UTC: las fechas @db.Date se leen a medianoche UTC. */
@@ -27,7 +27,7 @@ const inicioDeMes = () => {
  * esta "qué armé". Tenerlas juntas dejaba dos tablas apiladas y la segunda
  * ensuciaba la principal — decisión del dueño el 2026-08-04.
  */
-export function ProduccionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export function ProduccionesTab() {
   const [producciones, setProducciones] = useState<Produccion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -120,7 +120,7 @@ export function ProduccionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
               <Trash2 className="size-4" /> Borrar lote
             </Button>
           )}
-          acciones={<ExportButton entity="producciones" guardedFetch={guardedFetch} />}
+          acciones={<ExportButton entity="producciones" />}
         />
       </Section>
     </div>

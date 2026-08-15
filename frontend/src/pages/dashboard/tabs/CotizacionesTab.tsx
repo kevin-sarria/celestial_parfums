@@ -5,20 +5,18 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import CotizacionForm from '../cotizacion/CotizacionForm';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { DEFAULT_PAGE_SIZE, fmtInstante, formatPrice } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import { descargarCotizacionPdf } from '../../../utils/cotizacionPdf';
-import type { GuardedFetch } from '../types';
 import type { Cotizacion, CotizacionConfig } from '../../../domain/entities/cotizacion.types';
-
-const API = `${BASE_URL}/api/cotizaciones`;
 
 /**
  * Cotizaciones mayoristas: listado y acceso al formulario. La vista cambia
  * entre lista y formulario (no modal) porque el formulario necesita ancho real.
  */
-export function CotizacionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export function CotizacionesTab() {
   const [vista, setVista] = useState<'lista' | 'form'>('lista');
   const [editando, setEditando] = useState<Cotizacion | null>(null);
   const [rows, setRows] = useState<Cotizacion[]>([]);
@@ -28,19 +26,18 @@ export function CotizacionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
   const [config, setConfig] = useState<CotizacionConfig | null>(null);
 
   const [errorCarga, setErrorCarga] = useState('');
-  // try/finally: un fallo de red o un 429 no debe dejar la vista cargando eterno.
+  // finally: un fallo de red o un 429 no debe dejar la vista cargando eterno.
   const load = async (p = page) => {
     setLoading(true);
     try {
-      const res = await guardedFetch(`${API}?page=${p}&limit=${DEFAULT_PAGE_SIZE}`);
-      if (!res.ok) throw new Error('respuesta no válida');
-      const json = await res.json();
-      setRows(json.data ?? []);
-      setTotal(json.total ?? 0);
+      const res = await http.get<{ data?: Cotizacion[]; total?: number }>(urls.cotizaciones.lista, {
+        params: { page: p, limit: DEFAULT_PAGE_SIZE },
+      });
+      if (!res.ok) { setErrorCarga(res.error); return; }
+      setRows(res.cuerpo?.data ?? []);
+      setTotal(res.cuerpo?.total ?? 0);
       setPage(p);
       setErrorCarga('');
-    } catch {
-      setErrorCarga('No se pudieron cargar las cotizaciones. Revisa tu conexión y reintenta.');
     } finally {
       setLoading(false);
     }
@@ -48,40 +45,43 @@ export function CotizacionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
 
   useEffect(() => {
     load(1);
-    guardedFetch(`${BASE_URL}/api/costeo/config`)
-      .then((r) => r.json())
-      .then((j) => setConfig(j.data))
-      .catch(() => {});
+    // Sin configuración solo se pierde el PDF, no la lista: por eso va suelta.
+    http.get<{ data?: CotizacionConfig }>(urls.costeo.config)
+      .then((r) => setConfig(r.cuerpo?.data ?? null));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /** Relee la cotización completa: la lista trae lo justo para pintar el renglón. */
+  const traerCompleta = async (c: Cotizacion): Promise<Cotizacion | null> => {
+    const res = await http.get<{ data?: Cotizacion }>(urls.cotizaciones.cotizacion(c.id));
+    if (!res.ok) { toast.error(res.error, { id: 'cotizaciones' }); return null; }
+    return res.cuerpo?.data ?? c;
+  };
 
   const abrirNueva = () => { setEditando(null); setVista('form'); };
   const abrirEditar = async (c: Cotizacion) => {
-    const res = await guardedFetch(`${API}/${c.id}`);
-    const json = await res.json();
-    setEditando(json.data ?? c);
+    const completa = await traerCompleta(c);
+    if (!completa) return;
+    setEditando(completa);
     setVista('form');
   };
 
   const eliminar = async (c: Cotizacion) => {
     if (!window.confirm(`¿Eliminar la cotización ${c.numero}?`)) return;
-    const res = await guardedFetch(`${API}/${c.id}`, { method: 'DELETE' });
-    if (!res.ok) { toast.error('No se pudo eliminar la cotización', { id: 'No se pudo eliminar la cotización' }); return; }
+    const res = await http.borrar(urls.cotizaciones.cotizacion(c.id));
+    if (!res.ok) { toast.error(res.error, { id: 'cotizaciones' }); return; }
     load();
     toast.success('Cotización eliminada');
   };
 
   const descargar = async (c: Cotizacion) => {
     if (!config) return;
-    // La lista ya trae los items, pero se recarga por si cambió algo
-    const res = await guardedFetch(`${API}/${c.id}`);
-    const json = await res.json();
-    descargarCotizacionPdf(json.data ?? c, config);
+    const completa = await traerCompleta(c);
+    if (completa) descargarCotizacionPdf(completa, config);
   };
 
   if (vista === 'form') {
     return (
       <CotizacionForm
-        guardedFetch={guardedFetch}
         cotizacion={editando}
         onVolver={() => { setVista('lista'); load(); }}
         onGuardada={() => load()}

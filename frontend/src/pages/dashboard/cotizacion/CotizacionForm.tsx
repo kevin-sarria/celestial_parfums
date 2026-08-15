@@ -7,12 +7,12 @@ import { toast } from 'sonner';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import LineasCotizacion from './LineasCotizacion';
 import { MargenPorGama, type PromedioGama } from './MargenPorGama';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import { Field, FieldRow, Section } from '../ui';
 import { rentabilidadTotal } from '../../../application/costeoCotizacion';
 import { descargarCotizacionPdf, mensajeWhatsappCotizacion } from '../../../utils/cotizacionPdf';
-import type { GuardedFetch } from '../types';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type {
   AccesorioSeleccionado, CondicionesComerciales, Cotizacion, CotizacionConfig, CotizacionItem, CotizacionTipo,
@@ -20,7 +20,6 @@ import type {
 } from '../../../domain/entities/cotizacion.types';
 
 interface Props {
-  guardedFetch: GuardedFetch;
   /** Cotización a editar; null = nueva. */
   cotizacion: Cotizacion | null;
   onVolver: () => void;
@@ -43,7 +42,7 @@ const CAMPOS_CONDICIONES: { k: keyof CondicionesComerciales; label: string }[] =
  * costeo en vivo, condiciones y acciones (guardar, PDF, WhatsApp). El panel de
  * rentabilidad es interno y no viaja al documento del cliente.
  */
-export default function CotizacionForm({ guardedFetch, cotizacion, onVolver, onGuardada }: Props) {
+export default function CotizacionForm({ cotizacion, onVolver, onGuardada }: Props) {
   const [cargando, setCargando] = useState(true);
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);
   const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
@@ -80,32 +79,31 @@ export default function CotizacionForm({ guardedFetch, cotizacion, onVolver, onG
   useEffect(() => {
     (async () => {
       const [rp, rf, ri, rc, rg] = await Promise.all([
-        guardedFetch(`${BASE_URL}/api/parfums`),
-        guardedFetch(`${BASE_URL}/api/costeo/formulas`),
-        guardedFetch(`${BASE_URL}/api/costeo/insumos`),
-        guardedFetch(`${BASE_URL}/api/costeo/config`),
-        guardedFetch(`${BASE_URL}/api/costeo/gamas`),
+        http.get<{ data?: Perfume[] | { data?: Perfume[] } }>(urls.perfumes.todos),
+        http.get<{ data?: FormulaVolumen[] }>(urls.costeo.formulas),
+        http.get<{ data?: Insumo[] }>(urls.costeo.insumos),
+        http.get<{ data?: CotizacionConfig }>(urls.costeo.config),
+        http.get<{ data?: PromedioGama[] }>(urls.costeo.promediosPorGama),
       ]);
       // Si falla, el resto del formulario debe seguir sirviendo: sin gamas solo
       // se pierde el panel de costo, no la posibilidad de cotizar.
-      if (rg.ok) setGamas((await rg.json()).data ?? []);
+      if (rg.ok) setGamas(rg.cuerpo?.data ?? []);
       // /api/parfums sin paginar responde { data: { data: [...] } }; se
       // desenvuelve tolerando ambas formas por si el endpoint cambia.
-      const jp = await rp.json();
-      const lista = Array.isArray(jp?.data) ? jp.data : (jp?.data?.data ?? []);
-      setPerfumes(lista);
-      const fs: FormulaVolumen[] = (await rf.json()).data ?? [];
+      const jp = rp.cuerpo?.data;
+      setPerfumes(Array.isArray(jp) ? jp : (jp?.data ?? []));
+      const fs: FormulaVolumen[] = rf.cuerpo?.data ?? [];
       setFormulas(fs);
-      setInsumos((await ri.json()).data ?? []);
-      const cfg: CotizacionConfig = (await rc.json()).data;
-      setConfig(cfg);
+      setInsumos(ri.cuerpo?.data ?? []);
+      const cfg = rc.cuerpo?.data;
+      setConfig(cfg ?? null);
       // Al editar una general, se vuelven a marcar los tamaños que ya traía
       if (cotizacion?.tipo === 'general' && cotizacion.lista_precios) {
         const nombres = cotizacion.lista_precios.map((l) => l.volumen_nombre);
         setVolumenesSel(fs.filter((f) => nombres.includes(f.nombre)).map((f) => f.id));
       }
       // Cotización nueva: arranca con los valores por defecto del negocio
-      if (!cotizacion) {
+      if (!cotizacion && cfg) {
         setCondiciones(cfg.condiciones_comerciales);
         setVigencia(String(cfg.vigencia_dias_default));
       }
@@ -178,19 +176,14 @@ export default function CotizacionForm({ guardedFetch, cotizacion, onVolver, onG
     if (tipo === 'detallada' && lineas.length === 0) return fallo('Agrega al menos un producto');
     setGuardando(true); setError('');
     try {
-      const url = guardada ? `${BASE_URL}/api/cotizaciones/${guardada.id}` : `${BASE_URL}/api/cotizaciones`;
-      const res = await guardedFetch(url, {
-        method: guardada ? 'PATCH' : 'POST',
-        body: JSON.stringify(construirPayload()),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) return fallo(json?.error ?? 'No se pudo guardar la cotización');
-      setGuardada(json.data);
+      const res = guardada
+        ? await http.patch<{ data: Cotizacion }>(urls.cotizaciones.cotizacion(guardada.id), construirPayload())
+        : await http.post<{ data: Cotizacion }>(urls.cotizaciones.crear, construirPayload());
+      if (!res.ok || !res.cuerpo) return fallo(res.error || 'No se pudo guardar la cotización');
+      setGuardada(res.cuerpo.data);
       onGuardada();
       toast.success('Cotización guardada');
-      return json.data as Cotizacion;
-    } catch {
-      return fallo('No se pudo conectar con el servidor');
+      return res.cuerpo.data;
     } finally { setGuardando(false); }
   };
 
@@ -207,9 +200,10 @@ export default function CotizacionForm({ guardedFetch, cotizacion, onVolver, onG
     const doc = await guardar();
     if (!doc || !config) return;
     descargarCotizacionPdf(doc, config);
-    await guardedFetch(`${BASE_URL}/api/cotizaciones/${doc.id}/estado`, {
-      method: 'PATCH', body: JSON.stringify({ estado: 'enviada' }),
-    });
+    // Si el sello de "enviada" no cuaja, se avisa pero se sigue: el PDF ya está
+    // en el disco del dueño y cortarle el WhatsApp aquí no arregla nada.
+    const sello = await http.patch(urls.cotizaciones.estado(doc.id), { estado: 'enviada' });
+    if (!sello.ok) toast.error(sello.error, { id: 'cotizaciones' });
     // Con teléfono se abre el chat del cliente; sin él, WhatsApp deja elegir el
     // contacto (abrir el chat propio no le sirve a nadie).
     const tel = (doc.cliente_telefono || '').replace(/\D/g, '');

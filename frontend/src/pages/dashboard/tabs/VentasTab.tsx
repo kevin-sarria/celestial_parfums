@@ -14,11 +14,7 @@ import { DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
-import type { GuardedFetch, Venta, Usuario } from '../types';
-
-interface VentasTabProps {
-  guardedFetch: GuardedFetch;
-}
+import type { Venta, Usuario } from '../types';
 
 interface Totales {
   total_unidades: number;
@@ -29,7 +25,7 @@ interface Totales {
 
 const MES = new Intl.DateTimeFormat('es-CO', { month: 'long' });
 
-export function VentasTab({ guardedFetch }: VentasTabProps) {
+export function VentasTab() {
   const [ventas, setVentas] = useState<Venta[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -198,7 +194,7 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
             accionesMovil={v => acciones(v, true)}
             acciones={
               <>
-                <ExportButton entity="ventas" guardedFetch={guardedFetch} />
+                <ExportButton entity="ventas" />
                 <Button
                   variant="outline" size="sm" disabled={enlazando}
                   title="Intenta enlazar por nombre las ventas importadas que aún no tienen producto del catálogo"
@@ -222,7 +218,6 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="ventas"
-        guardedFetch={guardedFetch}
         onImported={() => load(1)}
       />
 

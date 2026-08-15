@@ -114,12 +114,13 @@ mucho de la tabla de arriba, avisar antes de seguir.
 
 ## El refactor del frontend (capa HTTP única) — a mitad de camino
 
-Detalle y decisiones en [`arquitectura.md`](arquitectura.md). Al 2026-08-15 van **57 llamadas por
-`http` y quedan 94** con el `fetch` viejo. Migradas ya todas las pantallas del día a día; **quedan
-las de menos uso**: Cotizaciones y su formulario, Fórmulas por volumen, Costos de producción,
-Recompensas y Entregas, Publicidad, los dos modales de esencias del inventario, el detalle de
-compra, el formulario de devolución, el `ListasProvider`, y todas las **páginas públicas** (tienda,
-blog, contacto, portal del cliente, login/registro).
+Detalle y decisiones en [`arquitectura.md`](arquitectura.md). Al 2026-08-15 van **67 llamadas por
+`http` y quedan 59** con el `fetch` viejo. Migrado todo el dashboard del día a día más el mayoreo
+(Cotizaciones, Tamaños y fórmulas, Costos de producción) y el **Excel compartido**. Quedan:
+**Publicidad, Recompensas y Entregas, Devoluciones** (pestaña y formulario), el **detalle de
+compra**, **Proveedores**, las **clasificaciones** (`LookupTab`), la **campana**, el
+`ListasProvider`, y todas las **páginas públicas** (tienda, blog, contacto, portal del cliente,
+login/registro).
 
 Se migra **pantalla entera o nada**, y al migrarla se aprovecha para que ningún handler ignore la
 respuesta (toast con el mensaje del servidor). Cuando caiga la última se borran `client.ts` y

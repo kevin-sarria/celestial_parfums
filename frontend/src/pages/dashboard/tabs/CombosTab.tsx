@@ -16,7 +16,7 @@ import { subirImagenAdmin } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
-import type { GuardedFetch, Lookup, ComboForm } from '../types';
+import type { Lookup, ComboForm } from '../types';
 import { emptyComboForm } from '../types';
 
 interface CombosTabProps {
@@ -26,7 +26,6 @@ interface CombosTabProps {
   pageSize: number;
   categorias: Lookup[];
   presentaciones: Lookup[];
-  guardedFetch: GuardedFetch;
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   /** Búsqueda global contra el backend (toda la data, no solo la página cargada). */
@@ -36,7 +35,7 @@ interface CombosTabProps {
 
 export function CombosTab({
   combos, page, total, pageSize, categorias, presentaciones,
-  guardedFetch, onPageChange, onPageSizeChange, onSearch, onMutate,
+  onPageChange, onPageSizeChange, onSearch, onMutate,
 }: CombosTabProps) {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<ComboForm>(emptyComboForm());
@@ -104,7 +103,7 @@ export function CombosTab({
         <Toolbar>
           <SectionTitle count={combos.length}>Combos</SectionTitle>
           <ToolbarActions>
-            <ExportButton entity="combos" guardedFetch={guardedFetch} />
+            <ExportButton entity="combos" />
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Upload className="size-4" /> Importar
             </Button>
@@ -135,7 +134,6 @@ export function CombosTab({
         open={importOpen}
         onClose={() => setImportOpen(false)}
         entity="combos"
-        guardedFetch={guardedFetch}
         onImported={onMutate}
       />
 

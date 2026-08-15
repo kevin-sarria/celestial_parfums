@@ -196,7 +196,7 @@ export function LookupTab({
           <ToolbarActions>
             {importEntity && guardedFetch && (
               <>
-                <ExportButton entity={importEntity} guardedFetch={guardedFetch} />
+                <ExportButton entity={importEntity} />
                 <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
                   <Upload className="size-4" /> Importar
                 </Button>
@@ -331,7 +331,6 @@ export function LookupTab({
           open={importOpen}
           onClose={() => setImportOpen(false)}
           entity={importEntity}
-          guardedFetch={guardedFetch}
           onImported={onImported ?? (() => {})}
         />
       )}

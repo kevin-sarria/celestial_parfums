@@ -81,7 +81,7 @@ export function DevolucionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
             <option value="todas">Todos los estados</option>
             {ESTADOS.map((s) => <option key={s.v} value={s.v}>{s.label}</option>)}
           </SelectSimple>
-          <ExportButton entity="devoluciones" guardedFetch={guardedFetch} />
+          <ExportButton entity="devoluciones" />
           <Button size="sm" onClick={() => { setEditando(null); setAbierto(true); }}>
             <Plus className="size-4" /> Registrar devolución
           </Button>

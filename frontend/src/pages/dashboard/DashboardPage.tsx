@@ -238,7 +238,6 @@ export default function DashboardPage() {
               <PerfumesTab
                 perfumes={perfumes} page={perfumesPage} total={perfumesTotal} pageSize={perfumesPageSize}
                 aromas={aromas} ocasiones={ocasiones} categorias={categorias} presentaciones={presentaciones}
-                guardedFetch={guardedFetch}
                 onPageChange={p => loadPerfumes(p, perfumesPageSize)}
                 onPageSizeChange={s => { setPerfumesPageSize(s); loadPerfumes(1, s); }}
                 onSearch={t => { setPerfumesSearch(t); loadPerfumes(1, perfumesPageSize, t); }}
@@ -279,7 +278,7 @@ export default function DashboardPage() {
             {tab === 'combos' && (
               <CombosTab
                 combos={combos} page={combosPage} total={combosTotal} pageSize={combosPageSize}
-                categorias={categorias} presentaciones={presentaciones} guardedFetch={guardedFetch}
+                categorias={categorias} presentaciones={presentaciones}
                 onPageChange={p => loadCombos(p, combosPageSize)}
                 onPageSizeChange={s => { setCombosPageSize(s); loadCombos(1, s); }}
                 onSearch={t => { setCombosSearch(t); loadCombos(1, combosPageSize, t); }}
@@ -287,16 +286,15 @@ export default function DashboardPage() {
               />
             )}
             {tab === 'precios' && (
-              <PreciosTab
-                guardedFetch={guardedFetch} categorias={categorias}
+              <PreciosTab categorias={categorias}
                 presentaciones={presentaciones} onMutate={refreshAll}
               />
             )}
             {tab === 'descuentos' && (
-              <DescuentosTab guardedFetch={guardedFetch} onMutate={refreshAll} />
+              <DescuentosTab onMutate={refreshAll} />
             )}
-            {tab === 'ventas' && <VentasTab guardedFetch={guardedFetch} />}
-            {tab === 'creditos' && <CreditosTab guardedFetch={guardedFetch} />}
+            {tab === 'ventas' && <VentasTab />}
+            {tab === 'creditos' && <CreditosTab />}
             {tab === 'rep_ventas' && <ReportesVentasTab />}
             {tab === 'rep_compras' && <ReportesComprasTab />}
             {tab === 'rep_clientes' && <ReportesClientesTab />}
@@ -304,17 +302,17 @@ export default function DashboardPage() {
             {tab === 'usuarios' && <UsuariosTab />}
             {tab === 'publicidad' && <PublicidadTab guardedFetch={guardedFetch} categorias={categorias} />}
             {tab === 'recompensas' && <RecompensasTab guardedFetch={guardedFetch} />}
-            {tab === 'resenas' && <ResenasTab guardedFetch={guardedFetch} />}
+            {tab === 'resenas' && <ResenasTab />}
             {tab === 'avisos' && <AvisosTab />}
             {tab === 'nosotros' && <SobreNosotrosTab />}
             {tab === 'blog' && <BlogTab />}
-            {tab === 'cotizaciones' && <CotizacionesTab guardedFetch={guardedFetch} />}
-            {tab === 'formulas' && <FormulasVolumenTab guardedFetch={guardedFetch} />}
-            {tab === 'costos' && <CostosProduccionTab guardedFetch={guardedFetch} />}
+            {tab === 'cotizaciones' && <CotizacionesTab />}
+            {tab === 'formulas' && <FormulasVolumenTab />}
+            {tab === 'costos' && <CostosProduccionTab />}
             {tab === 'devoluciones' && <DevolucionesTab guardedFetch={guardedFetch} />}
-            {tab === 'inventario' && <InventarioTab guardedFetch={guardedFetch} />}
+            {tab === 'inventario' && <InventarioTab />}
             {tab === 'reposicion' && <ReposicionTab />}
-            {tab === 'producciones' && <ProduccionesTab guardedFetch={guardedFetch} />}
+            {tab === 'producciones' && <ProduccionesTab />}
             {tab === 'redes' && <RedesTab />}
           </>
         )}
