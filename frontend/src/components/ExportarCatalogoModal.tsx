@@ -4,7 +4,8 @@ import { toast } from 'sonner';
 import Modal from './Modal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { BASE_URL } from '../infrastructure/api/client';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import {
   OPCIONES_POR_DEFECTO, describirSeleccion, gamasDelCatalogo, seleccionar,
   type OpcionesCatalogo,
@@ -83,10 +84,11 @@ export default function ExportarCatalogoModal({ open, onClose }: {
         // Antes aquí se pedían también las recetas, solo para saber de cuáles
         // alcanza la esencia. Ese cálculo lo hace ahora el servidor y viene en
         // `sin_esencia`, así que abrir el modal cuesta una petición menos.
-        const resCat = await fetch(`${BASE_URL}/api/parfums`, { credentials: 'include' });
-        const json = await resCat.json();
-        const lista: Perfume[] = Array.isArray(json?.data) ? json.data : (json?.data?.data ?? []);
+        const resCat = await http.get<{ data?: Perfume[] | { data?: Perfume[] } }>(urls.perfumes.todos);
         if (!vivo) return;
+        if (!resCat.ok) { setError(resCat.error); return; }
+        const cuerpo = resCat.cuerpo?.data;
+        const lista = Array.isArray(cuerpo) ? cuerpo : (cuerpo?.data ?? []);
         setPerfumes(lista);
 
         // Arranca con TODO marcado: exportar el catálogo completo es lo normal,
@@ -96,8 +98,6 @@ export default function ExportarCatalogoModal({ open, onClose }: {
         setO(guardado
           ? { ...OPCIONES_POR_DEFECTO, ...JSON.parse(guardado) }
           : { ...OPCIONES_POR_DEFECTO, gamas, generos: GENEROS.map((g) => g.id) });
-      } catch {
-        if (vivo) setError('No se pudo cargar el catálogo');
       } finally {
         if (vivo) setCargando(false);
       }

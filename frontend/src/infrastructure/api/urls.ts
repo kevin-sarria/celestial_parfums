@@ -149,9 +149,15 @@ export const urls = {
       `/parfums/${tipo}/${id}?mover_a=${destinoId}`,
   }),
 
+  /** Los popups de la tienda y los descuentos que reparten. */
   anuncios: {
+    admin: '/anuncios/admin',
+    crear: '/anuncios',
+    anuncio: (id: number) => `/anuncios/${id}`,
     /** Certifica un código de descuento (CP-XXXXXX) antes de aplicarlo. */
     codigo: (codigo: string) => `/anuncios/codigos/${encodeURIComponent(codigo)}`,
+    /** Anular o reactivar ese código. Misma ruta, con PATCH. */
+    estadoCodigo: (codigo: string) => `/anuncios/codigos/${encodeURIComponent(codigo)}`,
   },
 
   creditos: {
@@ -201,6 +207,25 @@ export const urls = {
   avisos: {
     admin: '/avisos/admin',
     marcarNotificados: (perfumeId: number) => `/avisos/admin/${perfumeId}/notificados`,
+  },
+
+  /** La tarjeta de sellos: configuración, progreso de cada cliente y entregas. */
+  recompensas: {
+    config: '/recompensas/config',
+    clientes: '/recompensas/clientes',
+    /** Premio entregado: la tarjeta del cliente se reinicia. */
+    entregar: (clienteId: number) => `/recompensas/clientes/${clienteId}/entregar`,
+    /** Regla propia para UN cliente (otro objetivo, otro premio). */
+    override: (clienteId: number) => `/recompensas/clientes/${clienteId}/override`,
+    /** Las fotos de la entrega, que se moderan antes de publicarse. */
+    entregas: '/recompensas/admin/entregas',
+    entrega: (id: number) => `/recompensas/admin/entregas/${id}`,
+    fotosEntrega: (id: number) => `/recompensas/admin/entregas/${id}/fotos`,
+    /** Lo que ve el cliente en su portal. */
+    miTarjeta: '/recompensas/mi-tarjeta',
+    misEntregas: '/recompensas/mis-entregas',
+    subirFotos: (id: number) => `/recompensas/entregas/${id}/fotos`,
+    ganadores: '/recompensas/ganadores',
   },
 
   /** Textos e imágenes de la página "Sobre nosotros". */

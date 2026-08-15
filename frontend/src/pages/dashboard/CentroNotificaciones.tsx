@@ -6,7 +6,6 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import type { GuardedFetch } from './types';
 import { http } from '../../infrastructure/api/http';
 import { urls } from '../../infrastructure/api/urls';
 
@@ -42,7 +41,7 @@ const PUNTO: Record<Notificacion['tono'], string> = {
  *   flotante al entrar al dashboard molestaría en cada recarga; pero dejar la
  *   campana muda haría creer que no hay nada pendiente, que es peor.
  */
-export default function CentroNotificaciones({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export default function CentroNotificaciones() {
   const navigate = useNavigate();
   const [avisos, setAvisos] = useState<Notificacion[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -60,7 +59,7 @@ export default function CentroNotificaciones({ guardedFetch }: { guardedFetch: G
     } finally {
       setCargando(false);
     }
-  }, [guardedFetch]);
+  }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
 

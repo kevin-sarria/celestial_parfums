@@ -14,7 +14,7 @@ import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import {
   ESTADOS, PLAZO_LEGAL_HABILES, diasHabilesDesde, etiquetaMotivo, etiquetaSolucion, metaEstado,
 } from '../../../domain/entities/devolucion.labels';
-import type { Devolucion, DevolucionEstado, GuardedFetch } from '../types';
+import type { Devolucion, DevolucionEstado } from '../types';
 
 const ABIERTA = (e: DevolucionEstado) => e === 'pendiente' || e === 'en_revision';
 
@@ -23,7 +23,7 @@ const ABIERTA = (e: DevolucionEstado) => e === 'pendiente' || e === 'en_revision
  * devuelta se descuenta sola de los ingresos del mes (ver `getVentaTotales`),
  * y el contador de días hábiles avisa antes de que se venza el plazo de ley.
  */
-export function DevolucionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export function DevolucionesTab() {
   const [rows, setRows] = useState<Devolucion[]>([]);
   const [filtro, setFiltro] = useState<'todas' | DevolucionEstado>('todas');
   const [loading, setLoading] = useState(true);
@@ -208,7 +208,6 @@ export function DevolucionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
 
       {abierto && (
         <DevolucionForm
-          guardedFetch={guardedFetch}
           devolucion={editando}
           onClose={() => setAbierto(false)}
           onGuardada={() => { setAbierto(false); load(); }}

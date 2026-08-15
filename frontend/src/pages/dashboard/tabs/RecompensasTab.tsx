@@ -9,13 +9,12 @@ import { SmartTable } from '../../../components/table/SmartTable';
 import type { ColumnDef } from '../../../components/table/tableTypes';
 import RecompensaConfigModal from './RecompensaConfigModal';
 import EntregasModeracion from './EntregasModeracion';
-import { API_RECOMPENSAS, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
+import { toast } from 'sonner';
+import { DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field } from '../ui';
-import type { GuardedFetch, RecompensaConfig, RecompensaClienteRow } from '../types';
-
-interface Props {
-  guardedFetch: GuardedFetch;
-}
+import type { RecompensaConfig, RecompensaClienteRow } from '../types';
 
 const cellName = 'whitespace-nowrap font-medium text-foreground';
 
@@ -41,7 +40,7 @@ function Progreso({ row }: { row: RecompensaClienteRow }) {
  * previsualización) + tabla de clientes con su progreso, entrega de premios y
  * regla especial por cliente.
  */
-export function RecompensasTab({ guardedFetch }: Props) {
+export function RecompensasTab() {
   const [config, setConfig] = useState<RecompensaConfig | null>(null);
   const [cfgOpen, setCfgOpen] = useState(false);
   const [cfgSaving, setCfgSaving] = useState(false);
@@ -58,17 +57,18 @@ export function RecompensasTab({ guardedFetch }: Props) {
   const [ovSaving, setOvSaving] = useState(false);
 
   const loadConfig = async () => {
-    const res = await guardedFetch(`${API_RECOMPENSAS}/config`);
-    const json = await res.json();
-    if (res.ok) setConfig(json.data);
+    const res = await http.get<{ data?: RecompensaConfig }>(urls.recompensas.config);
+    if (res.ok) setConfig(res.cuerpo?.data ?? null);
   };
 
   const loadClientes = async (p = page, s = pageSize, term = search) => {
-    const qs = term ? `&search=${encodeURIComponent(term)}` : '';
-    const res = await guardedFetch(`${API_RECOMPENSAS}/clientes?page=${p}&limit=${s}${qs}`);
-    const json = await res.json();
-    setClientes(json.data ?? []);
-    setTotal(json.total ?? 0);
+    const res = await http.get<{ data?: RecompensaClienteRow[]; total?: number }>(
+      urls.recompensas.clientes,
+      { params: { page: p, limit: s, ...(term ? { search: term } : {}) } },
+    );
+    if (!res.ok) { toast.error(res.error, { id: 'recompensas' }); return; }
+    setClientes(res.cuerpo?.data ?? []);
+    setTotal(res.cuerpo?.total ?? 0);
     setPage(p);
   };
 
@@ -78,29 +78,24 @@ export function RecompensasTab({ guardedFetch }: Props) {
     if (!config) return;
     setCfgSaving(true); setCfgError('');
     try {
-      const res = await guardedFetch(`${API_RECOMPENSAS}/config`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          activo: config.activo,
-          sellos_objetivo: Number(config.sellos_objetivo) || 1,
-          premio: config.premio.trim(),
-          min_compra: Number(config.min_compra) || 0,
-          color_fondo: config.color_fondo,
-          color_lineas: config.color_lineas,
-          color_texto: config.color_texto,
-        }),
+      const res = await http.patch<{ data: RecompensaConfig }>(urls.recompensas.config, {
+        activo: config.activo,
+        sellos_objetivo: Number(config.sellos_objetivo) || 1,
+        premio: config.premio.trim(),
+        min_compra: Number(config.min_compra) || 0,
+        color_fondo: config.color_fondo,
+        color_lineas: config.color_lineas,
+        color_texto: config.color_texto,
       });
-      const json = await res.json();
-      if (!res.ok) { setCfgError(json.error ?? 'No se pudo guardar'); return; }
-      setConfig(json.data); setCfgOpen(false); loadClientes();
+      if (!res.ok || !res.cuerpo) { setCfgError(res.error || 'No se pudo guardar'); return; }
+      setConfig(res.cuerpo.data); setCfgOpen(false); loadClientes();
     } finally { setCfgSaving(false); }
   };
 
   const entregarPremio = async (c: RecompensaClienteRow) => {
     if (!window.confirm(`¿Entregaste el premio a ${c.nombre} ${c.apellido}? La tarjeta se reinicia.`)) return;
-    const res = await guardedFetch(`${API_RECOMPENSAS}/clientes/${c.id}/entregar`, { method: 'POST' });
-    const json = await res.json();
-    if (!res.ok) { alert(json.error ?? 'Error'); return; }
+    const res = await http.post(urls.recompensas.entregar(c.id));
+    if (!res.ok) { toast.error(res.error, { id: 'recompensas' }); return; }
     loadClientes();
   };
 
@@ -125,10 +120,8 @@ export function RecompensasTab({ guardedFetch }: Props) {
             premio_override: ovForm.premio.trim() || null,
             min_compra_override: ovForm.min.trim() ? Number(ovForm.min) : null,
           };
-      const res = await guardedFetch(`${API_RECOMPENSAS}/clientes/${ovCliente.id}/override`, {
-        method: 'PATCH', body: JSON.stringify(body),
-      });
-      if (!res.ok) { const j = await res.json(); alert(j.error ?? 'Error'); return; }
+      const res = await http.patch(urls.recompensas.override(ovCliente.id), body);
+      if (!res.ok) { toast.error(res.error, { id: 'recompensas' }); return; }
       setOvCliente(null); loadClientes();
     } finally { setOvSaving(false); }
   };
@@ -204,7 +197,7 @@ export function RecompensasTab({ guardedFetch }: Props) {
       </Section>
 
       <div className="mt-8">
-        <EntregasModeracion guardedFetch={guardedFetch} />
+        <EntregasModeracion />
       </div>
 
       {config && (

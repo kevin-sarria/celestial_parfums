@@ -8,10 +8,11 @@ cd backend  && npm run test:e2e      # recorridos en navegador (~35 s)
 cd frontend && npm test
 ```
 
-**212 pruebas** al 2026-08-15 (contadas corriéndolas): **68 en el frontend**, **115 en el
-backend** (1 marcada como discrepancia) y **29 recorridos** en navegador repartidos en 14 archivos
-(`arranque`, `combo`, `cupon`, `desplegable`, `disponibilidad`, `esenciaEnPerfume`, `listaPrecios`,
-`mayoreo`, `menuLateral`, `modal`, `paginaPublica`, `pedidoSugerido`, `tallas`, `venta`).
+**215 pruebas** al 2026-08-15 (contadas corriéndolas): **68 en el frontend**, **115 en el
+backend** (1 marcada como discrepancia) y **32 recorridos** en navegador repartidos en 16 archivos
+(`arranque`, `combo`, `compra`, `cupon`, `desplegable`, `disponibilidad`, `esenciaEnPerfume`,
+`listaPrecios`, `mayoreo`, `menuLateral`, `modal`, `paginaPublica`, `pedidoSugerido`,
+`promociones`, `tallas`, `venta`).
 
 ## Por qué estas herramientas
 
@@ -104,8 +105,19 @@ pasan, y ningún recorrido escribe en `perfumes_db`.
   nace con sus ml** (`tallas.e2e.test.ts`), **Blog y Contáctame** (`paginaPublica.e2e.test.ts`) y
   **el camino del mayoreo** (`mayoreo.e2e.test.ts`: un rango de precio por cantidad, el costo de
   producción que sale de él, y una cotización de lista de precios que vuelve con su número).
+  También **la compra** (`compra.e2e.test.ts`: se da de alta un material desde la propia factura,
+  entra al inventario y queda con el costo que salió de esa compra) y **las promociones**
+  (`promociones.e2e.test.ts`: un anuncio y la tarjeta de sellos, comprobados recargando).
 - **`formatPrice` mete un espacio DURO entre el `$` y el número** (es `Intl` es-CO). Buscar
   `text=$19.000` no encuentra nada nunca; hay que buscar solo el número.
+- **`selectOption()` de Playwright no sirve en esta aplicación**: ningún desplegable es un
+  `<select>` del navegador, ni siquiera los escritos con `<option>` (`SelectSimple` envuelve al
+  `BuscadorSelect`). Se abre y se hace clic — para eso está el ayudante `elegirOpcion()`.
+- **Un recorrido no puede tocar un material que otro da por fijo.** El de la compra empezó
+  comprando el "Frasco 30 ml" sembrado: le subía el costo promedio y el recorrido de la venta
+  —que comprueba un costo exacto— fallaba **según el orden de los archivos**, o sea a veces sí y a
+  veces no. Ahora crea su propio material. Misma regla que las categorías: cada recorrido con lo
+  suyo, y el orden deja de importar.
 - **Un refactor de red se comprueba guardando y volviendo a leer.** `paginaPublica` no mira el
   diseño: crea una entrada de blog y la busca en la lista, y guarda el nombre de Contáctame,
   **recarga** y comprueba que sigue ahí. Es el fallo típico al mover una pantalla de librería —se

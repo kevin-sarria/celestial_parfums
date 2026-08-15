@@ -9,13 +9,15 @@ import Modal from '../../../components/Modal';
 import ExportButton from '../../../components/ExportButton';
 import ImportModal from '../../../components/ImportModal';
 import { Chip } from '../../../components/catalog/FilterChips';
-import { API_ANUNCIOS, fmtDate, fmtInstante, formatPrice, subirImagenAdmin, validarCodigoDescuento } from '../helpers';
+import { toast } from 'sonner';
+import { fmtDate, fmtInstante, formatPrice, subirImagenAdmin, validarCodigoDescuento } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
-import type { GuardedFetch, Anuncio, AnuncioForm, CodigoValidado, Lookup } from '../types';
+import type { Anuncio, AnuncioForm, CodigoValidado, Lookup } from '../types';
 import { emptyAnuncioForm } from '../types';
 
 interface PublicidadTabProps {
-  guardedFetch: GuardedFetch;
   categorias: Lookup[];
 }
 
@@ -28,7 +30,7 @@ const AUDIENCIA_LABEL: Record<Anuncio['audiencia'], string> = {
   registrados: 'Solo registrados',
 };
 
-export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) {
+export function PublicidadTab({ categorias }: PublicidadTabProps) {
   const [anuncios, setAnuncios] = useState<Anuncio[]>([]);
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<AnuncioForm>(emptyAnuncioForm());
@@ -39,9 +41,9 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
-    const res = await guardedFetch(`${API_ANUNCIOS}/admin`);
-    const json = await res.json();
-    setAnuncios(json.data ?? []);
+    const res = await http.get<{ data?: Anuncio[] }>(urls.anuncios.admin);
+    if (!res.ok) { toast.error(res.error, { id: 'anuncios' }); return; }
+    setAnuncios(res.cuerpo?.data ?? []);
   };
 
   useEffect(() => { load(); }, []);
@@ -98,19 +100,18 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
       max_canjes: Number(form.max_canjes) || 0,
     };
     try {
-      const url = modal.editId ? `${API_ANUNCIOS}/${modal.editId}` : API_ANUNCIOS;
-      const res = await guardedFetch(url, { method: modal.editId ? 'PATCH' : 'POST', body: JSON.stringify(body) });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? 'Error al guardar'); return; }
+      const res = modal.editId
+        ? await http.patch(urls.anuncios.anuncio(modal.editId), body)
+        : await http.post(urls.anuncios.crear, body);
+      if (!res.ok) { setError(res.error); return; }
       setModal({ open: false, editId: null }); load();
-    } catch { setError('No se pudo conectar con el servidor'); }
-    finally { setLoading(false); }
+    } finally { setLoading(false); }
   };
 
   const handleDelete = async (a: Anuncio) => {
     if (!window.confirm(`¿Eliminar el anuncio "${a.titulo}"?`)) return;
-    const res = await guardedFetch(`${API_ANUNCIOS}/${a.id}`, { method: 'DELETE' });
-    if (!res.ok) { const j = await res.json(); alert(j.error ?? 'Error'); return; }
+    const res = await http.borrar(urls.anuncios.anuncio(a.id));
+    if (!res.ok) { toast.error(res.error, { id: 'anuncios' }); return; }
     load();
   };
 
@@ -129,11 +130,9 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
 
   const cambiarEstadoCodigo = async (estado: 'activo' | 'anulado') => {
     if (!resultado) return;
-    const res = await guardedFetch(`${API_ANUNCIOS}/codigos/${encodeURIComponent(resultado.codigo)}`, {
-      method: 'PATCH', body: JSON.stringify({ estado }),
-    });
-    const json = await res.json();
-    if (!res.ok) { alert(json.error ?? 'Error'); return; }
+    const res = await http.patch(urls.anuncios.estadoCodigo(resultado.codigo), { estado });
+    // Antes esto era un `alert()`, que está deprecado en el proyecto.
+    if (!res.ok) { toast.error(res.error, { id: 'codigos' }); return; }
     await validarCodigo(); load();
   };
 

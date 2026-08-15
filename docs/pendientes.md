@@ -112,19 +112,20 @@ mucho de la tabla de arriba, avisar antes de seguir.
   con su migración, los 9 documentos de `docs/` y la mudanza del frontend a la capa HTTP única.
   **Falta desplegar**: en el servidor no está nada de esto todavía.
 
-## El refactor del frontend (capa HTTP única) — a mitad de camino
+## El refactor del frontend (capa HTTP única) — falta solo la parte pública
 
-Detalle y decisiones en [`arquitectura.md`](arquitectura.md). Al 2026-08-15 van **67 llamadas por
-`http` y quedan 59** con el `fetch` viejo. Migrado todo el dashboard del día a día más el mayoreo
-(Cotizaciones, Tamaños y fórmulas, Costos de producción) y el **Excel compartido**. Quedan:
-**Publicidad, Recompensas y Entregas, Devoluciones** (pestaña y formulario), el **detalle de
-compra**, **Proveedores**, las **clasificaciones** (`LookupTab`), la **campana**, el
-`ListasProvider`, y todas las **páginas públicas** (tienda, blog, contacto, portal del cliente,
-login/registro).
+Detalle y decisiones en [`arquitectura.md`](arquitectura.md). Al 2026-08-15 van **77 llamadas por
+`http` y quedan 38** con el `fetch` viejo. **El dashboard está terminado** —las 30 pestañas con sus
+modales— y `useGuardedFetch` se borró.
+
+Queda la **parte pública**: los hooks del catálogo (`useCatalog`, `usePerfumes`, `useCombos`,
+`usePerfumeDetail`, `useComboDetail`, `useAnuncios`, `usePerfumeIdeal`), el `ListasProvider`, el
+**portal del cliente** (Mis compras, Mis favoritos, Mis recompensas, crédito, devoluciones) y
+**login/registro/verificación** con su botón de Google. Ojo con `cachedFetch.ts`: la tienda tiene
+su propia caché de catálogo y hay que decidir si se queda o pasa a `http.getCacheado`.
 
 Se migra **pantalla entera o nada**, y al migrarla se aprovecha para que ningún handler ignore la
-respuesta (toast con el mensaje del servidor). Cuando caiga la última se borran `client.ts` y
-`useGuardedFetch`.
+respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra `client.ts`.
 
 ## El resto de la lista (después del producto terminado)
 

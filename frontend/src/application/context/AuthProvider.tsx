@@ -33,12 +33,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    *
    * Este proveedor vive dentro del Router, así que cada cambio de ruta lo vuelve
    * a renderizar. Sin memorizar, en cada render nacían funciones nuevas y un
-   * objeto de contexto nuevo; `useGuardedFetch` depende de `logout`, así que
-   * también cambiaba de identidad, y el efecto de carga del dashboard —que
-   * depende de `guardedFetch`— **se volvía a disparar en cada cambio de
-   * pestaña**: cuatro clasificaciones, los perfumes y los combos, otra vez,
-   * para ir a una pantalla que no los usa. Medido el 2026-08-14: 11 peticiones
-   * por cambio de apartado, de las cuales una sola hacía falta.
+   * objeto de contexto nuevo; la función de red del dashboard dependía de
+   * `logout`, así que también cambiaba de identidad, y el efecto de carga **se
+   * volvía a disparar en cada cambio de pestaña**: cuatro clasificaciones, los
+   * perfumes y los combos, otra vez, para ir a una pantalla que no los usa.
+   * Medido el 2026-08-14: 11 peticiones por cambio de apartado, de las cuales
+   * una sola hacía falta. (Desde el 2026-08-15 la red va por `http`, que no
+   * depende de React; el consumidor de estos valores es la aplicación entera.)
    */
   const login = useCallback((_token: string, newUser: AuthUser) => {
     authStorage.save('', newUser);

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import type { Perfume } from '../../domain/entities/perfume.schema';
 import type { Combo } from '../../domain/entities/combo.schema';
 import { useAuthContext } from '../../application/context/useAuthContext';
-import { useGuardedFetch } from './useGuardedFetch';
 import { useSeo } from '../../application/hooks/useSeo';
 import { DEFAULT_PAGE_SIZE, conNotaDeTalla } from './helpers';
 import { http, type Respuesta } from '../../infrastructure/api/http';
@@ -47,7 +46,6 @@ import { BrandMark } from '../../components/BrandMark';
 export default function DashboardPage() {
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuthContext();
-  const guardedFetch = useGuardedFetch();
 
   // La pestaña vive en la URL (/dashboard/ventas): al recargar o usar el botón
   // "atrás" del navegador se conserva dónde estabas.
@@ -214,7 +212,7 @@ export default function DashboardPage() {
           {/* Lo único que queda a la derecha en pantalla pequeña: lo que está
               pendiente. El respaldo se movió al menú lateral porque los dos
               juntos truncaban el nombre de la tienda. */}
-          <CentroNotificaciones guardedFetch={guardedFetch} />
+          <CentroNotificaciones />
           {/* En celular estas acciones viven dentro del drawer */}
           <div className="hidden items-center gap-1.5 sm:flex">
             <Button variant="ghost" size="sm" asChild>
@@ -248,13 +246,13 @@ export default function DashboardPage() {
               <LookupTab title="Tipos de Aroma" nuevo="Nuevo aroma" editar="Editar aroma"
                 ejemplo="Ej: Amaderado, Cítrico, Oriental" items={aromas}
                 onAdd={handleLookupAdd('tipos-aroma')} onDelete={handleLookupDelete('tipos-aroma', '¿Eliminar este aroma? Los perfumes que lo tengan simplemente dejarán de mostrarlo.')} onEdit={handleLookupEdit('tipos-aroma')}
-                importEntity="aromas" guardedFetch={guardedFetch} onImported={refreshAll} />
+                importEntity="aromas" onImported={refreshAll} />
             )}
             {tab === 'ocasiones' && (
               <LookupTab title="Ocasiones" nuevo="Nueva ocasión" editar="Editar ocasión"
                 ejemplo="Ej: Diario, Noche, Oficina" items={ocasiones}
                 onAdd={handleLookupAdd('ocasiones')} onDelete={handleLookupDelete('ocasiones', '¿Eliminar esta ocasión? Los perfumes que la tengan simplemente dejarán de mostrarla.')} onEdit={handleLookupEdit('ocasiones')}
-                importEntity="ocasiones" guardedFetch={guardedFetch} onImported={refreshAll} />
+                importEntity="ocasiones" onImported={refreshAll} />
             )}
             {tab === 'categorias' && (
               <LookupTab title="Categorias" nuevo="Nueva categoría" editar="Editar categoría"
@@ -265,14 +263,14 @@ export default function DashboardPage() {
                   onMoverYEliminar: moverYEliminarCategoria,
                 }}
                 onAdd={handleLookupAdd('categorias')} onDelete={handleLookupDelete('categorias', '¿Eliminar esta categoría? OJO: los perfumes que la usan quedarán SIN categoría, y como el precio sale de la lista categoría × talla, pasarán a costar su precio de respaldo. Esto puede cambiar el precio de muchos productos de una vez.')} onEdit={handleLookupEdit('categorias')}
-                importEntity="categorias" guardedFetch={guardedFetch} onImported={refreshAll} />
+                importEntity="categorias" onImported={refreshAll} />
             )}
             {tab === 'presentaciones' && (
               <LookupTab title="Presentaciones" nuevo="Nueva presentación" editar="Editar presentación"
                 ejemplo="Escribe el tamaño DELANTE: 30ML, 90 ML, 125 ml. De ahí sale el número con el que el sistema la costea y le enlaza su receta."
                 items={presentaciones}
                 onAdd={handleLookupAdd('presentaciones')} onDelete={handleLookupDelete('presentaciones', '¿Eliminar esta talla? Los perfumes que la ofrezcan dejarán de tenerla, junto con su precio para esa talla.')} onEdit={handleLookupEdit('presentaciones')}
-                importEntity="presentaciones" guardedFetch={guardedFetch} onImported={refreshAll} />
+                importEntity="presentaciones" onImported={refreshAll} />
             )}
             {tab === 'gamas' && <GamasTab />}
             {tab === 'combos' && (
@@ -298,10 +296,10 @@ export default function DashboardPage() {
             {tab === 'rep_ventas' && <ReportesVentasTab />}
             {tab === 'rep_compras' && <ReportesComprasTab />}
             {tab === 'rep_clientes' && <ReportesClientesTab />}
-            {tab === 'pagos' && <PagosTab guardedFetch={guardedFetch} />}
+            {tab === 'pagos' && <PagosTab />}
             {tab === 'usuarios' && <UsuariosTab />}
-            {tab === 'publicidad' && <PublicidadTab guardedFetch={guardedFetch} categorias={categorias} />}
-            {tab === 'recompensas' && <RecompensasTab guardedFetch={guardedFetch} />}
+            {tab === 'publicidad' && <PublicidadTab categorias={categorias} />}
+            {tab === 'recompensas' && <RecompensasTab />}
             {tab === 'resenas' && <ResenasTab />}
             {tab === 'avisos' && <AvisosTab />}
             {tab === 'nosotros' && <SobreNosotrosTab />}
@@ -309,7 +307,7 @@ export default function DashboardPage() {
             {tab === 'cotizaciones' && <CotizacionesTab />}
             {tab === 'formulas' && <FormulasVolumenTab />}
             {tab === 'costos' && <CostosProduccionTab />}
-            {tab === 'devoluciones' && <DevolucionesTab guardedFetch={guardedFetch} />}
+            {tab === 'devoluciones' && <DevolucionesTab />}
             {tab === 'inventario' && <InventarioTab />}
             {tab === 'reposicion' && <ReposicionTab />}
             {tab === 'producciones' && <ProduccionesTab />}

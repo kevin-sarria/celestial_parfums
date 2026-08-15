@@ -93,11 +93,14 @@ vuelo), **Perfumes** (ficha, publicar/agotar, lista de precios), **Créditos** (
 perfil de cupo), **Proveedores** (compras con sus líneas, IVA por proveedor, alta de empresa) y
 **Clasificaciones** (las cuatro listas + la carga inicial del dashboard), **Devoluciones**,
 **Usuarios**, **Reposiciones (avisos)**, **Reseñas**, **Sobre nosotros**, **los tres reportes**,
-**la campana**, **Gamas**, **Combos**, **Precios**, **Descuentos**, **Blog**, **Contáctame
-(Redes)**, **Cotizaciones** (con su formulario), **Tamaños y fórmulas**, **Costos de producción**
-y los **dos modales de esencias** del inventario. Van 111 rutas centralizadas y **67 llamadas por
-`http`; quedan 59** por el camino viejo (el total bajó de 151 porque varias se fusionaron: ver
-*Menos viajes al servidor*).
+**EL DASHBOARD ENTERO** está migrado (2026-08-15): las 30 pestañas, sus modales y sus
+formularios. Van 126 rutas centralizadas y **77 llamadas por `http`; quedan 38** por el camino
+viejo, **todas en la parte pública** —tienda, portal del cliente, login/registro— que es lo único
+pendiente (el total bajó de 151 porque varias se fusionaron: ver *Menos viajes al servidor*).
+
+**`useGuardedFetch` ya no existe.** Era la función de red vieja, y el dashboard era su único
+usuario: al caer la última pantalla se borró el hook y el tipo `GuardedFetch`. Ninguna pantalla
+recibe ya la red como prop. `client.ts` sigue vivo **solo** para las páginas públicas.
 
 **Lo compartido se migra una vez y libera muchas pantallas.** Dos casos:
 

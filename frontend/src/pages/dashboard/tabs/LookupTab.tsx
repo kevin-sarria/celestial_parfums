@@ -10,7 +10,7 @@ import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
 import type { ColumnDef } from '../../../components/table/tableTypes';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field } from '../ui';
-import type { GuardedFetch, Lookup } from '../types';
+import type { Lookup } from '../types';
 
 /** Lo que devuelven las mutaciones para poder avisar si fallaron. */
 export type ResultadoLookup = { ok: boolean; error?: string; id?: number };
@@ -48,7 +48,6 @@ interface LookupTabProps {
   mudanza?: MudanzaLookup;
   /** Entidad del backend para importar/exportar (aromas, ocasiones, categorias, presentaciones). */
   importEntity?: string;
-  guardedFetch?: GuardedFetch;
   onImported?: () => void;
 }
 
@@ -62,7 +61,7 @@ const normaliza = (s: string) =>
  */
 export function LookupTab({
   title, nuevo, editar, ejemplo, items,
-  onAdd, onDelete, onEdit, mudanza, importEntity, guardedFetch, onImported,
+  onAdd, onDelete, onEdit, mudanza, importEntity, onImported,
 }: LookupTabProps) {
   const [importOpen, setImportOpen] = useState(false);
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
@@ -194,7 +193,7 @@ export function LookupTab({
         <Toolbar>
           <SectionTitle count={items.length}>{title}</SectionTitle>
           <ToolbarActions>
-            {importEntity && guardedFetch && (
+            {importEntity && (
               <>
                 <ExportButton entity={importEntity} />
                 <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
@@ -326,7 +325,7 @@ export function LookupTab({
         );
       })()}
 
-      {importEntity && guardedFetch && (
+      {importEntity && (
         <ImportModal
           open={importOpen}
           onClose={() => setImportOpen(false)}

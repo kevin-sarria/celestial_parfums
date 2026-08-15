@@ -18,15 +18,11 @@ import { IVA_MODOS } from '../compras/iva';
 import { pagosColumns } from '../columns';
 import { DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
 import { EncabezadoPagina, FranjaMetricas, Section, Field, FieldRow, FormError, StatCard } from '../ui';
-import type { GuardedFetch, Pago, Empresa, PagoForm, IvaModo } from '../types';
+import type { Pago, Empresa, PagoForm, IvaModo } from '../types';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { emptyPagoForm } from '../types';
 
-interface PagosTabProps {
-  guardedFetch: GuardedFetch;
-}
-
-export function PagosTab({ guardedFetch }: PagosTabProps) {
+export function PagosTab() {
   const [pagos, setPagos] = useState<Pago[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -340,7 +336,6 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
         </Field>
 
         <DetalleCompra
-          guardedFetch={guardedFetch}
           insumos={insumos}
           lineas={lineas}
           onLineas={setLineas}

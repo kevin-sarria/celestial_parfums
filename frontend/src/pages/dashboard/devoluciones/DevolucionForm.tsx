@@ -6,19 +6,18 @@ import { SelectSimple } from '@/components/ui/select-simple';
 import { Button } from '@/components/ui/button';
 import Modal from '../../../components/Modal';
 import BuscadorSelect from '../../../components/BuscadorSelect';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice, fmtDate } from '../helpers';
 import { Field, FieldRow } from '../ui';
 import { MOTIVOS, ESTADOS, SOLUCIONES } from '../../../domain/entities/devolucion.labels';
 import { calcularDesgloseCosto } from '../../../application/costeoCotizacion';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
-import type { GuardedFetch } from '../types';
 import type {
   Devolucion, DevolucionEstado, DevolucionMotivo, DevolucionSolucion, VentaParaDevolucion,
 } from '../types';
 
 interface Props {
-  guardedFetch: GuardedFetch;
   /** Devolución a editar; null = nueva. */
   devolucion: Devolucion | null;
   onClose: () => void;
@@ -32,7 +31,7 @@ const hoy = () => new Date().toISOString().slice(0, 10);
  * salen los productos que pueden volver y el tope de dinero que se puede
  * devolver. Registrar una devolución suelta dejaría los ingresos descuadrados.
  */
-export default function DevolucionForm({ guardedFetch, devolucion, onClose, onGuardada }: Props) {
+export default function DevolucionForm({ devolucion, onClose, onGuardada }: Props) {
   const [ventas, setVentas] = useState<VentaParaDevolucion[]>([]);
   const [ventaId, setVentaId] = useState<number | null>(devolucion?.venta_id ?? null);
   const [fecha, setFecha] = useState(devolucion?.fecha ?? hoy());
@@ -54,25 +53,22 @@ export default function DevolucionForm({ guardedFetch, devolucion, onClose, onGu
 
   useEffect(() => {
     (async () => {
-      try {
-        const r = await guardedFetch(`${BASE_URL}/api/devoluciones/ventas`);
-        if (!r.ok) throw new Error();
-        const lista: VentaParaDevolucion[] = (await r.json()).data ?? [];
-        // Al editar (sobre todo un reclamo del cliente) la venta puede ser vieja
-        // y no venir en las 30 recientes: se inyecta para que no salga vacía.
-        const v = devolucion?.venta;
-        setVentas(v && !lista.some((x) => x.id === v.id)
-          ? [{ ...v, perfumes: devolucion!.perfumes.map((p) => ({ ...p, cantidad: p.cantidad })) }, ...lista]
-          : lista);
-        const [rf, ri] = await Promise.all([
-          guardedFetch(`${BASE_URL}/api/costeo/formulas`),
-          guardedFetch(`${BASE_URL}/api/costeo/insumos`),
-        ]);
-        if (rf.ok) setFormulas((await rf.json()).data ?? []);
-        if (ri.ok) setInsumosCat((await ri.json()).data ?? []);
-      } catch {
-        toast.error('No se pudieron cargar los datos', { id: 'dev-ventas' });
-      }
+      const r = await http.get<{ data?: VentaParaDevolucion[] }>(urls.devoluciones.ventas);
+      if (!r.ok) { toast.error(r.error, { id: 'dev-ventas' }); return; }
+      const lista = r.cuerpo?.data ?? [];
+      // Al editar (sobre todo un reclamo del cliente) la venta puede ser vieja
+      // y no venir en las 30 recientes: se inyecta para que no salga vacía.
+      const v = devolucion?.venta;
+      setVentas(v && !lista.some((x) => x.id === v.id)
+        ? [{ ...v, perfumes: devolucion!.perfumes.map((p) => ({ ...p, cantidad: p.cantidad })) }, ...lista]
+        : lista);
+      // El costeo de lo repuesto es opcional: sin él se puede registrar igual.
+      const [rf, ri] = await Promise.all([
+        http.get<{ data?: FormulaVolumen[] }>(urls.costeo.formulas),
+        http.get<{ data?: Insumo[] }>(urls.costeo.insumos),
+      ]);
+      if (rf.ok) setFormulas(rf.cuerpo?.data ?? []);
+      if (ri.ok) setInsumosCat(ri.cuerpo?.data ?? []);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -117,33 +113,27 @@ export default function DevolucionForm({ guardedFetch, devolucion, onClose, onGu
 
     setGuardando(true);
     try {
-      const url = devolucion
-        ? `${BASE_URL}/api/devoluciones/${devolucion.id}`
-        : `${BASE_URL}/api/devoluciones`;
-      const res = await guardedFetch(url, {
-        method: devolucion ? 'PATCH' : 'POST',
-        body: JSON.stringify({
-          venta_id: ventaId,
-          fecha,
-          motivo,
-          detalle: detalle.trim() || null,
-          estado,
-          solucion: solucion || null,
-          monto_devuelto: montoNum,
-          notas: notas.trim() || null,
-          reposicion_formula_id: solucion === 'reposicion' ? (repoFormula || null) : null,
-          reposicion_cantidad: solucion === 'reposicion' ? unidadesRepo : 0,
-          costo_reposicion: solucion === 'reposicion' ? costoReposicion : 0,
-          costo_envio: envioNum,
-          perfumes: lineas.map((l) => ({ perfume_id: l.perfume_id, cantidad: l.cantidad })),
-        }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) return fallo(json?.error ?? 'No se pudo guardar la devolución');
+      const cuerpo = {
+        venta_id: ventaId,
+        fecha,
+        motivo,
+        detalle: detalle.trim() || null,
+        estado,
+        solucion: solucion || null,
+        monto_devuelto: montoNum,
+        notas: notas.trim() || null,
+        reposicion_formula_id: solucion === 'reposicion' ? (repoFormula || null) : null,
+        reposicion_cantidad: solucion === 'reposicion' ? unidadesRepo : 0,
+        costo_reposicion: solucion === 'reposicion' ? costoReposicion : 0,
+        costo_envio: envioNum,
+        perfumes: lineas.map((l) => ({ perfume_id: l.perfume_id, cantidad: l.cantidad })),
+      };
+      const res = devolucion
+        ? await http.patch(urls.devoluciones.devolucion(devolucion.id), cuerpo)
+        : await http.post(urls.devoluciones.crear, cuerpo);
+      if (!res.ok) return fallo(res.error);
       toast.success(devolucion ? 'Devolución actualizada' : 'Devolución registrada');
       onGuardada();
-    } catch {
-      fallo('No se pudo conectar con el servidor');
     } finally {
       setGuardando(false);
     }

@@ -469,8 +469,6 @@ export interface RecompensaClienteRow {
   tarjeta: TarjetaRecompensa;
 }
 
-export type GuardedFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
-
 // ── Devoluciones y garantías ────────────────────────────────────────────────
 
 export type DevolucionMotivo =

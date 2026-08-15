@@ -3,13 +3,12 @@ import { Check, Trash2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SelectSimple } from '@/components/ui/select-simple';
+import { toast } from 'sonner';
 import SubirFotosEntrega, { type EntregaCliente } from '../../../components/recompensas/SubirFotosEntrega';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { fmtInstante } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
-import type { GuardedFetch } from '../types';
-
-interface Props { guardedFetch: GuardedFetch }
 
 interface EntregaAdmin extends EntregaCliente {
   cliente: string;
@@ -25,26 +24,29 @@ const ESTADO: Record<string, string> = {
  * Admin: fotos de premios entregados. El admin puede subir la prueba en nombre
  * del cliente y aprobar/rechazar antes de que salgan en la galería pública.
  */
-export default function EntregasModeracion({ guardedFetch }: Props) {
+export default function EntregasModeracion() {
   const [rows, setRows] = useState<EntregaAdmin[]>([]);
   const [estado, setEstado] = useState('');
 
   const load = async (est = estado) => {
-    const qs = est ? `?estado=${est}` : '';
-    const res = await guardedFetch(`${BASE_URL}/api/recompensas/admin/entregas${qs}`);
-    const json = await res.json();
-    setRows(json.data ?? []);
+    const res = await http.get<{ data?: EntregaAdmin[] }>(urls.recompensas.entregas, {
+      params: est ? { estado: est } : undefined,
+    });
+    if (!res.ok) { toast.error(res.error, { id: 'entregas' }); return; }
+    setRows(res.cuerpo?.data ?? []);
   };
 
   useEffect(() => { load(estado); }, [estado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const moderar = async (id: number, nuevo: 'aprobada' | 'rechazada') => {
-    await guardedFetch(`${BASE_URL}/api/recompensas/admin/entregas/${id}`, { method: 'PATCH', body: JSON.stringify({ estado: nuevo }) });
+    const res = await http.patch(urls.recompensas.entrega(id), { estado: nuevo });
+    if (!res.ok) { toast.error(res.error, { id: 'entregas' }); return; }
     load();
   };
   const eliminar = async (id: number) => {
     if (!window.confirm('¿Eliminar esta entrega y sus fotos?')) return;
-    await guardedFetch(`${BASE_URL}/api/recompensas/admin/entregas/${id}`, { method: 'DELETE' });
+    const res = await http.borrar(urls.recompensas.entrega(id));
+    if (!res.ok) { toast.error(res.error, { id: 'entregas' }); return; }
     load();
   };
 
@@ -80,7 +82,7 @@ export default function EntregasModeracion({ guardedFetch }: Props) {
                 <SubirFotosEntrega
                   entrega={e}
                   nota={false}
-                  url={`${BASE_URL}/api/recompensas/admin/entregas/${e.id}/fotos`}
+                  url={urls.recompensas.fotosEntrega(e.id)}
                   onSubido={load}
                 />
               </div>

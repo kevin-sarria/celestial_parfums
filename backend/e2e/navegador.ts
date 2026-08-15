@@ -103,6 +103,25 @@ export const campo = (pagina: Page, etiqueta: string) =>
     .first();
 
 /**
+ * Elige una opción en un desplegable del dashboard.
+ *
+ * **Ningún desplegable de la aplicación es un `<select>` del navegador**: todos
+ * son `BuscadorSelect` (un botón que abre su propia lista), incluso los que en
+ * el código se escriben con `<option>` a través de `SelectSimple`. Por eso
+ * `selectOption()` de Playwright no encuentra nada y hay que abrir y hacer clic.
+ */
+export const elegirOpcion = async (pagina: Page, etiqueta: string, opcion: string | RegExp) => {
+  await pagina
+    .locator('div')
+    .filter({ has: pagina.locator(`label:text-is(${JSON.stringify(etiqueta)})`) })
+    .last()
+    .getByRole('button')
+    .first()
+    .click();
+  await pagina.getByRole('option', { name: opcion }).first().click();
+};
+
+/**
  * Elige un producto en el buscador del formulario de pedido.
  *
  * No es un `<select>`: la regla del proyecto reserva el desplegable nativo para

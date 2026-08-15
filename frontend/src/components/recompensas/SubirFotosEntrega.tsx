@@ -2,8 +2,10 @@ import { useRef, useState } from 'react';
 import { ImagePlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 
 export interface EntregaCliente {
   id: number;
@@ -26,7 +28,7 @@ const ESTADO: Record<string, { txt: string; cls: string }> = {
 interface Props {
   entrega: EntregaCliente;
   onSubido: () => void;
-  /** URL destino; por defecto el endpoint del cliente. El admin pasa el suyo. */
+  /** Ruta destino; por defecto la del cliente. El admin pasa la suya. */
   url?: string;
   /** Muestra la nota "sube tu foto"; se oculta en el admin. */
   nota?: boolean;
@@ -46,14 +48,14 @@ export default function SubirFotosEntrega({ entrega, onSubido, url, nota = true 
       const fd = new FormData();
       conservar.forEach((u) => fd.append('conservar', u));
       nuevas.forEach((f) => fd.append('imagenes', f));
-      const destino = url ?? `${BASE_URL}/api/recompensas/entregas/${entrega.id}/fotos`;
-      const res = await authFetchWithRefresh(destino, { method: 'POST', body: fd });
-      if (res.ok) {
-        const json = await res.json().catch(() => null);
-        if (json?.data?.imagenes) setConservar(json.data.imagenes);
-        setNuevas([]);
-        onSubido();
-      }
+      const destino = url ?? urls.recompensas.subirFotos(entrega.id);
+      const res = await http.subir<{ data?: { imagenes?: string[] } }>(destino, fd);
+      // Antes el fallo era mudo: el cliente elegía sus fotos, pulsaba "Enviar" y
+      // no pasaba nada en pantalla.
+      if (!res.ok) { toast.error(res.error, { id: 'fotos-entrega' }); return; }
+      if (res.cuerpo?.data?.imagenes) setConservar(res.cuerpo.data.imagenes);
+      setNuevas([]);
+      onSubido();
     } finally { setSubiendo(false); }
   };
 

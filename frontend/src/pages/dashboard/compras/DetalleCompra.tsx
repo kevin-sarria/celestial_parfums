@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SelectSimple } from '@/components/ui/select-simple';
 import BuscadorSelect from '../../../components/BuscadorSelect';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import { Field, FieldRow } from '../ui';
-import type { GuardedFetch } from '../types';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
 
 /** Línea de la compra tal como viaja al backend. */
@@ -28,7 +28,6 @@ export interface LineaCompra {
 const FACTOR: Record<LineaCompra['unidad_compra'], number> = { ml: 1, g: 1, l: 1000, kg: 1000, unidad: 1 };
 
 interface Props {
-  guardedFetch: GuardedFetch;
   insumos: Insumo[];
   lineas: LineaCompra[];
   onLineas: (l: LineaCompra[]) => void;
@@ -91,7 +90,7 @@ const nombresDe = (escrito: string) => {
  * usan las cotizaciones y los márgenes.
  */
 export default function DetalleCompra({
-  guardedFetch, insumos, lineas, onLineas, archivos, onArchivos, flete, onInsumoCreado,
+  insumos, lineas, onLineas, archivos, onArchivos, flete, onInsumoCreado,
 }: Props) {
   const [subiendo, setSubiendo] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -127,11 +126,10 @@ export default function DetalleCompra({
    *  compra da de alta material nuevo y sería una petición desperdiciada. */
   const cargarGamas = async () => {
     if (gamas.length) return;
-    try {
-      const res = await guardedFetch(`${BASE_URL}/api/costeo/gamas/todas`);
-      if (!res.ok) return;
-      setGamas((await res.json()).data ?? []);
-    } catch { /* sin gamas el alta sigue funcionando, solo sin clasificar */ }
+    // Si falla no se avisa: sin gamas el alta sigue funcionando, solo que el
+    // material queda sin clasificar.
+    const res = await http.get<{ data?: Gama[] }>(urls.costeo.gamas);
+    if (res.ok) setGamas(res.cuerpo?.data ?? []);
   };
 
   const agregar = (id: number | string) => {
@@ -160,33 +158,26 @@ export default function DetalleCompra({
     if (!nombres.insumo) { toast.error('Ponle un nombre al insumo', { id: 'insumo-nuevo' }); return; }
     setCreando(true);
     try {
-      const res = await guardedFetch(`${BASE_URL}/api/costeo/insumos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tipo: nuevo.tipo,
-          unidad: nuevo.unidad,
-          // El sufijo "– Esencia" solo se agrega cuando de verdad lo es
-          nombre: esEsencia ? nombres.insumo : nuevo.nombre.trim(),
-          gama_id: esEsencia ? nuevo.gama_id : null,
-          genero: esEsencia && nuevo.genero ? nuevo.genero : null,
-          crear_perfume: conPerfume,
-          ...(conPerfume ? { perfume_nombre: nombres.fragancia } : {}),
-          alcance: 'unidad',
-          precio: 0,
-        }),
+      const res = await http.post<{ message?: string; data: Insumo }>(urls.costeo.crearInsumo, {
+        tipo: nuevo.tipo,
+        unidad: nuevo.unidad,
+        // El sufijo "– Esencia" solo se agrega cuando de verdad lo es
+        nombre: esEsencia ? nombres.insumo : nuevo.nombre.trim(),
+        gama_id: esEsencia ? nuevo.gama_id : null,
+        genero: esEsencia && nuevo.genero ? nuevo.genero : null,
+        crear_perfume: conPerfume,
+        ...(conPerfume ? { perfume_nombre: nombres.fragancia } : {}),
+        alcance: 'unidad',
+        precio: 0,
       });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo crear el insumo', { id: 'insumo-nuevo' }); return; }
-      const creado = json.data;
+      if (!res.ok || !res.cuerpo) { toast.error(res.error || 'No se pudo crear el insumo', { id: 'insumo-nuevo' }); return; }
+      const creado = res.cuerpo.data;
       onInsumoCreado(creado);
       agregarInsumo(creado);
       setNuevo(null);
       // El mensaje lo redacta el servidor: es el único que sabe si el perfume se
       // creó, se enlazó a uno que ya existía o se dejó como estaba.
-      toast.success(json?.message ?? `"${creado.nombre}" quedó creado y agregado a la compra`);
-    } catch {
-      toast.error('No se pudo conectar con el servidor', { id: 'insumo-nuevo' });
+      toast.success(res.cuerpo.message ?? `"${creado.nombre}" quedó creado y agregado a la compra`);
     } finally { setCreando(false); }
   };
 
@@ -202,12 +193,9 @@ export default function DetalleCompra({
     try {
       const fd = new FormData();
       elegidos.forEach((f) => fd.append('archivos', f));
-      const res = await guardedFetch(`${BASE_URL}/api/pagos/soportes`, { method: 'POST', body: fd });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudieron subir los soportes', { id: 'soportes' }); return; }
-      onArchivos([...archivos, ...(json.data ?? [])]);
-    } catch {
-      toast.error('No se pudo conectar con el servidor', { id: 'soportes' });
+      const res = await http.subir<{ data?: string[] }>(urls.pagos.soportes, fd);
+      if (!res.ok) { toast.error(res.error, { id: 'soportes' }); return; }
+      onArchivos([...archivos, ...(res.cuerpo?.data ?? [])]);
     } finally { setSubiendo(false); }
   };
 
