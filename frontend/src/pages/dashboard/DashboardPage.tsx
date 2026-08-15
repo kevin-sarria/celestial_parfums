@@ -6,7 +6,9 @@ import type { Combo } from '../../domain/entities/combo.schema';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import { useGuardedFetch } from './useGuardedFetch';
 import { useSeo } from '../../application/hooks/useSeo';
-import { API, API_COMBOS, DEFAULT_PAGE_SIZE, conNotaDeTalla } from './helpers';
+import { DEFAULT_PAGE_SIZE, conNotaDeTalla } from './helpers';
+import { http, type Respuesta } from '../../infrastructure/api/http';
+import { urls, type Clasificacion } from '../../infrastructure/api/urls';
 import type { Tab, Lookup } from './types';
 import { MenuLateral } from './MenuLateral';
 import { TAB_META, TAB_POR_DEFECTO, esTabValido } from './navegacion';
@@ -81,49 +83,48 @@ export default function DashboardPage() {
 
   const loadLookups = async () => {
     const [aRes, oRes, cRes, pRes] = await Promise.all([
-      fetch(`${API}/tipos-aroma`), fetch(`${API}/ocasiones`), fetch(`${API}/categorias`), fetch(`${API}/presentaciones`),
+      http.get<{ data: Lookup[] }>(urls.clasificaciones('tipos-aroma').lista),
+      http.get<{ data: Lookup[] }>(urls.clasificaciones('ocasiones').lista),
+      http.get<{ data: Lookup[] }>(urls.clasificaciones('categorias').lista),
+      http.get<{ data: Lookup[] }>(urls.clasificaciones('presentaciones').lista),
     ]);
-    const [a, o, c, p] = await Promise.all([aRes.json(), oRes.json(), cRes.json(), pRes.json()]);
-    setAromas(a.data ?? []); setOcasiones(o.data ?? []); setCategorias(c.data ?? []);
-    setPresentaciones(conNotaDeTalla(p.data ?? []));
+    setAromas(aRes.cuerpo?.data ?? []);
+    setOcasiones(oRes.cuerpo?.data ?? []);
+    setCategorias(cRes.cuerpo?.data ?? []);
+    setPresentaciones(conNotaDeTalla(pRes.cuerpo?.data ?? []));
   };
 
   const loadPerfumes = async (page = perfumesPage, size = perfumesPageSize, search = perfumesSearch) => {
-    const searchQs = search ? `&search=${encodeURIComponent(search)}` : '';
     // `todos=1`: el dashboard ve TAMBIÉN los que están fuera de la tienda; si no,
     // no habría forma de devolverlos. El servidor solo lo acepta si eres admin.
-    const res = await guardedFetch(`${API}/?page=${page}&limit=${size}${searchQs}&todos=1`);
-    const json = await res.json();
-    setPerfumes(json.data ?? []); setPerfumesTotal(json.total ?? 0); setPerfumesPage(page);
+    const res = await http.get<{ data: Perfume[]; total: number }>(urls.perfumes.todos, {
+      params: { page, limit: size, todos: 1, ...(search ? { search } : {}) },
+    });
+    setPerfumes(res.cuerpo?.data ?? []);
+    setPerfumesTotal(res.cuerpo?.total ?? 0);
+    setPerfumesPage(page);
   };
 
   const loadCombos = async (page = combosPage, size = combosPageSize, search = combosSearch) => {
-    const searchQs = search ? `&search=${encodeURIComponent(search)}` : '';
-    const res = await guardedFetch(`${API_COMBOS}?page=${page}&limit=${size}${searchQs}`);
-    const json = await res.json();
-    setCombos(json.data ?? []); setCombosTotal(json.total ?? 0); setCombosPage(page);
+    const res = await http.get<{ data: Combo[]; total: number }>(urls.combos.lista, {
+      params: { page, limit: size, ...(search ? { search } : {}) },
+    });
+    setCombos(res.cuerpo?.data ?? []);
+    setCombosTotal(res.cuerpo?.total ?? 0);
+    setCombosPage(page);
   };
 
   const refreshAll = () => { loadLookups(); loadPerfumes(); loadCombos(); };
 
+  /**
+   * Carga inicial. Llama a las MISMAS funciones que usa el resto de la
+   * pantalla, en vez de repetir las peticiones a mano: antes eran dos copias de
+   * lo mismo, y la que se olvidara de actualizar quedaba mintiendo.
+   */
   useEffect(() => {
-    let active = true;
-    Promise.all([
-      Promise.all([
-        fetch(`${API}/tipos-aroma`), fetch(`${API}/ocasiones`), fetch(`${API}/categorias`), fetch(`${API}/presentaciones`),
-      ]).then(rs => Promise.all(rs.map(r => r.json()))),
-      guardedFetch(`${API}/?page=1&limit=${DEFAULT_PAGE_SIZE}&todos=1`).then(r => r.json()),
-      guardedFetch(`${API_COMBOS}?page=1&limit=${DEFAULT_PAGE_SIZE}`).then(r => r.json()),
-    ]).then(([[a, o, c, pr], p, co]) => {
-      if (!active) return;
-      setAromas(a.data ?? []); setOcasiones(o.data ?? []); setCategorias(c.data ?? []);
-      setPresentaciones(conNotaDeTalla(pr.data ?? []));
-      setPerfumes(p.data ?? []); setPerfumesTotal(p.total ?? 0);
-      setCombos(co.data ?? []); setCombosTotal(co.total ?? 0);
-      setLoading(false);
-    });
-    return () => { active = false; };
-  }, [guardedFetch]);
+    Promise.all([loadLookups(), loadPerfumes(1), loadCombos(1)])
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Reacciona al cambio de pestaña venga de donde venga (clic en el menú o
@@ -148,33 +149,25 @@ export default function DashboardPage() {
    * el fallo volvía a ser invisible — justo lo que se estaba corrigiendo.
    */
   const mutarLookup = async (
-    peticion: () => Promise<Response>,
-    fallback: string,
+    peticion: () => Promise<Respuesta<{ data?: { id?: number } }>>,
   ): Promise<ResultadoLookup> => {
-    try {
-      const res = await peticion();
-      const json = await res.json().catch(() => null);
-      if (!res.ok) return { ok: false, error: json?.error ?? fallback };
-      refreshAll();
-      // El id vuelve al crear: sirve para elegir de una lo recién creado
-      return { ok: true, id: json?.data?.id };
-    } catch {
-      return { ok: false, error: 'No se pudo conectar con el servidor' };
-    }
+    const res = await peticion();
+    if (!res.ok) return { ok: false, error: res.error };
+    refreshAll();
+    // El id vuelve al crear: sirve para elegir de una lo recién creado
+    return { ok: true, id: res.cuerpo?.data?.id };
   };
 
-  const handleLookupAdd = (endpoint: string) => (name: string) =>
+  const handleLookupAdd = (endpoint: Clasificacion) => (name: string) =>
     mutarLookup(
-      () => guardedFetch(`${API}/${endpoint}`, { method: 'POST', body: JSON.stringify({ nombre: name }) }),
-      'No se pudo guardar',
+      () => http.post(urls.clasificaciones(endpoint).crear, { nombre: name }),
     );
 
-  const handleLookupDelete = (endpoint: string, aviso: string) => async (id: number): Promise<ResultadoLookup> => {
+  const handleLookupDelete = (endpoint: Clasificacion, aviso: string) => async (id: number): Promise<ResultadoLookup> => {
     // Cancelar no es un error: se responde ok para que no salte ningún aviso.
     if (!window.confirm(aviso)) return { ok: true };
     return mutarLookup(
-      () => guardedFetch(`${API}/${endpoint}/${id}`, { method: 'DELETE' }),
-      'No se pudo eliminar',
+      () => http.borrar(urls.clasificaciones(endpoint).uno(id)),
     );
   };
 
@@ -185,14 +178,12 @@ export default function DashboardPage() {
    */
   const moverYEliminarCategoria = (id: number, destinoId: number) =>
     mutarLookup(
-      () => guardedFetch(`${API}/categorias/${id}?mover_a=${destinoId}`, { method: 'DELETE' }),
-      'No se pudo eliminar',
+      () => http.borrar(urls.clasificaciones('categorias').borrarMoviendo(id, destinoId)),
     );
 
-  const handleLookupEdit = (endpoint: string) => (id: number, name: string) =>
+  const handleLookupEdit = (endpoint: Clasificacion) => (id: number, name: string) =>
     mutarLookup(
-      () => guardedFetch(`${API}/${endpoint}/${id}`, { method: 'PATCH', body: JSON.stringify({ nombre: name }) }),
-      'No se pudo guardar',
+      () => http.patch(urls.clasificaciones(endpoint).uno(id), { nombre: name }),
     );
 
   const ActiveIcon = TAB_META[tab].icon;

@@ -19,6 +19,9 @@
  * `guardedFetch` viejo. Un dominio se migra ENTERO o no se migra.
  */
 
+/** Las cuatro listas de clasificación que existen. */
+export type Clasificacion = 'tipos-aroma' | 'ocasiones' | 'categorias' | 'presentaciones';
+
 export const urls = {
   inventario: {
     /** Qué hay en bodega, cuánto vale y los frascos ya armados. */
@@ -81,7 +84,23 @@ export const urls = {
 
   combos: {
     todos: '/combos',
+    /** Paginado para el dashboard. */
+    lista: '/combos',
   },
+
+  /**
+   * Aromas, ocasiones, categorías y presentaciones: cuatro listas con el MISMO
+   * juego de rutas, por eso se generan en vez de escribirlas cuatro veces.
+   * `mover_a` solo lo usan las categorías: sus perfumes no pueden quedar
+   * huérfanos, porque el precio sale de la lista categoría × talla.
+   */
+  clasificaciones: (tipo: Clasificacion) => ({
+    lista: `/parfums/${tipo}`,
+    crear: `/parfums/${tipo}`,
+    uno: (id: number) => `/parfums/${tipo}/${id}`,
+    borrarMoviendo: (id: number, destinoId: number) =>
+      `/parfums/${tipo}/${id}?mover_a=${destinoId}`,
+  }),
 
   anuncios: {
     /** Certifica un código de descuento (CP-XXXXXX) antes de aplicarlo. */

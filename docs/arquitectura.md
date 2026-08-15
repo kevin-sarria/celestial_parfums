@@ -90,8 +90,13 @@ Decisiones que conviene no deshacer:
 **Estado** (2026-08-14): migradas *Producción e inventario* (Inventario, Producciones, Pedido
 sugerido y sus 4 modales), **Ventas** (listado, formulario, crear persona y crear producto al
 vuelo), **Perfumes** (ficha, publicar/agotar, lista de precios), **Créditos** (cartera, abonos,
-perfil de cupo) y **Proveedores** (compras con sus líneas, IVA por proveedor, alta de empresa).
-Van 53 rutas centralizadas y **47 llamadas migradas de 151**; quedan 104.
+perfil de cupo), **Proveedores** (compras con sus líneas, IVA por proveedor, alta de empresa) y
+**Clasificaciones** (las cuatro listas + la carga inicial del dashboard).
+Van 58 rutas centralizadas y **55 llamadas migradas de 151**; quedan 96.
+
+Las cuatro clasificaciones comparten juego de rutas, así que `urls.clasificaciones(tipo)` las
+genera en vez de escribirlas cuatro veces — y el tipo `Clasificacion` hace que TypeScript
+compruebe que nadie invente una quinta.
 
 Orden de migración: **por pantallas que se usan a diario primero**, y cada una entera. Las que
 tocan dinero se migran con su recorrido en navegador ya escrito — `venta.e2e.test.ts` registra una
