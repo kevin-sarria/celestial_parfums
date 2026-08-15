@@ -49,17 +49,17 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const load = async (p = page, s = pageSize, term = searchTerm) => {
     setCargando(true);
     try {
-      const [vRes, tRes] = await Promise.all([
-        http.get<{ data: Venta[]; total: number }>(urls.ventas.lista, {
-          params: { page: p, limit: s, ...(term ? { search: term } : {}) },
-        }),
-        http.get<{ data: Totales }>(urls.ventas.totales),
-      ]);
-      if (!vRes.ok || !tRes.ok) throw new Error(vRes.error || tRes.error);
+      // Lista y totales viajan JUNTOS: la pantalla los pinta a la vez, y el
+      // servidor resuelve las dos consultas en paralelo. Un viaje, no dos.
+      const vRes = await http.get<{ data: Venta[]; total: number; totales?: Totales }>(
+        urls.ventas.lista,
+        { params: { page: p, limit: s, con_totales: 1, ...(term ? { search: term } : {}) } },
+      );
+      if (!vRes.ok) throw new Error(vRes.error);
       setVentas(vRes.cuerpo?.data ?? []);
       setTotal(vRes.cuerpo?.total ?? 0);
       setPage(p);
-      setTotales(tRes.cuerpo?.data ?? null);
+      setTotales(vRes.cuerpo?.totales ?? null);
       setErrorCarga('');
     } catch {
       // Sin esto la pantalla se queda vacía y parece que no hay ventas
@@ -67,12 +67,24 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
     } finally { setCargando(false); }
   };
 
-  const loadCatalogos = async () => {
+  /**
+   * `refrescar` se usa cuando la pantalla ACABA de crear una persona o un
+   * producto: la lista guardada ya no los tiene, y sin olvidarla el recién
+   * creado no aparecería hasta que caduque la caché.
+   */
+  const loadCatalogos = async (refrescar = false) => {
+    if (refrescar) {
+      [urls.usuarios.lista, urls.perfumes.todos, urls.combos.todos].forEach(http.olvidar);
+    }
     try {
+      // Los catálogos del formulario (personas, productos, combos) apenas
+      // cambian y los piden VARIAS pantallas. Con caché se traen una vez por
+      // sesión en vez de en cada visita a Ventas, Créditos o al volver de otra
+      // pestaña. Al crear una persona o un producto se refrescan (`recargar`).
       const [uRes, pRes, cRes] = await Promise.all([
-        http.get<{ data: Usuario[] }>(urls.usuarios.lista),
-        http.get<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todos),
-        http.get<{ data: Combo[] }>(urls.combos.todos),
+        http.getCacheado<{ data: Usuario[] }>(urls.usuarios.lista),
+        http.getCacheado<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todos),
+        http.getCacheado<{ data: Combo[] }>(urls.combos.todos),
       ]);
       setUsuarios((uRes.cuerpo?.data ?? []).filter((x) => x.rol_id !== 1));
       // /api/parfums sin paginar responde { data: { data: [...] } }
@@ -224,7 +236,7 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
         onSaved={recargar => {
           setModal({ open: false, venta: null });
           load();
-          if (recargar) loadCatalogos();
+          if (recargar) loadCatalogos(true);
         }}
       />
     </div>

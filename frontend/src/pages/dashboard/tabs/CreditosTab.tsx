@@ -60,17 +60,16 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   const load = async (p = page, s = pageSize, term = searchTerm) => {
     setCargando(true);
     try {
-      const [cRes, tRes] = await Promise.all([
-        http.get<{ data: Credito[]; total: number }>(urls.creditos.lista, {
-          params: { page: p, limit: s, ...(term ? { search: term } : {}) },
-        }),
-        http.get<{ data: TotalesCartera }>(urls.creditos.totales),
-      ]);
-      if (!cRes.ok || !tRes.ok) throw new Error(cRes.error || tRes.error);
+      // Lista y totales en un solo viaje (ver `urls.creditos.totales`).
+      const cRes = await http.get<{ data: Credito[]; total: number; totales?: TotalesCartera }>(
+        urls.creditos.lista,
+        { params: { page: p, limit: s, con_totales: 1, ...(term ? { search: term } : {}) } },
+      );
+      if (!cRes.ok) throw new Error(cRes.error);
       setCreditos(cRes.cuerpo?.data ?? []);
       setTotal(cRes.cuerpo?.total ?? 0);
       setPage(p);
-      setTotales(tRes.cuerpo?.data ?? null);
+      setTotales(cRes.cuerpo?.totales ?? null);
       setErrorCarga('');
     } catch {
       // Sin esto la pantalla se queda vacía y parece que no hay créditos
@@ -78,12 +77,22 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
     } finally { setCargando(false); }
   };
 
-  const loadCatalogos = async () => {
+  /**
+   * `refrescar` se usa cuando la pantalla ACABA de crear una persona o un
+   * producto: la lista guardada ya no los tiene, y sin olvidarla el recién
+   * creado no aparecería hasta que caduque la caché.
+   */
+  const loadCatalogos = async (refrescar = false) => {
+    if (refrescar) {
+      [urls.usuarios.lista, urls.perfumes.todos, urls.combos.todos].forEach(http.olvidar);
+    }
     try {
+      // Mismos catálogos que Ventas: con caché se traen una vez por sesión y
+      // cambiar entre las dos pantallas deja de pedirlos otra vez.
       const [uRes, pRes, coRes] = await Promise.all([
-        http.get<{ data: Usuario[] }>(urls.usuarios.lista),
-        http.get<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todos),
-        http.get<{ data: Combo[] }>(urls.combos.todos),
+        http.getCacheado<{ data: Usuario[] }>(urls.usuarios.lista),
+        http.getCacheado<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todos),
+        http.getCacheado<{ data: Combo[] }>(urls.combos.todos),
       ]);
       setUsuarios((uRes.cuerpo?.data ?? []).filter((x) => x.rol_id !== 1));
       // /api/parfums sin paginar responde { data: { data: [...] } }
@@ -271,7 +280,7 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
         onSaved={creoPersona => {
           setModal({ open: false, credito: null });
           load();
-          if (creoPersona) loadCatalogos();
+          if (creoPersona) loadCatalogos(true);
         }}
       />
 

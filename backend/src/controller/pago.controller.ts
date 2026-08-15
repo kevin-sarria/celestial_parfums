@@ -7,7 +7,9 @@ import { getPublicBaseUrl } from '../utils/publicUrl';
 export const getPagos = async (req: Request, res: Response) => {
   try {
     const { page, limit } = parsePagination(req.query as any);
-    const result = await pagoService.getAllPagos(page, limit, parseSearch(req.query as any));
+    const result = await pagoService.getAllPagos(
+      page, limit, parseSearch(req.query as any), req.query.con_totales === '1',
+    );
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: mensajeSeguro(error) });

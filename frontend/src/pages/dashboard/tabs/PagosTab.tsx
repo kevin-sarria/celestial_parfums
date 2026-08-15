@@ -66,17 +66,21 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
   };
 
   const load = async (p = page, s = pageSize, term = searchTerm) => {
-    const [pRes, tRes, eRes] = await Promise.all([
-      http.get<{ data: Pago[]; total: number }>(urls.pagos.lista, {
-        params: { page: p, limit: s, ...(term ? { search: term } : {}) },
+    // Lista y totales en un solo viaje; las empresas van cacheadas (cambian
+    // cuando das de alta un proveedor, y eso lo hace esta misma pantalla).
+    const [pRes, eRes] = await Promise.all([
+      http.get<{
+        data: Pago[]; total: number;
+        totales?: { total_compras: number; total_envios: number };
+      }>(urls.pagos.lista, {
+        params: { page: p, limit: s, con_totales: 1, ...(term ? { search: term } : {}) },
       }),
-      http.get<{ data: { total_compras: number; total_envios: number } }>(urls.pagos.totales),
-      http.get<{ data: Empresa[] }>(urls.empresas.lista),
+      http.getCacheado<{ data: Empresa[] }>(urls.empresas.lista),
     ]);
     setPagos(pRes.cuerpo?.data ?? []);
     setTotal(pRes.cuerpo?.total ?? 0);
     setPage(p);
-    setTotales(tRes.cuerpo?.data ?? null);
+    setTotales(pRes.cuerpo?.totales ?? null);
     setEmpresas(eRes.cuerpo?.data ?? []);
   };
 
@@ -135,6 +139,8 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
         });
         if (!res.ok || !res.cuerpo) { setError(res.error || 'Error al crear empresa'); setLoading(false); return; }
         empresaId = res.cuerpo.data.id;
+        // La lista guardada no tiene la empresa recién creada.
+        http.olvidar(urls.empresas.lista);
       } catch { setError('No se pudo crear la empresa'); setLoading(false); return; }
     }
 

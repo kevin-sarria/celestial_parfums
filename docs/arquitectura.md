@@ -104,6 +104,27 @@ tocan dinero se migran con su recorrido en navegador ya escrito — `venta.e2e.t
 venta completa por pantalla y comprueba que el inventario se movió, así que la migración de Ventas
 se verificó sola.
 
+### Menos viajes al servidor (2026-08-15)
+
+Lo pidió el dueño mirando la pestaña de red: *"no me gusta ver tantas llamadas"*. Tenía razón, y
+se resolvió por dos caminos distintos según el caso:
+
+- **Lista y totales, juntos.** Las tres pantallas de plata (Ventas, Créditos, Proveedores) pedían
+  su listado y sus totales por separado; se pintan a la vez, así que ahora viajan juntos con
+  `?con_totales=1` y el servidor resuelve las dos consultas **en paralelo**. Va bajo petición para
+  que quien solo quiera la lista no pague la agregación del mes.
+- **Los catálogos, cacheados.** Personas, productos y combos los usan Ventas y Créditos, cambian
+  poco y se pedían **en cada visita**. Con `http.getCacheado` se traen una vez por sesión y se
+  olvidan (`http.olvidar`) justo cuando la pantalla crea una persona, un producto o una empresa.
+
+Medido en el navegador: entrar a Créditos después de Ventas pasó de **5 peticiones a 2**.
+
+**Lo que NO se hizo: un endpoint por pantalla** (el "traéme todo lo de Ventas"). Suena a menos
+llamadas y sale caro: ese endpoint sirve a UNA pantalla, así que cambia cada vez que cambie la
+pantalla, no se puede cachear por piezas y `usuarios` deja de poder reutilizarse en otro sitio.
+Unir lo que pertenece al mismo dominio (lista + sus totales) sí; mezclar cuatro dominios porque
+coinciden en una pantalla, no.
+
 **Ojo con el typecheck**: `npx tsc --noEmit` en `frontend/` **no comprueba nada** — el `tsconfig`
 raíz tiene `files: []` y delega en referencias. Lo real es `npx tsc -p tsconfig.app.json --noEmit`
 o `npm run build`.

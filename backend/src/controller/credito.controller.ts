@@ -6,7 +6,9 @@ import { mensajeSeguro } from '../utils/errorSeguro';
 export const getCreditos = async (req: Request, res: Response) => {
   try {
     const { page, limit } = parsePagination(req.query as any);
-    const result = await creditoService.getAllCreditos(page, limit, parseSearch(req.query as any));
+    const result = await creditoService.getAllCreditos(
+      page, limit, parseSearch(req.query as any), req.query.con_totales === '1',
+    );
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ error: mensajeSeguro(error) });

@@ -14,7 +14,7 @@ import { useAuthContext } from '../../application/context/useAuthContext';
 import BackupSeguridad from './BackupSeguridad';
 import { BrandMark } from '../../components/BrandMark';
 import { NAV_SECTIONS, TAB_META, TAB_POR_DEFECTO, esTabValido, sectionOfTab } from './navegacion';
-import type { GuardedFetch, Tab } from './types';
+import type { Tab } from './types';
 
 /**
  * El menú lateral del dashboard, con su propio estado.
@@ -30,7 +30,7 @@ import type { GuardedFetch, Tab } from './types';
  *
  * Con el estado aquí dentro, abrir y cerrar solo redibuja el menú.
  */
-export function MenuLateral({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export function MenuLateral() {
   const navigate = useNavigate();
   const { logout } = useAuthContext();
   const { tab: tabParam } = useParams<{ tab?: string }>();
@@ -142,7 +142,7 @@ export function MenuLateral({ guardedFetch }: { guardedFetch: GuardedFetch }) {
           */}
         <div className="border-t border-border/70 p-4">
           <div className="flex flex-col gap-2">
-            <BackupSeguridad guardedFetch={guardedFetch} enMenu />
+            <BackupSeguridad enMenu />
             <Button variant="ghost" className="w-full justify-start sm:hidden" asChild>
               <Link to="/catalog" onClick={() => setDrawerOpen(false)}>
                 <Store className="size-4" /> Ver catalogo

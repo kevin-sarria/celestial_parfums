@@ -7,7 +7,11 @@ import { h } from '../middleware/error.middleware';
 
 export const getVentas = h(async (req, res) => {
   const { page, limit } = parsePagination(req.query as any);
-  res.json(await ventaService.getAllVentas(page, limit, parseSearch(req.query as any)));
+  // `con_totales=1`: la pantalla pinta lista y totales a la vez, así que se
+  // mandan juntos y se ahorra un viaje al servidor.
+  res.json(await ventaService.getAllVentas(
+    page, limit, parseSearch(req.query as any), req.query.con_totales === '1',
+  ));
 });
 
 export const addVenta = h(async (req, res) => {

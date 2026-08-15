@@ -2,7 +2,8 @@ import * as repo from '../repositories/venta.repository';
 import { CreateVentaDTO } from '../types/venta.type';
 import { bustCatalogoCache } from './perfume.service';
 
-export const getAllVentas = (page: number, limit: number, search?: string) => repo.getAllVentas(page, limit, search);
+export const getAllVentas = (page: number, limit: number, search?: string, conTotales = false) =>
+  repo.getAllVentas(page, limit, search, conTotales);
 
 export const createVenta = async (data: CreateVentaDTO) => {
   if (!data.dia || !data.persona || !data.valor_venta)

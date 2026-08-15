@@ -193,7 +193,7 @@ export default function DashboardPage() {
       {/* ── Header: burger + marca a la izquierda, acciones a la derecha ── */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 md:px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <MenuLateral guardedFetch={guardedFetch} />
+          <MenuLateral />
 
           <span className="flex min-w-0 select-none items-center font-display text-[15.5px] font-medium tracking-wide text-foreground">
             <BrandMark className="mr-2 size-6 shrink-0" />

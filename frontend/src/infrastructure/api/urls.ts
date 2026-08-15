@@ -76,6 +76,10 @@ export const urls = {
      * (y un nombre con "&" dejaba de romper la búsqueda).
      */
     lista: '/ventas',
+    /**
+     * Los totales del mes vienen DENTRO de `lista` cuando se piden con
+     * `con_totales: 1`. Este endpoint suelto queda para quien solo los quiera.
+     */
     totales: '/ventas/totales',
     porMes: '/ventas/por-mes',
     crear: '/ventas',
@@ -164,6 +168,14 @@ export const urls = {
   nosotros: {
     config: '/nosotros/config',
     imagen: '/nosotros/imagen',
+  },
+
+  /** Copia de seguridad de la base, con doble candado (sesión + TOTP). */
+  backup: {
+    /** Fecha de la última copia y si el segundo factor está configurado. */
+    estado: '/backup/estado',
+    descargar: '/backup',
+    activarTotp: '/backup/totp/setup',
   },
 
   /** La campana: lo que está pendiente, recalculado en cada consulta. */

@@ -47,7 +47,17 @@ const mapPago = (p: any) => ({
   created_at:           p.created_at,
 });
 
-export const getAllPagos = async (page: number, limit: number, search?: string) => {
+/**
+ * Listado paginado y, **si se piden, sus totales en la misma respuesta**.
+ *
+ * Mismo criterio que en ventas: la pantalla pinta lista y totales a la vez, y
+ * pedirlos por separado son dos viajes al servidor para lo mismo. Aquí salen
+ * en paralelo dentro del mismo `Promise.all`. Bajo petición, para que quien
+ * solo quiera la lista no pague la agregación.
+ */
+export const getAllPagos = async (
+  page: number, limit: number, search?: string, conTotales = false,
+) => {
   const skip = (page - 1) * limit;
   const where = search
     ? {
@@ -58,11 +68,15 @@ export const getAllPagos = async (page: number, limit: number, search?: string) 
         ],
       }
     : undefined;
-  const [rows, total] = await Promise.all([
+  const [rows, total, totales] = await Promise.all([
     prisma.pagoProveedor.findMany({ where, skip, take: limit, orderBy: { dia: 'desc' }, include: includeEmpresa }),
     prisma.pagoProveedor.count({ where }),
+    conTotales ? getPagoTotales() : undefined,
   ]);
-  return paginatedResponse(rows.map(mapPago), total, page, limit);
+  return {
+    ...paginatedResponse(rows.map(mapPago), total, page, limit),
+    ...(totales ? { totales } : {}),
+  };
 };
 
 /** Campos de cabecera comunes a crear y editar. */

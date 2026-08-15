@@ -115,9 +115,90 @@ const ejecutar = async <T>(fn: () => Promise<{ data: T; status: number }>): Prom
   }
 };
 
+/**
+ * Caché de lecturas, en memoria y con caducidad.
+ *
+ * Para datos que cambian una vez al día y que la pantalla vuelve a pedir cada
+ * vez que un componente se monta. El caso que lo motivó (2026-08-15): el estado
+ * del respaldo vive DENTRO del cajón lateral, que se desmonta al cerrarse, así
+ * que preguntaba al servidor **en cada apertura del menú** solo para saber la
+ * fecha de la última copia.
+ *
+ * Por qué en memoria y no en `localStorage`: ahí no caduca solo, y si el dueño
+ * hace el respaldo desde otro navegador este seguiría enseñando la fecha vieja
+ * para siempre — justo el aviso que no puede mentir. En memoria se rehace al
+ * recargar la página, que es una petición y no cien.
+ *
+ * Por qué no en el token: se emite al iniciar sesión y no cambia hasta la
+ * siguiente, viaja en CADA petición al servidor (pagarías el dato en vez de
+ * ahorrarlo) y es una credencial, no un sitio para estado de la aplicación.
+ */
+const memoria = new Map<string, { expira: number; valor: Respuesta<unknown> }>();
+const enVuelo = new Map<string, Promise<Respuesta<unknown>>>();
+
+const CADUCIDAD = 5 * 60 * 1000;
+
+/**
+ * Igual que `ejecutar`, pero para respuestas binarias.
+ *
+ * Va aparte por un detalle que muerde: cuando se pide `responseType: 'blob'` y
+ * el servidor responde con un ERROR, **el mensaje también llega como Blob**, no
+ * como objeto. Sin leerlo, el dueño veía "El servidor respondió con un error
+ * (400)" en vez de "el código no es válido", que es lo que de verdad pasó.
+ */
+const ejecutarBinario = async (
+  fn: () => Promise<{ data: Blob; status: number }>,
+): Promise<Respuesta<Blob>> => {
+  try {
+    const res = await fn();
+    return { ok: true, cuerpo: res.data, error: '', status: res.status };
+  } catch (error) {
+    const e = error as AxiosError<Blob>;
+    let mensaje = mensajeDeError(error);
+    if (e.response?.data instanceof Blob) {
+      try {
+        const texto = await e.response.data.text();
+        mensaje = (JSON.parse(texto) as { error?: string }).error ?? mensaje;
+      } catch { /* no era JSON: se queda el mensaje genérico */ }
+    }
+    return { ok: false, cuerpo: null, error: mensaje, status: e.response?.status ?? 0 };
+  }
+};
+
 export const http = {
   get: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
     ejecutar<T>(() => instancia.get<T>(url, config)),
+
+  /**
+   * `get` que recuerda la respuesta y **deduplica las peticiones en vuelo**: si
+   * dos partes de la pantalla piden lo mismo a la vez, viaja una sola.
+   *
+   * Solo se guardan las respuestas BUENAS: cachear un error dejaría la pantalla
+   * rota durante toda la caducidad.
+   */
+  getCacheado: async <T = unknown>(url: string, msCaducidad = CADUCIDAD): Promise<Respuesta<T>> => {
+    const guardada = memoria.get(url);
+    if (guardada && guardada.expira > Date.now()) return guardada.valor as Respuesta<T>;
+
+    const enCurso = enVuelo.get(url);
+    if (enCurso) return enCurso as Promise<Respuesta<T>>;
+
+    const promesa = (async () => {
+      const res = await ejecutar<T>(() => instancia.get<T>(url));
+      if (res.ok) memoria.set(url, { expira: Date.now() + msCaducidad, valor: res });
+      enVuelo.delete(url);
+      return res;
+    })();
+    enVuelo.set(url, promesa as Promise<Respuesta<unknown>>);
+    return promesa;
+  },
+
+  /**
+   * Olvida lo guardado de una ruta. **Se llama después de cambiar ese dato**:
+   * al hacer un respaldo, la fecha de "última copia" es otra, y sin esto la
+   * pantalla seguiría mostrando la vieja hasta que caduque.
+   */
+  olvidar: (url: string) => { memoria.delete(url); },
 
   post: <T = unknown>(url: string, datos?: unknown, config?: AxiosRequestConfig) =>
     ejecutar<T>(() => instancia.post<T>(url, datos, config)),
@@ -139,5 +220,12 @@ export const http = {
 
   /** Descargas (Excel, PDF, respaldos): el cuerpo es binario, no JSON. */
   descargar: (url: string) =>
-    ejecutar<Blob>(() => instancia.get(url, { responseType: 'blob' })),
+    ejecutarBinario(() => instancia.get(url, { responseType: 'blob' })),
+
+  /**
+   * Descarga que se pide con POST, porque lleva datos en el cuerpo (el respaldo
+   * manda su código de segundo factor).
+   */
+  descargarConCodigo: (url: string, datos: unknown) =>
+    ejecutarBinario(() => instancia.post(url, datos, { responseType: 'blob' })),
 };

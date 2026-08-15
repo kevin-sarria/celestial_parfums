@@ -43,7 +43,20 @@ const mapVenta = (v: any) => ({
   created_at:         v.created_at,
 });
 
-export const getAllVentas = async (page: number, limit: number, search?: string) => {
+/**
+ * Listado paginado y, **si se piden, sus totales en la misma respuesta**.
+ *
+ * La pantalla necesita las dos cosas a la vez y las pedía en dos viajes. Desde
+ * Colombia al VPS cada viaje cuesta 100-200 ms, así que pedir por separado lo
+ * que se pinta junto es medio segundo regalado. Aquí las dos consultas salen
+ * **en paralelo** dentro del mismo `Promise.all`.
+ *
+ * Bajo petición y no siempre: quien solo quiera la lista (una exportación,
+ * otra pantalla) no tiene por qué pagar una agregación de todo el mes.
+ */
+export const getAllVentas = async (
+  page: number, limit: number, search?: string, conTotales = false,
+) => {
   const skip = (page - 1) * limit;
   const where = search
     ? {
@@ -58,11 +71,12 @@ export const getAllVentas = async (page: number, limit: number, search?: string)
         ],
       }
     : undefined;
-  const [rows, total] = await Promise.all([
+  const [rows, total, totales] = await Promise.all([
     prisma.venta.findMany({ where, skip, take: limit, orderBy: { dia: 'desc' }, include: includeRel }),
     prisma.venta.count({ where }),
+    conTotales ? getVentaTotales() : undefined,
   ]);
-  return paginatedResponse(rows.map(mapVenta), total, page, limit);
+  return { ...paginatedResponse(rows.map(mapVenta), total, page, limit), ...(totales ? { totales } : {}) };
 };
 
 /**

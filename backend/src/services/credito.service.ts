@@ -1,7 +1,8 @@
 import * as repo from '../repositories/credito.repository';
 import { CreateCreditoDTO } from '../types/credito.type';
 
-export const getAllCreditos = (page: number, limit: number, search?: string) => repo.getAllCreditos(page, limit, search);
+export const getAllCreditos = (page: number, limit: number, search?: string, conTotales = false) =>
+  repo.getAllCreditos(page, limit, search, conTotales);
 
 /** Resumen de la cartera (cuánto te deben, cuánto está vencido, abonos del mes). */
 export const getTotales = () => repo.getCreditoTotales();

@@ -3,15 +3,16 @@ import { DatabaseBackup, Loader2, ShieldCheck, TriangleAlert } from 'lucide-reac
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { BASE_URL } from '../../infrastructure/api/client';
-import type { GuardedFetch } from './types';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 
-const API_BACKUP = `${BASE_URL}/api/backup`;
 /** A partir de estos días sin copia, el botón avisa con un punto rojo. */
 const DIAS_AVISO = 7;
 
+/** Lo que responde `/backup/estado`. */
+interface Estado { ultima: string | null; totp_configurado: boolean }
+
 interface Props {
-  guardedFetch: GuardedFetch;
   /**
    * Dentro del menú lateral el botón ocupa el ancho completo y siempre lleva
    * texto. En la barra superior no cabía: con la campana al lado, el nombre de
@@ -26,7 +27,7 @@ interface Props {
  * TOTP de app authenticator. Descarga el SQL completo comprimido al navegador
  * y recuerda (punto rojo) cuando pasan más de 7 días sin hacer copia.
  */
-export default function BackupSeguridad({ guardedFetch, enMenu = false }: Props) {
+export default function BackupSeguridad({ enMenu = false }: Props) {
   const [open, setOpen] = useState(false);
   const [ultima, setUltima] = useState<string | null>(null);
   const [totpListo, setTotpListo] = useState<boolean | null>(null);
@@ -36,17 +37,20 @@ export default function BackupSeguridad({ guardedFetch, enMenu = false }: Props)
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
 
-  const cargarEstado = async () => {
-    try {
-      const res = await guardedFetch(`${API_BACKUP}/estado`);
-      const json = await res.json();
-      if (res.ok) {
-        setUltima(json.data?.ultima ?? null);
-        setTotpListo(!!json.data?.totp_configurado);
-      }
-    } catch {
-      // Sin estado el botón sigue disponible; el backend valida todo igual
-    }
+  /**
+   * Este componente vive DENTRO del cajón lateral, y el cajón desmonta su
+   * contenido al cerrarse: sin caché preguntaba al servidor **en cada apertura
+   * del menú** solo para saber la fecha de la última copia — un dato que cambia
+   * una vez al día. Con `getCacheado` es una petición por carga de página, y se
+   * olvida sola en cuanto se hace una copia (ver `descargar`).
+   */
+  const cargarEstado = async (refrescar = false) => {
+    if (refrescar) http.olvidar(urls.backup.estado);
+    const res = await http.getCacheado<{ data?: Estado }>(urls.backup.estado);
+    // Sin estado el botón sigue disponible; el backend valida todo igual.
+    if (!res.ok) return;
+    setUltima(res.cuerpo?.data?.ultima ?? null);
+    setTotpListo(!!res.cuerpo?.data?.totp_configurado);
   };
 
   useEffect(() => { cargarEstado(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -58,13 +62,12 @@ export default function BackupSeguridad({ guardedFetch, enMenu = false }: Props)
     setTrabajando(true);
     setError('');
     try {
-      const res = await guardedFetch(`${API_BACKUP}/totp/setup`, { method: 'POST' });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? 'No se pudo activar'); return; }
-      setSetup(json.data);
+      const res = await http.post<{ data: { secret: string; otpauth: string } }>(urls.backup.activarTotp);
+      if (!res.ok || !res.cuerpo) { setError(res.error); return; }
+      setSetup(res.cuerpo.data);
       setTotpListo(true);
-    } catch {
-      setError('No se pudo conectar con el servidor');
+      // El estado guardado decía "sin segundo factor": ya no es verdad.
+      http.olvidar(urls.backup.estado);
     } finally {
       setTrabajando(false);
     }
@@ -75,23 +78,17 @@ export default function BackupSeguridad({ guardedFetch, enMenu = false }: Props)
     setError('');
     setExito('');
     try {
-      const res = await guardedFetch(API_BACKUP, { method: 'POST', body: JSON.stringify({ codigo }) });
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        setError(j?.error ?? `No se pudo generar la copia (error ${res.status})`);
-        return;
-      }
-      const blob = await res.blob();
+      const res = await http.descargarConCodigo(urls.backup.descargar, { codigo });
+      if (!res.ok || !res.cuerpo) { setError(res.error); return; }
       const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
+      a.href = URL.createObjectURL(res.cuerpo);
       a.download = `backup-celestial-${new Date().toISOString().slice(0, 10)}.sql.gz`;
       a.click();
       URL.revokeObjectURL(a.href);
       setExito('Copia descargada. Guárdala fuera del servidor: Drive, disco externo o similar.');
       setCodigo('');
-      cargarEstado();
-    } catch {
-      setError('No se pudo generar la copia');
+      // Acaba de cambiar la fecha de la última copia: se pide de nuevo.
+      cargarEstado(true);
     } finally {
       setTrabajando(false);
     }
