@@ -8,10 +8,10 @@ cd backend  && npm run test:e2e      # recorridos en navegador (~35 s)
 cd frontend && npm test
 ```
 
-**165 pruebas** al 2026-08-14 (contadas ese día corriéndolas): **68 en el frontend**, 80 en el
-backend (43 puras + 36 contra base, 1 marcada como discrepancia) y **17 recorridos** en navegador
-repartidos en 9 archivos (`arranque`, `combo`, `cupon`, `desplegable`, `esenciaEnPerfume`,
-`listaPrecios`, `modal`, `pedidoSugerido`, `venta`).
+**204 pruebas** al 2026-08-14, tarde (contadas corriéndolas): **68 en el frontend**, **112 en el
+backend** (1 marcada como discrepancia) y **24 recorridos** en navegador repartidos en 12 archivos
+(`arranque`, `combo`, `cupon`, `desplegable`, `disponibilidad`, `esenciaEnPerfume`, `listaPrecios`,
+`menuLateral`, `modal`, `pedidoSugerido`, `tallas`, `venta`).
 
 ## Por qué estas herramientas
 
@@ -77,13 +77,14 @@ pasan, y ningún recorrido escribe en `perfumes_db`.
   variable en blanco. Editar el `.env` del dueño y restaurarlo después es justo lo que se queda a
   medias cuando una prueba revienta.
 - **La sesión de admin se pide por HTTP y se inyecta como cookie**, sin pasar por el formulario.
-  Así no se carga el script de reCAPTCHA (que exigiría internet y añadiría un fallo intermitente) y
-  se gasta **una sola** entrada — el servidor corta a los 10 intentos cada 15 minutos y eso ya
-  bloqueó pruebas antes.
-- **La entrada se memoriza en `navegador.ts` y se reutiliza en todo el archivo.** Antes cada
-  pestaña y cada llamada a la API pedían una nueva: entre todos los recorridos pasaban de 11 y el
-  último moría con un **429** que no dice nada del sistema — y hacía fallar a un archivo distinto
-  según el orden. Al agregar un recorrido que entre al dashboard, **una sola sesión por archivo**.
+  Así no se carga el script de reCAPTCHA, que exigiría internet y añadiría un fallo intermitente
+  que no dice nada del sistema.
+- **La entrada se pide UNA vez por corrida, en el arranque**, y se deja en un archivo temporal que
+  todos los recorridos leen (`ARCHIVO_SESION`). Antes era una por archivo, y como el servidor corta
+  a los **10 intentos cada 15 minutos**, eso ponía un techo al número de recorridos: al sumar el
+  archivo 12 (el del menú lateral) el último moría con un **429** que no dice nada del sistema.
+  Va por archivo y no por variable de entorno porque cada recorrido corre en su propio proceso.
+  **Agregar recorridos ya no cuesta intentos de login.**
 - **La tienda arranca con `--mode e2e`** para tomar `frontend/.env.e2e`, que la apunta al backend
   de pruebas.
 - **Cada recorrido trabaja sobre su propia categoría** (Carrito, Precios, Ventas). El catálogo

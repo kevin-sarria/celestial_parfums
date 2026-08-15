@@ -1,19 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import {
-  Menu, ChevronDown, SprayCan, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
-  CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText, Store, LogOut,
-  BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX, ChartColumn, Layers, type LucideIcon,
-} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet';
-import { cn } from '@/lib/utils';
 import type { Perfume } from '../../domain/entities/perfume.schema';
 import type { Combo } from '../../domain/entities/combo.schema';
 import { useAuthContext } from '../../application/context/useAuthContext';
@@ -21,7 +8,8 @@ import { useGuardedFetch } from './useGuardedFetch';
 import { useSeo } from '../../application/hooks/useSeo';
 import { API, API_COMBOS, DEFAULT_PAGE_SIZE, conNotaDeTalla } from './helpers';
 import type { Tab, Lookup } from './types';
-import BackupSeguridad from './BackupSeguridad';
+import { MenuLateral } from './MenuLateral';
+import { TAB_META, TAB_POR_DEFECTO, esTabValido } from './navegacion';
 import CentroNotificaciones from './CentroNotificaciones';
 import { PerfumesTab } from './tabs/PerfumesTab';
 import { CombosTab } from './tabs/CombosTab';
@@ -53,70 +41,6 @@ import { RedesTab } from './tabs/RedesTab';
 import PerfumeSpinner from '../../components/PerfumeSpinner';
 import { BrandMark } from '../../components/BrandMark';
 
-const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
-  perfumes: { label: 'Perfumes', icon: SprayCan },
-  aromas: { label: 'Aromas', icon: Flower2 },
-  ocasiones: { label: 'Ocasiones', icon: CalendarDays },
-  categorias: { label: 'Categorias', icon: Tags },
-  presentaciones: { label: 'Presentaciones', icon: Ruler },
-  gamas: { label: 'Gamas de esencia', icon: Layers },
-  combos: { label: 'Combos', icon: Gift },
-  precios: { label: 'Precios', icon: Tags },
-  descuentos: { label: 'Descuentos', icon: BadgePercent },
-  ventas: { label: 'Ventas', icon: CircleDollarSign },
-  creditos: { label: 'Creditos', icon: ClipboardList },
-  devoluciones: { label: 'Devoluciones', icon: PackageX },
-  pagos: { label: 'Proveedores', icon: Factory },
-  inventario: { label: 'Inventario', icon: Boxes },
-  reposicion: { label: 'Pedido sugerido', icon: ShoppingCart },
-  producciones: { label: 'Producciones', icon: FlaskConical },
-  rep_ventas: { label: 'Reporte de ventas', icon: ChartColumn },
-  rep_compras: { label: 'Reporte de compras', icon: ChartColumn },
-  rep_clientes: { label: 'Reporte de clientes', icon: ChartColumn },
-  usuarios: { label: 'Usuarios', icon: Users },
-  publicidad: { label: 'Publicidad', icon: Megaphone },
-  recompensas: { label: 'Recompensas', icon: Star },
-  resenas: { label: 'Reseñas', icon: MessageSquareText },
-  avisos: { label: 'Reposiciones', icon: BellRing },
-  nosotros: { label: 'Sobre nosotros', icon: Info },
-  blog: { label: 'Blog', icon: Newspaper },
-  redes: { label: 'Redes sociales', icon: Share2 },
-  cotizaciones: { label: 'Cotizaciones', icon: FileText },
-  formulas: { label: 'Tamaños y fórmulas', icon: FlaskConical },
-  costos: { label: 'Costos de producción', icon: Calculator },
-};
-
-// Menú del dashboard agrupado en secciones colapsables (drawer con burger)
-const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
-  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
-  { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones', 'gamas'] },
-  /**
-   * DOS grupos, no uno. Lo señaló el dueño cuando "Ventas y créditos" llegó a
-   * ocho pestañas: *"una cosa es la parte contable —lo que se vende, lo que
-   * sale, lo que se devuelve— y otra muy diferente las fórmulas y demás, que no
-   * es el core de las ventas sino más de operaciones o de reglas"*.
-   *
-   * Y tenía razón: mezclaba PLATA (ventas, créditos, devoluciones, lo que se le
-   * paga al proveedor) con OPERACIÓN (qué tengo, qué armé, con qué receta,
-   * cuánto me cuesta, qué pedir). Se busca con cabezas distintas.
-   */
-  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos'] },
-  /**
-   * Las RECETAS y el costo de producción viven aquí, no en Mayoreo: de ellas
-   * salen los materiales que descuenta cada venta y cada lote, así que las usa
-   * todo el negocio. Mayoreo solo cotiza, y para eso las lee.
-   */
-  { id: 'operacion', label: 'Producción e inventario', tabs: ['inventario', 'reposicion', 'producciones', 'formulas', 'costos'] },
-  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones'] },
-  { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
-  { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
-];
-
-const sectionOfTab = (tab: Tab) =>
-  NAV_SECTIONS.find(s => s.tabs.includes(tab))?.id ?? NAV_SECTIONS[0].id;
-
-const TAB_POR_DEFECTO: Tab = 'perfumes';
-const esTabValido = (t?: string): t is Tab => !!t && Object.prototype.hasOwnProperty.call(TAB_META, t);
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -130,16 +54,6 @@ export default function DashboardPage() {
   useSeo(`${TAB_META[tab].label} — Dashboard`);
 
   const [loading, setLoading] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  // Secciones desplegadas del menú; la de la pestaña activa arranca abierta
-  const [openSections, setOpenSections] = useState<Set<string>>(() => new Set([sectionOfTab(tab)]));
-  const toggleSection = (id: string) =>
-    setOpenSections(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);
   const [perfumesPage, setPerfumesPage] = useState(1);
   const [perfumesTotal, setPerfumesTotal] = useState(0);
@@ -211,11 +125,6 @@ export default function DashboardPage() {
     return () => { active = false; };
   }, [guardedFetch]);
 
-  const handleTabChange = (t: Tab) => {
-    navigate(`/dashboard/${t}`);
-    setDrawerOpen(false);
-  };
-
   /**
    * Reacciona al cambio de pestaña venga de donde venga (clic en el menú o
    * botón atrás/adelante del navegador). En el primer render no recarga: los
@@ -223,7 +132,6 @@ export default function DashboardPage() {
    */
   const primerRender = useRef(true);
   useEffect(() => {
-    setOpenSections(prev => new Set(prev).add(sectionOfTab(tab)));
     if (primerRender.current) { primerRender.current = false; return; }
     if (tab === 'perfumes') loadPerfumes(1);
     if (tab === 'combos') loadCombos(1);
@@ -294,101 +202,7 @@ export default function DashboardPage() {
       {/* ── Header: burger + marca a la izquierda, acciones a la derecha ── */}
       <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card px-4 md:px-6">
         <div className="flex min-w-0 items-center gap-3">
-          <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-            <SheetTrigger asChild>
-              <button
-                className="flex size-9 shrink-0 items-center justify-center rounded-full border border-border text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-                aria-label="Abrir menú de apartados"
-              >
-                <Menu className="size-4.5" />
-              </button>
-            </SheetTrigger>
-
-            <SheetContent side="left" className="w-72 gap-0 p-0">
-              <SheetHeader className="border-b border-border/70 p-5">
-                <SheetTitle className="flex items-center text-left font-display text-[16px] font-medium tracking-wide text-ink">
-                  <BrandMark className="mr-2 size-6" />
-                  Celestial Parfums
-                  <span className="ml-2 text-[10px] font-sans font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                    Admin
-                  </span>
-                </SheetTitle>
-              </SheetHeader>
-
-              <nav className="flex-1 overflow-y-auto p-3">
-                {NAV_SECTIONS.map(sec => {
-                  const abierta = openSections.has(sec.id);
-                  const contieneActiva = sec.tabs.includes(tab);
-                  return (
-                    <div key={sec.id} className="mb-1">
-                      <button
-                        type="button"
-                        onClick={() => toggleSection(sec.id)}
-                        className={cn(
-                          'flex w-full items-center justify-between rounded-lg px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] transition-colors',
-                          contieneActiva ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
-                        )}
-                      >
-                        {sec.label}
-                        <ChevronDown className={cn('size-3.5 transition-transform duration-200', abierta && 'rotate-180')} />
-                      </button>
-
-                      {abierta && (
-                        <div className="mb-2 flex flex-col gap-0.5">
-                          {sec.tabs.map(t => {
-                            const { label, icon: Icon } = TAB_META[t];
-                            const activa = tab === t;
-                            return (
-                              <button
-                                key={t}
-                                onClick={() => handleTabChange(t)}
-                                className={cn(
-                                  'flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[14px] font-medium transition-colors',
-                                  activa ? 'bg-brand-soft text-primary' : 'text-foreground hover:bg-secondary',
-                                )}
-                              >
-                                <Icon className="size-4.5 shrink-0" />
-                                {label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </nav>
-
-              {/**
-                * Acciones que no son navegación.
-                *
-                * El **respaldo** vive aquí en TODOS los tamaños desde el
-                * 2026-08-11: en la barra de arriba, con la campana al lado, el
-                * nombre de la tienda se truncaba a "Celestial Parfu…" y el dueño
-                * lo rechazó. Además es mantenimiento semanal, no trabajo del día
-                * — mismo criterio que las descargas de Excel en Inventario. El
-                * recordatorio de que hace días no se hace copia NO se perdió al
-                * esconderlo: pasó a ser una línea del centro de notificaciones.
-                *
-                * Ver catálogo y Salir siguen apareciendo solo en pantalla
-                * pequeña, porque arriba sí caben.
-                */}
-              <div className="border-t border-border/70 p-4">
-                <div className="flex flex-col gap-2">
-                  <BackupSeguridad guardedFetch={guardedFetch} enMenu />
-                  <Button variant="ghost" className="w-full justify-start sm:hidden" asChild>
-                    <Link to="/catalog" onClick={() => setDrawerOpen(false)}>
-                      <Store className="size-4" /> Ver catalogo
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="w-full justify-start sm:hidden"
-                    onClick={handleLogout}>
-                    <LogOut className="size-4" /> Salir
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+          <MenuLateral guardedFetch={guardedFetch} />
 
           <span className="flex min-w-0 select-none items-center font-display text-[15.5px] font-medium tracking-wide text-foreground">
             <BrandMark className="mr-2 size-6 shrink-0" />

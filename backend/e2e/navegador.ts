@@ -1,6 +1,6 @@
+import fs from 'node:fs';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
-import { ADMIN, } from './tienda';
-import { URL_API, URL_TIENDA } from './arranque';
+import { ARCHIVO_SESION, URL_TIENDA } from './arranque';
 
 /**
  * El navegador de los recorridos.
@@ -23,24 +23,19 @@ export const cerrarNavegador = async () => {
 };
 
 /**
- * La sesión de administrador, pedida al backend por HTTP e inyectada en el
- * navegador.
+ * La sesión de administrador, leída de donde la dejó el arranque.
  *
- * No se pasa por el formulario de login a propósito, y no es por atajar: así no
- * se carga el script de reCAPTCHA de Google (que exigiría internet y añadiría
- * un fallo intermitente que no dice nada del sistema) y se gasta **una sola**
- * entrada, que importa porque el servidor corta a los 10 intentos cada 15
- * minutos y eso ya bloqueó pruebas antes.
+ * NO se pasa por el formulario de login a propósito: así no se carga el script
+ * de reCAPTCHA de Google (que exigiría internet y añadiría un fallo
+ * intermitente que no dice nada del sistema).
+ *
+ * Y se entra **una vez por corrida**, no una por archivo: el servidor corta a
+ * los 10 intentos cada 15 minutos, así que una entrada por archivo ponía techo
+ * al número de recorridos. Con 12 archivos ya reventaba (2026-08-14).
  */
 const pedirCookiesDeAdmin = async () => {
-  const res = await fetch(`${URL_API}/api/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: ADMIN.email, password: ADMIN.clave }),
-  });
-  if (!res.ok) throw new Error(`No se pudo entrar como administrador: ${res.status} ${await res.text()}`);
-
-  return res.headers.getSetCookie().map((linea) => {
+  const lineas = fs.readFileSync(ARCHIVO_SESION, 'utf8').split('\n').filter(Boolean);
+  return lineas.map((linea) => {
     const [par] = linea.split(';');
     const corte = par.indexOf('=');
     return {
@@ -55,7 +50,7 @@ const pedirCookiesDeAdmin = async () => {
 };
 
 /**
- * La entrada se pide UNA vez por archivo y se reutiliza.
+ * La entrada se lee UNA vez por archivo y se reutiliza.
  *
  * El servidor corta a los 10 intentos cada 15 minutos y los recorridos gastaban
  * uno por cada pestaña y por cada llamada a la API: entre todos pasaban de 11 y

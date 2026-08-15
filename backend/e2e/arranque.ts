@@ -1,9 +1,26 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import type { Server } from 'node:http';
 import prepararBase from '../src/test/prepararBase';
 import { limpiarBase } from '../src/test/baseDePrueba';
-import { sembrarTienda } from './tienda';
+import { ADMIN, sembrarTienda } from './tienda';
+
+/**
+ * Dónde queda la sesión de administrador para TODA la corrida.
+ *
+ * El servidor corta a los 10 intentos de login cada 15 minutos. Con una sesión
+ * por archivo de recorridos el techo llegaba a los 10 archivos, y el 11º moría
+ * con un 429 que no dice nada del sistema (pasó el 2026-08-14 al sumar el
+ * recorrido del menú lateral). Ahora se entra UNA vez aquí y todos los
+ * archivos leen la misma cookie: el límite deja de ser un techo al número de
+ * recorridos.
+ *
+ * Va por archivo y no por variable de entorno porque cada archivo de pruebas
+ * corre en su propio proceso.
+ */
+export const ARCHIVO_SESION = path.join(os.tmpdir(), 'celestial-e2e-sesion.txt');
 
 /**
  * Levanta el sistema entero para los recorridos: base de pruebas sembrada,
@@ -65,6 +82,15 @@ export default async function arranque() {
   ({ server: servidor } = await import('../src/app'));
   await esperarA(`${URL_API}/api/parfums`, 'El backend');
 
+  // La sesión de admin, una sola vez para toda la corrida (ver ARCHIVO_SESION).
+  const entrada = await fetch(`${URL_API}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: ADMIN.email, password: ADMIN.clave }),
+  });
+  if (!entrada.ok) throw new Error(`No se pudo entrar como administrador: ${entrada.status}`);
+  fs.writeFileSync(ARCHIVO_SESION, entrada.headers.getSetCookie().join('\n'));
+
   // La tienda, en modo `e2e` para que tome `frontend/.env.e2e`, que la apunta
   // al backend de pruebas en vez de al de siempre.
   tienda = spawn('npx', ['vite', '--mode', 'e2e', '--port', String(PUERTO_TIENDA), '--strictPort'], {
@@ -76,6 +102,7 @@ export default async function arranque() {
   await esperarA(URL_TIENDA, 'La tienda');
 
   return async () => {
+    fs.rmSync(ARCHIVO_SESION, { force: true });
     if (tienda) matarArbol(tienda);
     await new Promise<void>((resolve) => (servidor ? servidor.close(() => resolve()) : resolve()));
   };

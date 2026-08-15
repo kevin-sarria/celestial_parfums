@@ -94,6 +94,32 @@ sugerido y sus 4 modales). Faltan ~42 componentes.
 raíz tiene `files: []` y delega en referencias. Lo real es `npx tsc -p tsconfig.app.json --noEmit`
 o `npm run build`.
 
+## El menú lateral vive aparte (`MenuLateral.tsx`, 2026-08-14)
+
+**El estado de "abierto/cerrado" pertenece al menú, no a la página.** Cuando vivía en
+`DashboardPage`, cada toque del cajón repintaba la página entera —tabla incluida— justo mientras
+se deslizaba la animación.
+
+Medido antes y después, sobre la pantalla de Perfumes, abriendo y cerrando tres veces:
+
+| | Al abrir | Al cerrar |
+|---|---|---|
+| Antes | 76-90 ms | 53-62 ms |
+| Después | **0** | **0** |
+
+Un fotograma dura 16 ms: un tirón de 80 ms se come cinco seguidos, y el dueño lo describió como
+*"parpadea mucho"*. La pista que resolvió el caso fue medir en una pantalla LIGERA
+(Presentaciones, 2 filas): ahí no había tirones, así que el culpable no era el cajón sino la
+pantalla de atrás repintándose sin motivo.
+
+- El mapa de apartados (`TAB_META`, `NAV_SECTIONS`) salió a `navegacion.ts` porque lo usan la
+  página y el menú: dejarlo en cualquiera de los dos cerraba un círculo de imports.
+- **Regla general que deja el caso**: el estado que solo usa un trozo de la pantalla se guarda en
+  ese trozo. Subirlo "por comodidad" convierte cada clic en un repintado de todo lo que cuelgue
+  debajo.
+- Cubierto por `menuLateral.e2e.test.ts`, escrito ANTES de la mudanza: hasta entonces el menú
+  —el único camino real entre apartados— no tenía ni una prueba.
+
 ## Dashboard: la pestaña vive en la URL
 
 - Ruta `/dashboard/:tab` (ej. `/dashboard/cotizaciones`). `/dashboard` o una pestaña
