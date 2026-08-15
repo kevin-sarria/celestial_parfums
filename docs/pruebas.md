@@ -1,0 +1,117 @@
+# Pruebas automatizadas (desde 2026-08-12)
+
+```bash
+cd backend  && npm test              # aritmética + base de datos (~40 s)
+cd backend  && npm run test:unidad   # solo aritmética, sin MySQL (~0,5 s)
+cd backend  && npm run test:bd       # solo las que tocan base
+cd backend  && npm run test:e2e      # recorridos en navegador (~35 s)
+cd frontend && npm test
+```
+
+**165 pruebas** al 2026-08-14 (contadas ese día corriéndolas): **68 en el frontend**, 80 en el
+backend (43 puras + 36 contra base, 1 marcada como discrepancia) y **17 recorridos** en navegador
+repartidos en 9 archivos (`arranque`, `combo`, `cupon`, `desplegable`, `esenciaEnPerfume`,
+`listaPrecios`, `modal`, `pedidoSugerido`, `venta`).
+
+## Por qué estas herramientas
+
+**Vitest, NO Jest.** El frontend es Vite 8: Vitest reutiliza esa configuración (alias `@/`,
+TypeScript) sin una capa paralela que se rompe en cada actualización. Usarlo también en el backend
+deja UNA herramienta en vez de dos.
+
+**Playwright y no Cypress**, con `playwright-core` sobre el Edge instalado (igual que
+`revisar-pantalla.mjs`): cero navegadores descargados. Y corre **bajo Vitest**, así que sigue
+habiendo una sola herramienta de pruebas en todo el proyecto.
+
+## Reglas
+
+- **Solo `*.test.ts`.** El patrón por defecto de Vitest también recoge `.spec.ts`, y
+  `src/schemas/import.spec.ts` **NO es una prueba**: es la definición de columnas del importador.
+  Está acotado en los dos `vitest.config`.
+- **El `tsconfig.json` del backend EXCLUYE los tests** y también `src/test/` y `e2e/`: si no,
+  `npm run build` los mete en `dist/` y suben al servidor con un `import` de vitest —y del CLI de
+  Prisma— que allá no existe.
+- **Los archivos van junto al código** que prueban y **los nombres de las pruebas en español**: el
+  dueño tiene que poder leer la salida cuando algo falle.
+- **Se escriben desde la REGLA de negocio, no desde el código.** Si el código hace otra cosa, no se
+  fuerza la prueba para que pase: se marca la discrepancia y se le pregunta al dueño. Así se
+  encontró el fallo de `matchPerfumes` con los nombres que llevan coma.
+- **Ola 1** (funciones puras): `finalPrice`, `detectarCombos`, `costeoCotizacion`, `lineasPedido`,
+  `catalogoFiltros`, `perfumeMatcher` y `sinEsenciaParaUno`. Diseño en
+  `docs/superpowers/specs/2026-08-12-pruebas-motores-precios-design.md`.
+- **Ola 2** (lo que escribe + recorridos): costo promedio, consumo por venta, cupones e IVA por
+  proveedor. Diseño en `…/2026-08-12-pruebas-integracion-y-e2e-design.md`.
+
+## La base de pruebas: `perfumes_test`, vacía y desde las migraciones
+
+**Nunca `perfumes_db`.** Se crea vacía y se le aplican las migraciones. Dos motivos, y el segundo
+no es obvio: (1) los datos del negocio no se abren, y estas pruebas TRUNCAN tablas; (2) **armarla
+desde las migraciones las prueba a ellas**. Nadie verificaba que el juego completo levante el
+sistema desde cero, y eso se descubriría el día que haya que reconstruir el servidor — el peor
+día. Verificado el 2026-08-12: **lo levanta, y el resultado es idéntico a la copia de producción**
+salvo un default cosmético (`curdate()` frente a `now()`).
+
+- **El seguro está por partida doble**: `prepararBase.ts` se niega a correr si el nombre de la base
+  no termina en `_test`, y `limpiarBase()` —la que de verdad borra— lo vuelve a comprobar antes de
+  truncar. Probado apuntándolo a `perfumes_db`: se niega y los datos quedan intactos. **No quitar
+  la segunda comprobación** por parecer redundante: es la última oportunidad de parar si alguien
+  corre las pruebas con otra configuración.
+- **Dos grupos** (`projects` de Vitest): `unidad` no necesita MySQL prendido, `base` sí. Los
+  archivos que tocan base se llaman `*.bd.test.ts`.
+- **El stock se siembra con un movimiento de `ajuste`, nunca escribiendo la columna.** `stock` y
+  `precio` son una PROYECCIÓN del libro de movimientos, así que un valor puesto a mano desaparece
+  en cuanto algo obliga a reconstruir — y la prueba falla culpando al código de un descuadre que
+  creó la siembra. Ya pasó.
+- `descuento_codigos.venta_id` **sí tiene llave foránea** (a diferencia de
+  `movimientos_inventario.referencia_id`, que es un número suelto): para enlazar un cupón hace
+  falta una venta de verdad.
+
+## Los recorridos (`backend/e2e/`)
+
+Levantan el sistema entero: base sembrada, backend en el **4100** y tienda en el **5273**. Puertos
+y base propios, así que **el dueño puede tener sus servidores de siempre corriendo** mientras
+pasan, y ningún recorrido escribe en `perfumes_db`.
+
+- **El `.env` NO se toca.** El backend salta el captcha cuando `RECAPTCHA_SECRET_KEY` viene vacía,
+  y `dotenv` **no sobreescribe** una variable que ya existe en el entorno: basta arrancarlo con esa
+  variable en blanco. Editar el `.env` del dueño y restaurarlo después es justo lo que se queda a
+  medias cuando una prueba revienta.
+- **La sesión de admin se pide por HTTP y se inyecta como cookie**, sin pasar por el formulario.
+  Así no se carga el script de reCAPTCHA (que exigiría internet y añadiría un fallo intermitente) y
+  se gasta **una sola** entrada — el servidor corta a los 10 intentos cada 15 minutos y eso ya
+  bloqueó pruebas antes.
+- **La entrada se memoriza en `navegador.ts` y se reutiliza en todo el archivo.** Antes cada
+  pestaña y cada llamada a la API pedían una nueva: entre todos los recorridos pasaban de 11 y el
+  último moría con un **429** que no dice nada del sistema — y hacía fallar a un archivo distinto
+  según el orden. Al agregar un recorrido que entre al dashboard, **una sola sesión por archivo**.
+- **La tienda arranca con `--mode e2e`** para tomar `frontend/.env.e2e`, que la apunta al backend
+  de pruebas.
+- **Cada recorrido trabaja sobre su propia categoría** (Carrito, Precios, Ventas). El catálogo
+  público va por caché en memoria, así que resembrar con el servidor andando enseñaría datos
+  viejos; con una categoría por recorrido el orden de los archivos da igual.
+- **Un fabricado sin esencia sale AGOTADO** y una card agotada no tiene botón de agregar. Al
+  sembrar productos de prueba hay que darles esencia con stock, o la tienda queda llena de cosas
+  que no se pueden comprar.
+- `src/app.ts` **exporta `server`** solo para poder apagarlo al terminar; en producción nadie lo usa
+  y arrancar sigue siendo `node dist/app.js`.
+- Cubren: combo en el carrito, venta con líneas que descuenta inventario, cupón amarrado a su venta
+  (por pantalla **y** por API, porque la pantalla se puede saltar), lista de precios que mueve a
+  toda la categoría sin tocar los precios propios, y **un 1.1 sin armar que no llega a la tienda**
+  (`disponibilidad.e2e.test.ts`: se crea desde el formulario con la casilla marcada, la tabla dice
+  "Sin armar" y la card sale agotada aunque su esencia esté llena; después se arma el lote desde
+  el modal y se comprueba que aparece en Inventario y pasa a vendible), y **una talla nueva que
+  nace con sus ml** (`tallas.e2e.test.ts`).
+- **`innerText` devuelve lo RENDERIZADO, no el texto del código**: las etiquetas de las métricas
+  llevan `uppercase` por CSS, así que buscar "Frascos armados" tal cual falla. Comparar con
+  expresión regular insensible a mayúsculas.
+- **El botón de un `BuscadorSelect` muestra la opción elegida, no su `placeholder`**: de arranque
+  es la PRIMERA opción de la lista ("— Sin especificar —"), no el texto gris que uno espera.
+- **Las fotos de los recorridos van a la carpeta temporal del sistema**, no al repositorio: sirven
+  para MIRAR la pantalla cuando algo se ve raro, no para versionarlas.
+- **El botón de guardar de un modal NO se llama "Guardar"**: `PerfumesTab` manda
+  `submitLabel="Crear perfume"` / `"Guardar cambios"`. Buscar el genérico deja el recorrido
+  esperando 30 segundos a un botón que no existe.
+- **`getByLabel` no funciona en el dashboard**: `Field` (`dashboard/ui.tsx`) pinta un `<label>`
+  suelto, sin `htmlFor` y sin envolver el campo, así que el navegador no los relaciona. Es un hueco
+  de accesibilidad real —un lector de pantalla tampoco los asocia— pendiente de hablar con el
+  dueño. Mientras exista, los recorridos usan el ayudante `campo()`.

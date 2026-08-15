@@ -10,7 +10,7 @@ negocio, el porqué de cada decisión y los errores ya vividos).
 > Si aprendes algo reutilizable mañana, va a `CLAUDE.md`. Si cambia la forma de arrancar el
 > proyecto o su estado general, va aquí.
 
-Última actualización: **2026-08-10**.
+Última actualización: **2026-08-13** (última sesión de trabajo: 13 de agosto de madrugada).
 
 ---
 
@@ -62,8 +62,8 @@ cd frontend && npx eslint src                        # LÍNEA BASE: 47 errores, 
 
 cd backend  && npm test                              # 72 pruebas (necesita MySQL)
 cd backend  && npm run test:unidad                   # 43, sin MySQL, medio segundo
-cd backend  && npm run test:e2e                      # 11 recorridos en navegador
-cd frontend && npm test                              # 63 pruebas
+cd backend  && npm run test:e2e                      # 14 recorridos en navegador
+cd frontend && npm test                              # 68 pruebas
 ```
 
 Las que tocan base corren contra **`perfumes_test`**, que se arma sola desde las migraciones.
@@ -287,10 +287,17 @@ Diseños y planes históricos: `docs/superpowers/specs/` y `docs/superpowers/pla
 
 ## 8. Por dónde empezar mañana
 
-> Actualizado el **2026-08-12**. Lo que decía antes (enlazar 25 perfumes sin esencia,
+> Actualizado el **2026-08-13**. Lo que decía antes (enlazar 25 perfumes sin esencia,
 > configurar los mínimos por gama) **ya está hecho** — el dueño lo cerró el 10 y 11 de
 > agosto. Si esta sección manda a hacer algo que ya funciona, es que se quedó vieja otra vez:
 > compruébalo contra la sección 4 antes de trabajar.
+
+**Lo último que se hizo (12 y 13 de agosto), ya commiteado y subido** (`main` = `ac52f15`):
+las dos olas de pruebas automatizadas, el **agotado automático** cuando no alcanza la
+esencia, y tres arreglos del 13: la esencia se reconoce por su **gama** (5 esencias estaban
+inservibles), **un solo desplegable** en toda la app (`SelectSimple`, ya no hay `<select>`
+nativos) y los **modales con encabezado y pie anclados**. El porqué de cada uno está en
+`CLAUDE.md` → "Un solo desplegable y modales que no se pierden" y "DÓNDE QUEDAMOS".
 
 En orden de valor para el negocio:
 
@@ -299,7 +306,7 @@ En orden de valor para el negocio:
    borrada en vez de volver al de partida. Arreglarlo exige una columna nueva
    (`precio_inicial`) y su migración, así que es decisión del dueño. Está medido y con dos
    pruebas puestas: ver `CLAUDE.md` → "Inventario y costo promedio".
-   **Las dos olas de pruebas YA ESTÁN** (146 en total: aritmética, base de datos y cuatro
+   **Las dos olas de pruebas YA ESTÁN** (154 en total: aritmética, base de datos y 14
    recorridos en navegador). Lo que falta es cobertura de más módulos, no montar nada.
 2. **Rellenar la talla de las 4 líneas de venta que sí se pueden** (ventas 1269 y 1272). Las
    otras 8 son ambiguas y solo el dueño sabe si fue el de 200 o el de 250 ml.
