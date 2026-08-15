@@ -4,9 +4,10 @@ import { Input } from '@/components/ui/input';
 import { SelectSimple } from '@/components/ui/select-simple';
 import BuscadorSelect from '../../../../components/BuscadorSelect';
 import Modal from '../../../../components/Modal';
-import { BASE_URL } from '../../../../infrastructure/api/client';
+import { http } from '../../../../infrastructure/api/http';
+import { urls } from '../../../../infrastructure/api/urls';
 import { Field, FieldRow, FormError } from '../../ui';
-import type { GuardedFetch, InventarioInsumo } from '../../types';
+import type { InventarioInsumo } from '../../types';
 import type { InsumoAlcance, InsumoTipo, InsumoUnidad } from '../../../../domain/entities/cotizacion.types';
 
 interface Gama { id: number; nombre: string; esencias: number }
@@ -18,7 +19,6 @@ const TIPOS: { valor: InsumoTipo; etiqueta: string; ayuda: string }[] = [
 ];
 
 interface Props {
-  guardedFetch: GuardedFetch;
   /** Null = crear uno nuevo; con valor = editar ese. */
   material: InventarioInsumo | null;
   onClose: () => void;
@@ -37,7 +37,7 @@ interface Props {
  * lo calcula solo el costo promedio de las compras, y tecleárselo encima lo
  * falsearía.
  */
-export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: Props) {
+export function MaterialModal({ material, onClose, onGuardado }: Props) {
   const editando = material !== null;
   const [nombre, setNombre] = useState(material?.nombre ?? '');
   const [tipo, setTipo] = useState<InsumoTipo>((material?.tipo as InsumoTipo) ?? 'materia_prima');
@@ -50,8 +50,8 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
   const [gamas, setGamas] = useState<Gama[]>([]);
   useEffect(() => {
     (async () => {
-      const r = await guardedFetch(`${BASE_URL}/api/costeo/gamas/todas`);
-      if (r.ok) setGamas((await r.json()).data ?? []);
+      const r = await http.get<{ data: Gama[] }>(urls.costeo.gamas);
+      if (r.ok) setGamas(r.cuerpo?.data ?? []);
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [guardando, setGuardando] = useState(false);
@@ -70,21 +70,17 @@ export function MaterialModal({ guardedFetch, material, onClose, onGuardado }: P
     if (p < 0) { setError('El costo no puede ser negativo'); return; }
     setGuardando(true); setError('');
     try {
-      const res = await guardedFetch(
-        `${BASE_URL}/api/costeo/insumos${editando ? `/${material.id}` : ''}`,
-        {
-          method: editando ? 'PATCH' : 'POST',
-          body: JSON.stringify({
-            nombre: nombre.trim(), tipo, unidad, alcance, precio: p,
-            // null y no '' : la columna admite nulo y '' no es una gama válida
-            gama_id: tipo === 'materia_prima' && gamaId ? Number(gamaId) : null,
-            genero: tipo === 'materia_prima' && genero ? genero : null,
-            ...(editando ? { activo: material.activo } : {}),
-          }),
-        },
-      );
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { setError(json?.error ?? 'No se pudo guardar'); return; }
+      const cuerpo = {
+        nombre: nombre.trim(), tipo, unidad, alcance, precio: p,
+        // null y no '' : la columna admite nulo y '' no es una gama válida
+        gama_id: tipo === 'materia_prima' && gamaId ? Number(gamaId) : null,
+        genero: tipo === 'materia_prima' && genero ? genero : null,
+        ...(editando ? { activo: material.activo } : {}),
+      };
+      const res = editando
+        ? await http.patch(urls.costeo.insumo(material.id), cuerpo)
+        : await http.post(urls.costeo.insumos, cuerpo);
+      if (!res.ok) { setError(res.error); return; }
       toast.success(editando ? 'Material actualizado' : `"${nombre.trim()}" agregado`);
       onGuardado();
       onClose();

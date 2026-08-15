@@ -8,7 +8,9 @@ import {
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
-import { API, formatPrice } from '../helpers';
+import { formatPrice } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import type { GuardedFetch, Lookup, PrecioLista } from '../types';
 
@@ -40,9 +42,8 @@ export function PreciosTab({ guardedFetch, categorias, presentaciones, onMutate 
 
   const load = async () => {
     try {
-      const res = await guardedFetch(`${API}/precios`);
-      const json = await res.json();
-      if (res.ok) setPrecios(json.data ?? []);
+      const res = await http.get<{ data: PrecioLista[] }>(urls.perfumes.precios);
+      if (res.ok) setPrecios(res.cuerpo?.data ?? []);
     } catch { setError('No se pudo cargar la lista de precios'); }
     finally { setLoading(false); }
   };
@@ -64,12 +65,10 @@ export function PreciosTab({ guardedFetch, categorias, presentaciones, onMutate 
 
     setGuardando(k); setError('');
     try {
-      const res = await guardedFetch(`${API}/precios`, {
-        method: 'PATCH',
-        body: JSON.stringify({ categoria_id: catId, presentacion_id: presId, precio: nuevo }),
+      const res = await http.patch(urls.perfumes.precios, {
+        categoria_id: catId, presentacion_id: presId, precio: nuevo,
       });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? 'No se pudo guardar el precio'); return; }
+      if (!res.ok) { setError(res.error); return; }
       setEdits(e => { const n = { ...e }; delete n[k]; return n; });
       await load();
       onMutate();

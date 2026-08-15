@@ -9,9 +9,12 @@ import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import type { Combo } from '../../../domain/entities/combo.schema';
+import { toast } from 'sonner';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { combosColumns } from '../columns';
-import { API_COMBOS, subirImagenAdmin } from '../helpers';
+import { subirImagenAdmin } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { GuardedFetch, Lookup, ComboForm } from '../types';
 import { emptyComboForm } from '../types';
@@ -78,11 +81,10 @@ export function CombosTab({
       descuento: Number(form.descuento), activo: form.activo,
     };
     try {
-      const url = modal.editId ? `${API_COMBOS}/${modal.editId}` : API_COMBOS;
-      const method = modal.editId ? 'PATCH' : 'POST';
-      const res = await guardedFetch(url, { method, body: JSON.stringify(body) });
-      const json = await res.json();
-      if (!res.ok) { setFormError(json.error ?? 'Error al guardar'); return; }
+      const res = modal.editId
+        ? await http.patch(urls.combos.combo(modal.editId), body)
+        : await http.post(urls.combos.crear, body);
+      if (!res.ok) { setFormError(res.error); return; }
       closeModal(); onMutate();
     } catch { setFormError('No se pudo conectar con el servidor'); }
     finally { setFormLoading(false); }
@@ -90,7 +92,10 @@ export function CombosTab({
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('¿Eliminar este combo?')) return;
-    await guardedFetch(`${API_COMBOS}/${id}`, { method: 'DELETE' }); onMutate();
+    const res = await http.borrar(urls.combos.combo(id));
+    // Antes se ignoraba: si el servidor lo rechazaba, el combo seguía ahí.
+    if (!res.ok) { toast.error(res.error, { id: 'combo-del' }); return; }
+    onMutate();
   };
 
   return (

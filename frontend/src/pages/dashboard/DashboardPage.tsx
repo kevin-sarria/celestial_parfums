@@ -275,7 +275,7 @@ export default function DashboardPage() {
                 onAdd={handleLookupAdd('presentaciones')} onDelete={handleLookupDelete('presentaciones', '¿Eliminar esta talla? Los perfumes que la ofrezcan dejarán de tenerla, junto con su precio para esa talla.')} onEdit={handleLookupEdit('presentaciones')}
                 importEntity="presentaciones" guardedFetch={guardedFetch} onImported={refreshAll} />
             )}
-            {tab === 'gamas' && <GamasTab guardedFetch={guardedFetch} />}
+            {tab === 'gamas' && <GamasTab />}
             {tab === 'combos' && (
               <CombosTab
                 combos={combos} page={combosPage} total={combosTotal} pageSize={combosPageSize}

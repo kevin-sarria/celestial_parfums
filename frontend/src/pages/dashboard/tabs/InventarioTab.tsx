@@ -443,7 +443,6 @@ export function InventarioTab({ guardedFetch }: { guardedFetch: GuardedFetch }) 
 
       {material.abierto && (
         <MaterialModal
-          guardedFetch={guardedFetch}
           material={material.dato}
           onClose={() => setMaterial({ abierto: false, dato: null })}
           onGuardado={() => { load(); recargarPasos(); }}
