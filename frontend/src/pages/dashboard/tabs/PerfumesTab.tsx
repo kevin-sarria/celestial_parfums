@@ -11,13 +11,15 @@ import { AccionesPerfume } from './perfumes/AccionesPerfume';
 import ExportButton from '../../../components/ExportButton';
 import DescargarCatalogoButton from '../../../components/DescargarCatalogoButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
+import { toast } from 'sonner';
 import { esEsencia } from '../../../domain/entities/insumo';
 import { SmartTable } from '../../../components/table/SmartTable';
 import BuscadorSelect from '../../../components/BuscadorSelect';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { perfumesColumns } from '../columns';
-import { API, formatPrice, subirImagenAdmin } from '../helpers';
+import { formatPrice, subirImagenAdmin } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { GuardedFetch, Lookup, PerfumeForm, PrecioLista } from '../types';
 import { emptyPerfumeForm } from '../types';
@@ -80,15 +82,15 @@ export function PerfumesTab({
   const [envases, setEnvases] = useState<Insumo[]>([]);
   useEffect(() => {
     (async () => {
-      const r = await guardedFetch(`${BASE_URL}/api/costeo/insumos`);
+      const r = await http.get<{ data: Insumo[] }>(urls.costeo.insumos);
       if (!r.ok) return;
-      const todos: Insumo[] = (await r.json()).data ?? [];
+      const todos = r.cuerpo?.data ?? [];
       // Se reconocen por su GAMA, no por el nombre: ver `esEsencia`. Colgarlo de
       // la palabra "esencia" dejaba fuera a las que se llaman como su fragancia.
       setEsencias(todos.filter(esEsencia));
       // Para comprados/fraccionados: cualquier insumo puede SER el producto
       setInsumosProducto(todos);
-      setEnvases(todos.filter(i => i.tipo === 'envase'));
+      setEnvases(todos.filter((i: Insumo) => i.tipo === 'envase'));
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [formError, setFormError] = useState('');
@@ -101,9 +103,8 @@ export function PerfumesTab({
   // La lista de precios se usa para mostrar qué cobra cada talla por defecto
   const cargarPrecios = async () => {
     try {
-      const res = await guardedFetch(`${API}/precios`);
-      const json = await res.json();
-      if (res.ok) setPrecios(json.data ?? []);
+      const res = await http.get<{ data: PrecioLista[] }>(urls.perfumes.precios);
+      if (res.ok) setPrecios(res.cuerpo?.data ?? []);
     } catch { /* sin lista, el form pide precio propio */ }
   };
   useEffect(() => { cargarPrecios(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -192,11 +193,10 @@ export function PerfumesTab({
       })),
     };
     try {
-      const url = modal.editId ? `${API}/update/${modal.editId}` : `${API}/create`;
-      const method = modal.editId ? 'PATCH' : 'POST';
-      const res = await guardedFetch(url, { method, body: JSON.stringify(body) });
-      const json = await res.json();
-      if (!res.ok) { setFormError(json.error ?? 'Error al guardar'); return; }
+      const res = modal.editId
+        ? await http.patch(urls.perfumes.actualizar(modal.editId), body)
+        : await http.post(urls.perfumes.crear, body);
+      if (!res.ok) { setFormError(res.error); return; }
       closeModal(); onMutate();
     } catch { setFormError('No se pudo conectar con el servidor'); }
     finally { setFormLoading(false); }
@@ -204,7 +204,10 @@ export function PerfumesTab({
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('¿Eliminar este perfume? Esta acción no se puede deshacer.')) return;
-    await guardedFetch(`${API}/delete/${id}`, { method: 'DELETE' });
+    const res = await http.borrar(urls.perfumes.borrar(id));
+    // Antes se ignoraba la respuesta: si el servidor lo rechazaba, la fila
+    // seguía ahí y nadie sabía por qué.
+    if (!res.ok) { toast.error(res.error, { id: 'perfume-del' }); return; }
     onMutate();
   };
 
@@ -235,7 +238,6 @@ export function PerfumesTab({
                   la puerta de acciones de la fila. */}
               <AccionesPerfume
                 perfume={p}
-                guardedFetch={guardedFetch}
                 onCambiado={onMutate}
                 onEditar={() => openEdit(p)}
                 onEliminar={() => handleDelete(p.id)}

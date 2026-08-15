@@ -123,7 +123,7 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
     const codigo = codigoInput.trim();
     if (!codigo) return;
     setValidando(true); setResultado(null);
-    setResultado(await validarCodigoDescuento(guardedFetch, codigo));
+    setResultado(await validarCodigoDescuento(codigo));
     setValidando(false);
   };
 

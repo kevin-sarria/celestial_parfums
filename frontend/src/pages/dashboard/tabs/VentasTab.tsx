@@ -10,9 +10,9 @@ import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { ventasColumns } from '../columns';
 import { VentaForm } from './VentaForm';
-import {
-  API, API_COMBOS, API_USUARIOS, API_VENTAS, DEFAULT_PAGE_SIZE, formatPrice,
-} from '../helpers';
+import { DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import type { GuardedFetch, Venta, Usuario } from '../types';
 
@@ -49,17 +49,17 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const load = async (p = page, s = pageSize, term = searchTerm) => {
     setCargando(true);
     try {
-      const searchQs = term ? `&search=${encodeURIComponent(term)}` : '';
       const [vRes, tRes] = await Promise.all([
-        guardedFetch(`${API_VENTAS}?page=${p}&limit=${s}${searchQs}`),
-        guardedFetch(`${API_VENTAS}/totales`),
+        http.get<{ data: Venta[]; total: number }>(urls.ventas.lista, {
+          params: { page: p, limit: s, ...(term ? { search: term } : {}) },
+        }),
+        http.get<{ data: Totales }>(urls.ventas.totales),
       ]);
-      if (!vRes.ok || !tRes.ok) throw new Error();
-      const [v, t] = await Promise.all([vRes.json(), tRes.json()]);
-      setVentas(v.data ?? []);
-      setTotal(v.total ?? 0);
+      if (!vRes.ok || !tRes.ok) throw new Error(vRes.error || tRes.error);
+      setVentas(vRes.cuerpo?.data ?? []);
+      setTotal(vRes.cuerpo?.total ?? 0);
       setPage(p);
-      setTotales(t.data ?? null);
+      setTotales(tRes.cuerpo?.data ?? null);
       setErrorCarga('');
     } catch {
       // Sin esto la pantalla se queda vacía y parece que no hay ventas
@@ -70,14 +70,16 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const loadCatalogos = async () => {
     try {
       const [uRes, pRes, cRes] = await Promise.all([
-        guardedFetch(API_USUARIOS), fetch(`${API}/`), fetch(`${API_COMBOS}/`),
+        http.get<{ data: Usuario[] }>(urls.usuarios.lista),
+        http.get<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todos),
+        http.get<{ data: Combo[] }>(urls.combos.todos),
       ]);
-      const [u, pf, co] = await Promise.all([uRes.json(), pRes.json(), cRes.json()]);
-      setUsuarios((u.data ?? []).filter((x: Usuario) => x.rol_id !== 1));
+      setUsuarios((uRes.cuerpo?.data ?? []).filter((x) => x.rol_id !== 1));
       // /api/parfums sin paginar responde { data: { data: [...] } }
-      const lista = (Array.isArray(pf.data) ? pf.data : (pf.data?.data ?? [])) as Perfume[];
+      const pf = pRes.cuerpo?.data;
+      const lista = Array.isArray(pf) ? pf : (pf?.data ?? []);
       setCatalogo([...lista].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
-      setCombos(((co.data ?? []) as Combo[]).filter(c => c.activo));
+      setCombos((cRes.cuerpo?.data ?? []).filter(c => c.activo));
     } catch { /* el formulario avisa si falta el catálogo */ }
   };
 
@@ -86,12 +88,8 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const handleDelete = async (v: Venta) => {
     if (!window.confirm('¿Eliminar esta venta? El inventario que salió con ella vuelve a entrar.')) return;
     try {
-      const res = await guardedFetch(`${API_VENTAS}/${v.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        toast.error(j?.error ?? 'No se pudo eliminar', { id: 'ventas' });
-        return;
-      }
+      const res = await http.borrar(urls.ventas.venta(v.id));
+      if (!res.ok) { toast.error(res.error, { id: 'ventas' }); return; }
       load();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'ventas' }); }
   };
@@ -101,10 +99,9 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
   const handleEnlazar = async () => {
     setEnlazando(true);
     try {
-      const res = await guardedFetch(`${API_VENTAS}/enlazar-perfumes`, { method: 'POST' });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo enlazar', { id: 'ventas' }); return; }
-      toast.success(json?.message ?? 'Listo');
+      const res = await http.post<{ message?: string }>(urls.ventas.enlazarPerfumes);
+      if (!res.ok) { toast.error(res.error, { id: 'ventas' }); return; }
+      toast.success(res.cuerpo?.message ?? 'Listo');
       load();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'ventas' }); }
     finally { setEnlazando(false); }
@@ -223,7 +220,6 @@ export function VentasTab({ guardedFetch }: VentasTabProps) {
         usuarios={usuarios}
         catalogo={catalogo}
         combos={combos}
-        guardedFetch={guardedFetch}
         onClose={() => setModal({ open: false, venta: null })}
         onSaved={recargar => {
           setModal({ open: false, venta: null });

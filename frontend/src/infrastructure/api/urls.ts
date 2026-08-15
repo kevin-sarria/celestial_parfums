@@ -53,5 +53,43 @@ export const urls = {
   perfumes: {
     /** Catálogo COMPLETO, sin paginar. Ojo: responde `{ data: { data: [...] } }`. */
     todos: '/parfums',
+    crear: '/parfums/create',
+    actualizar: (id: number) => `/parfums/update/${id}`,
+    borrar: (id: number) => `/parfums/delete/${id}`,
+    /** La lista de precios: categoría × talla. */
+    precios: '/parfums/precios',
+    /** Sacar de la tienda / devolver a la tienda. Distinto de agotado. */
+    publicado: (id: number) => `/parfums/${id}/publicado`,
+    /** "No hay ahora mismo": se sigue viendo, marcado. */
+    agotado: (id: number) => `/parfums/${id}/agotado`,
+  },
+
+  ventas: {
+    /**
+     * Listado paginado. Los filtros se pasan como `params` de la petición, no
+     * pegados a la cadena: así nadie tiene que acordarse de `encodeURIComponent`
+     * (y un nombre con "&" dejaba de romper la búsqueda).
+     */
+    lista: '/ventas',
+    totales: '/ventas/totales',
+    porMes: '/ventas/por-mes',
+    crear: '/ventas',
+    venta: (id: number) => `/ventas/${id}`,
+    /** Reintenta la inferencia venta→perfumes de lo importado sin enlazar. */
+    enlazarPerfumes: '/ventas/enlazar-perfumes',
+  },
+
+  combos: {
+    todos: '/combos',
+  },
+
+  anuncios: {
+    /** Certifica un código de descuento (CP-XXXXXX) antes de aplicarlo. */
+    codigo: (codigo: string) => `/anuncios/codigos/${encodeURIComponent(codigo)}`,
+  },
+
+  usuarios: {
+    lista: '/usuarios',
+    crear: '/usuarios',
   },
 } as const;

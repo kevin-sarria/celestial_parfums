@@ -1,4 +1,6 @@
 import { BASE_URL } from '../../infrastructure/api/client';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import type { ClienteSeleccion, CodigoValidado, GuardedFetch, Lookup } from './types';
 
 export { formatPrice } from '@/lib/format';
@@ -75,15 +77,9 @@ export const conNotaDeTalla = (tallas: Lookup[]): Lookup[] =>
   }));
 
 /** Certifica un código de descuento contra el backend (nunca lanza: devuelve el motivo). */
-export const validarCodigoDescuento = async (
-  guardedFetch: GuardedFetch,
-  codigo: string,
-): Promise<CodigoValidado> => {
-  try {
-    const res = await guardedFetch(`${API_ANUNCIOS}/codigos/${encodeURIComponent(codigo)}`);
-    const json = await res.json();
-    return res.ok ? json.data : { valido: false, codigo, motivo: json.error ?? 'Error al validar' };
-  } catch {
-    return { valido: false, codigo, motivo: 'No se pudo conectar con el servidor' };
-  }
+export const validarCodigoDescuento = async (codigo: string): Promise<CodigoValidado> => {
+  const res = await http.get<{ data: CodigoValidado }>(urls.anuncios.codigo(codigo));
+  return res.ok && res.cuerpo
+    ? res.cuerpo.data
+    : { valido: false, codigo, motivo: res.error };
 };

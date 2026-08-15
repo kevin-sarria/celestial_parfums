@@ -87,8 +87,15 @@ Decisiones que conviene no deshacer:
   con el `guardedFetch` viejo, que es fetch nativo. Convivencia temporal y a la vista, no
   permanente: cuando caiga la última pantalla se borran `client.ts` y `useGuardedFetch`.
 
-**Estado**: migrada la sección *Producción e inventario* (Inventario, Producciones, Pedido
-sugerido y sus 4 modales). Faltan ~42 componentes.
+**Estado** (2026-08-14): migradas *Producción e inventario* (Inventario, Producciones, Pedido
+sugerido y sus 4 modales), **Ventas** (listado, formulario, crear persona y crear producto al
+vuelo) y **Perfumes** (ficha, publicar/agotar, lista de precios). Van 38 rutas centralizadas y
+**30 llamadas migradas de 151**; quedan 121 en 43 componentes.
+
+Orden de migración: **por pantallas que se usan a diario primero**, y cada una entera. Las que
+tocan dinero se migran con su recorrido en navegador ya escrito — `venta.e2e.test.ts` registra una
+venta completa por pantalla y comprueba que el inventario se movió, así que la migración de Ventas
+se verificó sola.
 
 **Ojo con el typecheck**: `npx tsc --noEmit` en `frontend/` **no comprueba nada** — el `tsconfig`
 raíz tiene `files: []` y delega en referencias. Lo real es `npx tsc -p tsconfig.app.json --noEmit`

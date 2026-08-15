@@ -16,10 +16,12 @@ import {
   type LineaPedido,
 } from '../pedido/lineasPedido';
 import {
-  API, API_USUARIOS, API_VENTAS, formatPrice, parseClienteSeleccion, personaLabel, validarCodigoDescuento,
+  formatPrice, parseClienteSeleccion, personaLabel, validarCodigoDescuento,
 } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { BloqueCampos, Field, FieldRow, FormError } from '../ui';
-import type { CodigoValidado, ClienteSeleccion, GuardedFetch, Usuario, Venta } from '../types';
+import type { CodigoValidado, ClienteSeleccion, Usuario, Venta } from '../types';
 
 interface VentaFormProps {
   open: boolean;
@@ -28,7 +30,6 @@ interface VentaFormProps {
   usuarios: Usuario[];
   catalogo: Perfume[];
   combos: Combo[];
-  guardedFetch: GuardedFetch;
   onClose: () => void;
   /** @param recargarCatalogos true si se creó una persona o un producto. */
   onSaved: (recargarCatalogos: boolean) => void;
@@ -63,7 +64,7 @@ const vacio = (): EstadoForm => ({
  * la cuenta y la ofrece con el botón "usar".
  */
 export function VentaForm({
-  open, venta, usuarios, catalogo, combos, guardedFetch, onClose, onSaved,
+  open, venta, usuarios, catalogo, combos, onClose, onSaved,
 }: VentaFormProps) {
   const [form, setForm] = useState<EstadoForm>(vacio());
   const [guardando, setGuardando] = useState(false);
@@ -126,7 +127,7 @@ export function VentaForm({
     const codigo = form.codigo_descuento.trim();
     if (!codigo) return;
     setValidando(true); setCodigoCheck(null);
-    setCodigoCheck(await validarCodigoDescuento(guardedFetch, codigo));
+    setCodigoCheck(await validarCodigoDescuento(codigo));
     setValidando(false);
   };
 
@@ -164,12 +165,11 @@ export function VentaForm({
     if (!nombre || !(precio > 0)) { setError('Ponle nombre y precio al producto nuevo'); return; }
     setCreandoProd(true);
     try {
-      const res = await guardedFetch(`${API}/create`, {
-        method: 'POST',
-        body: JSON.stringify({ nombre, precio, tipos_aroma: [], ocasiones: [], presentaciones: [] }),
+      const res = await http.post<{ data: { id: number; nombre: string } }>(urls.perfumes.crear, {
+        nombre, precio, tipos_aroma: [], ocasiones: [], presentaciones: [],
       });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { setError(json?.error ?? 'No se pudo crear el producto'); return; }
+      if (!res.ok || !res.cuerpo) { setError(res.error || 'No se pudo crear el producto'); return; }
+      const json = res.cuerpo;
       setForm(f => ({
         ...f,
         lineas: [...f.lineas, {
@@ -199,18 +199,14 @@ export function VentaForm({
         setError('Nombre y apellido de la persona son obligatorios'); setGuardando(false); return;
       }
       try {
-        const res = await guardedFetch(API_USUARIOS, {
-          method: 'POST',
-          body: JSON.stringify({
-            nombre: form.nuevo_nombre.trim(), apellido: form.nuevo_apellido.trim(),
-            email: form.nuevo_correo.trim() || undefined,
-            telefono: form.nuevo_telefono.trim() || undefined,
-            direccion: form.nuevo_direccion.trim() || undefined,
-          }),
+        const res = await http.post<{ data: { id: number } }>(urls.usuarios.crear, {
+          nombre: form.nuevo_nombre.trim(), apellido: form.nuevo_apellido.trim(),
+          email: form.nuevo_correo.trim() || undefined,
+          telefono: form.nuevo_telefono.trim() || undefined,
+          direccion: form.nuevo_direccion.trim() || undefined,
         });
-        const json = await res.json().catch(() => null);
-        if (!res.ok) { setError(json?.error ?? 'Error al crear la persona'); setGuardando(false); return; }
-        userId = json.data.id; creoPersona = true;
+        if (!res.ok || !res.cuerpo) { setError(res.error || 'Error al crear la persona'); setGuardando(false); return; }
+        userId = res.cuerpo.data.id; creoPersona = true;
       } catch { setError('No se pudo crear la persona'); setGuardando(false); return; }
     }
 
@@ -229,10 +225,10 @@ export function VentaForm({
     };
 
     try {
-      const url = venta ? `${API_VENTAS}/${venta.id}` : API_VENTAS;
-      const res = await guardedFetch(url, { method: venta ? 'PATCH' : 'POST', body: JSON.stringify(body) });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { setError(json?.error ?? 'Error al guardar'); return; }
+      const res = venta
+        ? await http.patch(urls.ventas.venta(venta.id), body)
+        : await http.post(urls.ventas.crear, body);
+      if (!res.ok) { setError(res.error); return; }
       onSaved(creoPersona || creoAlgo);
     } catch { setError('No se pudo conectar con el servidor'); }
     finally { setGuardando(false); }

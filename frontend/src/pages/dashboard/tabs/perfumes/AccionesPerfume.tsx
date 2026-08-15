@@ -7,9 +7,9 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import Modal from '../../../../components/Modal';
-import { API } from '../../helpers';
+import { http } from '../../../../infrastructure/api/http';
+import { urls } from '../../../../infrastructure/api/urls';
 import type { Perfume } from '../../../../domain/entities/perfume.schema';
-import type { GuardedFetch } from '../../types';
 
 /**
  * TODAS las acciones de un perfume, en un solo botón.
@@ -40,13 +40,12 @@ import type { GuardedFetch } from '../../types';
 
 interface Props {
   perfume: Perfume;
-  guardedFetch: GuardedFetch;
   onCambiado: () => void;
   onEditar: () => void;
   onEliminar: () => void;
 }
 
-export function AccionesPerfume({ perfume, guardedFetch, onCambiado, onEditar, onEliminar }: Props) {
+export function AccionesPerfume({ perfume, onCambiado, onEditar, onEliminar }: Props) {
   const [confirmando, setConfirmando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const sacando = perfume.publicado; // lo que va a pasar si confirma
@@ -59,13 +58,11 @@ export function AccionesPerfume({ perfume, guardedFetch, onCambiado, onEditar, o
   const aplicarPublicado = async () => {
     setGuardando(true);
     try {
-      const res = await guardedFetch(`${API}/${perfume.id}/publicado`, {
-        method: 'PATCH',
-        body: JSON.stringify({ publicado: !perfume.publicado }),
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo cambiar'); return; }
-      toast.success(json?.message ?? 'Listo');
+      const res = await http.patch<{ message?: string }>(
+        urls.perfumes.publicado(perfume.id), { publicado: !perfume.publicado },
+      );
+      if (!res.ok) { toast.error(res.error); return; }
+      toast.success(res.cuerpo?.message ?? 'Listo');
       setConfirmando(false);
       onCambiado();
     } catch {
@@ -76,16 +73,11 @@ export function AccionesPerfume({ perfume, guardedFetch, onCambiado, onEditar, o
   /** Agotado NO saca de la tienda: el perfume se sigue viendo, marcado. */
   const alternarAgotado = async () => {
     try {
-      const res = await guardedFetch(`${API}/${perfume.id}/agotado`, {
-        method: 'PATCH',
-        body: JSON.stringify({ agotado: !perfume.agotado_manual }),
-      });
+      const res = await http.patch(
+        urls.perfumes.agotado(perfume.id), { agotado: !perfume.agotado_manual },
+      );
       // Si el servidor rechaza, la fila se quedaría igual y nadie sabría por qué.
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        toast.error(j?.error ?? 'No se pudo cambiar el stock', { id: 'stock' });
-        return;
-      }
+      if (!res.ok) { toast.error(res.error, { id: 'stock' }); return; }
       onCambiado();
     } catch {
       toast.error('No se pudo conectar con el servidor', { id: 'stock' });

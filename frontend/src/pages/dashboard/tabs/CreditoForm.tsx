@@ -151,7 +151,7 @@ export function CreditoForm({
     const codigo = form.codigo_descuento.trim();
     if (!codigo) { setCodigoCheck(null); return; }
     setValidando(true); setCodigoCheck(null);
-    setCodigoCheck(await validarCodigoDescuento(guardedFetch, codigo));
+    setCodigoCheck(await validarCodigoDescuento(codigo));
     setValidando(false);
   };
 
