@@ -92,8 +92,8 @@ sugerido y sus 4 modales), **Ventas** (listado, formulario, crear persona y crea
 vuelo), **Perfumes** (ficha, publicar/agotar, lista de precios), **Créditos** (cartera, abonos,
 perfil de cupo), **Proveedores** (compras con sus líneas, IVA por proveedor, alta de empresa) y
 **Clasificaciones** (las cuatro listas + la carga inicial del dashboard), **Devoluciones**,
-**Usuarios**, **Reposiciones (avisos)** y **Reseñas**.
-Van 68 rutas centralizadas y **67 llamadas migradas de 151**; quedan 84.
+**Usuarios**, **Reposiciones (avisos)**, **Reseñas**, **Sobre nosotros**, **los tres reportes** y
+**la campana**. Van 74 rutas centralizadas y **71 llamadas migradas de 151**; quedan 80.
 
 Las cuatro clasificaciones comparten juego de rutas, así que `urls.clasificaciones(tipo)` las
 genera en vez de escribirlas cuatro veces — y el tipo `Clasificacion` hace que TypeScript

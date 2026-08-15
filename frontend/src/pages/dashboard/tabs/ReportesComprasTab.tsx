@@ -2,7 +2,6 @@ import GraficoBarras, { SERIE_A, SERIE_B } from '../GraficoBarras';
 import { Panel, Ranking, ReporteShell, useReporte } from '../reportes/comun';
 import { formatPrice } from '../helpers';
 import { FranjaMetricas, StatCard } from '../ui';
-import type { GuardedFetch } from '../types';
 
 interface ReporteCompras {
   serie: { mes: string; compras: number; envios: number; total: number }[];
@@ -14,8 +13,8 @@ interface ReporteCompras {
 }
 
 /** Cuánto salió hacia proveedores y en qué se fue. */
-export function ReportesComprasTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
-  const { datos, cargando, error, recargar } = useReporte<ReporteCompras>(guardedFetch, 'compras');
+export function ReportesComprasTab() {
+  const { datos, cargando, error, recargar } = useReporte<ReporteCompras>('compras');
 
   return (
     <ReporteShell titulo="Reporte de compras" cargando={cargando} error={error} onReintentar={recargar}>

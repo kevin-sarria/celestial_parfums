@@ -297,16 +297,16 @@ export default function DashboardPage() {
             )}
             {tab === 'ventas' && <VentasTab guardedFetch={guardedFetch} />}
             {tab === 'creditos' && <CreditosTab guardedFetch={guardedFetch} />}
-            {tab === 'rep_ventas' && <ReportesVentasTab guardedFetch={guardedFetch} />}
-            {tab === 'rep_compras' && <ReportesComprasTab guardedFetch={guardedFetch} />}
-            {tab === 'rep_clientes' && <ReportesClientesTab guardedFetch={guardedFetch} />}
+            {tab === 'rep_ventas' && <ReportesVentasTab />}
+            {tab === 'rep_compras' && <ReportesComprasTab />}
+            {tab === 'rep_clientes' && <ReportesClientesTab />}
             {tab === 'pagos' && <PagosTab guardedFetch={guardedFetch} />}
             {tab === 'usuarios' && <UsuariosTab />}
             {tab === 'publicidad' && <PublicidadTab guardedFetch={guardedFetch} categorias={categorias} />}
             {tab === 'recompensas' && <RecompensasTab guardedFetch={guardedFetch} />}
             {tab === 'resenas' && <ResenasTab guardedFetch={guardedFetch} />}
             {tab === 'avisos' && <AvisosTab />}
-            {tab === 'nosotros' && <SobreNosotrosTab guardedFetch={guardedFetch} />}
+            {tab === 'nosotros' && <SobreNosotrosTab />}
             {tab === 'blog' && <BlogTab guardedFetch={guardedFetch} />}
             {tab === 'cotizaciones' && <CotizacionesTab guardedFetch={guardedFetch} />}
             {tab === 'formulas' && <FormulasVolumenTab guardedFetch={guardedFetch} />}

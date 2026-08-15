@@ -51,6 +51,8 @@ export const urls = {
     formulas: '/costeo/formulas',
     /** Gamas de esencia con su punto de pedido. */
     gamas: '/costeo/gamas/todas',
+    gama: (id: number) => `/costeo/gamas/${id}`,
+    crearGama: '/costeo/gamas',
   },
 
   perfumes: {
@@ -86,6 +88,8 @@ export const urls = {
     todos: '/combos',
     /** Paginado para el dashboard. */
     lista: '/combos',
+    crear: '/combos',
+    combo: (id: number) => `/combos/${id}`,
   },
 
   /**
@@ -155,6 +159,17 @@ export const urls = {
     admin: '/avisos/admin',
     marcarNotificados: (perfumeId: number) => `/avisos/admin/${perfumeId}/notificados`,
   },
+
+  /** Textos e imágenes de la página "Sobre nosotros". */
+  nosotros: {
+    config: '/nosotros/config',
+    imagen: '/nosotros/imagen',
+  },
+
+  /** La campana: lo que está pendiente, recalculado en cada consulta. */
+  notificaciones: '/notificaciones',
+
+  reportes: (ruta: string) => `/reportes/${ruta}`,
 
   resenas: {
     admin: '/resenas/admin',

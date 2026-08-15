@@ -6,8 +6,9 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { BASE_URL } from '../../infrastructure/api/client';
 import type { GuardedFetch } from './types';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 
 interface Notificacion {
   id: string;
@@ -51,9 +52,9 @@ export default function CentroNotificaciones({ guardedFetch }: { guardedFetch: G
     setCargando(true);
     setError(false);
     try {
-      const res = await guardedFetch(`${BASE_URL}/api/notificaciones`);
+      const res = await http.get<{ data?: Notificacion[] }>(urls.notificaciones);
       if (!res.ok) { setError(true); return; }
-      setAvisos((await res.json()).data ?? []);
+      setAvisos(res.cuerpo?.data ?? []);
     } catch {
       setError(true);
     } finally {

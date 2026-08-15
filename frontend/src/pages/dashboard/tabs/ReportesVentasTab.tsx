@@ -4,7 +4,6 @@ import GraficoBarras, { SERIE_A, SERIE_B } from '../GraficoBarras';
 import { Panel, Ranking, ReporteShell, useReporte } from '../reportes/comun';
 import { formatPrice } from '../helpers';
 import { FranjaMetricas, StatCard } from '../ui';
-import type { GuardedFetch } from '../types';
 
 interface ReporteVentas {
   serie: { mes: string; ingresos: number; costo: number; ganancia: number }[];
@@ -60,8 +59,8 @@ const sinTalla = (d: ReporteVentas) =>
   d.por_talla.filter((t) => t.ml == null).reduce((s, t) => s + t.unidades, 0);
 
 /** Cuánto se vendió, qué se vendió y cuánto quedó de ganancia. */
-export function ReportesVentasTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
-  const { datos, cargando, error, recargar } = useReporte<ReporteVentas>(guardedFetch, 'ventas');
+export function ReportesVentasTab() {
+  const { datos, cargando, error, recargar } = useReporte<ReporteVentas>('ventas');
   /** Cuántos meses se ven en el gráfico. Comparar 12 meses de un vistazo cansa;
       a veces solo interesa cómo va el trimestre. */
   const [meses, setMeses] = useState(12);

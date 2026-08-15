@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { EncabezadoPagina, Section } from '../ui';
-import type { GuardedFetch } from '../types';
 
 /**
  * Piezas que comparten los tres reportes (ventas, compras y clientes).
@@ -14,7 +14,7 @@ import type { GuardedFetch } from '../types';
  */
 
 /** Carga un reporte con su spinner, su error y su botón de reintentar. */
-export function useReporte<T>(guardedFetch: GuardedFetch, ruta: string) {
+export function useReporte<T>(ruta: string) {
   const [datos, setDatos] = useState<T | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -22,12 +22,9 @@ export function useReporte<T>(guardedFetch: GuardedFetch, ruta: string) {
   const cargar = async () => {
     setCargando(true);
     try {
-      const res = await guardedFetch(`${BASE_URL}/api/reportes/${ruta}`);
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        throw new Error(j?.error ?? 'No se pudo cargar el reporte');
-      }
-      setDatos((await res.json()).data ?? null);
+      const res = await http.get<{ data: T }>(urls.reportes(ruta));
+      if (!res.ok) throw new Error(res.error);
+      setDatos(res.cuerpo?.data ?? null);
       setError('');
     } catch (e) {
       // Sin este catch/finally la pantalla se queda "Cargando…" para siempre

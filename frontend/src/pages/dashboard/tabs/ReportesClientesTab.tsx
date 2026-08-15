@@ -2,7 +2,6 @@ import GraficoBarras, { SERIE_A } from '../GraficoBarras';
 import { Panel, Ranking, ReporteShell, useReporte } from '../reportes/comun';
 import { formatPrice } from '../helpers';
 import { FranjaMetricas, StatCard } from '../ui';
-import type { GuardedFetch } from '../types';
 
 interface ReporteClientes {
   serie: { mes: string; nuevos: number }[];
@@ -19,8 +18,8 @@ interface ReporteClientes {
 }
 
 /** Quiénes son los clientes, quién compra y quién debe. */
-export function ReportesClientesTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
-  const { datos, cargando, error, recargar } = useReporte<ReporteClientes>(guardedFetch, 'clientes');
+export function ReportesClientesTab() {
+  const { datos, cargando, error, recargar } = useReporte<ReporteClientes>('clientes');
 
   return (
     <ReporteShell titulo="Reporte de clientes" cargando={cargando} error={error} onReintentar={recargar}>
