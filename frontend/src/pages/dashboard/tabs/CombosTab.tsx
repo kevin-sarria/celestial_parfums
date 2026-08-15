@@ -115,9 +115,6 @@ export function CombosTab({
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
           renderActions={c => (
             <>
-              {c.imagen_url && (
-                <img src={c.imagen_url} alt={c.nombre} className="size-8 rounded-md border border-border object-cover" />
-              )}
               <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => openEdit(c)} title="Editar">
                 <Pencil className="size-4" />
               </Button>

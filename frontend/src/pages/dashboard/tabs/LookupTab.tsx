@@ -148,8 +148,17 @@ export function LookupTab({
     {
       key: 'nombre', header: 'Nombre', type: 'string',
       getValue: i => i.nombre,
+      render: i => (
+        <span>
+          {i.nombre}
+          {i.nota && (
+            <span className="block text-[12px] font-normal text-muted-foreground">{i.nota}</span>
+          )}
+        </span>
+      ),
       className: 'font-medium text-foreground',
       movil: 'titulo',
+      noTruncate: true,
     },
   ];
 

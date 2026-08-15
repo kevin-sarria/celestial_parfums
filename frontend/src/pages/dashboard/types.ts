@@ -7,6 +7,10 @@ export interface Lookup {
   descuento?: number;
   /** Solo categorías: cuántos perfumes la usan (0 = se puede borrar sin mudar). */
   usos?: number;
+  /** Solo tallas: los ml que el sistema le leyó al nombre. null = no es un tamaño. */
+  ml?: number | null;
+  /** Segunda línea bajo el nombre en la lista (explica algo del elemento). */
+  nota?: string;
 }
 
 /** Perfil crediticio interno calculado por el backend (SOLO admin). */
@@ -135,6 +139,39 @@ export interface InventarioInsumo {
   genero?: 'dama' | 'caballero' | 'unisex' | null;
 }
 
+/**
+ * Un perfume × talla del que YA hay frascos armados.
+ *
+ * Es inventario igual que el material: al producir, la plata sale de los
+ * insumos y se queda aquí. El costo es el del día que se armó, congelado.
+ * Negativo = se vendió algo que no estaba armado; hay que mirarlo.
+ */
+export interface FrascoArmado {
+  perfume_id: number; presentacion_id: number;
+  perfume: string; talla: string; ml: number | null;
+  cantidad: number; costo_unitario: number; valor: number;
+}
+
+/** Lo que devuelve `GET /inventario`: la pantalla entera de bodega. */
+export interface ResumenInventario {
+  insumos: InventarioInsumo[];
+  valor_total: number;
+  salidas_mes: { muestras: number; mermas: number; ajustes: number };
+  terminado: { filas: FrascoArmado[]; unidades: number; valor: number };
+}
+
+/**
+ * Catálogo sin paginar. Responde `{ data: { data: [...] } }` (anidado) y con
+ * `?page=` responde `{ data: [...] }`: se aceptan las dos formas a propósito,
+ * porque las dos existen en la API (ver `arquitectura.md`).
+ */
+export interface CatalogoItem {
+  id: number;
+  nombre: string;
+  insumo_esencia_id?: number | null;
+}
+export type CatalogoRespuesta = { data: { data: CatalogoItem[] } | CatalogoItem[] };
+
 export interface MovimientoInventario {
   id: number; tipo: 'compra' | 'produccion' | 'garantia' | 'ajuste' | 'merma' | 'muestra';
   cantidad: number; costo_unitario: number; fecha: string;
@@ -161,6 +198,8 @@ export interface PerfumeForm {
   insumo_producto_id: number | '';
   /** Solo fraccionado: ml que de verdad se aprovechan de la botella. */
   ml_utiles: string;
+  /** Los 1.1: solo se venden si ya están armados, no contra pedido. */
+  solo_armado: boolean;
   /** Frasco propio por talla (presentacion_id → insumo del envase). */
   envases_talla: Record<number, number | ''>;
   /** Precio propio por presentación (id → texto); vacío = usa la lista de su categoría. */
@@ -172,7 +211,8 @@ export const emptyPerfumeForm = (): PerfumeForm => ({
   proyeccion: '', imagen_url: '', genero: '', categoria_id: '',
   tipos_aroma: [], ocasiones: [], presentaciones: [],
   esencia_premium: false, insumo_esencia_id: '',
-  tipo_producto: 'fabricado', insumo_producto_id: '', ml_utiles: '', envases_talla: {},
+  tipo_producto: 'fabricado', insumo_producto_id: '', ml_utiles: '', solo_armado: false,
+  envases_talla: {},
   precios_propios: {},
 });
 

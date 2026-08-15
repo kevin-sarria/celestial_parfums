@@ -32,7 +32,7 @@ export const cerrarNavegador = async () => {
  * entrada, que importa porque el servidor corta a los 10 intentos cada 15
  * minutos y eso ya bloqueó pruebas antes.
  */
-const cookiesDeAdmin = async () => {
+const pedirCookiesDeAdmin = async () => {
   const res = await fetch(`${URL_API}/api/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -53,6 +53,18 @@ const cookiesDeAdmin = async () => {
     };
   });
 };
+
+/**
+ * La entrada se pide UNA vez por archivo y se reutiliza.
+ *
+ * El servidor corta a los 10 intentos cada 15 minutos y los recorridos gastaban
+ * uno por cada pestaña y por cada llamada a la API: entre todos pasaban de 11 y
+ * el último archivo moría con un 429 que no dice nada del sistema —y que además
+ * hacía fallar a un recorrido distinto según el orden. La sesión es la misma en
+ * los dos usos (navegador y API), así que no hay motivo para pedirla de nuevo.
+ */
+let sesionAdmin: ReturnType<typeof pedirCookiesDeAdmin> | null = null;
+const cookiesDeAdmin = () => (sesionAdmin ??= pedirCookiesDeAdmin());
 
 /**
  * La sesión de administrador como cabecera, para hablarle al servidor SIN pasar

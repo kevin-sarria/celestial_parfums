@@ -230,7 +230,7 @@ export default function BuscadorSelect({
   };
 
   return (
-    <div ref={contRef} className={cn('relative w-full', className)}>
+    <div ref={contRef} className={cn('relative h-9 w-full', className)}>
       {/* Disparador con la apariencia exacta de SelectSimple */}
       <button
         type="button"
@@ -240,7 +240,12 @@ export default function BuscadorSelect({
         aria-haspopup="listbox"
         aria-expanded={abierto}
         className={cn(
-          'h-9 w-full cursor-pointer rounded-md border border-input bg-card px-3 pr-8 text-left',
+          // El alto sale del CONTENEDOR (`h-full`), nunca fijo aquí: con `h-9`
+          // propio, una pantalla que pedía un campo bajo (`h-8`) se quedaba con
+          // el botón de 36px dentro de una caja de 32px. El botón sobresalía 4px
+          // y, como el panel se coloca desde el borde inferior del contenedor,
+          // se abría PEGADO al campo (1px de aire en vez de 4).
+          'h-full w-full cursor-pointer rounded-md border border-input bg-card px-3 pr-8 text-left',
           'text-base shadow-xs outline-none transition-[color,box-shadow] md:text-sm',
           'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50',
           'disabled:cursor-not-allowed disabled:opacity-50',

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pencil, Trash2, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,8 +7,7 @@ import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
-import { PublicarSwitch } from './perfumes/PublicarSwitch';
-import { EstadoStock } from './perfumes/EstadoStock';
+import { AccionesPerfume } from './perfumes/AccionesPerfume';
 import ExportButton from '../../../components/ExportButton';
 import DescargarCatalogoButton from '../../../components/DescargarCatalogoButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
@@ -140,6 +139,7 @@ export function PerfumesTab({
       tipo_producto: p.tipo_producto ?? 'fabricado',
       insumo_producto_id: p.insumo_producto_id ?? '',
       ml_utiles: p.ml_utiles ? String(p.ml_utiles) : '',
+      solo_armado: p.solo_armado ?? false,
       envases_talla: Object.fromEntries(
         (p.precios ?? []).filter(pr => pr.envase_insumo_id)
           .map(pr => [pr.presentacion_id, pr.envase_insumo_id as number]),
@@ -183,6 +183,8 @@ export function PerfumesTab({
       tipo_producto: form.tipo_producto,
       insumo_producto_id: form.insumo_producto_id === '' ? null : form.insumo_producto_id,
       ml_utiles: Number(form.ml_utiles) || null,
+      // Solo tiene sentido en lo que se fabrica: un comprado ya viene armado.
+      solo_armado: form.tipo_producto === 'fabricado' && form.solo_armado,
       envases_talla: form.presentaciones.map(id => ({
         presentacion_id: id,
         envase_insumo_id: form.envases_talla[id] || null,
@@ -229,19 +231,15 @@ export function PerfumesTab({
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
           renderActions={p => (
             <>
-              {/* Dos estados distintos y a propósito separados: "Agotado" se
-                  sigue viendo en la tienda; el interruptor la saca de ella. */}
-              <PublicarSwitch perfume={p} guardedFetch={guardedFetch} onCambiado={onMutate} />
-              <EstadoStock perfume={p} guardedFetch={guardedFetch} onCambiado={onMutate} />
-              {p.imagen_url && (
-                <img src={p.imagen_url} alt={p.nombre} className="size-8 rounded-md border border-border object-cover" />
-              )}
-              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => openEdit(p)} title="Editar">
-                <Pencil className="size-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(p.id)} title="Eliminar">
-                <Trash2 className="size-4" />
-              </Button>
+              {/* Foto y estado son COLUMNAS (ver `columns.tsx`). Aquí solo queda
+                  la puerta de acciones de la fila. */}
+              <AccionesPerfume
+                perfume={p}
+                guardedFetch={guardedFetch}
+                onCambiado={onMutate}
+                onEditar={() => openEdit(p)}
+                onEliminar={() => handleDelete(p.id)}
+              />
             </>
           )}
         />
@@ -359,7 +357,10 @@ export function PerfumesTab({
               const activa = form.presentaciones.includes(pr.id);
               const deLista = precioDeLista(pr.id);
               return (
-                <div key={pr.id} className="flex items-center gap-2">
+                // `flex-wrap`: en celular los cuatro controles (nombre, precio,
+                // nota y frasco) no caben en una línea y la fila se desbordaba
+                // por fuera del modal. Bajan de renglón en vez de salirse.
+                <div key={pr.id} className="flex flex-wrap items-center gap-2">
                   <label className="flex min-w-28 flex-1 cursor-pointer items-center gap-2 text-[13px] text-foreground">
                     <input
                       type="checkbox" className="size-4 accent-primary" checked={activa}
@@ -389,7 +390,7 @@ export function PerfumesTab({
                           no usa el mismo que uno de Bleu. Vacío = el del tamaño. */}
                       {form.tipo_producto !== 'comprado' && (
                         <SelectSimple
-                          className="h-8 max-w-40 text-[12.5px]"
+                          className="h-8 max-w-48"
                           value={form.envases_talla[pr.id] ?? ''}
                           onChange={e => setForm(f => ({
                             ...f,
@@ -424,6 +425,26 @@ export function PerfumesTab({
                 : 'El costo sale de la botella: (lo que pagaste ÷ ml aprovechables) × ml del decant.'}
           </p>
         </Field>
+
+        {/* Los 1.1 no se arman contra pedido, así que no basta con tener el
+            material: mientras no haya frascos hechos, la tienda los da agotados. */}
+        {form.tipo_producto === 'fabricado' && (
+          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 text-[13px] text-foreground">
+            <input
+              type="checkbox" className="mt-0.5 size-4 accent-primary"
+              checked={form.solo_armado}
+              onChange={e => setForm(f => ({ ...f, solo_armado: e.target.checked }))}
+            />
+            <span>
+              Solo se vende si ya está armado (los 1.1)
+              <span className="block text-[12px] font-normal text-muted-foreground">
+                Se arma por adelantado, no cuando lo piden. Sale agotado en la tienda
+                mientras no tengas frascos hechos, aunque te sobre esencia y tengas su
+                envase especial en bodega. Los frascos entran al registrar la producción.
+              </span>
+            </span>
+          </label>
+        )}
 
         {form.tipo_producto !== 'fabricado' && (
           <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3">

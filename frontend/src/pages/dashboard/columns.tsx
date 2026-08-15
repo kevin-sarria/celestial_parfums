@@ -3,8 +3,9 @@ import { Badge } from '@/components/ui/badge';
 import type { Perfume } from '../../domain/entities/perfume.schema';
 import type { Combo } from '../../domain/entities/combo.schema';
 import type { ColumnDef } from '../../components/table/tableTypes';
-import type { Venta, Credito, Pago, InventarioInsumo, Produccion } from './types';
+import type { Venta, Credito, Pago, InventarioInsumo, Produccion, FrascoArmado } from './types';
 import { formatPrice, fmtDate } from './helpers';
+import { EstadoPerfume, faltaParaVender } from './tabs/perfumes/EstadoPerfume';
 import { finalPrice } from '@/lib/format';
 
 /** Clases reutilizables para celdas. */
@@ -15,6 +16,29 @@ const cellMeta = 'whitespace-nowrap text-muted-foreground';
 const SubText = ({ children }: { children: React.ReactNode }) => (
   <div className="text-[11px] font-normal text-muted-foreground">{children}</div>
 );
+
+/**
+ * La foto del producto como COLUMNA, no colgada de las acciones.
+ *
+ * El hueco vacío se dibuja igual cuando no hay foto: si la celda quedara en
+ * blanco, la columna se vería rota y además no se distingue "no tiene foto" de
+ * "la foto no cargó" — y una ficha sin foto es justo lo que hay que cazar.
+ */
+const Miniatura = ({ url, alt }: { url?: string | null; alt: string }) => (
+  url
+    ? <img src={url} alt={alt} loading="lazy"
+        className="size-8 rounded-md border border-border object-cover" />
+    : <span aria-label="Sin foto" title="Sin foto"
+        className="block size-8 rounded-md border border-dashed border-border bg-secondary/40" />
+);
+
+/** Columna de foto, igual en todas las tablas que tienen producto. */
+const columnaImagen = <T,>(url: (row: T) => string | null | undefined, alt: (row: T) => string): ColumnDef<T> => ({
+  key: 'imagen', header: 'Imagen', type: 'string',
+  getValue: row => (url(row) ? 'con foto' : 'sin foto'),
+  render: row => <Miniatura url={url(row)} alt={alt(row)} />,
+  sortable: false, noTruncate: true, className: 'w-0',
+});
 
 export const ventasColumns: ColumnDef<Venta>[] = [
   { key: 'dia', header: 'Dia', type: 'date', getValue: v => v.dia.slice(0, 10), render: v => fmtDate(v.dia), className: cellMeta, noTruncate: true, movil: 'meta' },
@@ -180,6 +204,35 @@ export const inventarioColumns: ColumnDef<InventarioInsumo>[] = [
     className: `text-right ${cellPrice}`, noTruncate: true, movil: 'meta' },
 ];
 
+/**
+ * Frascos que YA están armados, esperando venta.
+ *
+ * Es inventario tan real como el material, y hasta el 2026-08-14 no se veía en
+ * ninguna pantalla: la plata salía de los insumos al producir y no aparecía en
+ * ningún lado. El costo es el del día que se armó, congelado.
+ */
+export const terminadoColumns: ColumnDef<FrascoArmado>[] = [
+  { key: 'perfume', header: 'Perfume', type: 'string', getValue: f => f.perfume,
+    className: cellName, movil: 'titulo' },
+  { key: 'talla', header: 'Talla', type: 'string', getValue: f => f.talla,
+    filterable: true, className: cellMeta, movil: 'meta' },
+  { key: 'cantidad', header: 'Frascos', type: 'number', getValue: f => f.cantidad,
+    render: f => (
+      // Un negativo significa que se vendió algo que no estaba armado (o que se
+      // borró un lote ya vendido): hay que mirarlo, no esconderlo.
+      <span className={f.cantidad < 0 ? 'font-medium text-destructive' : undefined}>
+        {f.cantidad}
+      </span>
+    ), sortable: true, className: 'whitespace-nowrap text-right tabular-nums text-foreground',
+    noTruncate: true, movil: 'destacado' },
+  { key: 'costo_unitario', header: 'Costo c/u', type: 'currency', getValue: f => f.costo_unitario,
+    render: f => formatPrice(f.costo_unitario), sortable: true,
+    className: 'whitespace-nowrap text-right tabular-nums text-muted-foreground', noTruncate: true },
+  { key: 'valor', header: 'Valor', type: 'currency', getValue: f => f.valor,
+    render: f => formatPrice(f.valor), sortable: true,
+    className: `text-right ${cellPrice}`, noTruncate: true, movil: 'meta' },
+];
+
 /** Lotes armados. El costo por unidad sale de los insumos que se consumieron. */
 export const produccionesColumns: ColumnDef<Produccion>[] = [
   { key: 'fecha', header: 'Fecha', type: 'date', getValue: p => p.fecha.slice(0, 10),
@@ -200,6 +253,7 @@ export const produccionesColumns: ColumnDef<Produccion>[] = [
 ];
 
 export const perfumesColumns: ColumnDef<Perfume>[] = [
+  columnaImagen<Perfume>(p => p.imagen_url, p => p.nombre),
   { key: 'nombre', header: 'Nombre', type: 'string', getValue: p => p.nombre, className: cellName },
   { key: 'precio', header: 'Precio', type: 'currency', getValue: p => p.precio, render: p => formatPrice(p.precio), className: cellPrice, noTruncate: true },
   { key: 'genero', header: 'Genero', type: 'enum', enumOptions: ['dama', 'caballero', 'unisex'], getValue: p => p.genero ?? '', render: p => p.genero ?? '—', className: cellMeta, noTruncate: true },
@@ -213,10 +267,24 @@ export const perfumesColumns: ColumnDef<Perfume>[] = [
     ),
     sortable: false, noTruncate: true },
   { key: 'duracion', header: 'Duracion', type: 'string', getValue: p => p.duracion ?? '', render: p => p.duracion ?? '—', className: cellMeta, noTruncate: true },
-  // El estado de stock se muestra (y se cambia) con el badge interactivo de las acciones de la fila.
+  /**
+   * ESTADO: solo se marca lo que no está normal (fuera de la tienda, agotado,
+   * sin esencia). Es columna propia —con su encabezado— y no un añadido colgado
+   * de las acciones: así se puede ORDENAR y FILTRAR por ella, que es como se
+   * repasa "muéstrame lo que está fuera" en una tabla de 212 filas.
+   */
+  { key: 'estado', header: 'Estado', type: 'string',
+    getValue: p => [
+      p.publicado ? '' : 'Fuera de la tienda',
+      p.agotado_manual ? 'Agotado' : '',
+      faltaParaVender(p)?.etiqueta ?? '',
+    ].filter(Boolean).join(', ') || 'En la tienda',
+    render: p => <EstadoPerfume perfume={p} />,
+    noTruncate: true },
 ];
 
 export const combosColumns: ColumnDef<Combo>[] = [
+  columnaImagen<Combo>(c => c.imagen_url, c => c.nombre),
   { key: 'nombre', header: 'Nombre', type: 'string', getValue: c => c.nombre,
     render: c => (
       <span>

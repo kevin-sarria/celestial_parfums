@@ -1,5 +1,5 @@
 import { BASE_URL } from '../../infrastructure/api/client';
-import type { ClienteSeleccion, CodigoValidado, GuardedFetch } from './types';
+import type { ClienteSeleccion, CodigoValidado, GuardedFetch, Lookup } from './types';
 
 export { formatPrice } from '@/lib/format';
 
@@ -58,6 +58,21 @@ export const subirImagenAdmin = async (
   if (!res.ok || !json) throw new Error(json?.error ?? `No se pudo subir la imagen (error ${res.status})`);
   return json.url ?? json.data?.url ?? '';
 };
+
+/**
+ * Deja escrito bajo cada talla qué tamaño le leyó el sistema.
+ *
+ * El número sale del nombre al crearla o renombrarla, y de él dependen el enlace
+ * con la receta y el costeo. Sin mostrarlo, una talla que quedó "sin tamaño"
+ * solo se descubre meses después, cuando su venta entró con costo cero.
+ */
+export const conNotaDeTalla = (tallas: Lookup[]): Lookup[] =>
+  tallas.map((t) => ({
+    ...t,
+    nota: t.ml != null
+      ? `${t.ml} ml`
+      : 'Sin tamaño: el sistema no la costea ni le enlaza receta',
+  }));
 
 /** Certifica un código de descuento contra el backend (nunca lanza: devuelve el motivo). */
 export const validarCodigoDescuento = async (

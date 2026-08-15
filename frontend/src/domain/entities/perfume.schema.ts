@@ -87,6 +87,16 @@ export const perfumeSchema = z.object({
   /** Cuánta esencia pide una unidad de su talla más pequeña, para explicarlo. */
   esencia_necesaria: z.number().nullable().default(null),
   /**
+   * Qué le falta EXACTAMENTE para poder venderse, porque las tres categorías no
+   * se consiguen igual: al contratipo le falta esencia, al 1.1 le faltan frascos
+   * armados y al original le falta la botella. Null = no le falta nada.
+   */
+  motivo_agotado: z.enum(['sin_esencia', 'sin_armados', 'sin_producto']).nullable().default(null),
+  /** Frascos de este perfume que ya están armados, sumando todas sus tallas. */
+  frascos_armados: z.number().default(0),
+  /** Los 1.1: solo se venden si ya están armados, nunca contra pedido. */
+  solo_armado: z.boolean().default(false),
+  /**
    * ¿Está en la tienda? Distinto de `agotado`: un agotado SÍ se muestra (con su
    * marca y el "avísame cuando vuelva"); uno despublicado no aparece por ningún
    * lado. Solo el dashboard llega a ver los que están en false.

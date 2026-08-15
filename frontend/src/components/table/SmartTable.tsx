@@ -365,7 +365,20 @@ export function SmartTable<T>({
                   </TableHead>
                 );
               })}
-              {renderActions && <TableHead className="w-0" />}
+              {/* La columna de acciones lleva su encabezado como cualquier otra.
+                  Sin él la tabla terminaba en una cabecera vacía y se leía como
+                  si algo se hubiera cortado. Va aquí, en la pieza compartida, y
+                  no en cada pestaña: es lo que hace que las 10 tablas del
+                  dashboard se vean igual sin tocarlas una por una. */}
+              {renderActions && (
+                <TableHead className="w-0 whitespace-nowrap text-right">
+                  {/* Mismas clases que el encabezado de una columna sin orden:
+                      si no, "Acciones" se lee de otra familia que el resto. */}
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                    Acciones
+                  </span>
+                </TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
