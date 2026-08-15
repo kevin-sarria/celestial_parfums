@@ -139,4 +139,25 @@ export const urls = {
     /** Cupo y comportamiento de pago, calculado por el servidor (solo admin). */
     perfilCredito: (id: number) => `/usuarios/${id}/perfil-credito`,
   },
+
+  devoluciones: {
+    lista: '/devoluciones',
+    crear: '/devoluciones',
+    devolucion: (id: number) => `/devoluciones/${id}`,
+    /** Mover de solicitada a aprobada, rechazada o resuelta. */
+    estado: (id: number) => `/devoluciones/${id}/estado`,
+    /** Las ventas elegibles para devolver. */
+    ventas: '/devoluciones/ventas',
+  },
+
+  /** "Avísame cuando vuelva": el interés que dejan los clientes. */
+  avisos: {
+    admin: '/avisos/admin',
+    marcarNotificados: (perfumeId: number) => `/avisos/admin/${perfumeId}/notificados`,
+  },
+
+  resenas: {
+    admin: '/resenas/admin',
+    moderar: (id: number) => `/resenas/admin/${id}`,
+  },
 } as const;

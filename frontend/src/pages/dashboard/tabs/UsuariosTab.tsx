@@ -8,14 +8,12 @@ import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../components/Modal';
 import { SmartTable } from '../../../components/table/SmartTable';
 import type { ColumnDef } from '../../../components/table/tableTypes';
-import { API_USUARIOS, fmtInstante } from '../helpers';
+import { fmtInstante } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, BloqueCampos } from '../ui';
 import { useAuthContext } from '../../../application/context/useAuthContext';
-import type { GuardedFetch, Usuario, UsuarioForm } from '../types';
-
-interface UsuariosTabProps {
-  guardedFetch: GuardedFetch;
-}
+import type { Usuario, UsuarioForm } from '../types';
 
 const emptyForm = (): UsuarioForm => ({
   nombre: '', apellido: '', email: '', activo: true, password: '',
@@ -25,7 +23,7 @@ const emptyForm = (): UsuarioForm => ({
 /** El email sintético de las fichas no se muestra (no es un correo real). */
 const esEmailSintetico = (email: string) => email.endsWith('@sin-cuenta.local');
 
-export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
+export function UsuariosTab() {
   const { user: adminUser } = useAuthContext();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
 
@@ -36,9 +34,8 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
   const [error, setError] = useState('');
 
   const load = async () => {
-    const res = await guardedFetch(API_USUARIOS);
-    const json = await res.json();
-    setUsuarios(json.data ?? []);
+    const res = await http.get<{ data: Usuario[] }>(urls.usuarios.lista);
+    setUsuarios(res.cuerpo?.data ?? []);
   };
 
   useEffect(() => { load(); }, []);
@@ -67,31 +64,24 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
       let res;
       if (modal.editId == null) {
         // Nueva ficha (persona sin cuenta web)
-        res = await guardedFetch(API_USUARIOS, {
-          method: 'POST',
-          body: JSON.stringify({
-            nombre: form.nombre.trim(), apellido: form.apellido.trim(),
-            email: form.email.trim() || undefined,
-            telefono: form.telefono.trim() || undefined,
-            direccion: form.direccion.trim() || undefined,
-          }),
+        res = await http.post(urls.usuarios.crear, {
+          nombre: form.nombre.trim(), apellido: form.apellido.trim(),
+          email: form.email.trim() || undefined,
+          telefono: form.telefono.trim() || undefined,
+          direccion: form.direccion.trim() || undefined,
         });
       } else {
-        res = await guardedFetch(`${API_USUARIOS}/${modal.editId}`, {
-          method: 'PATCH',
-          body: JSON.stringify({
-            nombre: form.nombre.trim(), apellido: form.apellido.trim(),
-            // Ficha sin correo real: se conserva el sintético interno
-            email: form.email.trim() || editando?.email,
-            activo: form.activo,
-            ...(form.password.trim() ? { password: form.password.trim() } : {}),
-            telefono: form.telefono.trim() || null,
-            direccion: form.direccion.trim() || null,
-          }),
+        res = await http.patch(urls.usuarios.usuario(modal.editId), {
+          nombre: form.nombre.trim(), apellido: form.apellido.trim(),
+          // Ficha sin correo real: se conserva el sintético interno
+          email: form.email.trim() || editando?.email,
+          activo: form.activo,
+          ...(form.password.trim() ? { password: form.password.trim() } : {}),
+          telefono: form.telefono.trim() || null,
+          direccion: form.direccion.trim() || null,
         });
       }
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? 'Error al guardar'); return; }
+      if (!res.ok) { setError(res.error); return; }
       setModal({ open: false, editId: null });
       load();
     } catch { setError('No se pudo conectar con el servidor'); }
@@ -100,12 +90,8 @@ export function UsuariosTab({ guardedFetch }: UsuariosTabProps) {
 
   const handleDelete = async (u: Usuario) => {
     if (!window.confirm(`¿Eliminar a ${u.nombre} ${u.apellido}? Sus ventas quedan registradas (sin enlace); si tiene créditos no se podrá eliminar.`)) return;
-    const res = await guardedFetch(`${API_USUARIOS}/${u.id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const j = await res.json().catch(() => null);
-      toast.error(j?.error ?? 'No se pudo eliminar', { id: 'usuarios' });
-      return;
-    }
+    const res = await http.borrar(urls.usuarios.usuario(u.id));
+    if (!res.ok) { toast.error(res.error, { id: 'usuarios' }); return; }
     load();
   };
 

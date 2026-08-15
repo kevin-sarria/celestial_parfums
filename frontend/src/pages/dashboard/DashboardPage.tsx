@@ -301,11 +301,11 @@ export default function DashboardPage() {
             {tab === 'rep_compras' && <ReportesComprasTab guardedFetch={guardedFetch} />}
             {tab === 'rep_clientes' && <ReportesClientesTab guardedFetch={guardedFetch} />}
             {tab === 'pagos' && <PagosTab guardedFetch={guardedFetch} />}
-            {tab === 'usuarios' && <UsuariosTab guardedFetch={guardedFetch} />}
+            {tab === 'usuarios' && <UsuariosTab />}
             {tab === 'publicidad' && <PublicidadTab guardedFetch={guardedFetch} categorias={categorias} />}
             {tab === 'recompensas' && <RecompensasTab guardedFetch={guardedFetch} />}
             {tab === 'resenas' && <ResenasTab guardedFetch={guardedFetch} />}
-            {tab === 'avisos' && <AvisosTab guardedFetch={guardedFetch} />}
+            {tab === 'avisos' && <AvisosTab />}
             {tab === 'nosotros' && <SobreNosotrosTab guardedFetch={guardedFetch} />}
             {tab === 'blog' && <BlogTab guardedFetch={guardedFetch} />}
             {tab === 'cotizaciones' && <CotizacionesTab guardedFetch={guardedFetch} />}

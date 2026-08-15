@@ -3,9 +3,10 @@ import { BellRing, Check, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { toast } from 'sonner';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar } from '../ui';
-import type { GuardedFetch } from '../types';
 
 interface Esperando { nombre: string; telefono: string | null; email: string; fecha: string }
 interface Demanda { perfume_id: number; nombre: string; imagen_url: string | null; agotado: boolean; total: number; esperando: Esperando[] }
@@ -13,22 +14,24 @@ interface Demanda { perfume_id: number; nombre: string; imagen_url: string | nul
 const waLink = (tel: string | null) => (tel ? `https://wa.me/57${tel.replace(/\D/g, '')}` : null);
 
 /** Demanda de reposición: quién espera cada perfume agotado, para escribirle. */
-export function AvisosTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export function AvisosTab() {
   const [rows, setRows] = useState<Demanda[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = async () => {
     setLoading(true);
-    const r = await guardedFetch(`${BASE_URL}/api/avisos/admin`);
-    const j = await r.json();
-    setRows(j.data ?? []);
+    const r = await http.get<{ data: Demanda[] }>(urls.avisos.admin);
+    setRows(r.cuerpo?.data ?? []);
     setLoading(false);
   };
   useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const marcar = async (perfumeId: number) => {
     if (!window.confirm('¿Marcar a todos como avisados? Salen de la lista.')) return;
-    await guardedFetch(`${BASE_URL}/api/avisos/admin/${perfumeId}/notificados`, { method: 'POST' });
+    const res = await http.post(urls.avisos.marcarNotificados(perfumeId));
+    // Antes se ignoraba la respuesta: si fallaba, la lista se recargaba igual y
+    // los clientes seguían ahí sin que nadie supiera por qué.
+    if (!res.ok) { toast.error(res.error, { id: 'avisos' }); return; }
     load();
   };
 

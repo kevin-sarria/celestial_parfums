@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SelectSimple } from '@/components/ui/select-simple';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
-import { BASE_URL } from '../../../infrastructure/api/client';
 import { DEFAULT_PAGE_SIZE, fmtInstante } from '../helpers';
 import ExportButton from '../../../components/ExportButton';
 import ImportModal from '../../../components/ImportModal';
+import { toast } from 'sonner';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import type { GuardedFetch } from '../types';
 
@@ -41,21 +43,26 @@ export function ResenasTab({ guardedFetch }: Props) {
 
   const load = async (p = page, est = estado) => {
     setLoading(true);
-    const qs = est ? `&estado=${est}` : '';
-    const res = await guardedFetch(`${BASE_URL}/api/resenas/admin?page=${p}&limit=${DEFAULT_PAGE_SIZE}${qs}`);
-    const json = await res.json();
-    setRows(json.data ?? []); setTotal(json.total ?? 0); setPage(p); setLoading(false);
+    const res = await http.get<{ data: ResenaAdmin[]; total: number }>(urls.resenas.admin, {
+      params: { page: p, limit: DEFAULT_PAGE_SIZE, ...(est ? { estado: est } : {}) },
+    });
+    setRows(res.cuerpo?.data ?? []);
+    setTotal(res.cuerpo?.total ?? 0);
+    setPage(p);
+    setLoading(false);
   };
 
   useEffect(() => { load(1, estado); }, [estado]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const moderar = async (id: number, nuevo: 'aprobada' | 'rechazada') => {
-    await guardedFetch(`${BASE_URL}/api/resenas/admin/${id}`, { method: 'PATCH', body: JSON.stringify({ estado: nuevo }) });
+    const res = await http.patch(urls.resenas.moderar(id), { estado: nuevo });
+    if (!res.ok) { toast.error(res.error, { id: 'resenas' }); return; }
     load();
   };
   const eliminar = async (id: number) => {
     if (!window.confirm('¿Eliminar esta reseña? No se puede deshacer.')) return;
-    await guardedFetch(`${BASE_URL}/api/resenas/admin/${id}`, { method: 'DELETE' });
+    const res = await http.borrar(urls.resenas.moderar(id));
+    if (!res.ok) { toast.error(res.error, { id: 'resenas' }); return; }
     load();
   };
 

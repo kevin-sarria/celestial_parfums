@@ -7,15 +7,15 @@ import { SelectSimple } from '@/components/ui/select-simple';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import ExportButton from '../../../components/ExportButton';
 import DevolucionForm from '../devoluciones/DevolucionForm';
-import { BASE_URL } from '../../../infrastructure/api/client';
 import { formatPrice, fmtDate } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import {
   ESTADOS, PLAZO_LEGAL_HABILES, diasHabilesDesde, etiquetaMotivo, etiquetaSolucion, metaEstado,
 } from '../../../domain/entities/devolucion.labels';
 import type { Devolucion, DevolucionEstado, GuardedFetch } from '../types';
 
-const API = `${BASE_URL}/api/devoluciones`;
 const ABIERTA = (e: DevolucionEstado) => e === 'pendiente' || e === 'en_revision';
 
 /**
@@ -34,9 +34,11 @@ export function DevolucionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
   const load = async (estado = filtro) => {
     setLoading(true);
     try {
-      const r = await guardedFetch(`${API}?estado=${estado}`);
-      if (!r.ok) throw new Error();
-      setRows((await r.json()).data ?? []);
+      const r = await http.get<{ data: Devolucion[] }>(urls.devoluciones.lista, {
+        params: { estado },
+      });
+      if (!r.ok) throw new Error(r.error);
+      setRows(r.cuerpo?.data ?? []);
       setError('');
     } catch {
       setError('No se pudieron cargar las devoluciones. Revisa tu conexión y reintenta.');
@@ -47,18 +49,16 @@ export function DevolucionesTab({ guardedFetch }: { guardedFetch: GuardedFetch }
   useEffect(() => { load(); }, [filtro]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cambiarEstado = async (d: Devolucion, estado: DevolucionEstado) => {
-    const res = await guardedFetch(`${API}/${d.id}/estado`, {
-      method: 'PATCH', body: JSON.stringify({ estado }),
-    });
-    const json = await res.json().catch(() => null);
-    if (!res.ok) { toast.error(json?.error ?? 'No se pudo cambiar el estado', { id: 'dev-estado' }); return; }
+    const res = await http.patch(urls.devoluciones.estado(d.id), { estado });
+    if (!res.ok) { toast.error(res.error, { id: 'dev-estado' }); return; }
     load();
   };
 
   const eliminar = async (d: Devolucion) => {
     if (!window.confirm(`¿Borrar la devolución #${d.id}? Si tenía dinero devuelto, ese monto vuelve a contar como ingreso.`)) return;
-    const res = await guardedFetch(`${API}/${d.id}`, { method: 'DELETE' });
-    if (!res.ok) { toast.error('No se pudo borrar', { id: 'dev-borrar' }); return; }
+    const res = await http.borrar(urls.devoluciones.devolucion(d.id));
+    // Se muestra el motivo del servidor, no un "no se pudo" mudo.
+    if (!res.ok) { toast.error(res.error, { id: 'dev-borrar' }); return; }
     toast.success('Devolución borrada');
     load();
   };
