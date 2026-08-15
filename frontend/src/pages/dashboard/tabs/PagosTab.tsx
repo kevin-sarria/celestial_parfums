@@ -7,7 +7,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { SelectSimple } from '@/components/ui/select-simple';
 import Modal from '../../../components/Modal';
 import DetalleCompra, { type LineaCompra } from '../compras/DetalleCompra';
-import { BASE_URL } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
@@ -15,7 +16,7 @@ import { SmartTable } from '../../../components/table/SmartTable';
 import { IvaDeLaCompra } from '../compras/IvaDeLaCompra';
 import { IVA_MODOS } from '../compras/iva';
 import { pagosColumns } from '../columns';
-import { API_PAGOS, API_EMPRESAS, DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
+import { DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
 import { EncabezadoPagina, FranjaMetricas, Section, Field, FieldRow, FormError, StatCard } from '../ui';
 import type { GuardedFetch, Pago, Empresa, PagoForm, IvaModo } from '../types';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
@@ -48,8 +49,8 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
   const cargarInsumos = async () => {
-    const r = await guardedFetch(`${BASE_URL}/api/costeo/insumos`);
-    if (r.ok) setInsumos((await r.json()).data ?? []);
+    const r = await http.get<{ data: Insumo[] }>(urls.costeo.insumos);
+    if (r.ok) setInsumos(r.cuerpo?.data ?? []);
   };
 
   /**
@@ -59,24 +60,24 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
    */
   const cargarConfigIva = async () => {
     try {
-      const r = await guardedFetch(`${API_PAGOS}/config-iva`);
-      if (r.ok) setIvaTasa((await r.json()).data?.iva_tasa ?? 0.19);
+      const r = await http.get<{ data?: { iva_tasa?: number } }>(urls.pagos.configIva);
+      if (r.ok) setIvaTasa(r.cuerpo?.data?.iva_tasa ?? 0.19);
     } catch { /* se queda el valor por defecto */ }
   };
 
   const load = async (p = page, s = pageSize, term = searchTerm) => {
-    const searchQs = term ? `&search=${encodeURIComponent(term)}` : '';
     const [pRes, tRes, eRes] = await Promise.all([
-      guardedFetch(`${API_PAGOS}?page=${p}&limit=${s}${searchQs}`),
-      guardedFetch(`${API_PAGOS}/totales`),
-      guardedFetch(API_EMPRESAS),
+      http.get<{ data: Pago[]; total: number }>(urls.pagos.lista, {
+        params: { page: p, limit: s, ...(term ? { search: term } : {}) },
+      }),
+      http.get<{ data: { total_compras: number; total_envios: number } }>(urls.pagos.totales),
+      http.get<{ data: Empresa[] }>(urls.empresas.lista),
     ]);
-    const [pJson, tJson, eJson] = await Promise.all([pRes.json(), tRes.json(), eRes.json()]);
-    setPagos(pJson.data ?? []);
-    setTotal(pJson.total ?? 0);
+    setPagos(pRes.cuerpo?.data ?? []);
+    setTotal(pRes.cuerpo?.total ?? 0);
     setPage(p);
-    setTotales(tJson.data ?? null);
-    setEmpresas(eJson.data ?? []);
+    setTotales(tRes.cuerpo?.data ?? null);
+    setEmpresas(eRes.cuerpo?.data ?? []);
   };
 
   useEffect(() => { load(1); cargarInsumos(); cargarConfigIva(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -126,18 +127,14 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
     if (form.empresa_id === 'nuevo') {
       if (!form.nueva_nombre.trim()) { setError('El nombre de la empresa es obligatorio'); setLoading(false); return; }
       try {
-        const res = await guardedFetch(API_EMPRESAS, {
-          method: 'POST',
-          body: JSON.stringify({
-            nombre: form.nueva_nombre.trim(), nit: form.nueva_nit.trim() || null,
-            telefono: form.nueva_telefono.trim() || null, correo: form.nueva_correo.trim() || null,
-            direccion: form.nueva_direccion.trim() || null,
-            iva_modo: form.nueva_iva_modo,
-          }),
+        const res = await http.post<{ data: { id: number } }>(urls.empresas.crear, {
+          nombre: form.nueva_nombre.trim(), nit: form.nueva_nit.trim() || null,
+          telefono: form.nueva_telefono.trim() || null, correo: form.nueva_correo.trim() || null,
+          direccion: form.nueva_direccion.trim() || null,
+          iva_modo: form.nueva_iva_modo,
         });
-        const json = await res.json();
-        if (!res.ok) { setError(json.error ?? 'Error al crear empresa'); setLoading(false); return; }
-        empresaId = json.data.id;
+        if (!res.ok || !res.cuerpo) { setError(res.error || 'Error al crear empresa'); setLoading(false); return; }
+        empresaId = res.cuerpo.data.id;
       } catch { setError('No se pudo crear la empresa'); setLoading(false); return; }
     }
 
@@ -160,11 +157,10 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
             unidad_compra: l.unidad_compra, subtotal: Number(l.subtotal),
           })),
       };
-      const url = modal.editId ? `${API_PAGOS}/${modal.editId}` : API_PAGOS;
-      const method = modal.editId ? 'PATCH' : 'POST';
-      const res = await guardedFetch(url, { method, body: JSON.stringify(body) });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? 'Error al guardar'); return; }
+      const res = modal.editId
+        ? await http.patch(urls.pagos.pago(modal.editId), body)
+        : await http.post(urls.pagos.crear, body);
+      if (!res.ok) { setError(res.error); return; }
       closeModal(); load();
     } catch { setError('No se pudo conectar con el servidor'); }
     finally { setLoading(false); }
@@ -173,12 +169,8 @@ export function PagosTab({ guardedFetch }: PagosTabProps) {
   const handleDelete = async (p: Pago) => {
     if (!window.confirm(`¿Eliminar el pago a ${p.empresa.nombre}? Si tenia lineas de compra, el inventario que entro con ellas se revierte.`)) return;
     try {
-      const res = await guardedFetch(`${API_PAGOS}/${p.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        toast.error(j?.error ?? 'No se pudo eliminar', { id: 'pagos' });
-        return;
-      }
+      const res = await http.borrar(urls.pagos.pago(p.id));
+      if (!res.ok) { toast.error(res.error, { id: 'pagos' }); return; }
       load();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'pagos' }); }
   };

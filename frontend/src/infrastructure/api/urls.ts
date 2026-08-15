@@ -88,8 +88,36 @@ export const urls = {
     codigo: (codigo: string) => `/anuncios/codigos/${encodeURIComponent(codigo)}`,
   },
 
+  creditos: {
+    lista: '/creditos',
+    totales: '/creditos/totales',
+    crear: '/creditos',
+    credito: (id: number) => `/creditos/${id}`,
+    abono: (id: number) => `/creditos/${id}/abono`,
+    borrarAbono: (id: number, abonoId: number) => `/creditos/${id}/abono/${abonoId}`,
+  },
+
+  /** Compras a proveedores (la tabla se llama `pagos_proveedor`). */
+  pagos: {
+    lista: '/pagos',
+    totales: '/pagos/totales',
+    crear: '/pagos',
+    pago: (id: number) => `/pagos/${id}`,
+    /** IVA por proveedor: se configura ahí, nunca global. */
+    configIva: '/pagos/config-iva',
+    soportes: '/pagos/soportes',
+  },
+
+  empresas: {
+    lista: '/empresas',
+    crear: '/empresas',
+  },
+
   usuarios: {
     lista: '/usuarios',
     crear: '/usuarios',
+    usuario: (id: number) => `/usuarios/${id}`,
+    /** Cupo y comportamiento de pago, calculado por el servidor (solo admin). */
+    perfilCredito: (id: number) => `/usuarios/${id}/perfil-credito`,
   },
 } as const;

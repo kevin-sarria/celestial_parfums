@@ -89,8 +89,9 @@ Decisiones que conviene no deshacer:
 
 **Estado** (2026-08-14): migradas *Producción e inventario* (Inventario, Producciones, Pedido
 sugerido y sus 4 modales), **Ventas** (listado, formulario, crear persona y crear producto al
-vuelo) y **Perfumes** (ficha, publicar/agotar, lista de precios). Van 38 rutas centralizadas y
-**30 llamadas migradas de 151**; quedan 121 en 43 componentes.
+vuelo), **Perfumes** (ficha, publicar/agotar, lista de precios), **Créditos** (cartera, abonos,
+perfil de cupo) y **Proveedores** (compras con sus líneas, IVA por proveedor, alta de empresa).
+Van 53 rutas centralizadas y **47 llamadas migradas de 151**; quedan 104.
 
 Orden de migración: **por pantallas que se usan a diario primero**, y cada una entera. Las que
 tocan dinero se migran con su recorrido en navegador ya escrito — `venta.e2e.test.ts` registra una

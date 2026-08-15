@@ -15,10 +15,12 @@ import {
   type LineaPedido,
 } from '../pedido/lineasPedido';
 import {
-  API_CREDITOS, API_USUARIOS, formatPrice, parseClienteSeleccion, personaLabel, validarCodigoDescuento,
+  formatPrice, parseClienteSeleccion, personaLabel, validarCodigoDescuento,
 } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { BloqueCampos, Field, FieldRow, FormError } from '../ui';
-import type { CodigoValidado, ClienteSeleccion, Credito, GuardedFetch, Usuario } from '../types';
+import type { CodigoValidado, ClienteSeleccion, Credito, Usuario } from '../types';
 import { unMesDespues } from '../types';
 
 interface CreditoFormProps {
@@ -28,7 +30,6 @@ interface CreditoFormProps {
   usuarios: Usuario[];
   catalogo: Perfume[];
   combos: Combo[];
-  guardedFetch: GuardedFetch;
   onClose: () => void;
   onSaved: (creoPersona: boolean) => void;
 }
@@ -67,7 +68,7 @@ const vacio = (): EstadoForm => ({
  * cupón se consume al instante (no espera a que termine de pagar).
  */
 export function CreditoForm({
-  open, credito, usuarios, catalogo, combos, guardedFetch, onClose, onSaved,
+  open, credito, usuarios, catalogo, combos, onClose, onSaved,
 }: CreditoFormProps) {
   const [form, setForm] = useState<EstadoForm>(vacio());
   const [guardando, setGuardando] = useState(false);
@@ -167,18 +168,14 @@ export function CreditoForm({
         setError('Nombre y apellido de la persona son obligatorios'); setGuardando(false); return;
       }
       try {
-        const res = await guardedFetch(API_USUARIOS, {
-          method: 'POST',
-          body: JSON.stringify({
-            nombre: form.nuevo_nombre.trim(), apellido: form.nuevo_apellido.trim(),
-            email: form.nuevo_correo.trim() || undefined,
-            telefono: form.nuevo_telefono.trim() || undefined,
-            direccion: form.nuevo_direccion.trim() || undefined,
-          }),
+        const res = await http.post<{ data: { id: number } }>(urls.usuarios.crear, {
+          nombre: form.nuevo_nombre.trim(), apellido: form.nuevo_apellido.trim(),
+          email: form.nuevo_correo.trim() || undefined,
+          telefono: form.nuevo_telefono.trim() || undefined,
+          direccion: form.nuevo_direccion.trim() || undefined,
         });
-        const json = await res.json().catch(() => null);
-        if (!res.ok) { setError(json?.error ?? 'Error al registrar la persona'); setGuardando(false); return; }
-        userId = json.data.id; creoPersona = true;
+        if (!res.ok || !res.cuerpo) { setError(res.error || 'Error al registrar la persona'); setGuardando(false); return; }
+        userId = res.cuerpo.data.id; creoPersona = true;
       } catch { setError('No se pudo registrar la persona'); setGuardando(false); return; }
     }
 
@@ -200,10 +197,10 @@ export function CreditoForm({
         fecha_limite: form.fecha_limite || null,
         codigo_descuento: form.codigo_descuento.trim().toUpperCase() || null,
       };
-      const url = credito ? `${API_CREDITOS}/${credito.id}` : API_CREDITOS;
-      const res = await guardedFetch(url, { method: credito ? 'PATCH' : 'POST', body: JSON.stringify(body) });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { setError(json?.error ?? 'Error al guardar'); return; }
+      const res = credito
+        ? await http.patch(urls.creditos.credito(credito.id), body)
+        : await http.post(urls.creditos.crear, body);
+      if (!res.ok) { setError(res.error); return; }
       onSaved(creoPersona);
     } catch { setError('No se pudo conectar con el servidor'); }
     finally { setGuardando(false); }

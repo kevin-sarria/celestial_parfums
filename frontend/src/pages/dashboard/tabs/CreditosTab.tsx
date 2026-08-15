@@ -13,9 +13,9 @@ import type { Combo } from '../../../domain/entities/combo.schema';
 import PerfilCreditoModal from './PerfilCreditoModal';
 import { CreditoForm } from './CreditoForm';
 import { creditosColumns } from '../columns';
-import {
-  API, API_COMBOS, API_CREDITOS, API_USUARIOS, DEFAULT_PAGE_SIZE, formatPrice,
-} from '../helpers';
+import { DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { EncabezadoPagina, Field, FranjaMetricas, Section, StatCard } from '../ui';
 import type { GuardedFetch, Credito, PerfilCredito, Usuario } from '../types';
 
@@ -60,17 +60,17 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   const load = async (p = page, s = pageSize, term = searchTerm) => {
     setCargando(true);
     try {
-      const searchQs = term ? `&search=${encodeURIComponent(term)}` : '';
       const [cRes, tRes] = await Promise.all([
-        guardedFetch(`${API_CREDITOS}?page=${p}&limit=${s}${searchQs}`),
-        guardedFetch(`${API_CREDITOS}/totales`),
+        http.get<{ data: Credito[]; total: number }>(urls.creditos.lista, {
+          params: { page: p, limit: s, ...(term ? { search: term } : {}) },
+        }),
+        http.get<{ data: TotalesCartera }>(urls.creditos.totales),
       ]);
-      if (!cRes.ok || !tRes.ok) throw new Error();
-      const [c, t] = await Promise.all([cRes.json(), tRes.json()]);
-      setCreditos(c.data ?? []);
-      setTotal(c.total ?? 0);
+      if (!cRes.ok || !tRes.ok) throw new Error(cRes.error || tRes.error);
+      setCreditos(cRes.cuerpo?.data ?? []);
+      setTotal(cRes.cuerpo?.total ?? 0);
       setPage(p);
-      setTotales(t.data ?? null);
+      setTotales(tRes.cuerpo?.data ?? null);
       setErrorCarga('');
     } catch {
       // Sin esto la pantalla se queda vacía y parece que no hay créditos
@@ -81,14 +81,16 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   const loadCatalogos = async () => {
     try {
       const [uRes, pRes, coRes] = await Promise.all([
-        guardedFetch(API_USUARIOS), fetch(`${API}/`), fetch(`${API_COMBOS}/`),
+        http.get<{ data: Usuario[] }>(urls.usuarios.lista),
+        http.get<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todos),
+        http.get<{ data: Combo[] }>(urls.combos.todos),
       ]);
-      const [u, pf, co] = await Promise.all([uRes.json(), pRes.json(), coRes.json()]);
-      setUsuarios((u.data ?? []).filter((x: Usuario) => x.rol_id !== 1));
+      setUsuarios((uRes.cuerpo?.data ?? []).filter((x) => x.rol_id !== 1));
       // /api/parfums sin paginar responde { data: { data: [...] } }
-      const lista = (Array.isArray(pf.data) ? pf.data : (pf.data?.data ?? [])) as Perfume[];
+      const pf = pRes.cuerpo?.data;
+      const lista = Array.isArray(pf) ? pf : (pf?.data ?? []);
       setCatalogo([...lista].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
-      setCombos(((co.data ?? []) as Combo[]).filter(c => c.activo));
+      setCombos((coRes.cuerpo?.data ?? []).filter(c => c.activo));
     } catch { /* el formulario avisa si falta el catálogo */ }
   };
 
@@ -99,9 +101,11 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
     setPerfilOpen(true); setPerfil(null);
     setPerfilUsuario(usuarios.find(u => u.id === userId) ?? null);
     try {
-      const res = await guardedFetch(`${API_USUARIOS}/${userId}/perfil-credito`);
-      const json = await res.json();
-      if (res.ok) { setPerfil(json.data); setCupoEdit(String(json.data.cupo_base ?? 0)); }
+      const res = await http.get<{ data: PerfilCredito }>(urls.usuarios.perfilCredito(userId));
+      if (res.ok && res.cuerpo) {
+        setPerfil(res.cuerpo.data);
+        setCupoEdit(String(res.cuerpo.data.cupo_base ?? 0));
+      }
     } catch { /* el modal muestra el estado de carga */ }
   };
 
@@ -109,17 +113,13 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
     if (!perfil || !perfilUsuario) return;
     setCupoSaving(true);
     try {
-      const res = await guardedFetch(`${API_USUARIOS}/${perfil.user_id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          nombre: perfilUsuario.nombre, apellido: perfilUsuario.apellido,
-          email: perfilUsuario.email,
-          cupo_base: Number(cupoEdit) || 0,
-        }),
+      const res = await http.patch(urls.usuarios.usuario(perfil.user_id), {
+        nombre: perfilUsuario.nombre, apellido: perfilUsuario.apellido,
+        email: perfilUsuario.email,
+        cupo_base: Number(cupoEdit) || 0,
       });
       if (res.ok) { await openPerfil(perfil.user_id); return; }
-      const j = await res.json().catch(() => null);
-      toast.error(j?.error ?? 'No se pudo guardar el cupo', { id: 'creditos' });
+      toast.error(res.error, { id: 'creditos' });
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'creditos' }); }
     finally { setCupoSaving(false); }
   };
@@ -127,11 +127,10 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   const handleAbono = async () => {
     if (!abonoModal.creditoId || !abonoMonto) return;
     try {
-      const res = await guardedFetch(`${API_CREDITOS}/${abonoModal.creditoId}/abono`, {
-        method: 'PATCH', body: JSON.stringify({ monto: Number(abonoMonto) }),
+      const res = await http.patch(urls.creditos.abono(abonoModal.creditoId), {
+        monto: Number(abonoMonto),
       });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { toast.error(json?.error ?? 'No se pudo registrar el abono', { id: 'creditos' }); return; }
+      if (!res.ok) { toast.error(res.error, { id: 'creditos' }); return; }
       toast.success(`Abono de ${formatPrice(Number(abonoMonto))} registrado`);
       setAbonoModal({ open: false, creditoId: null }); setAbonoMonto(''); load();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'creditos' }); }
@@ -140,12 +139,8 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
   const handleDelete = async (c: Credito) => {
     if (!window.confirm('¿Eliminar este crédito? Se borra también su venta enlazada y, si usó cupón, ese código vuelve a quedar activo.')) return;
     try {
-      const res = await guardedFetch(`${API_CREDITOS}/${c.id}`, { method: 'DELETE' });
-      if (!res.ok) {
-        const j = await res.json().catch(() => null);
-        toast.error(j?.error ?? 'No se pudo eliminar', { id: 'creditos' });
-        return;
-      }
+      const res = await http.borrar(urls.creditos.credito(c.id));
+      if (!res.ok) { toast.error(res.error, { id: 'creditos' }); return; }
       load();
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'creditos' }); }
   };
@@ -272,7 +267,6 @@ export function CreditosTab({ guardedFetch }: CreditosTabProps) {
         usuarios={usuarios}
         catalogo={catalogo}
         combos={combos}
-        guardedFetch={guardedFetch}
         onClose={() => setModal({ open: false, credito: null })}
         onSaved={creoPersona => {
           setModal({ open: false, credito: null });
