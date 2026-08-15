@@ -17,6 +17,10 @@ const r3 = (n: number) => Math.round(n * 1000) / 1000;
 /** El costo unitario sí lleva 4 decimales: a $0,0001/ml × 30 ml importa. */
 const r4 = (n: number) => Math.round(n * 10000) / 10000;
 
+import {
+  aplicarMovimientoTerminado, revertirTerminado, sacarDeTerminado, tallaDeFormula,
+} from './inventario.terminado';
+
 export type TipoMovimiento = 'compra' | 'produccion' | 'garantia' | 'ajuste' | 'merma' | 'muestra' | 'venta';
 
 interface MovimientoNuevo {
@@ -317,9 +321,38 @@ export const registrarProduccion = async (data: {
   }
 
   const total = Math.round(costoTotal * 100) / 100;
+  const costoUnitario = r4(total / data.cantidad);
+
+  /**
+   * Los frascos armados ENTRAN al stock de producto terminado.
+   *
+   * Sin esto, producir solo restaba materiales y al vender se volvían a restar:
+   * el mismo frasco gastaba su esencia dos veces. Ver `inventario.terminado.ts`.
+   *
+   * Hace falta saber DE QUÉ perfume son: `perfume_id` es opcional (se puede
+   * registrar "armé 20 de 30 ml" sin decir la fragancia), y en ese caso el lote
+   * sigue descontando materiales pero no suma frascos — no se puede adivinar a
+   * qué producto atribuirlos.
+   */
+  if (data.perfume_id) {
+    const presentacion_id = await tallaDeFormula(data.formula_volumen_id);
+    if (presentacion_id) {
+      await aplicarMovimientoTerminado(tx, {
+        perfume_id: data.perfume_id,
+        presentacion_id,
+        tipo: 'produccion',
+        cantidad: data.cantidad,
+        costo_unitario: costoUnitario,
+        fecha,
+        referencia_id: prod.id,
+        nota: `Lote #${prod.id}`,
+      });
+    }
+  }
+
   return tx.produccion.update({
     where: { id: prod.id },
-    data: { costo_total: total, costo_unitario: r4(total / data.cantidad) },
+    data: { costo_total: total, costo_unitario: costoUnitario },
     include: { formula: { select: { nombre: true } } },
   });
 });
@@ -346,6 +379,8 @@ export const listarProducciones = async (limite = 60) => {
 /** Borrar un lote devuelve sus insumos al inventario. */
 export const eliminarProduccion = (id: number) => prisma.$transaction(async (tx) => {
   await revertirMovimientos(tx, 'produccion', id);
+  // Devuelve los materiales Y quita los frascos que ese lote había armado.
+  await revertirTerminado(tx, 'produccion', id);
   return tx.produccion.delete({ where: { id } });
 });
 
@@ -562,6 +597,22 @@ export const consumirPorVenta = async (
   const sinCostear: string[] = [];
 
   for (const l of lineas) {
+    /**
+     * PRIMERO los frascos que ya están armados.
+     *
+     * Regla acordada con el dueño: lo que ya se armó no se vuelve a fabricar.
+     * Su costo es el que tuvo el día que se armó (congelado), no el que tendría
+     * la receta hoy — esa plata ya se gastó.
+     */
+    const armado = await sacarDeTerminado(tx, {
+      perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad,
+      ventaId, fecha,
+    });
+    costo += armado.costo;
+    const porArmar = l.cantidad - armado.unidades;
+    // Si lo armado cubrió la línea entera, no se toca ni un material.
+    if (porArmar <= 0) continue;
+
     // Un producto COMPRADO (una gorra, un splash) no tiene talla y aun así se
     // descuenta: su costo es lo que se pagó por él.
     const receta = await recetaDe(l.perfume_id, l.ml);
@@ -572,20 +623,26 @@ export const consumirPorVenta = async (
       const res = await aplicarMovimiento(tx, {
         insumo_id: it.insumo_id,
         tipo: 'venta',
-        cantidad: -r3(it.cantidad * l.cantidad),
+        cantidad: -r3(it.cantidad * porArmar),
         fecha,
         referencia_id: ventaId,
         nota: `Venta #${ventaId}`,
       });
-      costo += res.costoAplicado * it.cantidad * l.cantidad;
+      costo += res.costoAplicado * it.cantidad * porArmar;
     }
   }
   return { costo: Math.round(costo * 100) / 100, sinCostear: [...new Set(sinCostear)] };
 };
 
-/** Al editar o borrar una venta se devuelve al inventario lo que había salido. */
-export const revertirVenta = (tx: Prisma.TransactionClient, ventaId: number) =>
-  revertirMovimientos(tx, 'venta', ventaId);
+/**
+ * Al editar o borrar una venta se devuelve lo que había salido: los materiales
+ * Y los frascos que estaban armados. Revertir solo una de las dos partes dejaría
+ * el descuadre al revés.
+ */
+export const revertirVenta = async (tx: Prisma.TransactionClient, ventaId: number) => {
+  await revertirMovimientos(tx, 'venta', ventaId);
+  await revertirTerminado(tx, 'venta', ventaId);
+};
 
 /** Perfumes que ya se vendieron pero no tienen esencia asignada (para configurar). */
 export const perfumesSinCostear = async () => {

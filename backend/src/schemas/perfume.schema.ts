@@ -23,6 +23,8 @@ export const createPerfumeSchema = z.object({
   insumo_producto_id: z.number().int().positive().nullish(),
   /// Solo fraccionado: ml que de verdad se aprovechan de la botella.
   ml_utiles: z.number().int().positive().nullish(),
+  /// "Solo se vende si ya está armado" (los 1.1): agotado mientras no haya frascos hechos.
+  solo_armado: z.boolean().optional(),
   /**
    * Aromas y ocasiones dejaron de ser obligatorios: el catálogo ya no es solo
    * perfumes (una gorra no tiene notas olfativas ni ocasión de uso), y al crear

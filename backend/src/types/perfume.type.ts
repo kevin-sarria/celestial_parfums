@@ -16,6 +16,8 @@
   tipo_producto?: 'fabricado' | 'comprado' | 'fraccionado';
   insumo_producto_id?: number | null;
   ml_utiles?: number | null;
+  /** "Solo se vende si ya está armado" (los 1.1). */
+  solo_armado?: boolean;
   envases_talla?: { presentacion_id: number; envase_insumo_id?: number | null; accesorios?: number[] }[];
   tipos_aroma: number[];
   ocasiones: number[];

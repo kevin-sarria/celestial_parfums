@@ -13,7 +13,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 // ── Enums ───────────────────────────────────────────────────────────────────
 
 enum Genero {
@@ -135,29 +134,29 @@ model Role {
 // no se registran. Al registrarse con el mismo correo, la ficha se reclama y
 // hereda todo su historial de ventas y créditos.
 model User {
-  id                 Int       @id @default(autoincrement())
-  nombre             String    @db.VarChar(100)
-  apellido           String    @db.VarChar(100)
-  email              String    @unique @db.VarChar(150)
-  password           String    @db.VarChar(255)
+  id                 Int                 @id @default(autoincrement())
+  nombre             String              @db.VarChar(100)
+  apellido           String              @db.VarChar(100)
+  email              String              @unique @db.VarChar(150)
+  password           String              @db.VarChar(255)
   rol_id             Int
-  activo             Boolean   @default(false)
-  verification_token String?   @db.VarChar(255)
+  activo             Boolean             @default(false)
+  verification_token String?             @db.VarChar(255)
   token_expiry       DateTime?
-  telefono           String?   @db.VarChar(20)
-  direccion          String?   @db.VarChar(255)
+  telefono           String?             @db.VarChar(20)
+  direccion          String?             @db.VarChar(255)
   // Cupo de crédito base fijado por el admin; el factor de comportamiento lo ajusta.
-  cupo_base          Decimal   @default(0) @db.Decimal(10, 2)
+  cupo_base          Decimal             @default(0) @db.Decimal(10, 2)
   // true = ficha creada por el admin, sin acceso a la web todavía.
-  sin_cuenta         Boolean   @default(false)
+  sin_cuenta         Boolean             @default(false)
   // Programa de referidos: código propio para invitar y quién lo invitó a él.
-  codigo_referido    String?   @unique @db.VarChar(20)
+  codigo_referido    String?             @unique @db.VarChar(20)
   referido_por       Int?
-  created_at         DateTime  @default(now())
-  updated_at         DateTime  @updatedAt
-  rol                Role      @relation(fields: [rol_id], references: [id])
-  referidor          User?     @relation("Referidos", fields: [referido_por], references: [id], onDelete: SetNull)
-  referidos          User[]    @relation("Referidos")
+  created_at         DateTime            @default(now())
+  updated_at         DateTime            @updatedAt
+  rol                Role                @relation(fields: [rol_id], references: [id])
+  referidor          User?               @relation("Referidos", fields: [referido_por], references: [id], onDelete: SetNull)
+  referidos          User[]              @relation("Referidos")
   ventas             Venta[]
   creditos           Credito[]
   codigos_descuento  DescuentoCodigo[]
@@ -217,13 +216,13 @@ model RecompensaEntrega {
 }
 
 model Categoria {
-  id         Int       @id @default(autoincrement())
-  nombre     String    @unique @db.VarChar(100)
+  id         Int                @id @default(autoincrement())
+  nombre     String             @unique @db.VarChar(100)
   // Descuento general de la categoría: los perfumes lo heredan de fondo
   // (se aplica el mayor entre este % y el propio del perfume)
-  descuento  Int       @default(0)
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
+  descuento  Int                @default(0)
+  created_at DateTime           @default(now())
+  updated_at DateTime           @updatedAt
   perfumes   Perfume[]
   combos     Combo[]
   anuncios   AnuncioCategoria[]
@@ -256,31 +255,31 @@ model PrecioLista {
 // aplica a las categorías elegidas y/o combos, SIN acumularse con descuentos
 // de producto ni con otros cupones.
 model Anuncio {
-  id            Int              @id @default(autoincrement())
-  titulo        String           @db.VarChar(150)
-  mensaje       String?          @db.Text
-  imagen_url    String?          @db.Text
-  tipo          AnuncioTipo      @default(mensaje)
-  audiencia     AnuncioAudiencia @default(todos)
+  id            Int                @id @default(autoincrement())
+  titulo        String             @db.VarChar(150)
+  mensaje       String?            @db.Text
+  imagen_url    String?            @db.Text
+  tipo          AnuncioTipo        @default(mensaje)
+  audiencia     AnuncioAudiencia   @default(todos)
   // true = cada visitante lo ve una sola vez; false = en cada visita
-  una_vez       Boolean          @default(true)
-  activo        Boolean          @default(true)
-  orden         Int              @default(0)
-  inicio        DateTime?        @db.Date
-  fin           DateTime?        @db.Date
+  una_vez       Boolean            @default(true)
+  activo        Boolean            @default(true)
+  orden         Int                @default(0)
+  inicio        DateTime?          @db.Date
+  fin           DateTime?          @db.Date
   // Solo tipo descuento:
-  descuento_pct Int              @default(0) @db.UnsignedTinyInt
-  aplica_combos Boolean          @default(false)
+  descuento_pct Int                @default(0) @db.UnsignedTinyInt
+  aplica_combos Boolean            @default(false)
   // Reglas para que el cupón aplique en el carrito (0 = sin mínimo):
   // unidades mínimas de productos cubiertos y monto mínimo de esos productos.
-  min_unidades  Int              @default(0) @db.UnsignedSmallInt
-  min_monto     Decimal          @default(0) @db.Decimal(10, 2)
+  min_unidades  Int                @default(0) @db.UnsignedSmallInt
+  min_monto     Decimal            @default(0) @db.Decimal(10, 2)
   // Guardarraíles del cupón (0 = sin límite): tope del descuento en pesos por
   // canje y cupo total de códigos que la campaña puede emitir.
-  max_descuento Decimal          @default(0) @db.Decimal(10, 2)
-  max_canjes    Int              @default(0) @db.UnsignedSmallInt
-  created_at    DateTime         @default(now())
-  updated_at    DateTime         @updatedAt
+  max_descuento Decimal            @default(0) @db.Decimal(10, 2)
+  max_canjes    Int                @default(0) @db.UnsignedSmallInt
+  created_at    DateTime           @default(now())
+  updated_at    DateTime           @updatedAt
   categorias    AnuncioCategoria[]
   codigos       DescuentoCodigo[]
 
@@ -314,9 +313,9 @@ model DescuentoCodigo {
   venta_id    Int?         @unique
   created_at  DateTime     @default(now())
   canjeado_at DateTime?
-  anuncio     Anuncio @relation(fields: [anuncio_id], references: [id], onDelete: Cascade)
-  user        User?   @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  venta       Venta?  @relation(fields: [venta_id], references: [id], onDelete: SetNull)
+  anuncio     Anuncio      @relation(fields: [anuncio_id], references: [id], onDelete: Cascade)
+  user        User?        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  venta       Venta?       @relation(fields: [venta_id], references: [id], onDelete: SetNull)
 
   @@index([user_id, estado])
   @@index([anuncio_id])
@@ -326,13 +325,13 @@ model DescuentoCodigo {
 // "Tu perfume ideal": cálculo guardado por usuario. Al volver al apartado se
 // muestra tal cual (sin recalcular); solo se recalcula si cambia sus respuestas.
 model Recomendacion {
-  id         Int      @id @default(autoincrement())
-  user_id    Int      @unique
+  id         Int                 @id @default(autoincrement())
+  user_id    Int                 @unique
   // Respuestas del quiz (género, edad, ocasiones, aromas, presupuesto, etc.)
   filtros    Json
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at DateTime            @default(now())
+  updated_at DateTime            @updatedAt
+  user       User                @relation(fields: [user_id], references: [id], onDelete: Cascade)
   items      RecomendacionItem[]
 
   @@map("recomendaciones")
@@ -343,9 +342,9 @@ model RecomendacionItem {
   perfume_id       Int
   orden            Int
   // Afinidad 0-100 con el perfil de la persona
-  puntaje          Int    @db.UnsignedTinyInt
+  puntaje          Int           @db.UnsignedTinyInt
   // JSON string con las razones legibles del match ("Ideal para Citas", ...)
-  razones          String @db.Text
+  razones          String        @db.Text
   recomendacion    Recomendacion @relation(fields: [recomendacion_id], references: [id], onDelete: Cascade)
   perfume          Perfume       @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
 
@@ -355,31 +354,31 @@ model RecomendacionItem {
 }
 
 model Perfume {
-  id           Int                @id @default(autoincrement())
-  nombre       String             @db.VarChar(150)
-  descripcion  String?            @db.Text
+  id                 Int                   @id @default(autoincrement())
+  nombre             String                @db.VarChar(150)
+  descripcion        String?               @db.Text
   /// Precio de respaldo: se usa solo si la presentación no tiene precio propio
   /// ni hay precio en la lista de su categoría. Los precios reales viven en
   /// PrecioLista (por categoría) y PerfumePresentacion.precio (excepciones).
-  precio       Decimal            @db.Decimal(10, 2)
-  duracion     String?            @db.VarChar(50)
-  proyeccion   String?            @db.VarChar(50)
-  imagen_url   String?            @db.Text
-  genero       Genero?
-  categoria_id Int?
-  descuento    Int                @default(0) @db.UnsignedTinyInt
+  precio             Decimal               @db.Decimal(10, 2)
+  duracion           String?               @db.VarChar(50)
+  proyeccion         String?               @db.VarChar(50)
+  imagen_url         String?               @db.Text
+  genero             Genero?
+  categoria_id       Int?
+  descuento          Int                   @default(0) @db.UnsignedTinyInt
   /// Contratipos hechos con la esencia de mayor calidad del laboratorio: valen
   /// mucho más que el resto de su categoría (llevan precio propio) y NUNCA
   /// entran en el precio de combo. Ojo: "premium" describe la ESENCIA, no es
   /// perfumería nicho (Creed, MFK…), que es otra cosa.
-  esencia_premium Boolean         @default(false)
+  esencia_premium    Boolean               @default(false)
   /// Esencia concreta con la que se hace ESTE perfume (Eternity, Khamrah…).
   /// Cada fragancia es un insumo distinto con su propio stock y su propio
   /// costo: promediarlas todas en una sola "Esencia" daría un costo que no es
   /// el de ninguna. Null = todavía sin asignar (se usa la de la fórmula).
-  insumo_esencia_id Int?
+  insumo_esencia_id  Int?
   /// Cómo se abastece este producto (ver TipoProducto).
-  tipo_producto  TipoProducto @default(fabricado)
+  tipo_producto      TipoProducto          @default(fabricado)
   /// Para `comprado` y `fraccionado`: el insumo que ES el producto (la gorra,
   /// el splash, la botella original de la que salen los decants). Ahí vive su
   /// stock y su costo real.
@@ -388,33 +387,47 @@ model Perfume {
   /// el volumen nominal porque al trasvasar siempre queda producto en el
   /// frasco y en la jeringa. Sin esto el costo del decant sale más barato de
   /// lo real.
-  ml_utiles      Int?
+  ml_utiles          Int?
+  /// Este producto SOLO se vende si ya está armado (los "1.1").
+  ///
+  /// Un contratipo se arma cuando alguien lo pide, así que basta con que
+  /// alcance la esencia. Un 1.1 no: lleva un frasco especial de esa fragancia
+  /// —que cuesta entre el 60% y el 79% del producto— y el dueño lo arma por
+  /// adelantado. Tener el envase en bodega NO lo hace vendible; tiene que
+  /// existir el frasco terminado. Decidido con el dueño el 2026-08-14 sobre un
+  /// caso real (el Envase Khamrah 1.1, comprado y sin armar).
+  ///
+  /// Va en el PERFUME y no colgado del nombre de su categoría: una categoría es
+  /// un dato que el dueño edita, y el día que la renombre la regla dejaría de
+  /// aplicarse en silencio. El formulario la marca sola al elegir "1.1".
+  solo_armado        Boolean               @default(false)
   /// "No hay ahora mismo": SÍ se muestra en la tienda, marcado como agotado, y
   /// el cliente puede pedir que le avisen cuando vuelva.
-  agotado      Boolean            @default(false)
+  agotado            Boolean               @default(false)
   /// Si está en la tienda o no. Es DISTINTO de `agotado`: apagado significa que
   /// el perfume desaparece del catálogo público como si no existiera (no sale
   /// en listados, búsqueda, destacados, detalle ni sitemap). Sirve para lo que
   /// no se puede fabricar —no hay esencia de esa fragancia— y para las fichas
   /// a medio llenar, que no deben verse mientras se completan.
   /// Por defecto TRUE: los 212 perfumes que ya existían siguen publicados.
-  publicado    Boolean            @default(true)
-  created_at   DateTime           @default(now())
-  updated_at   DateTime           @updatedAt
-  categoria    Categoria?         @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
-  insumo_esencia InsumoCosto?     @relation("EsenciaDePerfume", fields: [insumo_esencia_id], references: [id], onDelete: SetNull)
-  insumo_producto InsumoCosto?    @relation("ProductoDeInsumo", fields: [insumo_producto_id], references: [id], onDelete: SetNull)
-  tipos_aroma    PerfumeTipoAroma[]
-  ocasiones      PerfumeOcasion[]
-  presentaciones PerfumePresentacion[]
-  ventas         VentaPerfume[]
-  recomendado_en RecomendacionItem[]
-  resenas        Resena[]
-  favoritos      Favorito[]
-  avisos_stock   AvisoStock[]
-  devoluciones   DevolucionPerfume[]
-  cotizado_en    CotizacionItem[]
-  producciones   Produccion[]
+  publicado          Boolean               @default(true)
+  created_at         DateTime              @default(now())
+  updated_at         DateTime              @updatedAt
+  categoria          Categoria?            @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
+  insumo_esencia     InsumoCosto?          @relation("EsenciaDePerfume", fields: [insumo_esencia_id], references: [id], onDelete: SetNull)
+  insumo_producto    InsumoCosto?          @relation("ProductoDeInsumo", fields: [insumo_producto_id], references: [id], onDelete: SetNull)
+  tipos_aroma        PerfumeTipoAroma[]
+  ocasiones          PerfumeOcasion[]
+  presentaciones     PerfumePresentacion[]
+  ventas             VentaPerfume[]
+  recomendado_en     RecomendacionItem[]
+  resenas            Resena[]
+  favoritos          Favorito[]
+  avisos_stock       AvisoStock[]
+  devoluciones       DevolucionPerfume[]
+  cotizado_en        CotizacionItem[]
+  producciones       Produccion[]
+  terminado          MovimientoTerminado[]
 
   @@index([categoria_id])
   @@index([genero])
@@ -463,34 +476,35 @@ model PerfumeOcasion {
 }
 
 model Presentacion {
-  id         Int                   @id @default(autoincrement())
-  nombre     String                @unique @db.VarChar(20)
+  id                 Int                   @id @default(autoincrement())
+  nombre             String                @unique @db.VarChar(20)
   /// Tamaño en MILILITROS: es la verdad de la talla, el `nombre` es solo la
   /// etiqueta que ve el cliente. Nació porque el texto se escribía de cinco
   /// formas ("30ML", "30 ML", "30 ml") y nada casaba; comparando números eso
   /// desaparece. Null = no es un tamaño (ej. una gorra), y esos NO se costean.
-  ml         Int?
+  ml                 Int?
   /// Qué receta usa esta talla. Enlaza de VERDAD el catálogo público con el
   /// costeo: antes solo coincidían por nombre y por eso el costo buscaba el
   /// insumo equivocado.
   formula_volumen_id Int?
-  formula    FormulaVolumen?       @relation(fields: [formula_volumen_id], references: [id], onDelete: SetNull)
-  created_at DateTime              @default(now())
-  updated_at DateTime              @updatedAt
-  perfumes   PerfumePresentacion[]
-  combos     Combo[]
-  precios    PrecioLista[]
+  formula            FormulaVolumen?       @relation(fields: [formula_volumen_id], references: [id], onDelete: SetNull)
+  created_at         DateTime              @default(now())
+  updated_at         DateTime              @updatedAt
+  perfumes           PerfumePresentacion[]
+  combos             Combo[]
+  precios            PrecioLista[]
+  terminado          MovimientoTerminado[]
 
   @@index([ml])
   @@map("presentaciones")
 }
 
 model PerfumePresentacion {
-  perfume_id      Int
-  presentacion_id Int
+  perfume_id       Int
+  presentacion_id  Int
   /// Excepción a la lista de precios: lo que vale ESTE perfume en ESTA
   /// presentación (los ultra nicho lo usan). null = precio de la lista.
-  precio          Decimal?     @db.Decimal(10, 2)
+  precio           Decimal?     @db.Decimal(10, 2)
   /// Frasco de ESTE perfume en ESTA talla. El dueño confirmó que el envase y
   /// la caja cambian según la referencia (un 1.1 de Sauvage no usa el mismo
   /// frasco que uno de Bleu), así que no basta con el de la receta del tamaño.
@@ -498,37 +512,47 @@ model PerfumePresentacion {
   envase_insumo_id Int?
   /// Ids de los accesorios propios de esta combinación (caja, tarjeta…).
   /// Vacío o null = usa los accesorios por defecto del tamaño.
-  accesorios      Json?
-  envase          InsumoCosto? @relation("EnvaseDePerfumeTalla", fields: [envase_insumo_id], references: [id], onDelete: SetNull)
-  perfume         Perfume      @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
-  presentacion    Presentacion @relation(fields: [presentacion_id], references: [id], onDelete: Cascade)
+  accesorios       Json?
+  /// Frascos YA ARMADOS de este perfume en esta talla.
+  ///
+  /// Es una PROYECCIÓN de `movimientos_terminado`, igual que
+  /// `insumos_costo.stock` lo es del libro de materiales: la verdad auditable
+  /// es el libro. Nunca se escribe a mano.
+  stock            Decimal      @default(0) @db.Decimal(12, 3)
+  /// Lo que costó armar los frascos que hay, promediado y congelado.
+  /// Al venderse uno, el costo de mercancía sale de aquí y NO de lo que valdría
+  /// la receta hoy: la plata ya se gastó el día que se armó.
+  costo_promedio   Decimal      @default(0) @db.Decimal(12, 4)
+  envase           InsumoCosto? @relation("EnvaseDePerfumeTalla", fields: [envase_insumo_id], references: [id], onDelete: SetNull)
+  perfume          Perfume      @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+  presentacion     Presentacion @relation(fields: [presentacion_id], references: [id], onDelete: Cascade)
 
   @@id([perfume_id, presentacion_id])
   @@map("perfume_presentacion")
 }
 
 model Venta {
-  id                 Int      @id @default(autoincrement())
-  dia                DateTime @db.Date
+  id                 Int              @id @default(autoincrement())
+  dia                DateTime         @db.Date
   // Nombre libre mostrado (ej: "hermano de Pepe"); el enlace al cliente es opcional.
-  persona            String   @db.VarChar(150)
+  persona            String           @db.VarChar(150)
   // Enlace opcional con la persona (usuario/ficha) que compró.
   user_id            Int?
   cantidad_perfumes  Int
-  presentacion       String   @db.VarChar(100)
-  referencia_perfume String   @db.Text
-  valor_venta        Decimal  @db.Decimal(10, 2)
-  datos_adicionales  String?  @db.Text
+  presentacion       String           @db.VarChar(100)
+  referencia_perfume String           @db.Text
+  valor_venta        Decimal          @db.Decimal(10, 2)
+  datos_adicionales  String?          @db.Text
   // false = pedido registrado pero aún sin pagar; al pasar a true se canjea el
   // código de descuento enlazado (si lo hay).
-  pagada             Boolean  @default(true)
+  pagada             Boolean          @default(true)
   /// Lo que costó producir lo vendido, congelado al registrar la venta.
   /// Ingresos − esto = ganancia real. 0 = no se pudo costear (producto sin
   /// esencia asignada, sin talla, o venta histórica).
-  costo_mercancia    Decimal  @default(0) @db.Decimal(12, 2)
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  user               User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  costo_mercancia    Decimal          @default(0) @db.Decimal(12, 2)
+  created_at         DateTime         @default(now())
+  updated_at         DateTime         @updatedAt
+  user               User?            @relation(fields: [user_id], references: [id], onDelete: SetNull)
   // Perfumes del catálogo detectados en la referencia (una venta de combo lleva varios).
   perfumes           VentaPerfume[]
   codigo             DescuentoCodigo?
@@ -615,21 +639,21 @@ model NegocioConfig {
 }
 
 model Credito {
-  id            Int             @id @default(autoincrement())
-  fecha         DateTime        @db.Date
+  id            Int            @id @default(autoincrement())
+  fecha         DateTime       @db.Date
   user_id       Int
-  articulos     String          @db.Text
-  deuda_inicial Decimal         @db.Decimal(10, 2)
+  articulos     String         @db.Text
+  deuda_inicial Decimal        @db.Decimal(10, 2)
   // Acuerdo de pago: fecha límite pactada (por defecto 1 mes desde `fecha`).
   // Si un crédito con cupón sigue con saldo pasada esta fecha, el motor de cupo
   // aplica un castigo extra (el "factor tiempo" jugando en contra del cliente).
-  fecha_limite  DateTime?       @db.Date
+  fecha_limite  DateTime?      @db.Date
   // Venta enlazada: nace pendiente con el crédito y se marca pagada al saldarlo
-  venta_id      Int?            @unique
-  created_at    DateTime        @default(now())
-  updated_at    DateTime        @updatedAt
-  user          User            @relation(fields: [user_id], references: [id])
-  venta         Venta?          @relation(fields: [venta_id], references: [id], onDelete: SetNull)
+  venta_id      Int?           @unique
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
+  user          User           @relation(fields: [user_id], references: [id])
+  venta         Venta?         @relation(fields: [venta_id], references: [id], onDelete: SetNull)
   abonos        CreditoAbono[]
 
   @@index([user_id])
@@ -650,14 +674,14 @@ model CreditoAbono {
 }
 
 model PagoProveedor {
-  id                   Int      @id @default(autoincrement())
-  dia                  DateTime @db.Date
+  id                   Int          @id @default(autoincrement())
+  dia                  DateTime     @db.Date
   empresa_id           Int
-  valor_compra         Decimal  @db.Decimal(10, 2)
-  coste_envio          Decimal  @default(0) @db.Decimal(10, 2)
-  detalles_adicionales String?  @db.Text
+  valor_compra         Decimal      @db.Decimal(10, 2)
+  coste_envio          Decimal      @default(0) @db.Decimal(10, 2)
+  detalles_adicionales String?      @db.Text
   /// Número de la factura o remisión del proveedor (para cruzar con el soporte).
-  numero_factura       String?  @db.VarChar(60)
+  numero_factura       String?      @db.VarChar(60)
   /// URLs de los soportes que manda la distribuidora (imágenes y PDF).
   archivos             Json?
   /// Cómo se liquidó el IVA de ESTA factura. Se hereda del proveedor y se puede
@@ -665,13 +689,13 @@ model PagoProveedor {
   /// una compra de marzo.
   iva_modo             IvaModo?
   /// Tasa aplicada, congelada (la general cambia por ley).
-  iva_tasa             Decimal? @db.Decimal(5, 4)
+  iva_tasa             Decimal?     @db.Decimal(5, 4)
   /// IVA total de la factura, congelado. Hace falta para declarar aunque hoy no
   /// se descuente.
-  iva_valor            Decimal  @default(0) @db.Decimal(12, 2)
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
-  empresa              Empresa  @relation(fields: [empresa_id], references: [id])
+  iva_valor            Decimal      @default(0) @db.Decimal(12, 2)
+  created_at           DateTime     @default(now())
+  updated_at           DateTime     @updatedAt
+  empresa              Empresa      @relation(fields: [empresa_id], references: [id])
   /// Detalle de qué se compró (opcional: los pagos viejos no lo tienen).
   items                CompraItem[]
 
@@ -706,37 +730,37 @@ model RecompensaConfig {
 /// las ventas pagadas); solo se guarda cuántos se han consumido en premios ya
 /// entregados. Los campos *_override, si no son null, reemplazan a la config global.
 model RecompensaUsuario {
-  user_id            Int      @id
+  user_id             Int      @id
   // Sellos ya gastados en premios entregados (el admin lo sube al entregar).
-  sellos_consumidos  Int      @default(0)
-  premios_entregados Int      @default(0)
+  sellos_consumidos   Int      @default(0)
+  premios_entregados  Int      @default(0)
   // Regla especial para ESTE cliente (null = usa la global)
-  objetivo_override  Int?
-  premio_override    String?  @db.VarChar(200)
+  objetivo_override   Int?
+  premio_override     String?  @db.VarChar(200)
   min_compra_override Decimal? @db.Decimal(10, 2)
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
-  user               User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+  user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("recompensa_usuario")
 }
 
 model ContactoConfig {
-  id                Int               @id @default(autoincrement())
-  avatar_url        String?           @db.Text
-  nombre            String            @default("Celestial Parfums") @db.VarChar(100)
-  descripcion       String?           @db.Text
-  fondo_tipo        ContactoFondoTipo @default(color)
+  id                 Int                   @id @default(autoincrement())
+  avatar_url         String?               @db.Text
+  nombre             String                @default("Celestial Parfums") @db.VarChar(100)
+  descripcion        String?               @db.Text
+  fondo_tipo         ContactoFondoTipo     @default(color)
   // Color hex (#faf8f4) o URL de imagen según fondo_tipo.
-  fondo_valor       String?           @db.VarChar(500)
-  boton_forma       ContactoForma     @default(redondo)
-  boton_color_fondo String            @default("#ffffff") @db.VarChar(20)
-  boton_color_texto String            @default("#2f2a3d") @db.VarChar(20)
+  fondo_valor        String?               @db.VarChar(500)
+  boton_forma        ContactoForma         @default(redondo)
+  boton_color_fondo  String                @default("#ffffff") @db.VarChar(20)
+  boton_color_texto  String                @default("#2f2a3d") @db.VarChar(20)
   // Alineación de cada sección (superior: perfil+botones / inferior: redes) en su mitad.
   contenido_posicion ContactoPosicion      @default(centro)
   redes_posicion     ContactoRedesPosicion @default(centro)
-  created_at        DateTime          @default(now())
-  updated_at        DateTime          @updatedAt
+  created_at         DateTime              @default(now())
+  updated_at         DateTime              @updatedAt
 
   @@map("contacto_config")
 }
@@ -863,73 +887,73 @@ model SobreNosotrosConfig {
 /// y costear eso con una esencia cualquiera da un margen que no es de nadie.
 /// Cuando el perfume sí se conoce, manda SU esencia, no la gama.
 model GamaEsencia {
-  id         Int      @id @default(autoincrement())
-  nombre     String   @unique @db.VarChar(60)
+  id           Int           @id @default(autoincrement())
+  nombre       String        @unique @db.VarChar(60)
   /// Para listarlas de la más barata a la más cara, que es como se leen.
-  orden      Int      @default(0) @db.SmallInt
+  orden        Int           @default(0) @db.SmallInt
   /// Punto de pedido POR DEFECTO de las esencias de esta gama, en ml. Se
   /// configura una vez y vale para las 151 árabes; cada esencia puede tener su
   /// excepción en `InsumoCosto.stock_minimo`. 0 = sin alerta para la gama.
-  stock_minimo Decimal @default(0) @db.Decimal(12, 3)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  esencias   InsumoCosto[]
+  stock_minimo Decimal       @default(0) @db.Decimal(12, 3)
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
+  esencias     InsumoCosto[]
 
   @@map("gamas_esencia")
 }
 
 model InsumoCosto {
-  id         Int          @id @default(autoincrement())
-  nombre     String       @db.VarChar(120)
-  tipo       InsumoTipo
-  unidad     InsumoUnidad @default(unidad)
+  id                  Int                    @id @default(autoincrement())
+  nombre              String                 @db.VarChar(120)
+  tipo                InsumoTipo
+  unidad              InsumoUnidad           @default(unidad)
   /// Se cobra por cada perfume o una sola vez por pedido.
-  alcance    InsumoAlcance @default(unidad)
+  alcance             InsumoAlcance          @default(unidad)
   /// Costo actual por ml (materias primas) o por pieza (envases/accesorios).
   /// Desde que existen las compras detalladas, NO se teclea: es el **costo
   /// promedio ponderado** que recalcula `recalcularCosto` con cada movimiento.
   /// Editable a mano solo para sembrar el arranque.
   /// 4 decimales: el promedio ponderado da fracciones y redondear a 2 en cada
   /// compra iría torciendo el costo poco a poco.
-  precio     Decimal      @db.Decimal(12, 4)
+  precio              Decimal                @db.Decimal(12, 4)
   /// Cantidad disponible en la unidad base del insumo (ml o piezas).
   /// Es una proyección del libro de movimientos, no la verdad última.
-  stock      Decimal      @default(0) @db.Decimal(12, 3)
+  stock               Decimal                @default(0) @db.Decimal(12, 3)
   /// Punto de pedido de ESTE material, que manda sobre el de su gama.
   /// NULL = hereda el de su gama (lo normal); 0 = sin alerta a propósito;
   /// > 0 = su propio mínimo. Ponerlo a mano en 219 esencias no lo hace nadie
   /// —solo 1 de 226 lo tenía—, por eso el valor de verdad vive en la gama y
   /// esto queda para la excepción.
-  stock_minimo Decimal?   @db.Decimal(12, 3)
+  stock_minimo        Decimal?               @db.Decimal(12, 3)
   /// Solo para esencias: a qué gama pertenece (ver GamaEsencia). Null en todo
   /// lo demás: un frasco o el diluyente no tienen gama.
-  gama_id    Int?
-  gama       GamaEsencia? @relation(fields: [gama_id], references: [id], onDelete: SetNull)
+  gama_id             Int?
+  gama                GamaEsencia?           @relation(fields: [gama_id], references: [id], onDelete: SetNull)
   /// Para quién es la fragancia que sale de esta esencia. Solo aplica a
   /// esencias. Null = todavía no se ha dicho (la mayoría: el dueño solo lo
   /// escribía en el nombre cuando necesitaba desempatar dos fragancias de la
   /// misma línea, así que solo 27 de 216 lo traían). Sirve para que el perfume
   /// que nace de una compra salga ya clasificado y para descartar candidatos
   /// del género equivocado al emparejar esencias con perfumes.
-  genero     Genero?
-  activo     Boolean      @default(true)
-  created_at DateTime     @default(now())
-  updated_at DateTime     @updatedAt
+  genero              Genero?
+  activo              Boolean                @default(true)
+  created_at          DateTime               @default(now())
+  updated_at          DateTime               @updatedAt
   /// Fórmulas que usan este insumo como envase (impide borrarlo si está en uso).
-  envase_de  FormulaVolumen[] @relation("EnvaseDeFormula")
+  envase_de           FormulaVolumen[]       @relation("EnvaseDeFormula")
   /// Fórmulas que usan este insumo como esencia (normal, premium…).
-  esencia_de FormulaVolumen[] @relation("EsenciaDeFormula")
+  esencia_de          FormulaVolumen[]       @relation("EsenciaDeFormula")
   /// Tamaños que lo incluyen por defecto (bolsa, perfumero…).
-  incluido_en FormulaAccesorio[]
+  incluido_en         FormulaAccesorio[]
   /// Líneas de compra y movimientos de inventario de este insumo.
-  compras     CompraItem[]
-  movimientos MovimientoInventario[]
+  compras             CompraItem[]
+  movimientos         MovimientoInventario[]
   /// Perfumes que se hacen con esta esencia.
-  esencia_de_perfumes Perfume[] @relation("EsenciaDePerfume")
+  esencia_de_perfumes Perfume[]              @relation("EsenciaDePerfume")
   /// Productos comprados o fraccionados que SON este insumo.
-  producto_de         Perfume[] @relation("ProductoDeInsumo")
+  producto_de         Perfume[]              @relation("ProductoDeInsumo")
   /// Combinaciones perfume+talla que usan este insumo como frasco.
-  envase_de_talla     PerfumePresentacion[] @relation("EnvaseDePerfumeTalla")
+  envase_de_talla     PerfumePresentacion[]  @relation("EnvaseDePerfumeTalla")
 
   @@index([tipo, activo])
   @@map("insumos_costo")
@@ -955,6 +979,34 @@ enum UnidadCompra {
 
 /// Por qué se movió el inventario. Cada movimiento guarda el costo unitario
 /// del momento, así el histórico no cambia cuando suba el precio del insumo.
+/// Libro de movimientos del PRODUCTO TERMINADO (frascos ya armados).
+///
+/// Tabla aparte de `movimientos_inventario` a propósito: allí `insumo_id` es
+/// obligatorio y lo dan por hecho todas las consultas que ya existen. Hacerlo
+/// opcional para meter perfumes es el atajo que revienta en otro sitio.
+model MovimientoTerminado {
+  id              Int            @id @default(autoincrement())
+  perfume_id      Int
+  presentacion_id Int
+  tipo            MovimientoTipo
+  /// Positiva entra (producción), negativa sale (venta).
+  cantidad        Decimal        @db.Decimal(12, 3)
+  /// Lo que costó armar CADA unidad, congelado en el momento.
+  costo_unitario  Decimal        @db.Decimal(12, 4)
+  fecha           DateTime       @db.Date
+  /// De dónde vino: id de la producción o de la venta que lo generó.
+  referencia_id   Int?
+  nota            String?        @db.VarChar(255)
+  created_at      DateTime       @default(now())
+
+  perfume      Perfume      @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
+  presentacion Presentacion @relation(fields: [presentacion_id], references: [id], onDelete: Cascade)
+
+  @@index([perfume_id, presentacion_id])
+  @@index([tipo])
+  @@map("movimientos_terminado")
+}
+
 enum MovimientoTipo {
   compra
   produccion
@@ -1042,28 +1094,28 @@ model FormulaAccesorio {
 // siempre se calcula como ml_total − esencia − sellador − feromonas, para que no
 // pueda quedar desincronizado si se edita el volumen total.
 model FormulaVolumen {
-  id               Int      @id @default(autoincrement())
-  nombre           String   @db.VarChar(60)
-  ml_total         Int
-  esencia_ml       Decimal  @db.Decimal(6, 2)
-  sellador_ml      Decimal  @default(0) @db.Decimal(6, 2)
-  feromonas_ml     Decimal  @default(0) @db.Decimal(6, 2)
+  id                Int                @id @default(autoincrement())
+  nombre            String             @db.VarChar(60)
+  ml_total          Int
+  esencia_ml        Decimal            @db.Decimal(6, 2)
+  sellador_ml       Decimal            @default(0) @db.Decimal(6, 2)
+  feromonas_ml      Decimal            @default(0) @db.Decimal(6, 2)
   /// Envase que usa este tamaño (un InsumoCosto de tipo envase).
-  envase_insumo_id Int?
+  envase_insumo_id  Int?
   /// Esencia concreta de esta receta (normal, premium…). Sin ella el costeo
   /// tendría que adivinar cuál usar cuando hay varias esencias cargadas.
   esencia_insumo_id Int?
-  activo           Boolean  @default(true)
-  orden            Int      @default(0)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  envase           InsumoCosto?    @relation("EnvaseDeFormula", fields: [envase_insumo_id], references: [id], onDelete: SetNull)
-  esencia          InsumoCosto?    @relation("EsenciaDeFormula", fields: [esencia_insumo_id], references: [id], onDelete: SetNull)
-  escalas          EscalaPrecio[]
-  items            CotizacionItem[]
-  accesorios       FormulaAccesorio[]
-  producciones     Produccion[]
-  presentaciones   Presentacion[]
+  activo            Boolean            @default(true)
+  orden             Int                @default(0)
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  envase            InsumoCosto?       @relation("EnvaseDeFormula", fields: [envase_insumo_id], references: [id], onDelete: SetNull)
+  esencia           InsumoCosto?       @relation("EsenciaDeFormula", fields: [esencia_insumo_id], references: [id], onDelete: SetNull)
+  escalas           EscalaPrecio[]
+  items             CotizacionItem[]
+  accesorios        FormulaAccesorio[]
+  producciones      Produccion[]
+  presentaciones    Presentacion[]
 
   @@index([activo])
   @@map("formulas_volumen")
@@ -1086,16 +1138,16 @@ model EscalaPrecio {
 
 // Textos y valores por defecto de las cotizaciones (fila única).
 model CotizacionConfig {
-  id                     Int      @id @default(autoincrement())
-  vigencia_dias_default  Int      @default(15)
+  id                      Int      @id @default(autoincrement())
+  vigencia_dias_default   Int      @default(15)
   /// Objeto con pedido_minimo, tiempo_preparacion, tiempo_despacho, forma_pago,
   /// condiciones_pago, costos_envio, garantias, politica_cambios.
   condiciones_comerciales Json
   /// Array de strings: bloque "¿Por qué elegir Celestial Parfums?".
-  beneficios_items       Json
+  beneficios_items        Json
   /// Array de strings: cláusulas legales del pie del PDF.
-  avisos_legales         Json
-  updated_at             DateTime @updatedAt
+  avisos_legales          Json
+  updated_at              DateTime @updatedAt
 
   @@map("cotizacion_config")
 }
@@ -1103,15 +1155,15 @@ model CotizacionConfig {
 // Plantilla comercial reutilizable (Mayorista, Distribuidor, Premium…).
 // El nombre es libre: no es un enum fijo, el admin crea las que quiera.
 model PlantillaCotizacion {
-  id                      Int           @id @default(autoincrement())
-  nombre                  String        @db.VarChar(80)
-  descuento_pct           Decimal       @default(0) @db.Decimal(5, 2)
+  id                      Int          @id @default(autoincrement())
+  nombre                  String       @db.VarChar(80)
+  descuento_pct           Decimal      @default(0) @db.Decimal(5, 2)
   /// Mismo shape que CotizacionConfig.condiciones_comerciales; sobreescribe el default.
   condiciones_comerciales Json?
-  observaciones_default   String?       @db.Text
-  activo                  Boolean       @default(true)
-  created_at              DateTime      @default(now())
-  updated_at              DateTime      @updatedAt
+  observaciones_default   String?      @db.Text
+  activo                  Boolean      @default(true)
+  created_at              DateTime     @default(now())
+  updated_at              DateTime     @updatedAt
   cotizaciones            Cotizacion[]
 
   @@map("plantillas_cotizacion")
@@ -1121,33 +1173,33 @@ model PlantillaCotizacion {
 // propósito: un prospecto mayorista no es un User del sitio ni una Empresa
 // (que en este proyecto son PROVEEDORES, tabla pagos_proveedor).
 model Cotizacion {
-  id                      Int              @id @default(autoincrement())
-  numero                  String           @unique @db.VarChar(20)
-  tipo                    CotizacionTipo   @default(detallada)
+  id                      Int                  @id @default(autoincrement())
+  numero                  String               @unique @db.VarChar(20)
+  tipo                    CotizacionTipo       @default(detallada)
   /// Solo en las GENERALES: lista de precios congelada
   /// [{volumen, escalas:[{desde, hasta, precio}]}]. Se guarda tal cual para que
   /// la cotización enviada no cambie si mañana se ajustan los precios.
   lista_precios           Json?
-  cliente_nombre          String           @db.VarChar(150)
-  cliente_empresa         String?          @db.VarChar(150)
-  cliente_telefono        String?          @db.VarChar(30)
-  cliente_email           String?          @db.VarChar(150)
-  cliente_nit             String?          @db.VarChar(50)
+  cliente_nombre          String               @db.VarChar(150)
+  cliente_empresa         String?              @db.VarChar(150)
+  cliente_telefono        String?              @db.VarChar(30)
+  cliente_email           String?              @db.VarChar(150)
+  cliente_nit             String?              @db.VarChar(50)
   plantilla_id            Int?
-  subtotal                Decimal          @default(0) @db.Decimal(10, 2)
-  descuento_pct           Decimal          @default(0) @db.Decimal(5, 2)
-  total                   Decimal          @default(0) @db.Decimal(10, 2)
-  vigencia_dias           Int              @default(15)
-  fecha_vigencia          DateTime         @db.Date
+  subtotal                Decimal              @default(0) @db.Decimal(10, 2)
+  descuento_pct           Decimal              @default(0) @db.Decimal(5, 2)
+  total                   Decimal              @default(0) @db.Decimal(10, 2)
+  vigencia_dias           Int                  @default(15)
+  fecha_vigencia          DateTime             @db.Date
   /// Snapshot editable: se copia del config/plantilla al crear.
   condiciones_comerciales Json
   /// Insumos de alcance "pedido" cargados a ESTA cotización (caja de envío…),
   /// congelados: [{insumo_id, nombre, precio}]. Van una vez, no por unidad.
   extras_pedido           Json?
-  observaciones           String?          @db.Text
-  estado                  CotizacionEstado @default(borrador)
-  created_at              DateTime         @default(now())
-  updated_at              DateTime         @updatedAt
+  observaciones           String?              @db.Text
+  estado                  CotizacionEstado     @default(borrador)
+  created_at              DateTime             @default(now())
+  updated_at              DateTime             @updatedAt
   plantilla               PlantillaCotizacion? @relation(fields: [plantilla_id], references: [id], onDelete: SetNull)
   items                   CotizacionItem[]
 
@@ -1159,26 +1211,26 @@ model Cotizacion {
 // mañana sube el precio de la esencia, una cotización vieja NO debe cambiar su
 // rentabilidad histórica (mismo criterio que la deuda de un crédito).
 model CotizacionItem {
-  id                      Int            @id @default(autoincrement())
-  cotizacion_id           Int
-  perfume_id              Int?
+  id                       Int             @id @default(autoincrement())
+  cotizacion_id            Int
+  perfume_id               Int?
   /// Nombre congelado del perfume (sobrevive a renombres o borrados).
-  perfume_nombre          String         @db.VarChar(150)
-  formula_volumen_id      Int?
+  perfume_nombre           String          @db.VarChar(150)
+  formula_volumen_id       Int?
   /// Nombre congelado del tamaño (ej: "30 ml").
-  volumen_nombre          String         @db.VarChar(60)
-  cantidad                Int
+  volumen_nombre           String          @db.VarChar(60)
+  cantidad                 Int
   /// Accesorios incluidos en ESTA línea: [{insumo_id, nombre, precio}].
   accesorios_seleccionados Json
   /// SOLO ADMIN — nunca viaja al PDF del cliente:
   /// {esencia, diluyente, sellador, feromonas, envase, accesorios, costo_unitario}.
-  desglose_costo          Json
-  precio_unitario         Decimal        @db.Decimal(10, 2)
-  subtotal                Decimal        @db.Decimal(10, 2)
-  orden                   Int            @default(0)
-  cotizacion              Cotizacion     @relation(fields: [cotizacion_id], references: [id], onDelete: Cascade)
-  perfume                 Perfume?       @relation(fields: [perfume_id], references: [id], onDelete: SetNull)
-  formula                 FormulaVolumen? @relation(fields: [formula_volumen_id], references: [id], onDelete: SetNull)
+  desglose_costo           Json
+  precio_unitario          Decimal         @db.Decimal(10, 2)
+  subtotal                 Decimal         @db.Decimal(10, 2)
+  orden                    Int             @default(0)
+  cotizacion               Cotizacion      @relation(fields: [cotizacion_id], references: [id], onDelete: Cascade)
+  perfume                  Perfume?        @relation(fields: [perfume_id], references: [id], onDelete: SetNull)
+  formula                  FormulaVolumen? @relation(fields: [formula_volumen_id], references: [id], onDelete: SetNull)
 
   @@index([cotizacion_id])
   @@map("cotizacion_items")
@@ -1224,36 +1276,36 @@ enum DevolucionOrigen {
 /// plata sale y de dónde. Si se devolvió dinero, `monto_devuelto` se descuenta
 /// de los ingresos del mes en que se resolvió (ver getVentaTotales).
 model Devolucion {
-  id                Int                 @id @default(autoincrement())
-  venta_id          Int
+  id                    Int                 @id @default(autoincrement())
+  venta_id              Int
   /// Quien radicó el caso, si vino del portal del cliente (fase C).
-  user_id           Int?
-  origen            DevolucionOrigen    @default(admin)
+  user_id               Int?
+  origen                DevolucionOrigen    @default(admin)
   /// Fecha en que el cliente reportó el problema (arranca el conteo de días).
-  fecha             DateTime            @db.Date
-  motivo            DevolucionMotivo
-  detalle           String?             @db.Text
-  estado            DevolucionEstado    @default(pendiente)
-  solucion          DevolucionSolucion?
+  fecha                 DateTime            @db.Date
+  motivo                DevolucionMotivo
+  detalle               String?             @db.Text
+  estado                DevolucionEstado    @default(pendiente)
+  solucion              DevolucionSolucion?
   /// Plata efectivamente devuelta. 0 si se repuso el producto.
-  monto_devuelto    Decimal             @default(0) @db.Decimal(10, 2)
-  fecha_resolucion  DateTime?           @db.Date
-  notas             String?             @db.Text
+  monto_devuelto        Decimal             @default(0) @db.Decimal(10, 2)
+  fecha_resolucion      DateTime?           @db.Date
+  notas                 String?             @db.Text
   /// URLs de las fotos del producto (las sube el admin o el cliente en fase C).
-  imagenes          Json?
+  imagenes              Json?
   /// Tamaño repuesto y cuántas unidades, para valorar la pérdida al costo real
   /// de producción (no al precio de venta: la venta original ya se cobró).
   reposicion_formula_id Int?
-  reposicion_cantidad   Int      @default(0)
+  reposicion_cantidad   Int                 @default(0)
   /// Costo de producir lo repuesto + envío que asumimos. Se congela al cerrar.
-  costo_reposicion      Decimal  @default(0) @db.Decimal(12, 2)
-  costo_envio           Decimal  @default(0) @db.Decimal(12, 2)
-  created_at        DateTime            @default(now())
-  updated_at        DateTime            @updatedAt
+  costo_reposicion      Decimal             @default(0) @db.Decimal(12, 2)
+  costo_envio           Decimal             @default(0) @db.Decimal(12, 2)
+  created_at            DateTime            @default(now())
+  updated_at            DateTime            @updatedAt
 
-  venta             Venta               @relation(fields: [venta_id], references: [id], onDelete: Cascade)
-  user              User?               @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  perfumes          DevolucionPerfume[]
+  venta    Venta               @relation(fields: [venta_id], references: [id], onDelete: Cascade)
+  user     User?               @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  perfumes DevolucionPerfume[]
 
   @@index([venta_id])
   @@index([estado])

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sinEsenciaParaUno } from './perfume.repository';
+import { sinEsenciaParaUno } from './perfume.mapeo';
 
 /**
  * ¿Se quedó un perfume sin esencia para armar ni uno?

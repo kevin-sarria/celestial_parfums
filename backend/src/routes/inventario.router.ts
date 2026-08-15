@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as repo from '../repositories/inventario.repository';
 import * as reposicion from '../repositories/reposicion.repository';
+import { listarTerminado } from '../repositories/inventario.terminado';
 import { requireAdmin } from '../middleware/auth.middleware';
 // Mover el stock de una esencia cambia qué perfumes se pueden armar hoy, y de
 // eso depende cuáles salen agotados en la tienda. Sin limpiar el caché, el
@@ -17,10 +18,18 @@ import {
 export const inventarioRouter = Router();
 inventarioRouter.use(requireAdmin);
 
-/** Qué hay en bodega y cuánto vale. */
+/**
+ * Qué hay en bodega y cuánto vale.
+ *
+ * Van los materiales **y los frascos ya armados**: al producir, la plata sale
+ * de los materiales y se queda en los frascos. Sin la segunda cifra, armar un
+ * lote parece hacer desaparecer inventario.
+ */
 inventarioRouter.get('/', h(async (_req, res) => {
-  const [resumen, salidas] = await Promise.all([repo.resumenInventario(), repo.salidasDelMes()]);
-  res.json({ data: { ...resumen, salidas_mes: salidas } });
+  const [resumen, salidas, terminado] = await Promise.all([
+    repo.resumenInventario(), repo.salidasDelMes(), listarTerminado(),
+  ]);
+  res.json({ data: { ...resumen, salidas_mes: salidas, terminado } });
 }));
 
 /**

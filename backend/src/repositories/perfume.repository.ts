@@ -7,175 +7,10 @@ import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 import { resumenRatings } from './resena.repository';
 import { badRequest } from '../utils/httpError';
 import { buildPerfumeIndex, matchPerfume } from '../utils/perfumeMatcher';
-
-/**
- * Se deriva de `perfumeInclude` en vez de repetirlo: eran dos listas que había
- * que mantener iguales a mano, y al agregarle la gama a una se rompió la otra.
- * (Los tipos se elevan, así que no importa que `perfumeInclude` esté más abajo.)
- */
-type PerfumeRow = Prisma.PerfumeGetPayload<{ include: typeof perfumeInclude }>;
-
-// Un perfume cuenta como "nuevo lanzamiento" durante sus primeros 30 días en el catálogo.
-const NUEVO_DIAS = 7;
-const esNuevo = (created: Date) => Date.now() - created.getTime() < NUEVO_DIAS * 86400000;
-
-/**
- * Precio de un perfume en una presentación, en cascada:
- *   1. precio propio de esa presentación (excepción: los de esencia premium lo usan)
- *   2. precio de la lista para (categoría, presentación)
- *   3. precio de respaldo del perfume (perfumes sin categoría o sin lista aún)
- * Así, subir el precio de la lista mueve a todos los perfumes de esa categoría
- * de una sola vez, sin tocar los que tienen precio propio.
- */
-const resolverPrecios = (p: PerfumeRow) => {
-  const lista = new Map((p.categoria?.precios ?? []).map((pr) => [pr.presentacion_id, Number(pr.precio)]));
-  return p.presentaciones.map((r) => ({
-    presentacion: r.presentacion.nombre,
-    /**
-     * Número real de la talla. La etiqueta ("30ML") sirve para buscar el precio;
-     * el número, para saber qué receta descontar del inventario. Van juntos para
-     * que quien arma un pedido no tenga que adivinar uno a partir del otro.
-     * Null a propósito en las que no son talla ("200/250ML", "Combo Personalizado").
-     */
-    ml: r.presentacion.ml ?? null,
-    precio: Number(r.precio ?? lista.get(r.presentacion_id) ?? p.precio),
-    /** true = ese precio es exclusivo del perfume, no viene de la lista */
-    propio: r.precio != null,
-    presentacion_id: r.presentacion_id,
-    /** Frasco propio de esta combinación; null = el de la receta del tamaño. */
-    envase_insumo_id: (r as any).envase_insumo_id ?? null,
-    accesorios: ((r as any).accesorios as number[] | null) ?? [],
-  }));
-};
-
-/**
- * Cuánta esencia hace falta para armar UNA unidad de la talla más pequeña que
- * ofrece este perfume.
- *
- * Se mide contra la más pequeña —y no contra una fija— porque un perfume que
- * solo se vende en 100 ml necesita 50 ml de esencia, no los 15 del 30 ml.
- * Null = no se puede saber: la talla no tiene receta enlazada, o lo que ofrece
- * no son tallas ("Combo Personalizado", "200/250ML" vienen sin `ml` a propósito).
- */
-const esenciaParaUno = (p: PerfumeRow): number | null => {
-  const tallas = p.presentaciones
-    .map((r) => r.presentacion)
-    .filter((x) => x.ml != null && x.ml > 0);
-  if (!tallas.length) return null;
-  const menor = tallas.reduce((a, b) => (a.ml! <= b.ml! ? a : b));
-  return menor.formula ? Number(menor.formula.esencia_ml) : null;
-};
-
-/**
- * ¿Se quedó sin esencia para armar ni uno?
- *
- * El corte NO es "tiene algo de stock": con 3 ml de esencia no sale un frasco
- * de 30 ml, que necesita 15. Si el catálogo lo mostrara disponible le estaría
- * prometiendo al cliente algo que no se puede armar.
- *
- * Solo se juzga a los que se FABRICAN: una gorra o un splash comprado no
- * dependen de ninguna esencia. Un perfume sin esencia asignada cuenta como sin
- * esencia — uno recién creado nace así, y hasta que no se le asigne no se sabe
- * con qué armarlo.
- */
-export const sinEsenciaParaUno = (p: PerfumeRow): boolean => {
-  if ((p.tipo_producto ?? 'fabricado') !== 'fabricado') return false;
-  if (!p.insumo_esencia) return true;
-  const stock = Number(p.insumo_esencia.stock);
-  const necesita = esenciaParaUno(p);
-  // Sin receta enlazada, lo único afirmable es que quede algo: inventar aquí un
-  // número marcaría agotado a quien sí puede vender.
-  return necesita == null ? stock <= 0 : stock < necesita;
-};
-
-export const mapPerfume = (p: PerfumeRow) => {
-  const precios = resolverPrecios(p);
-  const sinEsencia = sinEsenciaParaUno(p);
-  // El precio "de portada" (cards, PDF, SEO) es el más barato de sus
-  // presentaciones: es el que acompaña al "desde $X" cuando hay varias.
-  const desde = precios.length ? Math.min(...precios.map((x) => x.precio)) : Number(p.precio);
-  return {
-    id:           p.id,
-    nombre:       p.nombre,
-    descripcion:  p.descripcion ?? null,
-    precio:       desde,
-    /** Precio de cada presentación ya resuelto (lista o excepción del perfume). */
-    precios,
-    /** true = sus presentaciones no valen todas lo mismo (la card muestra "desde"). */
-    varios_precios: precios.length > 1 && new Set(precios.map((x) => x.precio)).size > 1,
-    duracion:     p.duracion ?? null,
-    proyeccion:   p.proyeccion ?? null,
-    imagen_url:   p.imagen_url ?? null,
-    genero:       p.genero ?? null,
-    categoria:    p.categoria?.nombre ?? null,
-    categoria_id: p.categoria_id ?? null,
-    // % efectivo que consume todo el sistema (catálogo, carrito, cupones, SEO):
-    // el mayor entre el propio del perfume y el general de su categoría
-    descuento:        Math.max(p.descuento, p.categoria?.descuento ?? 0),
-    descuento_propio: p.descuento,
-    /** Contratipo de esencia premium: lleva distintivo y nunca entra en combos. */
-    esencia_premium:  p.esencia_premium,
-    insumo_esencia_id: p.insumo_esencia_id ?? null,
-    tipo_producto: p.tipo_producto ?? 'fabricado',
-    insumo_producto_id: p.insumo_producto_id ?? null,
-    ml_utiles: p.ml_utiles ?? null,
-    insumo_esencia_nombre: p.insumo_esencia?.nombre ?? null,
-    /// Costo real por ml de SU esencia (cada fragancia tiene la suya).
-    insumo_esencia_precio: p.insumo_esencia ? Number(p.insumo_esencia.precio) : null,
-    /**
-     * Gama del perfume: NO es una columna suya, se HEREDA de su esencia.
-     *
-     * Deducirla es mejor que guardarla — el día que una esencia se reclasifique
-     * de árabe a premium, sus perfumes se mueven solos; una copia guardada
-     * quedaría mintiendo (mismo criterio que los sellos y el cupo). Null = el
-     * perfume todavía no tiene esencia asignada, y entonces NO se puede
-     * segmentar por gama: quien filtre tiene que contarlos aparte, no
-     * dejarlos caer en silencio.
-     */
-    gama:    p.insumo_esencia?.gama?.nombre ?? null,
-    gama_id: p.insumo_esencia?.gama_id ?? null,
-    /// Existencias de SU esencia, para saber si hoy se puede armar uno.
-    insumo_esencia_stock: p.insumo_esencia ? Number(p.insumo_esencia.stock) : null,
-    /**
-     * Lo que ve la tienda: lo marcó el dueño **o** no alcanza la esencia.
-     *
-     * El sistema NUNCA escribe la columna; esto se recalcula en cada consulta
-     * (mismo criterio que los sellos, el cupo y la gama). Un valor guardado
-     * quedaría mintiendo en cuanto entre una compra de esencia, y el dueño
-     * tendría que acordarse de desmarcar a mano lo que ya puede vender.
-     */
-    agotado:      p.agotado || sinEsencia,
-    /** La marca manual, cruda: es lo único que el dashboard puede desmarcar. */
-    agotado_manual: p.agotado,
-    /** Motivo calculado, para poder EXPLICARLO en vez de solo marcarlo. */
-    sin_esencia:  sinEsencia,
-    /** Cuánta esencia pide una unidad de su talla más pequeña (para el motivo). */
-    esencia_necesaria: esenciaParaUno(p),
-    publicado:    p.publicado ?? true,
-    es_nuevo:     esNuevo(p.created_at),
-    tipos_aroma:    p.tipos_aroma.map((r) => r.tipo_aroma.nombre),
-    ocasiones:      p.ocasiones.map((r) => r.ocasion.nombre),
-    presentaciones: p.presentaciones.map((r) => r.presentacion.nombre),
-    // Promedio de reseñas aprobadas (se rellena con `conRatings`)
-    rating_promedio: 0,
-    rating_total:    0,
-  };
-};
-
-export const perfumeInclude = {
-  categoria:      { include: { precios: true } },
-  tipos_aroma:    { include: { tipo_aroma: true } },
-  ocasiones:      { include: { ocasion: true } },
-  // La receta viaja con la talla para poder saber, sin una segunda consulta, si
-  // hoy alcanza la esencia para armar uno (ver `sinEsenciaParaUno`). Traerla
-  // aquí es lo que deja a `mapPerfume` puro y síncrono: cargarla aparte
-  // obligaría a acordarse de aplicarla en cada consulta del catálogo, y la que
-  // se olvidara mostraría como disponible algo que no se puede armar.
-  presentaciones: { include: { presentacion: { include: { formula: true } } } },
-  // Esencia concreta del perfume: su costo real por ml (cada fragancia la suya)
-  // y su GAMA, que es de donde el perfume hereda si es árabe, clásico o premium.
-  insumo_esencia: { include: { gama: true } },
-} as const;
+import { mlDelNombre } from '../utils/tallas';
+// Cómo se lee un perfume (precio efectivo, agotado, frascos armados) vive en su
+// propio archivo: aquí solo se consulta y se escribe.
+import { mapPerfume, perfumeInclude, NUEVO_DIAS } from './perfume.mapeo';
 
 /** Rellena el promedio/total de reseñas aprobadas de una lista ya mapeada. */
 export const conRatings = async <T extends { id: number }>(perfumes: T[]): Promise<T[]> => {
@@ -315,6 +150,7 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       tipo_producto: data.tipo_producto ?? 'fabricado',
       insumo_producto_id: data.insumo_producto_id ?? null,
       ml_utiles: data.ml_utiles ?? null,
+      solo_armado: data.solo_armado ?? false,
       tipos_aroma: {
         create: (data.tipos_aroma ?? []).map((id) => ({ tipo_aroma_id: id })),
       },
@@ -333,10 +169,37 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
     where: { id: numId },
     select: { imagen_url: true },
   });
+
+  /**
+   * Las tallas se SINCRONIZAN, no se borran y se vuelven a crear.
+   *
+   * Esa fila ya no es solo un precio: lleva los **frascos armados** y su costo
+   * congelado. Rehacerla en cada guardado hacía que cambiarle la descripción a
+   * un perfume borrara los frascos que hay en la caja, sin avisar y sin dejar
+   * rastro. Ahora la que sigue se actualiza y conserva su stock.
+   */
+  const enlaces = enlacesPresentacion(data);
+  const quedan = enlaces.map((e) => e.presentacion_id);
+  const seVan = await prisma.perfumePresentacion.findMany({
+    where: { perfume_id: numId, presentacion_id: { notIn: quedan } },
+    include: { presentacion: { select: { nombre: true } } },
+  });
+  // Quitar una talla que todavía tiene frascos armados se rechaza: primero se
+  // venden o se ajustan. Dejarlo pasar tiraría a la basura producto que existe.
+  const conArmados = seVan.filter((r) => Number(r.stock) !== 0);
+  if (conArmados.length) {
+    const detalle = conArmados
+      .map((r) => `${r.presentacion.nombre} (${Number(r.stock)})`)
+      .join(', ');
+    throw badRequest(
+      `No puedes quitar esta talla: todavía hay frascos armados en ${detalle}. `
+      + 'Véndelos o ajústalos en Inventario y vuelve a guardar.',
+    );
+  }
+
   await prisma.$transaction([
     prisma.perfumeTipoAroma.deleteMany({ where: { perfume_id: numId } }),
     prisma.perfumeOcasion.deleteMany({ where: { perfume_id: numId } }),
-    prisma.perfumePresentacion.deleteMany({ where: { perfume_id: numId } }),
     prisma.perfume.update({
       where: { id: numId },
       data: {
@@ -359,13 +222,27 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
         ...(data.tipo_producto !== undefined ? { tipo_producto: data.tipo_producto } : {}),
         ...(data.insumo_producto_id !== undefined ? { insumo_producto_id: data.insumo_producto_id ?? null } : {}),
         ...(data.ml_utiles !== undefined ? { ml_utiles: data.ml_utiles ?? null } : {}),
+        ...(data.solo_armado !== undefined ? { solo_armado: data.solo_armado } : {}),
         tipos_aroma: {
           create: (data.tipos_aroma ?? []).map((tid) => ({ tipo_aroma_id: tid })),
         },
         ocasiones: {
           create: (data.ocasiones ?? []).map((oid) => ({ ocasion_id: oid })),
         },
-        presentaciones: { create: enlacesPresentacion(data) },
+        presentaciones: {
+          deleteMany: { presentacion_id: { notIn: quedan } },
+          upsert: enlaces.map((e) => ({
+            where: { perfume_id_presentacion_id: { perfume_id: numId, presentacion_id: e.presentacion_id } },
+            create: e,
+            // Se toca solo lo que el formulario manda; `stock` y `costo_promedio`
+            // ni se mencionan, que es justo lo que los deja intactos.
+            update: {
+              precio: e.precio,
+              envase_insumo_id: e.envase_insumo_id,
+              accesorios: e.accesorios ?? Prisma.DbNull,
+            },
+          })),
+        },
       },
     }),
   ]);
@@ -668,18 +545,49 @@ export const updateCategoria = (id: string, nombre: string) =>
 // ── Presentaciones ─────────────────────────────────────────────────────────
 
 export const getAllPresentaciones = () =>
-  prisma.presentacion.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } });
+  // `ml` viaja con la talla para poder MOSTRAR cuáles se costean: una talla sin
+  // número el sistema la trata como "no es un tamaño", y eso solo se nota hoy
+  // cuando una venta suya entra con costo cero.
+  prisma.presentacion.findMany({
+    select: { id: true, nombre: true, ml: true },
+    orderBy: { nombre: 'asc' },
+  });
+
+/**
+ * El tamaño que dice el nombre, con su receta ya enganchada.
+ *
+ * Una talla sin `ml` el sistema la trata como "no es un tamaño" y **no la
+ * costea**: cada venta suya entraría con costo cero. Por eso el número se
+ * deduce al crearla o renombrarla, y no se le pide al dueño — que además no
+ * tiene dónde escribirlo.
+ *
+ * Si el nombre no dice ningún tamaño se devuelve `{}` **a propósito**: eso deja
+ * intacto lo que ya hubiera. Poner null borraría en silencio el enlace de una
+ * talla que sí se costea, solo por haberla renombrado a "Frasco chico".
+ */
+const tamanoDelNombre = async (nombre: string) => {
+  const ml = mlDelNombre(nombre);
+  if (ml == null) return {};
+  // Por NÚMERO, nunca por texto: es lo que hizo casar el catálogo con el costeo.
+  const receta = await prisma.formulaVolumen.findFirst({ where: { ml_total: ml } });
+  return { ml, formula_volumen_id: receta?.id ?? null };
+};
 
 export const createPresentacion = async (nombre: string) => {
-  const row = await prisma.presentacion.create({ data: { nombre } });
+  const row = await prisma.presentacion.create({
+    data: { nombre, ...(await tamanoDelNombre(nombre)) },
+  });
   return row.id;
 };
 
 export const deletePresentacion = (id: string) =>
   prisma.presentacion.delete({ where: { id: Number(id) } });
 
-export const updatePresentacion = (id: string, nombre: string) =>
-  prisma.presentacion.update({ where: { id: Number(id) }, data: { nombre } });
+export const updatePresentacion = async (id: string, nombre: string) =>
+  prisma.presentacion.update({
+    where: { id: Number(id) },
+    data: { nombre, ...(await tamanoDelNombre(nombre)) },
+  });
 
 /**
  * Propone qué esencia le corresponde a cada perfume, SIN aplicar nada.

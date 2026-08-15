@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
-import { mapPerfume, perfumeInclude, SOLO_PUBLICADOS, sinEsenciaParaUno } from '../repositories/perfume.repository';
+import { SOLO_PUBLICADOS } from '../repositories/perfume.repository';
+import { mapPerfume, perfumeInclude, sinExistenciasParaUno } from '../repositories/perfume.mapeo';
 import { FiltrosRecomendacion } from '../schemas/recomendacion.schema';
 
 /**
@@ -153,9 +154,9 @@ export const calcularRecomendaciones = async (userId: number, filtros: FiltrosRe
   });
   // El `agotado` de arriba es solo la marca MANUAL, que es lo único que sabe
   // filtrar la consulta. Quedarse ahí recomendaría justo lo que no se puede
-  // armar por falta de esencia, que es el caso más caro: el cliente hace el
-  // quiz, se ilusiona con la fragancia y toca decirle que no hay.
-  const perfumes = todos.filter((p) => !sinEsenciaParaUno(p));
+  // entregar, que es el caso más caro: el cliente hace el quiz, se ilusiona
+  // con la fragancia y toca decirle que no hay.
+  const perfumes = todos.filter((p) => !sinExistenciasParaUno(p));
   const maxVentas = Math.max(0, ...perfumes.map((p) => p._count.ventas));
 
   const puntuados = perfumes
