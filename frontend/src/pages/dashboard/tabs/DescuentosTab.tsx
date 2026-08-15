@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Upload, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +14,9 @@ import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { finalPrice } from '@/lib/format';
-import { formatPrice, API, API_COMBOS } from '../helpers';
+import { formatPrice } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field } from '../ui';
 import type { GuardedFetch, Lookup } from '../types';
 
@@ -66,9 +69,11 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
 
   const load = async () => {
     const [pfRes, coRes, catRes] = await Promise.all([
-      fetch(`${API}/`), fetch(`${API_COMBOS}/`), fetch(`${API}/categorias`),
+      http.get<{ data?: { data?: unknown[] } }>(urls.perfumes.todos),
+      http.get<{ data?: unknown[] }>(urls.combos.todos),
+      http.get<{ data?: unknown[] }>(urls.clasificaciones('categorias').lista),
     ]);
-    const [pf, co, cat] = await Promise.all([pfRes.json(), coRes.json(), catRes.json()]);
+    const pf = pfRes.cuerpo ?? {}; const co = coRes.cuerpo ?? {}; const cat = catRes.cuerpo ?? {};
     interface ApiPerfume extends Omit<Row, 'tipo'> { descuento_propio?: number }
     const perfumes = ((pf.data?.data ?? []) as ApiPerfume[]).map(r => ({
       ...r,
@@ -97,15 +102,19 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
 
   const clearEdit = (key: string) =>
     setEdits(prev => {
-      const { [key]: _omit, ...rest } = prev;
+      const rest = { ...prev };
+      delete rest[key];
       return rest;
     });
 
   const save = async (r: Row, override?: number) => {
     const key = rowKey(r);
     const val = override ?? Number(edits[key] ?? r.descuento);
-    const base = r.tipo === 'c' ? API_COMBOS : API;
-    await guardedFetch(`${base}/${r.id}/descuento`, { method: 'PATCH', body: JSON.stringify({ descuento: val }) });
+    const ruta = r.tipo === 'c' ? urls.combos.descuento(r.id) : urls.perfumes.descuento(r.id);
+    const res = await http.patch(ruta, { descuento: val });
+    // Antes se ignoraba: el % volvía al valor viejo al recargar y nadie sabía
+    // por qué no se había guardado.
+    if (!res.ok) { toast.error(res.error, { id: 'descuentos' }); return; }
     clearEdit(key);
     await refresh();
   };
@@ -113,10 +122,10 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
   const saveCategoria = async (c: Lookup, override?: number) => {
     const key = `cat-${c.id}`;
     const val = override ?? Number(edits[key] ?? c.descuento ?? 0);
-    await guardedFetch(`${API}/descuento/por-categoria`, {
-      method: 'PATCH',
-      body: JSON.stringify({ categoria_id: c.id, descuento: val }),
+    const res = await http.patch(urls.perfumes.descuentoPorCategoria, {
+      categoria_id: c.id, descuento: val,
     });
+    if (!res.ok) { toast.error(res.error, { id: 'descuentos' }); return; }
     clearEdit(key);
     await refresh();
   };
@@ -163,14 +172,12 @@ export function DescuentosTab({ guardedFetch, onMutate }: DescuentosTabProps) {
   const aplicarCategoria = async () => {
     setApplying(true);
     try {
-      const res = await guardedFetch(`${API}/descuento/por-categoria`, {
-        method: 'PATCH',
-        body: JSON.stringify({ categoria_id: Number(catSel), descuento: Number(catPct) }),
+      const res = await http.patch(urls.perfumes.descuentoPorCategoria, {
+        categoria_id: Number(catSel), descuento: Number(catPct),
       });
-      if (res.ok) {
-        cerrarModal();
-        await refresh();
-      }
+      if (!res.ok) { toast.error(res.error, { id: 'descuentos' }); return; }
+      cerrarModal();
+      await refresh();
     } finally {
       setApplying(false);
     }

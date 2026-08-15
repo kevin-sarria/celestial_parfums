@@ -64,7 +64,7 @@ export function CombosTab({
     if (!file) return;
     setUploading(true);
     try {
-      const url = await subirImagenAdmin(guardedFetch, file);
+      const url = await subirImagenAdmin(file);
       setForm(f => ({ ...f, imagen_url: url }));
     } catch (err) { setFormError(err instanceof Error ? err.message : 'Error al subir imagen'); }
     finally { setUploading(false); }

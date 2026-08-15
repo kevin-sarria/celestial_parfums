@@ -307,7 +307,7 @@ export default function DashboardPage() {
             {tab === 'resenas' && <ResenasTab guardedFetch={guardedFetch} />}
             {tab === 'avisos' && <AvisosTab />}
             {tab === 'nosotros' && <SobreNosotrosTab />}
-            {tab === 'blog' && <BlogTab guardedFetch={guardedFetch} />}
+            {tab === 'blog' && <BlogTab />}
             {tab === 'cotizaciones' && <CotizacionesTab guardedFetch={guardedFetch} />}
             {tab === 'formulas' && <FormulasVolumenTab guardedFetch={guardedFetch} />}
             {tab === 'costos' && <CostosProduccionTab guardedFetch={guardedFetch} />}
@@ -315,7 +315,7 @@ export default function DashboardPage() {
             {tab === 'inventario' && <InventarioTab guardedFetch={guardedFetch} />}
             {tab === 'reposicion' && <ReposicionTab />}
             {tab === 'producciones' && <ProduccionesTab guardedFetch={guardedFetch} />}
-            {tab === 'redes' && <RedesTab guardedFetch={guardedFetch} />}
+            {tab === 'redes' && <RedesTab />}
           </>
         )}
       </main>

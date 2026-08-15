@@ -67,6 +67,9 @@ export const urls = {
     publicado: (id: number) => `/parfums/${id}/publicado`,
     /** "No hay ahora mismo": se sigue viendo, marcado. */
     agotado: (id: number) => `/parfums/${id}/agotado`,
+    descuento: (id: number) => `/parfums/${id}/descuento`,
+    /** Pone el mismo % a TODOS los perfumes de una categoría. */
+    descuentoPorCategoria: '/parfums/descuento/por-categoria',
   },
 
   ventas: {
@@ -94,6 +97,7 @@ export const urls = {
     lista: '/combos',
     crear: '/combos',
     combo: (id: number) => `/combos/${id}`,
+    descuento: (id: number) => `/combos/${id}/descuento`,
   },
 
   /**
@@ -182,6 +186,30 @@ export const urls = {
   notificaciones: '/notificaciones',
 
   reportes: (ruta: string) => `/reportes/${ruta}`,
+
+  blog: {
+    admin: '/blog/admin',
+    crear: '/blog/admin',
+    entrada: (id: number) => `/blog/admin/${id}`,
+    /** La imagen de cabecera de una entrada. El campo del formulario es `imagen`. */
+    portada: '/blog/admin/portada',
+  },
+
+  /** Redes sociales y el enlace único de contacto (la página /contactame). */
+  contacto: {
+    admin: '/contacto/admin',
+    config: '/contacto/config',
+    avatar: '/contacto/avatar',
+    fondo: '/contacto/fondo',
+    exportar: '/contacto/export',
+    importar: '/contacto/import',
+    links: '/contacto/links',
+    link: (id: number) => `/contacto/links/${id}`,
+    reordenar: '/contacto/links/reorder',
+  },
+
+  /** Subida de imágenes del admin (perfumes, combos, anuncios). Campo: `image`. */
+  upload: '/upload',
 
   resenas: {
     admin: '/resenas/admin',

@@ -1,7 +1,7 @@
 import { BASE_URL } from '../../infrastructure/api/client';
 import { http } from '../../infrastructure/api/http';
 import { urls } from '../../infrastructure/api/urls';
-import type { ClienteSeleccion, CodigoValidado, GuardedFetch, Lookup } from './types';
+import type { ClienteSeleccion, CodigoValidado, Lookup } from './types';
 
 export { formatPrice } from '@/lib/format';
 
@@ -12,11 +12,9 @@ export const API_CREDITOS = `${BASE_URL}/api/creditos`;
 export const API_PAGOS    = `${BASE_URL}/api/pagos`;
 export const API_EMPRESAS = `${BASE_URL}/api/empresas`;
 export const API_IMPORT   = `${BASE_URL}/api/import`;
-export const API_CONTACTO = `${BASE_URL}/api/contacto`;
 export const API_USUARIOS = `${BASE_URL}/api/usuarios`;
 export const API_ANUNCIOS = `${BASE_URL}/api/anuncios`;
 export const API_RECOMPENSAS = `${BASE_URL}/api/recompensas`;
-export const API_UPLOAD   = `${BASE_URL}/api/upload`;
 
 export const DEFAULT_PAGE_SIZE = 10;
 
@@ -45,20 +43,14 @@ export const personaLabel = (u: { nombre: string; apellido: string; telefono: st
 };
 
 /** Sube una imagen del admin y devuelve su URL pública (lanza Error si falla). */
-export const subirImagenAdmin = async (
-  guardedFetch: GuardedFetch,
-  file: File,
-  endpoint: string = API_UPLOAD,
-): Promise<string> => {
+export const subirImagenAdmin = async (file: File, endpoint: string = urls.upload): Promise<string> => {
   const fd = new FormData();
   fd.append('image', file);
-  const res = await guardedFetch(endpoint, { method: 'POST', body: fd });
+  const res = await http.subir<{ url?: string; data?: { url?: string } }>(endpoint, fd);
+  // 413 lo corta el proxy (nginx) antes de llegar al backend: no trae mensaje propio.
   if (res.status === 413) throw new Error('La imagen es demasiado pesada: el máximo permitido es 5MB');
-  // El proxy (nginx) puede responder con HTML en vez de JSON cuando rechaza la petición
-  let json: { error?: string; url?: string; data?: { url?: string } } | null = null;
-  try { json = await res.json(); } catch { json = null; }
-  if (!res.ok || !json) throw new Error(json?.error ?? `No se pudo subir la imagen (error ${res.status})`);
-  return json.url ?? json.data?.url ?? '';
+  if (!res.ok || !res.cuerpo) throw new Error(res.error || 'No se pudo subir la imagen');
+  return res.cuerpo.url ?? res.cuerpo.data?.url ?? '';
 };
 
 /**

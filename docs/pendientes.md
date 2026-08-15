@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 14 de agosto de 2026, tarde.** Todo compila, **202 pruebas en verde** (112
-backend + 68 frontend + 22 recorridos) y nada está subido a git.
+**Última sesión: 15 de agosto de 2026.** Todo compila, **209 pruebas en verde** (115 backend +
+68 frontend + 26 recorridos) y **todo está commiteado** en la rama `producto-terminado`.
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -108,9 +108,22 @@ mucho de la tabla de arriba, avisar antes de seguir.
   dos bases locales**. **En el servidor (MariaDB 10.11) `migrate deploy` funciona normal.**
 - **Las tres bases están al día**: `perfumes_db`, `perfumes_test` y `celestial_prod_20260814`
   tienen exactamente las mismas migraciones aplicadas (comprobado).
-- **Nada subido a git.** Quedan sin commitear: los 9 documentos de `docs/`, el diseño, la
-  migración, `inventario.terminado.ts`, las reglas de disponibilidad con sus pruebas, y los
-  arreglos de UI del día (desplegable, pedido sugerido, menú de acciones y columnas de las tablas).
+- **Todo subido a git** en la rama `producto-terminado` (14 y 15 de agosto): el producto terminado
+  con su migración, los 9 documentos de `docs/` y la mudanza del frontend a la capa HTTP única.
+  **Falta desplegar**: en el servidor no está nada de esto todavía.
+
+## El refactor del frontend (capa HTTP única) — a mitad de camino
+
+Detalle y decisiones en [`arquitectura.md`](arquitectura.md). Al 2026-08-15 van **57 llamadas por
+`http` y quedan 94** con el `fetch` viejo. Migradas ya todas las pantallas del día a día; **quedan
+las de menos uso**: Cotizaciones y su formulario, Fórmulas por volumen, Costos de producción,
+Recompensas y Entregas, Publicidad, los dos modales de esencias del inventario, el detalle de
+compra, el formulario de devolución, el `ListasProvider`, y todas las **páginas públicas** (tienda,
+blog, contacto, portal del cliente, login/registro).
+
+Se migra **pantalla entera o nada**, y al migrarla se aprovecha para que ningún handler ignore la
+respuesta (toast con el mensaje del servidor). Cuando caiga la última se borran `client.ts` y
+`useGuardedFetch`.
 
 ## El resto de la lista (después del producto terminado)
 

@@ -87,13 +87,20 @@ Decisiones que conviene no deshacer:
   con el `guardedFetch` viejo, que es fetch nativo. Convivencia temporal y a la vista, no
   permanente: cuando caiga la última pantalla se borran `client.ts` y `useGuardedFetch`.
 
-**Estado** (2026-08-14): migradas *Producción e inventario* (Inventario, Producciones, Pedido
+**Estado** (2026-08-15): migradas *Producción e inventario* (Inventario, Producciones, Pedido
 sugerido y sus 4 modales), **Ventas** (listado, formulario, crear persona y crear producto al
 vuelo), **Perfumes** (ficha, publicar/agotar, lista de precios), **Créditos** (cartera, abonos,
 perfil de cupo), **Proveedores** (compras con sus líneas, IVA por proveedor, alta de empresa) y
 **Clasificaciones** (las cuatro listas + la carga inicial del dashboard), **Devoluciones**,
-**Usuarios**, **Reposiciones (avisos)**, **Reseñas**, **Sobre nosotros**, **los tres reportes** y
-**la campana**. Van 74 rutas centralizadas y **71 llamadas migradas de 151**; quedan 80.
+**Usuarios**, **Reposiciones (avisos)**, **Reseñas**, **Sobre nosotros**, **los tres reportes**,
+**la campana**, **Gamas**, **Combos**, **Precios**, **Descuentos**, **Blog** y **Contáctame
+(Redes)**. Van 90 rutas centralizadas y **57 llamadas por `http`; quedan 94** por el camino viejo
+(el total bajó de 151 porque varias se fusionaron: ver *Menos viajes al servidor*).
+
+`subirImagenAdmin` (`dashboard/helpers.ts`) también pasó a `http.subir`, así que las cuatro
+pantallas que suben imágenes (Perfumes, Combos, Publicidad y Contáctame) ya no necesitan la
+función de red como prop para eso. El 413 se sigue traduciendo a mano: **lo corta nginx antes de
+llegar al backend**, así que no trae mensaje propio.
 
 Las cuatro clasificaciones comparten juego de rutas, así que `urls.clasificaciones(tipo)` las
 genera en vez de escribirlas cuatro veces — y el tipo `Clasificacion` hace que TypeScript

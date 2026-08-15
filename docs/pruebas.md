@@ -8,10 +8,10 @@ cd backend  && npm run test:e2e      # recorridos en navegador (~35 s)
 cd frontend && npm test
 ```
 
-**204 pruebas** al 2026-08-14, tarde (contadas corriéndolas): **68 en el frontend**, **112 en el
-backend** (1 marcada como discrepancia) y **24 recorridos** en navegador repartidos en 12 archivos
+**209 pruebas** al 2026-08-15 (contadas corriéndolas): **68 en el frontend**, **115 en el
+backend** (1 marcada como discrepancia) y **26 recorridos** en navegador repartidos en 13 archivos
 (`arranque`, `combo`, `cupon`, `desplegable`, `disponibilidad`, `esenciaEnPerfume`, `listaPrecios`,
-`menuLateral`, `modal`, `pedidoSugerido`, `tallas`, `venta`).
+`menuLateral`, `modal`, `paginaPublica`, `pedidoSugerido`, `tallas`, `venta`).
 
 ## Por qué estas herramientas
 
@@ -100,8 +100,15 @@ pasan, y ningún recorrido escribe en `perfumes_db`.
   toda la categoría sin tocar los precios propios, y **un 1.1 sin armar que no llega a la tienda**
   (`disponibilidad.e2e.test.ts`: se crea desde el formulario con la casilla marcada, la tabla dice
   "Sin armar" y la card sale agotada aunque su esencia esté llena; después se arma el lote desde
-  el modal y se comprueba que aparece en Inventario y pasa a vendible), y **una talla nueva que
-  nace con sus ml** (`tallas.e2e.test.ts`).
+  el modal y se comprueba que aparece en Inventario y pasa a vendible), **una talla nueva que
+  nace con sus ml** (`tallas.e2e.test.ts`) y **Blog y Contáctame** (`paginaPublica.e2e.test.ts`).
+- **Un refactor de red se comprueba guardando y volviendo a leer.** `paginaPublica` no mira el
+  diseño: crea una entrada de blog y la busca en la lista, y guarda el nombre de Contáctame,
+  **recarga** y comprueba que sigue ahí. Es el fallo típico al mover una pantalla de librería —se
+  pinta igual, dice "guardado ✓" y el dato nunca viajó— y ninguna prueba de aritmética lo ve.
+- **Esperar a que el modal se CIERRE, no solo a que aparezca el dato.** La lista se repinta antes
+  de que termine la animación de salida del diálogo, así que una captura tomada justo ahí sale con
+  el formulario todavía encima y parece un fallo que no existe (pasó el 2026-08-15 con el blog).
 - **`innerText` devuelve lo RENDERIZADO, no el texto del código**: las etiquetas de las métricas
   llevan `uppercase` por CSS, así que buscar "Frascos armados" tal cual falla. Comparar con
   expresión regular insensible a mayúsculas.

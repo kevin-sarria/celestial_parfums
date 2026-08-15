@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Link2, Upload, FileDown, FileUp } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,13 +12,10 @@ import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { ContactoLinktree } from '../../../components/contacto/ContactoLinktree';
 import { RED_OPTIONS, getRedIcon, getRedLabel } from '../../../components/contacto/redIcons';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, ColorField } from '../ui';
-import { API_CONTACTO, subirImagenAdmin } from '../helpers';
-import type { GuardedFetch } from '../types';
+import { subirImagenAdmin } from '../helpers';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import type { ContactoConfig, ContactoForma, ContactoLink } from '../../../domain/entities/contacto.schema';
-
-interface Props {
-  guardedFetch: GuardedFetch;
-}
 
 interface ConfigForm {
   avatar_url: string;
@@ -56,7 +54,7 @@ interface LinkForm {
   activo: boolean;
 }
 
-export function RedesTab({ guardedFetch }: Props) {
+export function RedesTab() {
   const [loading, setLoading] = useState(true);
   const [links, setLinks] = useState<ContactoLink[]>([]);
   const [form, setForm] = useState<ConfigForm>(emptyConfigForm());
@@ -81,9 +79,9 @@ export function RedesTab({ guardedFetch }: Props) {
     setForm(f => ({ ...f, [key]: value }));
 
   const load = async () => {
-    const res = await guardedFetch(`${API_CONTACTO}/admin`);
-    const json = await res.json();
-    const config: ContactoConfig = json.data?.config;
+    const res = await http.get<{ data?: { config?: ContactoConfig; links?: ContactoLink[] } }>(urls.contacto.admin);
+    if (!res.ok) { setConfigError(res.error); return; }
+    const config = res.cuerpo?.data?.config;
     if (config) {
       setForm({
         avatar_url: config.avatar_url ?? '',
@@ -99,12 +97,11 @@ export function RedesTab({ guardedFetch }: Props) {
         redes_posicion: config.redes_posicion,
       });
     }
-    setLinks(json.data?.links ?? []);
+    setLinks(res.cuerpo?.data?.links ?? []);
   };
 
   useEffect(() => {
     load().finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const previewConfig: ContactoConfig = {
@@ -127,23 +124,19 @@ export function RedesTab({ guardedFetch }: Props) {
   const saveConfig = async () => {
     setSavingConfig(true); setConfigMsg(''); setConfigError('');
     try {
-      const res = await guardedFetch(`${API_CONTACTO}/config`, {
-        method: 'PATCH',
-        body: JSON.stringify({
-          avatar_url: form.avatar_url.trim(),
-          nombre: form.nombre.trim(),
-          descripcion: form.descripcion.trim(),
-          fondo_tipo: form.fondo_tipo,
-          fondo_valor: form.fondo_tipo === 'color' ? form.fondo_color : form.fondo_imagen.trim(),
-          boton_forma: form.boton_forma,
-          boton_color_fondo: form.boton_color_fondo,
-          boton_color_texto: form.boton_color_texto,
-          contenido_posicion: form.contenido_posicion,
-          redes_posicion: form.redes_posicion,
-        }),
+      const res = await http.patch(urls.contacto.config, {
+        avatar_url: form.avatar_url.trim(),
+        nombre: form.nombre.trim(),
+        descripcion: form.descripcion.trim(),
+        fondo_tipo: form.fondo_tipo,
+        fondo_valor: form.fondo_tipo === 'color' ? form.fondo_color : form.fondo_imagen.trim(),
+        boton_forma: form.boton_forma,
+        boton_color_fondo: form.boton_color_fondo,
+        boton_color_texto: form.boton_color_texto,
+        contenido_posicion: form.contenido_posicion,
+        redes_posicion: form.redes_posicion,
       });
-      const json = await res.json();
-      if (!res.ok) { setConfigError(json.error ?? 'No se pudo guardar'); return; }
+      if (!res.ok) { setConfigError(res.error); return; }
       setConfigMsg('Configuración guardada ✓');
       setTimeout(() => setConfigMsg(''), 3000);
     } finally { setSavingConfig(false); }
@@ -156,7 +149,7 @@ export function RedesTab({ guardedFetch }: Props) {
     if (!file) return;
     setUploadingAvatar(true); setConfigMsg(''); setConfigError('');
     try {
-      const url = await subirImagenAdmin(guardedFetch, file, `${API_CONTACTO}/avatar`);
+      const url = await subirImagenAdmin(file, urls.contacto.avatar);
       set('avatar_url', url);
       setConfigMsg('Avatar subido y guardado ✓');
       setTimeout(() => setConfigMsg(''), 3000);
@@ -171,7 +164,7 @@ export function RedesTab({ guardedFetch }: Props) {
     if (!file) return;
     setUploadingFondo(true); setConfigMsg(''); setConfigError('');
     try {
-      const url = await subirImagenAdmin(guardedFetch, file, `${API_CONTACTO}/fondo`);
+      const url = await subirImagenAdmin(file, urls.contacto.fondo);
       setForm(f => ({ ...f, fondo_tipo: 'imagen', fondo_imagen: url }));
       setConfigMsg('Imagen de fondo subida y guardada ✓');
       setTimeout(() => setConfigMsg(''), 3000);
@@ -182,11 +175,10 @@ export function RedesTab({ guardedFetch }: Props) {
   /** Descarga config + links como respaldo JSON re-importable. */
   const exportConfig = async () => {
     setConfigError('');
-    const res = await guardedFetch(`${API_CONTACTO}/export`);
-    if (!res.ok) { setConfigError('No se pudo exportar la configuración'); return; }
-    const blob = await res.blob();
+    const res = await http.descargar(urls.contacto.exportar);
+    if (!res.ok || !res.cuerpo) { setConfigError(res.error); return; }
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    a.href = URL.createObjectURL(res.cuerpo);
     a.download = 'contacto_config.json';
     a.click();
     URL.revokeObjectURL(a.href);
@@ -208,12 +200,8 @@ export function RedesTab({ guardedFetch }: Props) {
     if (!window.confirm('Esto reemplazará la configuración y todos los links actuales. ¿Continuar?')) return;
     setImporting(true);
     try {
-      const res = await guardedFetch(`${API_CONTACTO}/import`, {
-        method: 'POST',
-        body: JSON.stringify(parsed),
-      });
-      const json = await res.json();
-      if (!res.ok) { setConfigError(json.error ?? 'No se pudo importar el archivo'); return; }
+      const res = await http.post(urls.contacto.importar, parsed);
+      if (!res.ok) { setConfigError(res.error); return; }
       await load();
       setConfigMsg('Configuración importada ✓');
       setTimeout(() => setConfigMsg(''), 3000);
@@ -274,12 +262,10 @@ export function RedesTab({ guardedFetch }: Props) {
         color_texto: esBoton && !linkForm.usarGlobal ? linkForm.color_texto : null,
         activo: linkForm.activo,
       };
-      const res = await guardedFetch(
-        editingId ? `${API_CONTACTO}/links/${editingId}` : `${API_CONTACTO}/links`,
-        { method: editingId ? 'PATCH' : 'POST', body: JSON.stringify(payload) },
-      );
-      const json = await res.json();
-      if (!res.ok) { setLinkError(json.error ?? 'No se pudo guardar el link'); return; }
+      const res = editingId
+        ? await http.patch(urls.contacto.link(editingId), payload)
+        : await http.post(urls.contacto.links, payload);
+      if (!res.ok) { setLinkError(res.error); return; }
       setModalOpen(false);
       await load();
     } finally { setSavingLink(false); }
@@ -287,7 +273,8 @@ export function RedesTab({ guardedFetch }: Props) {
 
   const deleteLink = async (id: number) => {
     if (!window.confirm('¿Eliminar este link?')) return;
-    await guardedFetch(`${API_CONTACTO}/links/${id}`, { method: 'DELETE' });
+    const res = await http.borrar(urls.contacto.link(id));
+    if (!res.ok) { toast.error(res.error, { id: 'redes' }); return; }
     await load();
   };
 
@@ -300,10 +287,10 @@ export function RedesTab({ guardedFetch }: Props) {
     const otros = links.filter(l => l.tipo !== link.tipo);
     const ordered = link.tipo === 'boton' ? [...group, ...otros] : [...otros, ...group];
     setLinks(ordered.map((l, i) => ({ ...l, orden: i + 1 })));
-    await guardedFetch(`${API_CONTACTO}/links/reorder`, {
-      method: 'POST',
-      body: JSON.stringify({ ids: ordered.map(l => l.id) }),
-    });
+    const res = await http.post(urls.contacto.reordenar, { ids: ordered.map(l => l.id) });
+    // La flecha mueve el link en pantalla antes de que responda el servidor. Si
+    // falla y no se recarga, la lista queda enseñando un orden que allá no existe.
+    if (!res.ok) { toast.error(res.error, { id: 'redes' }); await load(); }
   };
 
   const renderRow = (link: ContactoLink, group: ContactoLink[], index: number) => {

@@ -65,7 +65,7 @@ export function PublicidadTab({ guardedFetch, categorias }: PublicidadTabProps) 
     if (!file) return;
     setSubiendo(true);
     try {
-      const url = await subirImagenAdmin(guardedFetch, file);
+      const url = await subirImagenAdmin(file);
       setForm(f => ({ ...f, imagen_url: url }));
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo subir la imagen'); }
     finally { setSubiendo(false); if (fileRef.current) fileRef.current.value = ''; }

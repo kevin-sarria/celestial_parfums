@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pencil, Trash2, Eye, EyeOff, ImagePlus, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,10 +9,10 @@ import { DialogFooter } from '@/components/ui/dialog';
 import Modal from '../../../components/Modal';
 import EditorHtml from '../../../components/EditorHtml';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
-import { BASE_URL, authFetchWithRefresh } from '../../../infrastructure/api/client';
+import { http } from '../../../infrastructure/api/http';
+import { urls } from '../../../infrastructure/api/urls';
 import { fmtInstante } from '../helpers';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field } from '../ui';
-import type { GuardedFetch } from '../types';
 
 interface Post {
   id: number; titulo: string; slug: string; resumen: string;
@@ -21,7 +22,7 @@ interface Post {
 const vacio = { titulo: '', resumen: '', contenido: '', portada: null as string | null, publicado: false };
 
 /** Admin del blog: crear/editar entradas con editor de texto + publicar/ocultar. */
-export function BlogTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
+export function BlogTab() {
   const [rows, setRows] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
@@ -33,12 +34,12 @@ export function BlogTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
 
   const load = async () => {
     setLoading(true);
-    const r = await guardedFetch(`${BASE_URL}/api/blog/admin?page=1&limit=50`);
-    const j = await r.json();
-    setRows(j.data ?? []);
+    const r = await http.get<{ data?: Post[] }>(urls.blog.admin, { params: { page: 1, limit: 50 } });
+    if (!r.ok) toast.error(r.error, { id: 'blog' });
+    setRows(r.cuerpo?.data ?? []);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   const abrirNuevo = () => { setForm(vacio); setError(''); setModal({ open: true, id: null }); };
   const abrirEditar = (p: Post) => {
@@ -51,9 +52,11 @@ export function BlogTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
     try {
       const fd = new FormData();
       fd.append('imagen', file);
-      const res = await authFetchWithRefresh(`${BASE_URL}/api/blog/admin/portada`, { method: 'POST', body: fd });
-      const j = await res.json();
-      if (res.ok) setForm((f) => ({ ...f, portada: j.data.url }));
+      const res = await http.subir<{ data: { url: string } }>(urls.blog.portada, fd);
+      // Antes, si la subida fallaba no pasaba nada en pantalla: el dueño elegía
+      // la foto, no aparecía, y no sabía si estaba cargando o si se había roto.
+      if (!res.ok || !res.cuerpo) { setError(res.error || 'No se pudo subir la imagen'); return; }
+      setForm((f) => ({ ...f, portada: res.cuerpo!.data.url }));
     } finally { setSubiendo(false); }
   };
 
@@ -62,21 +65,23 @@ export function BlogTab({ guardedFetch }: { guardedFetch: GuardedFetch }) {
     if (!form.contenido.trim()) { setError('El contenido no puede estar vacío'); return; }
     setSaving(true); setError('');
     try {
-      const url = modal.id ? `${BASE_URL}/api/blog/admin/${modal.id}` : `${BASE_URL}/api/blog/admin`;
-      const res = await guardedFetch(url, { method: modal.id ? 'PATCH' : 'POST', body: JSON.stringify(form) });
-      const j = await res.json();
-      if (!res.ok) { setError(j.error ?? 'No se pudo guardar'); return; }
+      const res = modal.id
+        ? await http.patch(urls.blog.entrada(modal.id), form)
+        : await http.post(urls.blog.crear, form);
+      if (!res.ok) { setError(res.error); return; }
       setModal({ open: false, id: null }); load();
     } finally { setSaving(false); }
   };
 
   const togglePublicado = async (p: Post) => {
-    await guardedFetch(`${BASE_URL}/api/blog/admin/${p.id}`, { method: 'PATCH', body: JSON.stringify({ ...p, publicado: !p.publicado }) });
+    const res = await http.patch(urls.blog.entrada(p.id), { ...p, publicado: !p.publicado });
+    if (!res.ok) { toast.error(res.error, { id: 'blog' }); return; }
     load();
   };
   const eliminar = async (p: Post) => {
     if (!window.confirm(`¿Eliminar "${p.titulo}"?`)) return;
-    await guardedFetch(`${BASE_URL}/api/blog/admin/${p.id}`, { method: 'DELETE' });
+    const res = await http.borrar(urls.blog.entrada(p.id));
+    if (!res.ok) { toast.error(res.error, { id: 'blog' }); return; }
     load();
   };
 
