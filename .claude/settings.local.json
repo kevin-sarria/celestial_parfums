@@ -172,7 +172,13 @@
       "Bash(/c/xampp/mysql/bin/mysql.exe --default-character-set=utf8mb4 -u root perfumes_db -e \"SELECT id, nombre, HEX\\(nombre\\) AS bytes FROM gamas_esencia ORDER BY orden;\")",
       "PowerShell($p = Get-Process mysqld -ErrorAction SilentlyContinue; if \\($p\\) { \"PROCESO: vivo, PID $\\($p.Id\\), arrancado $\\($p.StartTime\\)\" } else { \"PROCESO: no hay mysqld corriendo\" }; $c = Get-NetTCPConnection -LocalPort 3306 -State Listen -ErrorAction SilentlyContinue; if \\($c\\) { \"PUERTO 3306: escuchando \\(PID $\\($c.OwningProcess\\)\\)\" } else { \"PUERTO 3306: nadie escucha\" })",
       "PowerShell($p = Get-Process mysqld -ErrorAction SilentlyContinue; if \\($p\\) { \"sigue vivo, PID $\\($p.Id\\), CPU $\\($p.CPU\\)s\" } else { \"MURIO\" }; \"hora actual: $\\(Get-Date -Format 'HH:mm:ss'\\)\")",
-      "PowerShell(Start-Process -FilePath \"C:\\\\xampp\\\\mysql\\\\bin\\\\mysqld.exe\" -ArgumentList \"--defaults-file=C:\\\\xampp\\\\mysql\\\\bin\\\\my.ini\",\"--standalone\" -WindowStyle Hidden; Start-Sleep -Seconds 8; $p = Get-Process mysqld -ErrorAction SilentlyContinue; if \\($p\\) { \"ARRANCO: PID $\\($p.Id\\)\" } else { \"NO ARRANCO\" })"
+      "PowerShell(Start-Process -FilePath \"C:\\\\xampp\\\\mysql\\\\bin\\\\mysqld.exe\" -ArgumentList \"--defaults-file=C:\\\\xampp\\\\mysql\\\\bin\\\\my.ini\",\"--standalone\" -WindowStyle Hidden; Start-Sleep -Seconds 8; $p = Get-Process mysqld -ErrorAction SilentlyContinue; if \\($p\\) { \"ARRANCO: PID $\\($p.Id\\)\" } else { \"NO ARRANCO\" })",
+      "Bash(npm test *)",
+      "Bash(npm run *)",
+      "Bash(rm -f e2e/medicion.tmp.e2e.test.ts medicion.txt)",
+      "Bash(grep -n \"fetch\\(\\\\`\\\\|fetch\\(API\\\\|guardedFetch\\(\" DashboardPage.tsx)",
+      "Read(//c/Users/Estaduardo/Documents/**)",
+      "Bash(npx tsc *)"
     ]
   }
 }
