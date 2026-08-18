@@ -1,0 +1,5 @@
+# Worktrees aislados que crea el agente (EnterWorktree) — copias de trabajo, no código versionado.
+.claude/worktrees/
+
+# Espacio de trabajo del proceso de desarrollo por subagentes (ledger, briefs, reportes de revisión).
+.superpowers/
