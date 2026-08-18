@@ -50,7 +50,21 @@ function compare(a: unknown, b: unknown): number {
   return String(a).localeCompare(String(b), 'es');
 }
 
-export function useTableControls<T>(rows: T[], columns: ColumnDef<T>[]) {
+export function useTableControls<T>(
+  rows: T[],
+  columns: ColumnDef<T>[],
+  /**
+   * `serverFiltrado`: quien llama (`SmartTable` con `onServerFilter`) ya le
+   * pidió al backend las filas que cumplen los filtros — `rows` ya viene
+   * filtrado. Sin este interruptor, esta función volvía a filtrar esas
+   * mismas filas EN EL NAVEGADOR: inofensivo (ya cumplían), pero además
+   * `activeFiltersCount`/`filters` seguían gobernando qué se ve, así que el
+   * día que el servidor y el navegador entendieran una columna distinto
+   * (p. ej. `presentacion` combinada) el filtro se aplicaría DOS veces con
+   * criterios distintos y las filas "casi correctas" desaparecían solas.
+   */
+  opciones?: { serverFiltrado?: boolean },
+) {
   const [sort, setSort] = useState<SortState | null>(null);
   const [filters, setFilters] = useState<FiltersState>({});
   const [search, setSearch] = useState('');
@@ -89,11 +103,13 @@ export function useTableControls<T>(rows: T[], columns: ColumnDef<T>[]) {
       );
     }
 
-    // Per-column filters
-    for (const [key, filter] of Object.entries(filters)) {
-      const col = columns.find(c => c.key === key);
-      if (!col) continue;
-      result = result.filter(row => matchesFilter(col.getValue(row), filter));
+    // Per-column filters (el servidor ya los aplicó si `serverFiltrado`)
+    if (!opciones?.serverFiltrado) {
+      for (const [key, filter] of Object.entries(filters)) {
+        const col = columns.find(c => c.key === key);
+        if (!col) continue;
+        result = result.filter(row => matchesFilter(col.getValue(row), filter));
+      }
     }
 
     // Sort
@@ -108,7 +124,7 @@ export function useTableControls<T>(rows: T[], columns: ColumnDef<T>[]) {
     }
 
     return result;
-  }, [rows, sort, filters, search, columns]);
+  }, [rows, sort, filters, search, columns, opciones?.serverFiltrado]);
 
   const activeFiltersCount = Object.keys(filters).length;
 

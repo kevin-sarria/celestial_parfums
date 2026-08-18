@@ -1,6 +1,28 @@
 import { prisma } from '../config/prisma';
 import { CreateCreditoDTO } from '../types/credito.type';
 import { paginatedResponse } from '../utils/pagination';
+import { filtroFecha, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
+
+/**
+ * "Abonado" y "En deuda" no están: se calculan en `mapCredito` a partir de los
+ * abonos de cada crédito, no son una columna que Prisma pueda comparar sin
+ * traer y sumar TODOS los créditos primero. Quedan `filterable: false` en
+ * `columns.tsx`, a propósito, para no ofrecer un embudo que no filtra de verdad.
+ */
+export const mapaFiltrosCreditos: MapaFiltros = {
+  articulos: filtroTexto('articulos'),
+  fecha: filtroFecha('fecha'),
+  fecha_limite: filtroFecha('fecha_limite'),
+  deuda_inicial: filtroNumero('deuda_inicial'),
+  cliente: (f) => (f.type === 'string' && f.value.trim()
+    ? { user: { OR: [
+        { nombre: { contains: f.value.trim() } },
+        { apellido: { contains: f.value.trim() } },
+      ] } }
+    : null),
+  telefono: (f) => (f.type === 'string' && f.value.trim()
+    ? { user: { telefono: { contains: f.value.trim() } } } : null),
+};
 import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
 import { canjearCodigoEnCredito, liberarCodigoDeVenta } from '../services/anuncio.service';
 
@@ -89,20 +111,23 @@ const mapCredito = (c: any) => {
  * solo quiera la lista no pague la agregación.
  */
 export const getAllCreditos = async (
-  page: number, limit: number, search?: string, conTotales = false,
+  page: number, limit: number, search?: string, conTotales = false, filtrosAnd?: object[],
 ) => {
   const skip = (page - 1) * limit;
-  const where = search
-    ? {
-        OR: [
-          { articulos: { contains: search } },
-          { user: { nombre: { contains: search } } },
-          { user: { apellido: { contains: search } } },
-          { user: { telefono: { contains: search } } },
-          { user: { email: { contains: search } } },
-        ],
-      }
-    : undefined;
+  const condiciones: object[] = [];
+  if (search) {
+    condiciones.push({
+      OR: [
+        { articulos: { contains: search } },
+        { user: { nombre: { contains: search } } },
+        { user: { apellido: { contains: search } } },
+        { user: { telefono: { contains: search } } },
+        { user: { email: { contains: search } } },
+      ],
+    });
+  }
+  if (filtrosAnd?.length) condiciones.push(...filtrosAnd);
+  const where = condiciones.length ? { AND: condiciones } : undefined;
   const [rows, total, totales] = await Promise.all([
     prisma.credito.findMany({ where, skip, take: limit, orderBy: { fecha: 'desc' }, include: includeAll }),
     prisma.credito.count({ where }),

@@ -212,6 +212,8 @@ export const mapPerfume = (p: PerfumeRow) => {
     frascos_armados: frascosArmados(p),
     /** Los 1.1: solo se venden si ya están armados, nunca contra pedido. */
     solo_armado: p.solo_armado,
+    /** El que Registrar venta sugiere regalar en 100 ml sueltos y en cualquier combo. */
+    regalo_automatico: p.regalo_automatico,
     /** Cuánta esencia pide una unidad de su talla más pequeña (para el motivo). */
     esencia_necesaria: esenciaParaUno(p),
     publicado:    p.publicado ?? true,

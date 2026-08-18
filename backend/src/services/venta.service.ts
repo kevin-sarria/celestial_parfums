@@ -2,8 +2,9 @@ import * as repo from '../repositories/venta.repository';
 import { CreateVentaDTO } from '../types/venta.type';
 import { bustCatalogoCache } from './perfume.service';
 
-export const getAllVentas = (page: number, limit: number, search?: string, conTotales = false) =>
-  repo.getAllVentas(page, limit, search, conTotales);
+export const getAllVentas = (
+  page: number, limit: number, search?: string, conTotales = false, filtrosAnd?: object[],
+) => repo.getAllVentas(page, limit, search, conTotales, filtrosAnd);
 
 export const createVenta = async (data: CreateVentaDTO) => {
   if (!data.dia || !data.persona || !data.valor_venta)

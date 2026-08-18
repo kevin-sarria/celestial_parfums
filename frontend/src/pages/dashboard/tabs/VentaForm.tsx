@@ -144,6 +144,33 @@ export function VentaForm({
     return detectarCombos(itemsDeLineas(form.lineas, porId), combos)?.ahorroTotal ?? 0;
   }, [form.lineas, combos, porId]);
 
+  /**
+   * El regalo automático (decidido con el dueño el 2026-08-17): UN producto,
+   * marcado en su ficha, se sugiere gratis una sola vez por venta — nunca uno
+   * por botella — cuando el pedido trae un 100 ml suelto o ya llegó a precio
+   * de combo (cualquier talla). El botón desaparece solo si ya se agregó.
+   */
+  const productoRegalo = useMemo(() => catalogo.find(p => p.regalo_automatico), [catalogo]);
+  const calificaRegalo = form.lineas.some(l => l.ml === 100) || ahorroCombo > 0;
+  const regaloYaAgregado = form.lineas.some(l => l.regalo);
+  const agregarRegalo = () => {
+    if (!productoRegalo) return;
+    const primera = productoRegalo.precios[0];
+    setForm(f => ({
+      ...f,
+      lineas: [...f.lineas, {
+        key: `${productoRegalo.id}-regalo-${Date.now()}`,
+        perfume_id: productoRegalo.id,
+        nombre: productoRegalo.nombre,
+        presentacion: primera?.presentacion ?? null,
+        ml: primera?.ml ?? null,
+        cantidad: 1,
+        sin_descuento: false,
+        regalo: true,
+      }],
+    }));
+  };
+
   const cupon = codigoCheck?.valido ? codigoCheck.cupon : undefined;
   const baseCupon = Math.max(0, subtotal - ahorroCombo);
   const noAlcanzaMinimo = !!cupon && cupon.min_monto > 0 && baseCupon < cupon.min_monto;
@@ -314,6 +341,18 @@ export function VentaForm({
           porId={porId}
           onCrearProducto={() => setNuevoProd({ nombre: '', precio: '' })}
         />
+
+        {productoRegalo && calificaRegalo && !regaloYaAgregado && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/25 bg-brand-soft/40 p-2.5 text-[12.5px] text-primary">
+            <span>
+              Este pedido califica para regalar <strong>{productoRegalo.nombre}</strong> — se
+              agrega una sola vez, sin costo.
+            </span>
+            <Button type="button" size="sm" variant="outline" onClick={agregarRegalo}>
+              + Agregar regalo
+            </Button>
+          </div>
+        )}
 
         {nuevoProd && (
           <div className="space-y-2 rounded-lg border border-primary/25 bg-brand-soft/40 p-3">

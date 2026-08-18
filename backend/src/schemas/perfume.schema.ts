@@ -25,6 +25,8 @@ export const createPerfumeSchema = z.object({
   ml_utiles: z.number().int().positive().nullish(),
   /// "Solo se vende si ya está armado" (los 1.1): agotado mientras no haya frascos hechos.
   solo_armado: z.boolean().optional(),
+  /// El producto que Ventas sugiere regalar en 100 ml sueltos y en cualquier combo. Solo uno a la vez.
+  regalo_automatico: z.boolean().optional(),
   /**
    * Aromas y ocasiones dejaron de ser obligatorios: el catálogo ya no es solo
    * perfumes (una gorra no tiene notas olfativas ni ocasión de uso), y al crear

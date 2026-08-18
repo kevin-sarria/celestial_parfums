@@ -37,7 +37,7 @@ const columnaImagen = <T,>(url: (row: T) => string | null | undefined, alt: (row
   key: 'imagen', header: 'Imagen', type: 'string',
   getValue: row => (url(row) ? 'con foto' : 'sin foto'),
   render: row => <Miniatura url={url(row)} alt={alt(row)} />,
-  sortable: false, noTruncate: true, className: 'w-0',
+  sortable: false, filterable: false, noTruncate: true, className: 'w-0',
 });
 
 export const ventasColumns: ColumnDef<Venta>[] = [
@@ -125,17 +125,20 @@ export const creditosColumns: ColumnDef<Credito>[] = [
       : <>—</>,
     noTruncate: true, movil: 'estado' },
   { key: 'deuda_inicial', header: 'Deuda inicial', type: 'currency', getValue: c => c.deuda_inicial, render: c => formatPrice(c.deuda_inicial), className: cellPrice, noTruncate: true },
+  // Sin filtro: se calculan de los abonos de cada crédito, no son una columna
+  // que el servidor pueda comparar sin traer y sumar TODOS los créditos antes
+  // (ver el comentario en credito.repository.ts).
   { key: 'total_abonado', header: 'Abonado', type: 'currency',
     getValue: c => c.total_abonado,
     render: c => formatPrice(c.total_abonado),
-    className: cellPrice, noTruncate: true },
+    className: cellPrice, noTruncate: true, filterable: false },
   { key: 'total_en_deuda', header: 'En deuda', type: 'currency', getValue: c => c.total_en_deuda,
     render: c => (
       <span className={c.total_en_deuda > 0 ? 'font-bold text-destructive' : 'font-bold text-emerald-600'}>
         {formatPrice(c.total_en_deuda)}
       </span>
     ),
-    className: cellPrice, noTruncate: true, movil: 'destacado' },
+    className: cellPrice, noTruncate: true, movil: 'destacado', filterable: false },
 ];
 
 export const pagosColumns: ColumnDef<Pago>[] = [
@@ -273,6 +276,8 @@ export const perfumesColumns: ColumnDef<Perfume>[] = [
    * de las acciones: así se puede ORDENAR y FILTRAR por ella, que es como se
    * repasa "muéstrame lo que está fuera" en una tabla de 212 filas.
    */
+  // Sin filtro: combina publicado, agotado manual y `faltaParaVender` — una
+  // regla del navegador sin traducción directa a un WHERE del servidor.
   { key: 'estado', header: 'Estado', type: 'string',
     getValue: p => [
       p.publicado ? '' : 'Fuera de la tienda',
@@ -280,7 +285,7 @@ export const perfumesColumns: ColumnDef<Perfume>[] = [
       faltaParaVender(p)?.etiqueta ?? '',
     ].filter(Boolean).join(', ') || 'En la tienda',
     render: p => <EstadoPerfume perfume={p} />,
-    noTruncate: true },
+    noTruncate: true, filterable: false },
 ];
 
 export const combosColumns: ColumnDef<Combo>[] = [
@@ -305,10 +310,12 @@ export const combosColumns: ColumnDef<Combo>[] = [
     className: cellMeta, noTruncate: true },
   { key: 'precio', header: 'Precio', type: 'currency', getValue: c => c.precio, render: c => formatPrice(c.precio), className: cellPrice, noTruncate: true },
   { key: 'descuento', header: 'Descuento', type: 'number', getValue: c => c.descuento, render: c => c.descuento > 0 ? `${c.descuento}%` : '—', className: cellMeta, noTruncate: true },
+  // Sin filtro: es `precio × (1 − descuento/100)`, una cuenta que el
+  // servidor no puede meter en un WHERE sin SQL crudo (ver combo.repository.ts).
   { key: 'precio_final', header: 'Precio final', type: 'currency',
     getValue: c => finalPrice(c.precio, c.descuento),
     render: c => c.descuento > 0 ? formatPrice(finalPrice(c.precio, c.descuento)) : '—',
-    className: cellPrice, noTruncate: true },
+    className: cellPrice, noTruncate: true, filterable: false },
   { key: 'activo', header: 'Estado', type: 'enum', enumOptions: ['Activo', 'Inactivo'],
     getValue: c => c.activo ? 'Activo' : 'Inactivo',
     render: c => c.activo

@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import * as perfumeService from '../services/perfume.service';
+import { mapaFiltrosPerfumes } from '../repositories/perfume.repository';
 import { parsePagination, parseSearch } from '../utils/pagination';
+import { parseFiltros } from '../utils/filtros';
 import { mensajeSeguro } from '../utils/errorSeguro';
 import { esAdminRequest } from '../middleware/auth.middleware';
 import { traerImagenRemota } from '../utils/imagenRemota';
@@ -52,7 +54,7 @@ export const selectAllPerfumes = async (req: Request, res: Response) => {
         aromas: parseLista(req.query.aromas),
         ocasiones: parseLista(req.query.ocasiones),
         orden: ordenes.includes(ordenRaw) ? (ordenRaw as any) : undefined,
-      }, req.query.todos === '1' && esAdminRequest(req));
+      }, req.query.todos === '1' && esAdminRequest(req), parseFiltros(req.query as any, mapaFiltrosPerfumes));
       res.json(result);
     } else {
       // `?todos=1` trae también los que están fuera de la tienda. Se honra SOLO

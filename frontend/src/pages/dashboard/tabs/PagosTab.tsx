@@ -13,6 +13,7 @@ import BuscadorSelect from '../../../components/BuscadorSelect';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
+import type { FiltersState } from '../../../components/table/tableTypes';
 import { IvaDeLaCompra } from '../compras/IvaDeLaCompra';
 import { IVA_MODOS } from '../compras/iva';
 import { pagosColumns } from '../columns';
@@ -43,6 +44,7 @@ export function PagosTab() {
   const [error, setError] = useState('');
   const [importOpen, setImportOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filtros, setFiltros] = useState<FiltersState>({});
 
   const cargarInsumos = async () => {
     const r = await http.get<{ data: Insumo[] }>(urls.costeo.insumos);
@@ -61,7 +63,7 @@ export function PagosTab() {
     } catch { /* se queda el valor por defecto */ }
   };
 
-  const load = async (p = page, s = pageSize, term = searchTerm) => {
+  const load = async (p = page, s = pageSize, term = searchTerm, filtrosActuales = filtros) => {
     // Lista y totales en un solo viaje; las empresas van cacheadas (cambian
     // cuando das de alta un proveedor, y eso lo hace esta misma pantalla).
     const [pRes, eRes] = await Promise.all([
@@ -69,13 +71,18 @@ export function PagosTab() {
         data: Pago[]; total: number;
         totales?: { total_compras: number; total_envios: number };
       }>(urls.pagos.lista, {
-        params: { page: p, limit: s, con_totales: 1, ...(term ? { search: term } : {}) },
+        params: {
+          page: p, limit: s, con_totales: 1,
+          ...(term ? { search: term } : {}),
+          ...(Object.keys(filtrosActuales).length ? { filtros: JSON.stringify(filtrosActuales) } : {}),
+        },
       }),
       http.getCacheado<{ data: Empresa[] }>(urls.empresas.lista),
     ]);
     setPagos(pRes.cuerpo?.data ?? []);
     setTotal(pRes.cuerpo?.total ?? 0);
     setPage(p);
+    setFiltros(filtrosActuales);
     setTotales(pRes.cuerpo?.totales ?? null);
     setEmpresas(eRes.cuerpo?.data ?? []);
   };
@@ -223,6 +230,8 @@ export function PagosTab() {
           numerada
           tarjetaMovil
           onServerSearch={t => { setSearchTerm(t); load(1, pageSize, t); }}
+          onServerFilter={f => load(1, pageSize, searchTerm, f)}
+          onServerClearAll={() => load(1, pageSize, '', {})}
           pagination={{
             page, totalRows: total, pageSize,
             onPageChange: p => load(p, pageSize),

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
-import type { ColumnDef, FilterValue } from './tableTypes';
+import type { ColumnDef, FilterValue, FiltersState } from './tableTypes';
 import { useTableControls } from './useTableControls';
 import { useMediaQuery } from './useMediaQuery';
 import { FilaTarjeta } from './FilaTarjeta';
@@ -46,6 +46,22 @@ interface SmartTableProps<T> {
    * al vaciar el campo se restaura la lista original de inmediato.
    */
   onServerSearch?: (term: string) => void;
+  /**
+   * Si se define, los filtros de columna se delegan al servidor (filtran TODA
+   * la data, no solo la página cargada). Se dispara al Aplicar/Limpiar de
+   * cada filtro y al "Limpiar todo" — a diferencia de la búsqueda, no lleva
+   * debounce: ya es una acción deliberada, no tecleo.
+   */
+  onServerFilter?: (filtros: FiltersState) => void;
+  /**
+   * "Limpiar todo" con búsqueda Y filtros de servidor a la vez: si se usaran
+   * `onServerSearch('')` y `onServerFilter({})` por separado, salen dos
+   * recargas casi juntas y cada una lleva el valor VIEJO de lo que limpia la
+   * otra (la búsqueda se limpia con los filtros de ayer, el filtro se limpia
+   * con la búsqueda de ayer) — la que responda de última gana y dejaba la
+   * tabla a medio limpiar. Con esta prop es un solo viaje, sin ambigüedad.
+   */
+  onServerClearAll?: () => void;
   /** Muestra una columna "#" con la posición en la lista (1, 2, 3…). */
   numerada?: boolean;
   /**
@@ -96,14 +112,17 @@ export function SmartTable<T>({
   emptyText = 'Sin resultados',
   pagination,
   onServerSearch,
+  onServerFilter,
+  onServerClearAll,
   numerada,
   paginadoLocal,
   tarjetaMovil,
   accionesMovil,
   acciones,
 }: SmartTableProps<T>) {
+  const isServerFilter = !!onServerFilter;
   const { processed, sort, toggleSort, filters, setFilter, clearAll, search, setSearch, activeFiltersCount } =
-    useTableControls(rows, columns);
+    useTableControls(rows, columns, { serverFiltrado: isServerFilter });
   const pantallaAngosta = useMediaQuery('(max-width: 520px)');
   // 639px = justo debajo del breakpoint `sm` de Tailwind
   const esMovil = useMediaQuery('(max-width: 639px)');
@@ -157,7 +176,24 @@ export function SmartTable<T>({
   const handleClearAll = () => {
     volverAlPrincipio();
     clearAll();
-    if (isServerSearch && serverTerm) handleSearchClear();
+    clearTimeout(debounceRef.current);
+    if (isServerSearch) setServerTerm('');
+    if (onServerClearAll) { onServerClearAll(); return; }
+    // Sin `onServerClearAll`: solo hay UNA de las dos cosas que limpiar de
+    // servidor (nunca las dos a la vez), así que no hay carrera posible.
+    if (isServerSearch && serverTerm) onServerSearch!('');
+    if (isServerFilter) onServerFilter!({});
+  };
+
+  /** Igual al `setFilter` del hook, pero además le avisa al servidor si aplica. */
+  const applyFilter = (key: string, value: FilterValue | null) => {
+    volverAlPrincipio();
+    setFilter(key, value);
+    if (!isServerFilter) return;
+    const next = { ...filters };
+    if (value === null) delete next[key];
+    else next[key] = value;
+    onServerFilter!(next);
   };
 
   const [openFilter, setOpenFilter] = useState<string | null>(null);
@@ -354,7 +390,7 @@ export function SmartTable<T>({
                             <ColumnFilterPopover
                               column={col}
                               active={filters[col.key]}
-                              onApply={(v: FilterValue | null) => { volverAlPrincipio(); setFilter(col.key, v); }}
+                              onApply={(v: FilterValue | null) => applyFilter(col.key, v)}
                               onClose={() => { setOpenFilter(null); setFilterAnchor(null); }}
                               anchorEl={filterAnchor}
                             />

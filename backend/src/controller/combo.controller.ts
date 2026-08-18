@@ -1,6 +1,8 @@
 ﻿import { Request, Response } from 'express';
 import * as comboService from '../services/combo.service';
+import { mapaFiltrosCombos } from '../repositories/combo.repository';
 import { parsePagination, parseSearch } from '../utils/pagination';
+import { parseFiltros } from '../utils/filtros';
 import { mensajeSeguro } from '../utils/errorSeguro';
 
 export const getRelatedCombos = async (req: Request, res: Response) => {
@@ -25,7 +27,9 @@ export const getCombos = async (req: Request, res: Response) => {
   try {
     if (req.query.page) {
       const { page, limit } = parsePagination(req.query as any);
-      const result = await comboService.getCombosPaginated(page, limit, parseSearch(req.query as any));
+      const result = await comboService.getCombosPaginated(
+        page, limit, parseSearch(req.query as any), parseFiltros(req.query as any, mapaFiltrosCombos),
+      );
       res.json(result);
     } else {
       const data = await comboService.getAllCombos();

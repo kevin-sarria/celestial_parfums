@@ -2,6 +2,27 @@ import { prisma } from '../config/prisma';
 import { CreateVentaDTO } from '../types/venta.type';
 import { lineasDeVenta } from '../schemas/venta.schema';
 import { consumirPorVenta, revertirVenta } from './inventario.repository';
+import { filtroEnum, filtroFecha, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
+
+/**
+ * Cómo se traduce cada columna filtrable de la tabla de Ventas a una
+ * condición de Prisma. `presentacion` y `pagada` son "enum" en la tabla
+ * (opciones fijas), aunque `pagada` en la base es un `Boolean`: se traduce
+ * a mano en vez de con `filtroEnum` porque la columna no guarda el texto
+ * "Pagada"/"Pendiente" que ve el dueño.
+ */
+export const mapaFiltrosVenta: MapaFiltros = {
+  persona: filtroTexto('persona'),
+  referencia_perfume: filtroTexto('referencia_perfume'),
+  datos_adicionales: filtroTexto('datos_adicionales'),
+  cantidad_perfumes: filtroNumero('cantidad_perfumes'),
+  valor_venta: filtroNumero('valor_venta'),
+  dia: filtroFecha('dia'),
+  presentacion: filtroEnum('presentacion'),
+  pagada: (f) => (f.type === 'enum' && f.values.length
+    ? { pagada: { in: f.values.map((v) => v === 'Pagada') } }
+    : null),
+};
 
 /** Una línea ya normalizada: producto + talla + unidades. */
 type LineaVenta = { perfume_id: number; ml: number | null; cantidad: number };
@@ -55,22 +76,25 @@ const mapVenta = (v: any) => ({
  * otra pantalla) no tiene por qué pagar una agregación de todo el mes.
  */
 export const getAllVentas = async (
-  page: number, limit: number, search?: string, conTotales = false,
+  page: number, limit: number, search?: string, conTotales = false, filtrosAnd?: object[],
 ) => {
   const skip = (page - 1) * limit;
-  const where = search
-    ? {
-        OR: [
-          { persona: { contains: search } },
-          { referencia_perfume: { contains: search } },
-          { presentacion: { contains: search } },
-          { datos_adicionales: { contains: search } },
-          { user: { nombre: { contains: search } } },
-          { user: { apellido: { contains: search } } },
-          { user: { telefono: { contains: search } } },
-        ],
-      }
-    : undefined;
+  const condiciones: object[] = [];
+  if (search) {
+    condiciones.push({
+      OR: [
+        { persona: { contains: search } },
+        { referencia_perfume: { contains: search } },
+        { presentacion: { contains: search } },
+        { datos_adicionales: { contains: search } },
+        { user: { nombre: { contains: search } } },
+        { user: { apellido: { contains: search } } },
+        { user: { telefono: { contains: search } } },
+      ],
+    });
+  }
+  if (filtrosAnd?.length) condiciones.push(...filtrosAnd);
+  const where = condiciones.length ? { AND: condiciones } : undefined;
   const [rows, total, totales] = await Promise.all([
     prisma.venta.findMany({ where, skip, take: limit, orderBy: { dia: 'desc' }, include: includeRel }),
     prisma.venta.count({ where }),

@@ -8,6 +8,7 @@ import { resumenRatings } from './resena.repository';
 import { badRequest } from '../utils/httpError';
 import { buildPerfumeIndex, matchPerfume } from '../utils/perfumeMatcher';
 import { mlDelNombre } from '../utils/tallas';
+import { filtroEnum, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
 // Cómo se lee un perfume (precio efectivo, agotado, frascos armados) vive en su
 // propio archivo: aquí solo se consulta y se escribe.
 import { mapPerfume, perfumeInclude, NUEVO_DIAS } from './perfume.mapeo';
@@ -32,6 +33,23 @@ export const conRatings = async <T extends { id: number }>(perfumes: T[]): Promi
  * apagados, y para eso tiene que pedirlos explícitamente (`todos`).
  */
 export const SOLO_PUBLICADOS = { publicado: true } as const;
+
+/**
+ * Columnas filtrables de la tabla de Perfumes del dashboard. "Estado" no está:
+ * combina publicado/agotado/`faltaParaVender` en el navegador (`columns.tsx`),
+ * y esa regla no tiene traducción directa a un `WHERE` — queda `filterable:
+ * false` en la columna, a propósito, para no ofrecer un embudo que no filtra.
+ */
+export const mapaFiltrosPerfumes: MapaFiltros = {
+  nombre: filtroTexto('nombre'),
+  precio: filtroNumero('precio'),
+  genero: filtroEnum('genero'),
+  categoria: (f) => (f.type === 'string' && f.value.trim()
+    ? { categoria: { nombre: { contains: f.value.trim() } } } : null),
+  tipos_aroma: (f) => (f.type === 'string' && f.value.trim()
+    ? { tipos_aroma: { some: { tipo_aroma: { nombre: { contains: f.value.trim() } } } } } : null),
+  duracion: filtroTexto('duracion'),
+};
 
 export const selectAllParfums = async (todos = false) => {
   const perfumes = await prisma.perfume.findMany({
@@ -70,6 +88,8 @@ export const selectParfumsPaginated = async (
   filtros?: CatalogoFiltros,
   /** Solo el dashboard: incluir también los que están fuera de la tienda. */
   todos = false,
+  /** Filtros de columna de la tabla del dashboard (ver `mapaFiltrosPerfumes`). */
+  columnasAnd?: object[],
 ) => {
   const skip = (page - 1) * limit;
   const and: Prisma.PerfumeWhereInput[] = todos ? [] : [SOLO_PUBLICADOS];
@@ -88,6 +108,7 @@ export const selectParfumsPaginated = async (
     and.push({ tipos_aroma: { some: { tipo_aroma: { nombre: { in: filtros.aromas } } } } });
   if (filtros?.ocasiones?.length)
     and.push({ ocasiones: { some: { ocasion: { nombre: { in: filtros.ocasiones } } } } });
+  if (columnasAnd?.length) and.push(...(columnasAnd as Prisma.PerfumeWhereInput[]));
   const where: Prisma.PerfumeWhereInput | undefined = and.length ? { AND: and } : undefined;
   const orderBy = ORDEN_CATALOGO[filtros?.orden ?? 'destacados'];
   const [rows, total] = await Promise.all([
@@ -131,6 +152,11 @@ const enlacesPresentacion = (data: CreatePerfumeDTO) => {
 };
 
 export const createPerfume = async (data: CreatePerfumeDTO) => {
+  // Solo una ficha a la vez puede ser el regalo automático: si esta lo marca,
+  // se lo quita a la anterior para no dejar dos productos disputando el botón.
+  if (data.regalo_automatico) {
+    await prisma.perfume.updateMany({ where: { regalo_automatico: true }, data: { regalo_automatico: false } });
+  }
   const perfume = await prisma.perfume.create({
     data: {
       nombre:       data.nombre,
@@ -151,6 +177,7 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       insumo_producto_id: data.insumo_producto_id ?? null,
       ml_utiles: data.ml_utiles ?? null,
       solo_armado: data.solo_armado ?? false,
+      regalo_automatico: data.regalo_automatico ?? false,
       tipos_aroma: {
         create: (data.tipos_aroma ?? []).map((id) => ({ tipo_aroma_id: id })),
       },
@@ -200,6 +227,14 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
   await prisma.$transaction([
     prisma.perfumeTipoAroma.deleteMany({ where: { perfume_id: numId } }),
     prisma.perfumeOcasion.deleteMany({ where: { perfume_id: numId } }),
+    // Mismo criterio que crear: si ESTA ficha se marca como el regalo, se lo
+    // quita a cualquier otra que lo tuviera (nunca dos a la vez).
+    ...(data.regalo_automatico
+      ? [prisma.perfume.updateMany({
+          where: { regalo_automatico: true, id: { not: numId } },
+          data: { regalo_automatico: false },
+        })]
+      : []),
     prisma.perfume.update({
       where: { id: numId },
       data: {
@@ -223,6 +258,7 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
         ...(data.insumo_producto_id !== undefined ? { insumo_producto_id: data.insumo_producto_id ?? null } : {}),
         ...(data.ml_utiles !== undefined ? { ml_utiles: data.ml_utiles ?? null } : {}),
         ...(data.solo_armado !== undefined ? { solo_armado: data.solo_armado } : {}),
+        ...(data.regalo_automatico !== undefined ? { regalo_automatico: data.regalo_automatico } : {}),
         tipos_aroma: {
           create: (data.tipos_aroma ?? []).map((tid) => ({ tipo_aroma_id: tid })),
         },

@@ -2,8 +2,9 @@ import * as repo from '../repositories/pago.repository';
 import { CreatePagoDTO } from '../types/pago.type';
 import { bustCatalogoCache } from './perfume.service';
 
-export const getAllPagos = (page: number, limit: number, search?: string, conTotales = false) =>
-  repo.getAllPagos(page, limit, search, conTotales);
+export const getAllPagos = (
+  page: number, limit: number, search?: string, conTotales = false, filtrosAnd?: object[],
+) => repo.getAllPagos(page, limit, search, conTotales, filtrosAnd);
 
 /**
  * Una compra CON LÍNEAS mete material en bodega, y eso cambia qué perfumes se

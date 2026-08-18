@@ -1,5 +1,7 @@
 import * as ventaService from '../services/venta.service';
+import { mapaFiltrosVenta } from '../repositories/venta.repository';
 import { parsePagination, parseSearch } from '../utils/pagination';
+import { parseFiltros } from '../utils/filtros';
 import { h } from '../middleware/error.middleware';
 
 // Handlers envueltos con h(): los errores (incl. HttpError con status
@@ -11,6 +13,7 @@ export const getVentas = h(async (req, res) => {
   // mandan juntos y se ahorra un viaje al servidor.
   res.json(await ventaService.getAllVentas(
     page, limit, parseSearch(req.query as any), req.query.con_totales === '1',
+    parseFiltros(req.query as any, mapaFiltrosVenta),
   ));
 });
 

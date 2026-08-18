@@ -7,6 +7,15 @@ import {
   type IvaCompra, type IvaModo,
 } from './inventario.repository';
 import { sanearUploadsConservados } from '../utils/uploadsUrl';
+import { filtroFecha, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
+
+export const mapaFiltrosPagos: MapaFiltros = {
+  dia: filtroFecha('dia'),
+  empresa: (f) => (f.type === 'string' && f.value.trim() ? { empresa: { nombre: { contains: f.value.trim() } } } : null),
+  valor_compra: filtroNumero('valor_compra'),
+  coste_envio: filtroNumero('coste_envio'),
+  detalles_adicionales: filtroTexto('detalles_adicionales'),
+};
 
 const includeEmpresa = {
   empresa: true,
@@ -56,18 +65,21 @@ const mapPago = (p: any) => ({
  * solo quiera la lista no pague la agregación.
  */
 export const getAllPagos = async (
-  page: number, limit: number, search?: string, conTotales = false,
+  page: number, limit: number, search?: string, conTotales = false, filtrosAnd?: object[],
 ) => {
   const skip = (page - 1) * limit;
-  const where = search
-    ? {
-        OR: [
-          { detalles_adicionales: { contains: search } },
-          { empresa: { nombre: { contains: search } } },
-          { empresa: { nit: { contains: search } } },
-        ],
-      }
-    : undefined;
+  const condiciones: object[] = [];
+  if (search) {
+    condiciones.push({
+      OR: [
+        { detalles_adicionales: { contains: search } },
+        { empresa: { nombre: { contains: search } } },
+        { empresa: { nit: { contains: search } } },
+      ],
+    });
+  }
+  if (filtrosAnd?.length) condiciones.push(...filtrosAnd);
+  const where = condiciones.length ? { AND: condiciones } : undefined;
   const [rows, total, totales] = await Promise.all([
     prisma.pagoProveedor.findMany({ where, skip, take: limit, orderBy: { dia: 'desc' }, include: includeEmpresa }),
     prisma.pagoProveedor.count({ where }),

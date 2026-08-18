@@ -3,8 +3,8 @@ import { CreateComboDTO } from '../types/combo.type';
 
 export const getAllCombos = () => comboRepo.selectAllCombos();
 
-export const getCombosPaginated = (page: number, limit: number, search?: string) =>
-  comboRepo.selectCombosPaginated(page, limit, search);
+export const getCombosPaginated = (page: number, limit: number, search?: string, filtrosAnd?: object[]) =>
+  comboRepo.selectCombosPaginated(page, limit, search, filtrosAnd);
 
 export const createCombo = async (data: CreateComboDTO) => {
   if (!data?.nombre?.trim()) throw new Error('El nombre es obligatorio');

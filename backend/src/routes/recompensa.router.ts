@@ -8,6 +8,7 @@ import { uploadLimiter } from '../middleware/limiters';
 import { h } from '../middleware/error.middleware';
 import { badRequest } from '../utils/httpError';
 import { parsePagination, parseSearch } from '../utils/pagination';
+import { parseFiltros } from '../utils/filtros';
 import { guardarVariasWebp } from '../utils/imagenWebp';
 import { getPublicBaseUrl } from '../utils/publicUrl';
 import { sanearUploadsConservados } from '../utils/uploadsUrl';
@@ -68,7 +69,10 @@ recompensaRouter.patch('/config', requireAdmin, validate(recompensaConfigSchema)
 
 recompensaRouter.get('/clientes', requireAdmin, h(async (req, res) => {
   const { page, limit } = parsePagination(req.query as any);
-  res.json(await repo.getClientes(page, limit, parseSearch(req.query as any)));
+  res.json(await repo.getClientes(
+    page, limit, parseSearch(req.query as any),
+    parseFiltros(req.query as any, repo.mapaFiltrosRecompensas),
+  ));
 }));
 
 recompensaRouter.post('/clientes/:id/entregar', requireAdmin, h(async (req, res) => {

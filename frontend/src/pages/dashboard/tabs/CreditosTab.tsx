@@ -8,6 +8,7 @@ import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
+import type { FiltersState } from '../../../components/table/tableTypes';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import PerfilCreditoModal from './PerfilCreditoModal';
@@ -34,6 +35,7 @@ export function CreditosTab() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [totales, setTotales] = useState<TotalesCartera | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filtros, setFiltros] = useState<FiltersState>({});
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState('');
 
@@ -53,18 +55,25 @@ export function CreditosTab() {
   const [catalogo, setCatalogo] = useState<Perfume[]>([]);
   const [combos, setCombos] = useState<Combo[]>([]);
 
-  const load = async (p = page, s = pageSize, term = searchTerm) => {
+  const load = async (p = page, s = pageSize, term = searchTerm, filtrosActuales = filtros) => {
     setCargando(true);
     try {
       // Lista y totales en un solo viaje (ver `urls.creditos.totales`).
       const cRes = await http.get<{ data: Credito[]; total: number; totales?: TotalesCartera }>(
         urls.creditos.lista,
-        { params: { page: p, limit: s, con_totales: 1, ...(term ? { search: term } : {}) } },
+        {
+          params: {
+            page: p, limit: s, con_totales: 1,
+            ...(term ? { search: term } : {}),
+            ...(Object.keys(filtrosActuales).length ? { filtros: JSON.stringify(filtrosActuales) } : {}),
+          },
+        },
       );
       if (!cRes.ok) throw new Error(cRes.error);
       setCreditos(cRes.cuerpo?.data ?? []);
       setTotal(cRes.cuerpo?.total ?? 0);
       setPage(p);
+      setFiltros(filtrosActuales);
       setTotales(cRes.cuerpo?.totales ?? null);
       setErrorCarga('');
     } catch {
@@ -236,6 +245,8 @@ export function CreditosTab() {
             tarjetaMovil
             emptyText={cargando ? 'Cargando…' : 'Sin créditos registrados'}
             onServerSearch={t => { setSearchTerm(t); load(1, pageSize, t); }}
+            onServerFilter={f => load(1, pageSize, searchTerm, f)}
+            onServerClearAll={() => load(1, pageSize, '', {})}
             pagination={{
               page, totalRows: total, pageSize,
               onPageChange: p => load(p, pageSize),

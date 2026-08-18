@@ -200,6 +200,8 @@ export interface PerfumeForm {
   ml_utiles: string;
   /** Los 1.1: solo se venden si ya están armados, no contra pedido. */
   solo_armado: boolean;
+  /** El que Registrar venta sugiere regalar en 100 ml sueltos y en cualquier combo. */
+  regalo_automatico: boolean;
   /** Frasco propio por talla (presentacion_id → insumo del envase). */
   envases_talla: Record<number, number | ''>;
   /** Precio propio por presentación (id → texto); vacío = usa la lista de su categoría. */
@@ -212,6 +214,7 @@ export const emptyPerfumeForm = (): PerfumeForm => ({
   tipos_aroma: [], ocasiones: [], presentaciones: [],
   esencia_premium: false, insumo_esencia_id: '',
   tipo_producto: 'fabricado', insumo_producto_id: '', ml_utiles: '', solo_armado: false,
+  regalo_automatico: false,
   envases_talla: {},
   precios_propios: {},
 });

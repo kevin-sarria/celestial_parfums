@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { DialogFooter } from '@/components/ui/dialog';
 import Modal from '../../../components/Modal';
 import { SmartTable } from '../../../components/table/SmartTable';
-import type { ColumnDef } from '../../../components/table/tableTypes';
+import type { ColumnDef, FiltersState } from '../../../components/table/tableTypes';
 import RecompensaConfigModal from './RecompensaConfigModal';
 import EntregasModeracion from './EntregasModeracion';
 import { toast } from 'sonner';
@@ -51,6 +51,7 @@ export function RecompensasTab() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
+  const [filtros, setFiltros] = useState<FiltersState>({});
 
   const [ovCliente, setOvCliente] = useState<RecompensaClienteRow | null>(null);
   const [ovForm, setOvForm] = useState({ objetivo: '', premio: '', min: '' });
@@ -61,15 +62,22 @@ export function RecompensasTab() {
     if (res.ok) setConfig(res.cuerpo?.data ?? null);
   };
 
-  const loadClientes = async (p = page, s = pageSize, term = search) => {
+  const loadClientes = async (p = page, s = pageSize, term = search, filtrosActuales = filtros) => {
     const res = await http.get<{ data?: RecompensaClienteRow[]; total?: number }>(
       urls.recompensas.clientes,
-      { params: { page: p, limit: s, ...(term ? { search: term } : {}) } },
+      {
+        params: {
+          page: p, limit: s,
+          ...(term ? { search: term } : {}),
+          ...(Object.keys(filtrosActuales).length ? { filtros: JSON.stringify(filtrosActuales) } : {}),
+        },
+      },
     );
     if (!res.ok) { toast.error(res.error, { id: 'recompensas' }); return; }
     setClientes(res.cuerpo?.data ?? []);
     setTotal(res.cuerpo?.total ?? 0);
     setPage(p);
+    setFiltros(filtrosActuales);
   };
 
   useEffect(() => { loadConfig(); loadClientes(1); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -141,14 +149,21 @@ export function RecompensasTab() {
       ),
       className: cellName,
     },
-    { key: 'progreso', header: 'Progreso', type: 'number', getValue: c => c.tarjeta.sellos, render: c => <Progreso row={c} />, noTruncate: true },
+    /**
+     * Sin filtro: "sellos" y "premios entregados" se recalculan del historial
+     * de ventas de cada cliente (ver el encabezado de `recompensa.repository.ts`),
+     * así que no hay columna que el servidor pueda mirar sin traer y calcular a
+     * TODOS los clientes primero. Ofrecer el embudo aquí volvería a filtrar
+     * solo la página cargada — el mismo bug que se arregló en el resto de tablas.
+     */
+    { key: 'progreso', header: 'Progreso', type: 'number', getValue: c => c.tarjeta.sellos, render: c => <Progreso row={c} />, noTruncate: true, filterable: false },
     {
       key: 'entregados', header: 'Premios dados', type: 'number',
       getValue: c => c.tarjeta.premios_entregados,
       render: c => c.tarjeta.premios_entregados > 0
         ? <span className="tabular-nums text-foreground">{c.tarjeta.premios_entregados}</span>
         : <span className="text-muted-foreground">—</span>,
-      noTruncate: true,
+      noTruncate: true, filterable: false,
     },
   ];
 
@@ -175,6 +190,8 @@ export function RecompensasTab() {
           rows={clientes}
           rowKey={c => c.id}
           onServerSearch={t => { setSearch(t); loadClientes(1, pageSize, t); }}
+          onServerFilter={f => loadClientes(1, pageSize, search, f)}
+          onServerClearAll={() => loadClientes(1, pageSize, '', {})}
           pagination={{
             page, totalRows: total, pageSize,
             onPageChange: p => loadClientes(p, pageSize),

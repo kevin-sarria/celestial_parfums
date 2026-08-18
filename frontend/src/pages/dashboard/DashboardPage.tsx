@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import type { Perfume } from '../../domain/entities/perfume.schema';
 import type { Combo } from '../../domain/entities/combo.schema';
+import type { FiltersState } from '../../components/table/tableTypes';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import { useSeo } from '../../application/hooks/useSeo';
 import { DEFAULT_PAGE_SIZE, conNotaDeTalla } from './helpers';
@@ -59,12 +60,14 @@ export default function DashboardPage() {
   const [perfumesTotal, setPerfumesTotal] = useState(0);
   const [perfumesPageSize, setPerfumesPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [perfumesSearch, setPerfumesSearch] = useState('');
+  const [perfumesFiltros, setPerfumesFiltros] = useState<FiltersState>({});
 
   const [combos, setCombos] = useState<Combo[]>([]);
   const [combosPage, setCombosPage] = useState(1);
   const [combosTotal, setCombosTotal] = useState(0);
   const [combosPageSize, setCombosPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [combosSearch, setCombosSearch] = useState('');
+  const [combosFiltros, setCombosFiltros] = useState<FiltersState>({});
 
   const [aromas, setAromas] = useState<Lookup[]>([]);
   const [ocasiones, setOcasiones] = useState<Lookup[]>([]);
@@ -92,24 +95,38 @@ export default function DashboardPage() {
     setPresentaciones(conNotaDeTalla(pRes.cuerpo?.data ?? []));
   };
 
-  const loadPerfumes = async (page = perfumesPage, size = perfumesPageSize, search = perfumesSearch) => {
+  const loadPerfumes = async (
+    page = perfumesPage, size = perfumesPageSize, search = perfumesSearch, filtros = perfumesFiltros,
+  ) => {
     // `todos=1`: el dashboard ve TAMBIÉN los que están fuera de la tienda; si no,
     // no habría forma de devolverlos. El servidor solo lo acepta si eres admin.
     const res = await http.get<{ data: Perfume[]; total: number }>(urls.perfumes.todos, {
-      params: { page, limit: size, todos: 1, ...(search ? { search } : {}) },
+      params: {
+        page, limit: size, todos: 1,
+        ...(search ? { search } : {}),
+        ...(Object.keys(filtros).length ? { filtros: JSON.stringify(filtros) } : {}),
+      },
     });
     setPerfumes(res.cuerpo?.data ?? []);
     setPerfumesTotal(res.cuerpo?.total ?? 0);
     setPerfumesPage(page);
+    setPerfumesFiltros(filtros);
   };
 
-  const loadCombos = async (page = combosPage, size = combosPageSize, search = combosSearch) => {
+  const loadCombos = async (
+    page = combosPage, size = combosPageSize, search = combosSearch, filtros = combosFiltros,
+  ) => {
     const res = await http.get<{ data: Combo[]; total: number }>(urls.combos.lista, {
-      params: { page, limit: size, ...(search ? { search } : {}) },
+      params: {
+        page, limit: size,
+        ...(search ? { search } : {}),
+        ...(Object.keys(filtros).length ? { filtros: JSON.stringify(filtros) } : {}),
+      },
     });
     setCombos(res.cuerpo?.data ?? []);
     setCombosTotal(res.cuerpo?.total ?? 0);
     setCombosPage(page);
+    setCombosFiltros(filtros);
   };
 
   const refreshAll = () => { loadLookups(); loadPerfumes(); loadCombos(); };
@@ -239,6 +256,8 @@ export default function DashboardPage() {
                 onPageChange={p => loadPerfumes(p, perfumesPageSize)}
                 onPageSizeChange={s => { setPerfumesPageSize(s); loadPerfumes(1, s); }}
                 onSearch={t => { setPerfumesSearch(t); loadPerfumes(1, perfumesPageSize, t); }}
+                onFilter={f => loadPerfumes(1, perfumesPageSize, perfumesSearch, f)}
+                onClearAll={() => loadPerfumes(1, perfumesPageSize, '', {})}
                 onMutate={refreshAll}
               />
             )}
@@ -280,6 +299,8 @@ export default function DashboardPage() {
                 onPageChange={p => loadCombos(p, combosPageSize)}
                 onPageSizeChange={s => { setCombosPageSize(s); loadCombos(1, s); }}
                 onSearch={t => { setCombosSearch(t); loadCombos(1, combosPageSize, t); }}
+                onFilter={f => loadCombos(1, combosPageSize, combosSearch, f)}
+                onClearAll={() => loadCombos(1, combosPageSize, '', {})}
                 onMutate={refreshAll}
               />
             )}

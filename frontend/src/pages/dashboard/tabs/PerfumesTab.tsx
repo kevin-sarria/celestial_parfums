@@ -14,6 +14,7 @@ import type { Perfume } from '../../../domain/entities/perfume.schema';
 import { toast } from 'sonner';
 import { esEsencia } from '../../../domain/entities/insumo';
 import { SmartTable } from '../../../components/table/SmartTable';
+import type { FiltersState } from '../../../components/table/tableTypes';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
@@ -37,6 +38,10 @@ interface PerfumesTabProps {
   onPageSizeChange: (size: number) => void;
   /** Búsqueda global contra el backend (toda la data, no solo la página cargada). */
   onSearch: (term: string) => void;
+  /** Filtros de columna contra el backend (toda la data, no solo la página cargada). */
+  onFilter: (filtros: FiltersState) => void;
+  /** "Limpiar todo": UNA sola recarga con búsqueda y filtros vacíos a la vez. */
+  onClearAll: () => void;
   onMutate: () => void;
 }
 
@@ -70,7 +75,7 @@ function CheckGroup({ items, selected, onToggle }: CheckGroupProps) {
 
 export function PerfumesTab({
   perfumes, page, total, pageSize, aromas, ocasiones, categorias, presentaciones,
-  onPageChange, onPageSizeChange, onSearch, onMutate,
+  onPageChange, onPageSizeChange, onSearch, onFilter, onClearAll, onMutate,
 }: PerfumesTabProps) {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<PerfumeForm>(emptyPerfumeForm());
@@ -140,6 +145,7 @@ export function PerfumesTab({
       insumo_producto_id: p.insumo_producto_id ?? '',
       ml_utiles: p.ml_utiles ? String(p.ml_utiles) : '',
       solo_armado: p.solo_armado ?? false,
+      regalo_automatico: p.regalo_automatico ?? false,
       envases_talla: Object.fromEntries(
         (p.precios ?? []).filter(pr => pr.envase_insumo_id)
           .map(pr => [pr.presentacion_id, pr.envase_insumo_id as number]),
@@ -185,6 +191,7 @@ export function PerfumesTab({
       ml_utiles: Number(form.ml_utiles) || null,
       // Solo tiene sentido en lo que se fabrica: un comprado ya viene armado.
       solo_armado: form.tipo_producto === 'fabricado' && form.solo_armado,
+      regalo_automatico: form.regalo_automatico,
       envases_talla: form.presentaciones.map(id => ({
         presentacion_id: id,
         envase_insumo_id: form.envases_talla[id] || null,
@@ -230,6 +237,8 @@ export function PerfumesTab({
           rows={perfumes}
           rowKey={p => p.id}
           onServerSearch={onSearch}
+          onServerFilter={onFilter}
+          onServerClearAll={onClearAll}
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
           renderActions={p => (
             <>
@@ -445,6 +454,25 @@ export function PerfumesTab({
             </span>
           </label>
         )}
+
+        {/* El botón "+ Agregar regalo" de Registrar venta busca esta ficha por esta
+            casilla, no por el nombre: así el dueño puede cambiar de un día para otro
+            qué se regala (una tarjeta, otro perfumero) sin tocar código. */}
+        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 text-[13px] text-foreground">
+          <input
+            type="checkbox" className="mt-0.5 size-4 accent-primary"
+            checked={form.regalo_automatico}
+            onChange={e => setForm(f => ({ ...f, regalo_automatico: e.target.checked }))}
+          />
+          <span>
+            Es el regalo automático de Ventas (100 ml sueltos y cualquier combo)
+            <span className="block text-[12px] font-normal text-muted-foreground">
+              Registrar venta va a sugerir agregarlo gratis, una sola vez por venta sin importar
+              cuántas botellas lleve. Solo un producto puede tener esta marca a la vez: marcarla
+              aquí se la quita a cualquier otro que la tuviera.
+            </span>
+          </span>
+        </label>
 
         {form.tipo_producto !== 'fabricado' && (
           <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3">

@@ -11,6 +11,7 @@ import ExportButton from '../../../components/ExportButton';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { toast } from 'sonner';
 import { SmartTable } from '../../../components/table/SmartTable';
+import type { FiltersState } from '../../../components/table/tableTypes';
 import { combosColumns } from '../columns';
 import { subirImagenAdmin } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
@@ -30,12 +31,16 @@ interface CombosTabProps {
   onPageSizeChange: (size: number) => void;
   /** Búsqueda global contra el backend (toda la data, no solo la página cargada). */
   onSearch: (term: string) => void;
+  /** Filtros de columna contra el backend (toda la data, no solo la página cargada). */
+  onFilter: (filtros: FiltersState) => void;
+  /** "Limpiar todo": UNA sola recarga con búsqueda y filtros vacíos a la vez. */
+  onClearAll: () => void;
   onMutate: () => void;
 }
 
 export function CombosTab({
   combos, page, total, pageSize, categorias, presentaciones,
-  onPageChange, onPageSizeChange, onSearch, onMutate,
+  onPageChange, onPageSizeChange, onSearch, onFilter, onClearAll, onMutate,
 }: CombosTabProps) {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<ComboForm>(emptyComboForm());
@@ -116,6 +121,8 @@ export function CombosTab({
           rows={combos}
           rowKey={c => c.id}
           onServerSearch={onSearch}
+          onServerFilter={onFilter}
+          onServerClearAll={onClearAll}
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
           renderActions={c => (
             <>

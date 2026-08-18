@@ -401,6 +401,12 @@ model Perfume {
   /// un dato que el dueño edita, y el día que la renombre la regla dejaría de
   /// aplicarse en silencio. El formulario la marca sola al elegir "1.1".
   solo_armado        Boolean               @default(false)
+  /// El producto que Registrar venta sugiere regalar en 100 ml sueltos y en
+  /// cualquier combo (uno solo por venta, sin importar cuántas botellas
+  /// lleve). Decidido con el dueño el 2026-08-17: solo UN perfume puede
+  /// llevarla a la vez, así que `editPerfume`/`createPerfume` se la quitan al
+  /// anterior cuando se marca una ficha nueva.
+  regalo_automatico  Boolean               @default(false)
   /// "No hay ahora mismo": SÍ se muestra en la tienda, marcado como agotado, y
   /// el cliente puede pedir que le avisen cuando vuelva.
   agotado            Boolean               @default(false)

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
+import type { FiltersState } from '../../../components/table/tableTypes';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { ventasColumns } from '../columns';
@@ -38,23 +39,37 @@ export function VentasTab() {
   const [modal, setModal] = useState<{ open: boolean; venta: Venta | null }>({ open: false, venta: null });
   const [importOpen, setImportOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  /**
+   * Filtros por columna, del embudo de cada encabezado. Igual que la
+   * búsqueda, viajan al servidor: sin esto, "Filtrar: Referencia" solo
+   * miraba las `pageSize` filas ya cargadas en el navegador en vez de las
+   * 300 y tantas ventas reales.
+   */
+  const [filtros, setFiltros] = useState<FiltersState>({});
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState('');
 
   // Las ventas y sus totales cambian con cada acción; los catálogos, solo al montar
-  const load = async (p = page, s = pageSize, term = searchTerm) => {
+  const load = async (p = page, s = pageSize, term = searchTerm, filtrosActuales = filtros) => {
     setCargando(true);
     try {
       // Lista y totales viajan JUNTOS: la pantalla los pinta a la vez, y el
       // servidor resuelve las dos consultas en paralelo. Un viaje, no dos.
       const vRes = await http.get<{ data: Venta[]; total: number; totales?: Totales }>(
         urls.ventas.lista,
-        { params: { page: p, limit: s, con_totales: 1, ...(term ? { search: term } : {}) } },
+        {
+          params: {
+            page: p, limit: s, con_totales: 1,
+            ...(term ? { search: term } : {}),
+            ...(Object.keys(filtrosActuales).length ? { filtros: JSON.stringify(filtrosActuales) } : {}),
+          },
+        },
       );
       if (!vRes.ok) throw new Error(vRes.error);
       setVentas(vRes.cuerpo?.data ?? []);
       setTotal(vRes.cuerpo?.total ?? 0);
       setPage(p);
+      setFiltros(filtrosActuales);
       setTotales(vRes.cuerpo?.totales ?? null);
       setErrorCarga('');
     } catch {
@@ -185,6 +200,8 @@ export function VentasTab() {
             tarjetaMovil
             emptyText={cargando ? 'Cargando…' : 'Sin ventas registradas'}
             onServerSearch={t => { setSearchTerm(t); load(1, pageSize, t); }}
+            onServerFilter={f => load(1, pageSize, searchTerm, f)}
+            onServerClearAll={() => load(1, pageSize, '', {})}
             pagination={{
               page, totalRows: total, pageSize,
               onPageChange: p => load(p, pageSize),

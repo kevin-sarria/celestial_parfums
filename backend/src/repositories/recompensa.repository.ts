@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { paginatedResponse } from '../utils/pagination';
+import type { MapaFiltros } from '../utils/filtros';
 
 /**
  * Tarjeta de recompensas (fidelidad). Los sellos NO se guardan: se recalculan
@@ -124,19 +125,37 @@ export const setOverride = async (userId: number, data: OverrideInput) => {
   return calcularTarjeta(userId);
 };
 
+/**
+ * "Progreso" y "Premios dados" NO se filtran del lado del servidor: los sellos
+ * se recalculan del historial de ventas de cada cliente (ver el comentario del
+ * encabezado del archivo) y no existen como columna que Prisma pueda mirar sin
+ * traer y recalcular a TODOS los clientes primero. La columna "Cliente" es
+ * `filtroTexto` compuesto (nombre O apellido).
+ */
+export const mapaFiltrosRecompensas: MapaFiltros = {
+  cliente: (f) => (f.type === 'string' && f.value.trim()
+    ? { OR: [
+        { nombre: { contains: f.value.trim() } },
+        { apellido: { contains: f.value.trim() } },
+      ] }
+    : null),
+};
+
 /** Lista paginada de clientes con su progreso (para el admin). */
-export const getClientes = async (page: number, limit: number, search?: string) => {
-  const where = {
-    rol_id: { not: 1 },
-    ...(search
-      ? { OR: [
-          { nombre: { contains: search } },
-          { apellido: { contains: search } },
-          { email: { contains: search } },
-          { telefono: { contains: search } },
-        ] }
-      : {}),
-  };
+export const getClientes = async (page: number, limit: number, search?: string, filtrosAnd?: object[]) => {
+  const condiciones: object[] = [{ rol_id: { not: 1 } }];
+  if (search) {
+    condiciones.push({
+      OR: [
+        { nombre: { contains: search } },
+        { apellido: { contains: search } },
+        { email: { contains: search } },
+        { telefono: { contains: search } },
+      ],
+    });
+  }
+  if (filtrosAnd?.length) condiciones.push(...filtrosAnd);
+  const where = { AND: condiciones };
   const [users, total] = await Promise.all([
     prisma.user.findMany({
       where, skip: (page - 1) * limit, take: limit,

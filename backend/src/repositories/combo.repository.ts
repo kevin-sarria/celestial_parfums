@@ -3,6 +3,22 @@ import { Prisma } from '@prisma/client';
 import { paginatedResponse } from '../utils/pagination';
 import { toSlug } from '../utils/slug';
 import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
+import { filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
+
+/**
+ * "Precio final" no está aquí: es `precio × (1 − descuento/100)`, una cuenta
+ * que Prisma no puede meter en un `WHERE` sin SQL crudo. La columna queda con
+ * `filterable: false` en el frontend (`columns.tsx`) por la misma razón.
+ */
+export const mapaFiltrosCombos: MapaFiltros = {
+  nombre: filtroTexto('nombre'),
+  cantidad: filtroNumero('cantidad'),
+  precio: filtroNumero('precio'),
+  descuento: filtroNumero('descuento'),
+  activo: (f) => (f.type === 'enum' && f.values.length
+    ? { activo: { in: f.values.map((v) => v === 'Activo') } }
+    : null),
+};
 
 type ComboRow = Prisma.ComboGetPayload<{ include: { categoria: true; presentacion: true } }>;
 import { CreateComboDTO } from '../types/combo.type';
@@ -35,17 +51,22 @@ export const selectAllCombos = async () => {
   return combos.map(mapCombo);
 };
 
-export const selectCombosPaginated = async (page: number, limit: number, search?: string) => {
+export const selectCombosPaginated = async (
+  page: number, limit: number, search?: string, filtrosAnd?: object[],
+) => {
   const skip = (page - 1) * limit;
-  const where: Prisma.ComboWhereInput | undefined = search
-    ? {
-        OR: [
-          { nombre: { contains: search } },
-          { descripcion: { contains: search } },
-          { categoria: { nombre: { contains: search } } },
-        ],
-      }
-    : undefined;
+  const condiciones: Prisma.ComboWhereInput[] = [];
+  if (search) {
+    condiciones.push({
+      OR: [
+        { nombre: { contains: search } },
+        { descripcion: { contains: search } },
+        { categoria: { nombre: { contains: search } } },
+      ],
+    });
+  }
+  if (filtrosAnd?.length) condiciones.push(...(filtrosAnd as Prisma.ComboWhereInput[]));
+  const where: Prisma.ComboWhereInput | undefined = condiciones.length ? { AND: condiciones } : undefined;
   const [rows, total] = await Promise.all([
     prisma.combo.findMany({ where, include: comboInclude, orderBy: comboOrderBy, skip, take: limit }),
     prisma.combo.count({ where }),

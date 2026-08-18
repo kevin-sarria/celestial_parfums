@@ -43,7 +43,9 @@ export function ArmadorPedido({
     if (!p) return;
     const primera = tallasDe(p)[0];
     const presentacion = primera?.presentacion ?? null;
-    const i = lineas.findIndex(l => l.perfume_id === id && l.presentacion === presentacion);
+    // Nunca se fusiona con una línea de regalo: sumarle unidades a esa línea
+    // las volvería gratis también.
+    const i = lineas.findIndex(l => l.perfume_id === id && l.presentacion === presentacion && !l.regalo);
     if (i >= 0) {
       onChange(lineas.map((l, k) => (k === i ? { ...l, cantidad: l.cantidad + 1 } : l)));
       return;
@@ -68,7 +70,8 @@ export function ArmadorPedido({
     const idx = siguientes.findIndex(l => l.key === key);
     const actual = siguientes[idx];
     const gemela = siguientes.findIndex(
-      (l, i) => i !== idx && l.perfume_id === actual.perfume_id && l.presentacion === actual.presentacion,
+      (l, i) => i !== idx && l.perfume_id === actual.perfume_id
+        && l.presentacion === actual.presentacion && l.regalo === actual.regalo,
     );
     if (gemela >= 0) {
       siguientes[gemela] = { ...siguientes[gemela], cantidad: siguientes[gemela].cantidad + actual.cantidad };
@@ -107,6 +110,11 @@ export function ArmadorPedido({
               >
                 <span className="min-w-32 flex-1 text-[13px] font-medium text-foreground">
                   {p?.nombre ?? l.nombre ?? `#${l.perfume_id}`}
+                  {l.regalo && (
+                    <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-primary">
+                      Regalo
+                    </span>
+                  )}
                 </span>
 
                 {/* Un producto sin tallas (una gorra) no muestra selector */}
@@ -130,9 +138,11 @@ export function ArmadorPedido({
                   </SelectSimple>
                 )}
 
+                {/* El regalo es siempre 1 por venta: subirle cantidad regalaría más de lo pactado. */}
                 <Input
                   type="number" min="1" value={l.cantidad}
-                  className="h-8 w-16 text-[12.5px]"
+                  disabled={l.regalo}
+                  className="h-8 w-16 text-[12.5px] disabled:opacity-60"
                   aria-label="Cantidad"
                   onChange={e => actualizar(l.key, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
                 />

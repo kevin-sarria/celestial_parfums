@@ -33,6 +33,10 @@ export interface LineaPedido {
   cantidad: number;
   /** Quita el descuento de la página en ESTA línea (a crédito no siempre aplica). */
   sin_descuento: boolean;
+  /** El "+ Agregar regalo" de Ventas la agrega así: no cuenta en el subtotal
+   *  ni en el sugerido, aunque el producto sí tenga precio de venta normal
+   *  (para cuando se vende suelto, cobrado). */
+  regalo?: boolean;
 }
 
 /** Precio de lista de una talla (o el de portada si no está desglosada). */
@@ -41,6 +45,7 @@ export const precioLista = (p: Perfume, presentacion: string | null) =>
 
 /** Precio unitario de una línea, con o sin el descuento de la página. */
 export const precioUnitario = (l: LineaPedido, porId: Map<number, Perfume>) => {
+  if (l.regalo) return 0;
   const p = porId.get(l.perfume_id);
   if (!p) return 0;
   const base = precioLista(p, l.presentacion);
@@ -86,7 +91,7 @@ export const articulosDeLineas = (lineas: LineaPedido[], porId: Map<number, Perf
       const nombre = porId.get(l.perfume_id)?.nombre ?? l.nombre ?? `#${l.perfume_id}`;
       const veces = l.cantidad > 1 ? `${l.cantidad}× ` : '';
       // Lo que no tiene talla no lleva un paréntesis vacío detrás
-      return `${veces}${nombre}${l.presentacion ? ` (${l.presentacion})` : ''}`;
+      return `${veces}${nombre}${l.presentacion ? ` (${l.presentacion})` : ''}${l.regalo ? ' [regalo]' : ''}`;
     })
     .join(', ');
 

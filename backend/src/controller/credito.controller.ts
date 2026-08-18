@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import * as creditoService from '../services/credito.service';
+import { mapaFiltrosCreditos } from '../repositories/credito.repository';
 import { parsePagination, parseSearch } from '../utils/pagination';
+import { parseFiltros } from '../utils/filtros';
 import { mensajeSeguro } from '../utils/errorSeguro';
 
 export const getCreditos = async (req: Request, res: Response) => {
@@ -8,6 +10,7 @@ export const getCreditos = async (req: Request, res: Response) => {
     const { page, limit } = parsePagination(req.query as any);
     const result = await creditoService.getAllCreditos(
       page, limit, parseSearch(req.query as any), req.query.con_totales === '1',
+      parseFiltros(req.query as any, mapaFiltrosCreditos),
     );
     res.json(result);
   } catch (error: any) {
