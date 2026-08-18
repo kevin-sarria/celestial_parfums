@@ -285,7 +285,12 @@ export default function BuscadorSelect({
           ref={panelRef}
           tabIndex={-1}
           onKeyDown={buscador ? undefined : onKeyDown}
-          className="z-[60] flex flex-col overflow-hidden rounded-md border border-border bg-card shadow-lg outline-none"
+          // Por encima de CUALQUIER cosa que lo contenga: un modal (z-50), el
+          // popover de filtro de una columna o el tooltip de la tabla (los dos
+          // en z-100). Con z-60 el desplegable que vive DENTRO del filtro de
+          // "Referencia" se abría tapado por el propio recuadro del filtro:
+          // se veía la lista pero no se podía tocar ninguna opción.
+          className="z-[110] flex flex-col overflow-hidden rounded-md border border-border bg-card shadow-lg outline-none"
           style={{
             // `absolute` dentro del diálogo (que ya es su bloque contenedor) y
             // `fixed` cuando cuelga del documento.
