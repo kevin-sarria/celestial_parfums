@@ -82,7 +82,7 @@ export default function BackupSeguridad({ enMenu = false }: Props) {
       if (!res.ok || !res.cuerpo) { setError(res.error); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(res.cuerpo);
-      a.download = `backup-celestial-${new Date().toISOString().slice(0, 10)}.sql.gz`;
+      a.download = `backup-celestial-${new Date().toISOString().slice(0, 10)}.sql`;
       a.click();
       URL.revokeObjectURL(a.href);
       setExito('Copia descargada. Guárdala fuera del servidor: Drive, disco externo o similar.');

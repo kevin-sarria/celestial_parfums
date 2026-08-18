@@ -139,7 +139,23 @@ MariaDB 10.11 escribe como PRIMERA línea del dump un `/*M!999999\- enable the s
 `mysql.exe` de XAMPP (más viejo) corta con `ERROR at line 1: Unknown command '\-'`. **No es
 corrupción del respaldo**: se le quita esa línea (`tail -n +2 dump.sql > limpio.sql`) y carga
 entero. Antes de creer que un respaldo vino malo, comprobar `gzip -t`, el número de `CREATE TABLE`
-y que termine en `-- Dump completed on`.
+y que termine en `-- Dump completed on`. **Arreglado en el exportador** (2026-08-17,
+`backup.router.ts`): ahora quita esa línea él mismo y entrega `.sql` sin comprimir, así que ya no
+hace falta este paso a mano.
+
+## Un `my.ini` suelto en el datadir rompía TODO comando `mysql.exe` local (2026-08-17)
+
+Síntoma: hasta un `mysql -e "SELECT 1"` moría con
+`unknown variable 'innodb_force_recovery=1'` — no era la consulta ni el respaldo, era que **el
+cliente ni siquiera lograba arrancar**. Causa: quedó un `C:\xampp\mysql\data\my.ini` de 4 líneas
+(seguramente de cuando se recuperó el crash de `prisma migrate diff` del 2026-08-14, ver más abajo)
+con `innodb_force_recovery = 1` puesto bajo `[client]` — una variable que solo existe del lado
+`[mysqld]`, así que romper ahí revienta cualquier cliente que lea ese archivo. **La base nunca
+corrió en modo recuperación forzada** (`C:\xampp\mysql\bin\my.ini`, el que sí lee el servidor, no
+tenía la línea) así que no hubo riesgo de datos — solo bloqueaba la terminal. Se movió a
+`my.ini.bak-innodb-recovery` (no se borró) y los comandos volvieron a andar. Si `mysql.exe` da un
+error de "unknown variable" que no tiene nada que ver con lo que pediste, sospechar de un archivo
+de configuración suelto antes que de la base.
 
 ## `prisma migrate diff` REVIENTA el MySQL de XAMPP (2026-08-14)
 

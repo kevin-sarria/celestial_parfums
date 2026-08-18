@@ -1,8 +1,5 @@
 import { Router, Request, Response } from 'express';
 import { spawn } from 'child_process';
-import { createGzip } from 'zlib';
-import fs from 'fs';
-import path from 'path';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { generarSecretoBase32, otpauthUrl, verificarTotp } from '../utils/totp';
 import {
@@ -12,9 +9,14 @@ import logger from '../config/logger';
 
 /**
  * Copia de seguridad de la base de datos: exporta el SQL COMPLETO (estructura
- * y datos, mysqldump) comprimido, directo al navegador del administrador — el
- * respaldo vive fuera del servidor, que es el punto: si el servidor muere, la
- * copia no.
+ * y datos, mysqldump) directo al navegador del administrador — el respaldo
+ * vive fuera del servidor, que es el punto: si el servidor muere, la copia no.
+ *
+ * Sin comprimir a propósito: el dueño la carga a mano en su MySQL local, y
+ * MariaDB mete como primera línea `/*M!999999\- enable the sandbox mode * /`
+ * que el mysql.exe viejo de XAMPP no entiende. Esa línea se descarta aquí
+ * mismo (ver `esLineaSandbox`) para que el .sql que baja cargue directo, sin
+ * gunzip ni tail a mano.
  *
  * Doble candado: además de la sesión de admin exige un código TOTP de app
  * authenticator (información ultra sensible). Una vez configurado, el TOTP NO
@@ -23,6 +25,8 @@ import logger from '../config/logger';
  * teléfono no hay copia.
  */
 export const backupRouter = Router();
+
+const esLineaSandbox = (linea: string) => /^\/\*M!\d+\\-\s*enable the sandbox mode\s*\*\/\s*$/.test(linea.trim());
 
 /**
  * Las rutas de los archivos y sus lectores viven en `utils/estadoRespaldo`
@@ -100,7 +104,7 @@ backupRouter.post('/', requireAdmin, (req: Request, res: Response) => {
     { env: { ...process.env, MYSQL_PWD: decodeURIComponent(url.password) } },
   );
 
-  const nombre = `backup-celestial-${new Date().toISOString().slice(0, 10)}.sql.gz`;
+  const nombre = `backup-celestial-${new Date().toISOString().slice(0, 10)}.sql`;
   let fallo = false;
 
   dump.on('error', (e) => {
@@ -121,22 +125,42 @@ backupRouter.post('/', requireAdmin, (req: Request, res: Response) => {
    *
    * Antes la respuesta arrancaba en el evento 'spawn', o sea antes de saber si
    * el comando iba a funcionar. Si fallaba (binario ausente, credenciales
-   * malas, base equivocada) no escribía nada, pero el gzip ya se había cerrado
-   * solo y el navegador recibía un .gz **válido y VACÍO**: 20 bytes que se ven
-   * como un respaldo y no contienen ni una tabla. Pasó de verdad en producción
-   * el 2026-08-01. Un respaldo que miente es peor que no tener respaldo.
+   * malas, base equivocada) no escribía nada, pero la respuesta ya se había
+   * cerrado sola y el navegador recibía un archivo **válido y VACÍO** que se
+   * ve como un respaldo y no contiene ni una tabla. Pasó de verdad en
+   * producción el 2026-08-01. Un respaldo que miente es peor que no tener
+   * respaldo.
+   *
+   * De paso, mientras se espera esa primera línea se aprovecha para
+   * descartarla si es el comentario `sandbox mode` de MariaDB (ver
+   * `esLineaSandbox` arriba del archivo).
    */
   let bytes = 0;
-  const gzip = createGzip();
+  let primeraLineaVista = false;
+  let pendiente = Buffer.alloc(0);
 
-  dump.stdout.once('data', (primer: Buffer) => {
-    res.setHeader('Content-Type', 'application/gzip');
-    res.setHeader('Content-Disposition', `attachment; filename="${nombre}"`);
-    gzip.pipe(res);
-    gzip.write(primer);
-    bytes += primer.length;
-    dump.stdout.on('data', (d: Buffer) => { bytes += d.length; });
-    dump.stdout.pipe(gzip);
+  const enviar = (trozo: Buffer) => {
+    if (!res.headersSent) {
+      res.setHeader('Content-Type', 'application/sql');
+      res.setHeader('Content-Disposition', `attachment; filename="${nombre}"`);
+    }
+    res.write(trozo);
+  };
+
+  dump.stdout.on('data', (trozo: Buffer) => {
+    bytes += trozo.length;
+    if (primeraLineaVista) {
+      enviar(trozo);
+      return;
+    }
+    pendiente = Buffer.concat([pendiente, trozo]);
+    const salto = pendiente.indexOf(0x0a);
+    if (salto === -1) return; // aún no llega el primer salto de línea completo
+    primeraLineaVista = true;
+    const primeraLinea = pendiente.subarray(0, salto).toString('utf8');
+    const resto = pendiente.subarray(salto + 1);
+    if (!esLineaSandbox(primeraLinea)) enviar(Buffer.from(`${primeraLinea}\n`, 'utf8'));
+    if (resto.length) enviar(resto);
   });
 
   dump.on('close', (code) => {
@@ -158,14 +182,20 @@ backupRouter.post('/', requireAdmin, (req: Request, res: Response) => {
       return;
     }
 
+    // El dump entero cupo antes de ver un salto de línea (no pasa en la práctica,
+    // pero sin esto se perdería ese resto sin enviar)
+    if (!primeraLineaVista && pendiente.length && !esLineaSandbox(pendiente.toString('utf8'))) {
+      enviar(pendiente);
+    }
+
     if (code === 0) {
       escribirJson(marcaFile, { fecha: new Date().toISOString() });
       logger.info(`Copia de seguridad generada (${bytes} bytes) y descargada por el admin`);
-      gzip.end();
+      res.end();
     } else {
       logger.error(`mysqldump terminó con código ${code}: ${stderr.slice(0, 500)}`);
       // Con bytes ya enviados no se puede cambiar el status: se corta la
-      // descarga y el navegador la marca fallida (no queda un .gz "bueno")
+      // descarga y el navegador la marca fallida (no queda un archivo "bueno")
       res.destroy();
     }
   });

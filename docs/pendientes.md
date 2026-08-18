@@ -108,9 +108,11 @@ mucho de la tabla de arriba, avisar antes de seguir.
   dos bases locales**. **En el servidor (MariaDB 10.11) `migrate deploy` funciona normal.**
 - **Las tres bases están al día**: `perfumes_db`, `perfumes_test` y `celestial_prod_20260814`
   tienen exactamente las mismas migraciones aplicadas (comprobado).
-- **Todo subido a git** en la rama `producto-terminado` (14 y 15 de agosto): el producto terminado
-  con su migración, los 9 documentos de `docs/` y la mudanza del frontend a la capa HTTP única.
-  **Falta desplegar**: en el servidor no está nada de esto todavía.
+- **Todo subido a git** en `main` (14 y 15 de agosto): el producto terminado con su migración, los
+  9 documentos de `docs/` y la mudanza del frontend a la capa HTTP única.
+- **Ya desplegado en el servidor de producción** (confirmado por el dueño, 2026-08-17). Con esto
+  el código nuevo y la migración de producto terminado ya están en vivo — queda pendiente el
+  runbook de abajo para meter los 9 frascos armados al sistema.
 
 ## El refactor del frontend (capa HTTP única) — falta solo la parte pública
 

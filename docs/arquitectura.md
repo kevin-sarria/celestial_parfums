@@ -439,6 +439,10 @@ ultra largo […] que el mensaje sea muy breve"*.
   (RFC 6238 casero en `utils/totp.ts`, secreto en `backend/backups/totp.json`, fuera de git).
   Resetear TOTP = borrar ese archivo por SSH (a propósito: la web no puede). Recordatorio en
   la campana a los 7 días sin copia. mysqldump vía `MYSQLDUMP_PATH` o PATH.
+- **Baja como `.sql` plano, sin comprimir** (2026-08-17): a propósito, para que el dueño lo pueda
+  cargar él mismo con `mysql.exe` sin pasos intermedios. El router descarta al vuelo la primera
+  línea del dump si es el comentario `sandbox mode` de MariaDB — detalle en
+  [`gotchas.md`](gotchas.md#el-respaldo-de-producción-no-carga-tal-cual-en-xampp).
 - **Verificar en producción que el archivo pese MB, no bytes**, y que `MYSQLDUMP_PATH`
   apunte al de `mariadb-client`. El bug del respaldo vacío está documentado en
   [`gotchas.md`](gotchas.md).
