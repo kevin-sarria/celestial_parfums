@@ -401,12 +401,14 @@ model Perfume {
   /// un dato que el dueño edita, y el día que la renombre la regla dejaría de
   /// aplicarse en silencio. El formulario la marca sola al elegir "1.1".
   solo_armado        Boolean               @default(false)
-  /// El producto que Registrar venta sugiere regalar en 100 ml sueltos y en
-  /// cualquier combo (uno solo por venta, sin importar cuántas botellas
-  /// lleve). Decidido con el dueño el 2026-08-17: solo UN perfume puede
-  /// llevarla a la vez, así que `editPerfume`/`createPerfume` se la quitan al
-  /// anterior cuando se marca una ficha nueva.
-  regalo_automatico  Boolean               @default(false)
+  /// Marca que esta ficha NO es una fragancia — es un accesorio (perfumero,
+  /// bolsa, tarjeta). Reemplaza a `regalo_automatico` (2026-08-17, nunca llegó
+  /// a producción): en vez de UN producto marcado como "el regalo", cualquier
+  /// línea de la venta puede regalar parte de su cantidad (ver
+  /// `venta_perfume.regalo`), y este campo solo separa accesorios de
+  /// fragancias en los buscadores y en los reportes.
+  /// Solo tiene sentido con `tipo_producto = comprado`: se valida al guardar.
+  es_accesorio       Boolean               @default(false)
   /// "No hay ahora mismo": SÍ se muestra en la tienda, marcado como agotado, y
   /// el cliente puede pedir que le avisen cuando vuelva.
   agotado            Boolean               @default(false)
@@ -591,6 +593,12 @@ model VentaPerfume {
   ml         Int?
   // Unidades de ESTA fragancia y talla dentro de la venta.
   cantidad   Int     @default(1) @db.UnsignedSmallInt
+  /// Cuántas de esas unidades van SIN COBRAR (regalo). Nunca mayor que
+  /// `cantidad` — se valida en el esquema de Zod, no solo en la pantalla.
+  /// El inventario descuenta `cantidad` completa: lo regalado también salió
+  /// de la bodega. Reemplaza al `regalo: boolean` que existió una sesión en
+  /// `LineaPedido` del frontend (nunca llegó a la base).
+  regalo     Int     @default(0) @db.UnsignedSmallInt
   venta      Venta   @relation(fields: [venta_id], references: [id], onDelete: Cascade)
   perfume    Perfume @relation(fields: [perfume_id], references: [id], onDelete: Cascade)
 
