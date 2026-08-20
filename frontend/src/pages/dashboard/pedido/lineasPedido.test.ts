@@ -2,9 +2,12 @@ import { describe, it, expect } from 'vitest';
 import {
   precioLista, precioUnitario, subtotalDeLineas, unidadesDeLineas,
   articulosDeLineas, presentacionResumen, descuentoDeCupon,
+  itemsDeLineas, unidadesCobradas,
   type LineaPedido,
 } from './lineasPedido';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
+import type { Combo } from '../../../domain/entities/combo.schema';
+import { detectarCombos } from '../../../application/hooks/useComboDetector';
 
 /**
  * Cálculos compartidos por Ventas y Créditos. Antes cada pantalla tenía su
@@ -31,6 +34,7 @@ const linea = (over: Partial<LineaPedido> & Pick<LineaPedido, 'perfume_id'>): Li
   presentacion: '30ML',
   ml: 30,
   cantidad: 1,
+  regalo: 0,
   sin_descuento: false,
   ...over,
 });
@@ -143,5 +147,98 @@ describe('descuentoDeCupon — el tope protege el presupuesto de la campaña', (
 
   it('redondea al peso', () => {
     expect(descuentoDeCupon(33333, 15, 0)).toBe(5000); // 4999,95
+  });
+});
+
+/**
+ * El campo "Regalo" de una línea (diseño del 2026-08-18): cuántas de sus
+ * unidades van sin cobrar. Reemplaza a la línea-regalo aparte, fija en 1, que
+ * no se podía fusionar ni subir.
+ */
+describe('regalo por línea — qué se cobra', () => {
+  const eros = perfume({ id: 1, nombre: 'Eros', precio: 60000 });
+  const indiceEros = indice(eros);
+
+  it('sin regalo, se cobran todas las unidades', () => {
+    expect(unidadesCobradas(linea({ perfume_id: 1, cantidad: 3 }))).toBe(3);
+    expect(subtotalDeLineas([linea({ perfume_id: 1, cantidad: 3 })], indiceEros)).toBe(180000);
+  });
+
+  it('con regalo parcial, se cobra solo lo que no es regalo', () => {
+    const l = linea({ perfume_id: 1, cantidad: 2, regalo: 1 });
+    expect(unidadesCobradas(l)).toBe(1);
+    expect(subtotalDeLineas([l], indiceEros)).toBe(60000);
+  });
+
+  it('con regalo total, la línea no suma nada al subtotal', () => {
+    expect(subtotalDeLineas([linea({ perfume_id: 1, cantidad: 2, regalo: 2 })], indiceEros)).toBe(0);
+  });
+
+  it('las unidades siguen contando lo FÍSICO: el inventario descuenta lo regalado también', () => {
+    expect(unidadesDeLineas([linea({ perfume_id: 1, cantidad: 2, regalo: 1 })])).toBe(2);
+  });
+});
+
+describe('regalo por línea — el texto que se guarda', () => {
+  const p1 = perfume({ id: 1, nombre: 'Eros' });
+
+  it('marca cuántas van de regalo', () => {
+    expect(articulosDeLineas([linea({ perfume_id: 1, cantidad: 2, regalo: 1 })], indice(p1)))
+      .toBe('2× Eros (30ML) [1 regalo]');
+  });
+
+  it('sin regalo no menciona nada', () => {
+    expect(articulosDeLineas([linea({ perfume_id: 1, cantidad: 2 })], indice(p1)))
+      .toBe('2× Eros (30ML)');
+  });
+});
+
+/**
+ * DECISIÓN DEL DUEÑO (2026-08-20): lo regalado NO cuenta para armar el precio
+ * de combo. Si contara, el mismo frasco se descontaría dos veces —regalado y
+ * además abaratando el combo— y el pedido saldría más barato de lo que él
+ * quiso regalar. Por eso `itemsDeLineas` reporta las unidades COBRADAS.
+ *
+ * Se prueba con la detección de combos de verdad, no con un doble: lo que
+ * importa aquí es la plata final, no la forma del objeto intermedio.
+ */
+describe('regalo por línea — no arma combo con lo regalado', () => {
+  const contratipo = (id: number, nombre: string) => perfume({
+    id, nombre, precio: 60000, categoria: 'Contratipo',
+    precios: [{ presentacion: '30ML', ml: 30, precio: 60000, propio: false, presentacion_id: 1 }],
+  } as Partial<Perfume> & Pick<Perfume, 'id' | 'nombre'>);
+
+  /** Combo de 3 de 30 ML a $150.000 (sueltos valdrían $180.000). */
+  const comboDe3: Combo = {
+    id: 1, nombre: '3 de 30 ml', descripcion: null, imagen_url: null,
+    categoria_id: 1, categoria: 'Contratipo', presentacion_id: 1, presentacion: '30ML',
+    cantidad: 3, precio: 150000, descuento: 0, activo: true,
+  };
+
+  const cobro = (lineas: LineaPedido[], porId: Map<number, Perfume>) => {
+    const subtotal = subtotalDeLineas(lineas, porId);
+    const ahorro = detectarCombos(itemsDeLineas(lineas, porId), [comboDe3]).ahorroTotal;
+    return subtotal - ahorro;
+  };
+
+  it('3 frascos con 1 regalado: quedan 2 cobrados, no arma combo → $120.000', () => {
+    const porId = indice(contratipo(1, 'Eros'), contratipo(2, 'Sauvage'), contratipo(3, 'Bleu'));
+    const lineas = [
+      linea({ perfume_id: 1, cantidad: 1 }),
+      linea({ perfume_id: 2, key: 'k2', cantidad: 1 }),
+      linea({ perfume_id: 3, key: 'k3', cantidad: 1, regalo: 1 }),
+    ];
+    expect(cobro(lineas, porId)).toBe(120000);
+  });
+
+  it('"el 4to gratis": 4 frascos con 1 regalado sí arma el combo de 3 → $150.000', () => {
+    const porId = indice(contratipo(1, 'Eros'));
+    const lineas = [linea({ perfume_id: 1, cantidad: 4, regalo: 1 })];
+    expect(cobro(lineas, porId)).toBe(150000);
+  });
+
+  it('sin regalos nada cambia: 3 frascos siguen armando el combo → $150.000', () => {
+    const porId = indice(contratipo(1, 'Eros'));
+    expect(cobro([linea({ perfume_id: 1, cantidad: 3 })], porId)).toBe(150000);
   });
 });

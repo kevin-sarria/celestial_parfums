@@ -33,19 +33,25 @@ export interface LineaPedido {
   cantidad: number;
   /** Quita el descuento de la página en ESTA línea (a crédito no siempre aplica). */
   sin_descuento: boolean;
-  /** El "+ Agregar regalo" de Ventas la agrega así: no cuenta en el subtotal
-   *  ni en el sugerido, aunque el producto sí tenga precio de venta normal
-   *  (para cuando se vende suelto, cobrado). */
-  regalo?: boolean;
+  /**
+   * Cuántas de `cantidad` van SIN COBRAR. Nunca mayor que `cantidad` (se
+   * valida en el formulario Y en el servidor). Reemplaza al `regalo: boolean`
+   * de una sola línea fija en 1 que existió una sesión — con este número,
+   * cualquier línea (perfume o accesorio) puede tener parte gratis y parte
+   * cobrada, sin necesitar una segunda línea escondida.
+   */
+  regalo: number;
 }
 
 /** Precio de lista de una talla (o el de portada si no está desglosada). */
 export const precioLista = (p: Perfume, presentacion: string | null) =>
   (presentacion ? p.precios.find(x => x.presentacion === presentacion)?.precio : undefined) ?? p.precio;
 
+/** Cuántas unidades de la línea SÍ se cobran (la cantidad, menos lo regalado). */
+export const unidadesCobradas = (l: LineaPedido) => Math.max(0, l.cantidad - l.regalo);
+
 /** Precio unitario de una línea, con o sin el descuento de la página. */
 export const precioUnitario = (l: LineaPedido, porId: Map<number, Perfume>) => {
-  if (l.regalo) return 0;
   const p = porId.get(l.perfume_id);
   if (!p) return 0;
   const base = precioLista(p, l.presentacion);
@@ -54,7 +60,7 @@ export const precioUnitario = (l: LineaPedido, porId: Map<number, Perfume>) => {
 
 /** Suma de las líneas, antes de combo y de cupón. */
 export const subtotalDeLineas = (lineas: LineaPedido[], porId: Map<number, Perfume>) =>
-  lineas.reduce((s, l) => s + precioUnitario(l, porId) * l.cantidad, 0);
+  lineas.reduce((s, l) => s + precioUnitario(l, porId) * unidadesCobradas(l), 0);
 
 /**
  * Unidades totales del pedido. Sustituye al campo "Cantidad" que se tecleaba a
@@ -64,7 +70,18 @@ export const subtotalDeLineas = (lineas: LineaPedido[], porId: Map<number, Perfu
 export const unidadesDeLineas = (lineas: LineaPedido[]) =>
   lineas.reduce((s, l) => s + l.cantidad, 0);
 
-/** Líneas como items de carrito, para reutilizar la detección de combos. */
+/**
+ * Líneas como items de carrito, para reutilizar la detección de combos.
+ *
+ * Va con las unidades COBRADAS, no con las físicas: lo regalado no arma combo
+ * (decidido con el dueño el 2026-08-20). Si contara, el mismo frasco se
+ * descontaría dos veces —regalado, y además abaratando el combo— y el pedido
+ * saldría por debajo de lo que él quiso regalar. De paso, así "el 4to gratis"
+ * cae solo: quedan 3 cobrados, que es exactamente el combo de 3.
+ *
+ * El inventario es el que sí descuenta las unidades físicas, y eso vive en el
+ * backend con `cantidad` — aquí solo se decide qué se COBRA.
+ */
 export const itemsDeLineas = (lineas: LineaPedido[], porId: Map<number, Perfume>): CartItem[] =>
   lineas.map(l => {
     const p = porId.get(l.perfume_id);
@@ -75,7 +92,7 @@ export const itemsDeLineas = (lineas: LineaPedido[], porId: Map<number, Perfume>
       tipo: p?.categoria ?? '',
       presentacion: l.presentacion ?? '',
       genero: p?.genero ?? null,
-      cantidad: l.cantidad,
+      cantidad: unidadesCobradas(l),
       precio: precioUnitario(l, porId),
       descuento: l.sin_descuento ? 0 : (p?.descuento ?? 0),
       imagen_url: null,
@@ -90,8 +107,9 @@ export const articulosDeLineas = (lineas: LineaPedido[], porId: Map<number, Perf
     .map(l => {
       const nombre = porId.get(l.perfume_id)?.nombre ?? l.nombre ?? `#${l.perfume_id}`;
       const veces = l.cantidad > 1 ? `${l.cantidad}× ` : '';
+      const regaloTxt = l.regalo > 0 ? ` [${l.regalo} regalo]` : '';
       // Lo que no tiene talla no lleva un paréntesis vacío detrás
-      return `${veces}${nombre}${l.presentacion ? ` (${l.presentacion})` : ''}${l.regalo ? ' [regalo]' : ''}`;
+      return `${veces}${nombre}${l.presentacion ? ` (${l.presentacion})` : ''}${regaloTxt}`;
     })
     .join(', ');
 
