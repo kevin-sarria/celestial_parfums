@@ -27,6 +27,11 @@ export const createVentaSchema = z.object({
     perfume_id: z.number().int().positive(),
     ml: z.number().int().positive().nullish(),
     cantidad: z.number().int().min(1).max(999).default(1),
+    /** Cuántas de esa cantidad van sin cobrar. Nunca mayor que la cantidad. */
+    regalo: z.number().int().min(0).max(999).default(0),
+  }).refine((l) => l.regalo <= l.cantidad, {
+    message: 'El regalo no puede ser mayor que la cantidad',
+    path: ['regalo'],
   })).optional(),
   valor_venta: z.number().positive('El valor debe ser mayor a 0'),
   // Es un dato EXTRA: se acepta texto, null o ausente
@@ -51,19 +56,21 @@ export type CreateVentaInput = z.infer<typeof createVentaSchema>;
 /** Normaliza las dos formas de entrada a una sola lista de líneas. */
 export const lineasDeVenta = (v: CreateVentaInput) => {
   if (v.lineas?.length) {
-    // Se agrupa por producto+talla: dos Khamrah de 30 ml son UNA línea de 2
-    const mapa = new Map<string, { perfume_id: number; ml: number | null; cantidad: number }>();
+    // Se agrupa por producto+talla: dos Khamrah de 30 ml son UNA línea de 2.
+    // El regalo se suma aparte: agrupar no puede romper `regalo <= cantidad`,
+    // porque sumar dos pares que ya cumplen la desigualdad la sigue cumpliendo.
+    const mapa = new Map<string, { perfume_id: number; ml: number | null; cantidad: number; regalo: number }>();
     for (const l of v.lineas) {
       const ml = l.ml ?? null;
       const clave = `${l.perfume_id}|${ml ?? ''}`;
       const previa = mapa.get(clave);
-      if (previa) previa.cantidad += l.cantidad;
-      else mapa.set(clave, { perfume_id: l.perfume_id, ml, cantidad: l.cantidad });
+      if (previa) { previa.cantidad += l.cantidad; previa.regalo += l.regalo; }
+      else mapa.set(clave, { perfume_id: l.perfume_id, ml, cantidad: l.cantidad, regalo: l.regalo });
     }
     return [...mapa.values()];
   }
-  // Forma vieja: ids repetidos = unidades, sin talla
+  // Forma vieja: ids repetidos = unidades, sin talla (y nunca de regalo)
   const conteo = new Map<number, number>();
   for (const id of v.perfume_ids ?? []) conteo.set(id, (conteo.get(id) ?? 0) + 1);
-  return [...conteo].map(([perfume_id, cantidad]) => ({ perfume_id, ml: null, cantidad }));
+  return [...conteo].map(([perfume_id, cantidad]) => ({ perfume_id, ml: null, cantidad, regalo: 0 }));
 };

@@ -48,7 +48,10 @@ const mapVenta = (v: any) => ({
   presentacion:       v.presentacion,
   referencia_perfume: v.referencia_perfume,
   // Una venta de combo puede llevar varios perfumes del catálogo enlazados
-  perfumes:           (v.perfumes ?? []).map((vp: any) => ({ id: vp.perfume.id, nombre: vp.perfume.nombre, ml: vp.ml ?? null, cantidad: vp.cantidad ?? 1 })),
+  perfumes:           (v.perfumes ?? []).map((vp: any) => ({
+    id: vp.perfume.id, nombre: vp.perfume.nombre, ml: vp.ml ?? null,
+    cantidad: vp.cantidad ?? 1, regalo: vp.regalo ?? 0,
+  })),
   valor_venta:        Number(v.valor_venta),
   datos_adicionales:  v.datos_adicionales ?? null,
   pagada:             v.pagada,
