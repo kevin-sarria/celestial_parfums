@@ -145,7 +145,7 @@ export function PerfumesTab({
       insumo_producto_id: p.insumo_producto_id ?? '',
       ml_utiles: p.ml_utiles ? String(p.ml_utiles) : '',
       solo_armado: p.solo_armado ?? false,
-      regalo_automatico: p.regalo_automatico ?? false,
+      es_accesorio: p.es_accesorio ?? false,
       envases_talla: Object.fromEntries(
         (p.precios ?? []).filter(pr => pr.envase_insumo_id)
           .map(pr => [pr.presentacion_id, pr.envase_insumo_id as number]),
@@ -191,7 +191,9 @@ export function PerfumesTab({
       ml_utiles: Number(form.ml_utiles) || null,
       // Solo tiene sentido en lo que se fabrica: un comprado ya viene armado.
       solo_armado: form.tipo_producto === 'fabricado' && form.solo_armado,
-      regalo_automatico: form.regalo_automatico,
+      // Solo tiene sentido en lo comprado: si cambió de tipo después de marcarla,
+      // la casilla se apaga sola en vez de que el servidor rechace el guardado.
+      es_accesorio: form.tipo_producto === 'comprado' && form.es_accesorio,
       envases_talla: form.presentaciones.map(id => ({
         presentacion_id: id,
         envase_insumo_id: form.envases_talla[id] || null,
@@ -455,27 +457,28 @@ export function PerfumesTab({
           </label>
         )}
 
-        {/* El botón "+ Agregar regalo" de Registrar venta busca esta ficha por esta
-            casilla, no por el nombre: así el dueño puede cambiar de un día para otro
-            qué se regala (una tarjeta, otro perfumero) sin tocar código. */}
-        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 text-[13px] text-foreground">
-          <input
-            type="checkbox" className="mt-0.5 size-4 accent-primary"
-            checked={form.regalo_automatico}
-            onChange={e => setForm(f => ({ ...f, regalo_automatico: e.target.checked }))}
-          />
-          <span>
-            Es el regalo automático de Ventas (100 ml sueltos y cualquier combo)
-            <span className="block text-[12px] font-normal text-muted-foreground">
-              Registrar venta va a sugerir agregarlo gratis, una sola vez por venta sin importar
-              cuántas botellas lleve. Solo un producto puede tener esta marca a la vez: marcarla
-              aquí se la quita a cualquier otro que la tuviera.
-            </span>
-          </span>
-        </label>
-
         {form.tipo_producto !== 'fabricado' && (
           <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3">
+            {/* Solo en "comprado": un accesorio se compra hecho y se revende, no
+                tiene receta ni talla. Mostrarla también en "fraccionado" dejaría
+                marcar algo que el servidor rechaza al guardar. */}
+            {form.tipo_producto === 'comprado' && (
+              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-card p-2.5 text-[13px] text-foreground">
+                <input
+                  type="checkbox" className="mt-0.5 size-4 accent-primary"
+                  checked={form.es_accesorio}
+                  onChange={e => setForm(f => ({ ...f, es_accesorio: e.target.checked }))}
+                />
+                <span>
+                  Es un accesorio, no una fragancia (perfumero, bolsa, tarjeta…)
+                  <span className="block text-[12px] font-normal text-muted-foreground">
+                    Aparece en su propio buscador dentro de Registrar venta, aparte de los
+                    perfumes, para agregarlo como extra o como regalo en cualquier venta.
+                  </span>
+                </span>
+              </label>
+            )}
+
             <Field label={form.tipo_producto === 'comprado' ? '¿Qué insumo ES este producto?' : '¿De qué botella sale?'}>
               <BuscadorSelect
                 value={form.insumo_producto_id}

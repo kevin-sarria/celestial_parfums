@@ -96,8 +96,8 @@ export const perfumeSchema = z.object({
   frascos_armados: z.number().default(0),
   /** Los 1.1: solo se venden si ya están armados, nunca contra pedido. */
   solo_armado: z.boolean().default(false),
-  /** El que Registrar venta sugiere regalar en 100 ml sueltos y en cualquier combo. */
-  regalo_automatico: z.boolean().default(false),
+  /** Es un accesorio (perfumero, bolsa, tarjeta), no una fragancia. */
+  es_accesorio: z.boolean().default(false),
   /**
    * ¿Está en la tienda? Distinto de `agotado`: un agotado SÍ se muestra (con su
    * marca y el "avísame cuando vuelva"); uno despublicado no aparece por ningún
