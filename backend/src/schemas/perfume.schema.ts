@@ -25,8 +25,9 @@ export const createPerfumeSchema = z.object({
   ml_utiles: z.number().int().positive().nullish(),
   /// "Solo se vende si ya está armado" (los 1.1): agotado mientras no haya frascos hechos.
   solo_armado: z.boolean().optional(),
-  /// El producto que Ventas sugiere regalar en 100 ml sueltos y en cualquier combo. Solo uno a la vez.
-  regalo_automatico: z.boolean().optional(),
+  /// Marca que esta ficha es un accesorio (perfumero, bolsa, tarjeta), no una fragancia.
+  /// Solo tiene sentido en un producto `comprado` (sin receta ni talla).
+  es_accesorio: z.boolean().optional(),
   /**
    * Aromas y ocasiones dejaron de ser obligatorios: el catálogo ya no es solo
    * perfumes (una gorra no tiene notas olfativas ni ocasión de uso), y al crear
@@ -51,6 +52,16 @@ export const createPerfumeSchema = z.object({
       }),
     )
     .optional(),
+}).superRefine((v, ctx) => {
+  // Un accesorio se compra hecho y se revende: no tiene receta ni talla. Dejar
+  // marcar accesorio un `fabricado` o un `fraccionado` guardaría una ficha que
+  // dice dos cosas incompatibles a la vez.
+  if (v.es_accesorio && (v.tipo_producto ?? 'fabricado') !== 'comprado') {
+    ctx.addIssue({
+      code: 'custom', path: ['es_accesorio'],
+      message: 'Un accesorio debe ser "Lo compro hecho y lo revendo" (comprado), no tiene receta ni talla',
+    });
+  }
 });
 
 export const patchDescuentoSchema = z.object({

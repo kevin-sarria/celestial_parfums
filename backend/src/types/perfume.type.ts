@@ -18,8 +18,8 @@
   ml_utiles?: number | null;
   /** "Solo se vende si ya está armado" (los 1.1). */
   solo_armado?: boolean;
-  /** El producto que se sugiere de regalo en 100 ml sueltos y en cualquier combo. */
-  regalo_automatico?: boolean;
+  /** Marca que esta ficha es un accesorio (perfumero, bolsa, tarjeta), no una fragancia. */
+  es_accesorio?: boolean;
   envases_talla?: { presentacion_id: number; envase_insumo_id?: number | null; accesorios?: number[] }[];
   tipos_aroma: number[];
   ocasiones: number[];

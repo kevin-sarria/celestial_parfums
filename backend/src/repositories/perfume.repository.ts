@@ -152,11 +152,6 @@ const enlacesPresentacion = (data: CreatePerfumeDTO) => {
 };
 
 export const createPerfume = async (data: CreatePerfumeDTO) => {
-  // Solo una ficha a la vez puede ser el regalo automático: si esta lo marca,
-  // se lo quita a la anterior para no dejar dos productos disputando el botón.
-  if (data.regalo_automatico) {
-    await prisma.perfume.updateMany({ where: { regalo_automatico: true }, data: { regalo_automatico: false } });
-  }
   const perfume = await prisma.perfume.create({
     data: {
       nombre:       data.nombre,
@@ -177,7 +172,7 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       insumo_producto_id: data.insumo_producto_id ?? null,
       ml_utiles: data.ml_utiles ?? null,
       solo_armado: data.solo_armado ?? false,
-      regalo_automatico: data.regalo_automatico ?? false,
+      es_accesorio: data.es_accesorio ?? false,
       tipos_aroma: {
         create: (data.tipos_aroma ?? []).map((id) => ({ tipo_aroma_id: id })),
       },
@@ -227,14 +222,6 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
   await prisma.$transaction([
     prisma.perfumeTipoAroma.deleteMany({ where: { perfume_id: numId } }),
     prisma.perfumeOcasion.deleteMany({ where: { perfume_id: numId } }),
-    // Mismo criterio que crear: si ESTA ficha se marca como el regalo, se lo
-    // quita a cualquier otra que lo tuviera (nunca dos a la vez).
-    ...(data.regalo_automatico
-      ? [prisma.perfume.updateMany({
-          where: { regalo_automatico: true, id: { not: numId } },
-          data: { regalo_automatico: false },
-        })]
-      : []),
     prisma.perfume.update({
       where: { id: numId },
       data: {
@@ -258,7 +245,7 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
         ...(data.insumo_producto_id !== undefined ? { insumo_producto_id: data.insumo_producto_id ?? null } : {}),
         ...(data.ml_utiles !== undefined ? { ml_utiles: data.ml_utiles ?? null } : {}),
         ...(data.solo_armado !== undefined ? { solo_armado: data.solo_armado } : {}),
-        ...(data.regalo_automatico !== undefined ? { regalo_automatico: data.regalo_automatico } : {}),
+        ...(data.es_accesorio !== undefined ? { es_accesorio: data.es_accesorio } : {}),
         tipos_aroma: {
           create: (data.tipos_aroma ?? []).map((tid) => ({ tipo_aroma_id: tid })),
         },
