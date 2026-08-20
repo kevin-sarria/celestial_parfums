@@ -101,6 +101,9 @@ export function CreditoForm({
         presentacion: elegida?.presentacion ?? null,
         ml: elegida?.ml ?? null,
         cantidad: prod.cantidad,
+        // Créditos no maneja regalos todavía: su backend no los guarda, y por
+        // eso su <ArmadorPedido> tampoco enciende `permitirExtras`.
+        regalo: 0,
         sin_descuento: false,
       };
     });

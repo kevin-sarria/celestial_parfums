@@ -56,7 +56,8 @@ export interface Venta {
   presentacion: string;
   referencia_perfume: string;
   /** Perfumes del catálogo incluidos en la venta (un combo lleva varios; cantidad = unidades de esa fragancia). */
-  perfumes: { id: number; nombre: string; ml: number | null; cantidad: number }[];
+  /** `regalo` = cuántas de esas unidades fueron sin cobrar (0 en las históricas). */
+  perfumes: { id: number; nombre: string; ml: number | null; cantidad: number; regalo: number }[];
   valor_venta: number;
   datos_adicionales: string | null;
   /** false = pendiente de pago; al marcarla pagada se canjea el código enlazado. */

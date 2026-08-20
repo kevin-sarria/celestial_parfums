@@ -94,6 +94,7 @@ export function VentaForm({
         presentacion: talla?.presentacion ?? null,
         ml: p.ml ?? null,
         cantidad: p.cantidad ?? 1,
+        regalo: p.regalo ?? 0,
         sin_descuento: false,
       };
     });
@@ -144,33 +145,6 @@ export function VentaForm({
     return detectarCombos(itemsDeLineas(form.lineas, porId), combos)?.ahorroTotal ?? 0;
   }, [form.lineas, combos, porId]);
 
-  /**
-   * El regalo automático (decidido con el dueño el 2026-08-17): UN producto,
-   * marcado en su ficha, se sugiere gratis una sola vez por venta — nunca uno
-   * por botella — cuando el pedido trae un 100 ml suelto o ya llegó a precio
-   * de combo (cualquier talla). El botón desaparece solo si ya se agregó.
-   */
-  const productoRegalo = useMemo(() => catalogo.find(p => p.regalo_automatico), [catalogo]);
-  const calificaRegalo = form.lineas.some(l => l.ml === 100) || ahorroCombo > 0;
-  const regaloYaAgregado = form.lineas.some(l => l.regalo);
-  const agregarRegalo = () => {
-    if (!productoRegalo) return;
-    const primera = productoRegalo.precios[0];
-    setForm(f => ({
-      ...f,
-      lineas: [...f.lineas, {
-        key: `${productoRegalo.id}-regalo-${Date.now()}`,
-        perfume_id: productoRegalo.id,
-        nombre: productoRegalo.nombre,
-        presentacion: primera?.presentacion ?? null,
-        ml: primera?.ml ?? null,
-        cantidad: 1,
-        sin_descuento: false,
-        regalo: true,
-      }],
-    }));
-  };
-
   const cupon = codigoCheck?.valido ? codigoCheck.cupon : undefined;
   const baseCupon = Math.max(0, subtotal - ahorroCombo);
   const noAlcanzaMinimo = !!cupon && cupon.min_monto > 0 && baseCupon < cupon.min_monto;
@@ -202,7 +176,7 @@ export function VentaForm({
         lineas: [...f.lineas, {
           key: `${json.data.id}-sin-${Date.now()}`,
           perfume_id: json.data.id, nombre: json.data.nombre,
-          presentacion: null, ml: null, cantidad: 1, sin_descuento: false,
+          presentacion: null, ml: null, cantidad: 1, regalo: 0, sin_descuento: false,
         }],
       }));
       setNuevoProd(null); setError(''); setCreoAlgo(true);
@@ -244,7 +218,9 @@ export function VentaForm({
       // Se deriva de las líneas: antes era una casilla aparte que tocaba cuadrar
       cantidad_perfumes: unidades,
       presentacion: presentacionResumen(form.lineas),
-      lineas: form.lineas.map(l => ({ perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad })),
+      lineas: form.lineas.map(l => ({
+        perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad, regalo: l.regalo,
+      })),
       valor_venta: Number(form.valor_venta),
       datos_adicionales: form.datos_adicionales.trim() || null,
       pagada: form.pagada,
@@ -339,20 +315,9 @@ export function VentaForm({
           onChange={lineas => setForm(f => ({ ...f, lineas }))}
           catalogo={catalogo}
           porId={porId}
+          permitirExtras
           onCrearProducto={() => setNuevoProd({ nombre: '', precio: '' })}
         />
-
-        {productoRegalo && calificaRegalo && !regaloYaAgregado && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-primary/25 bg-brand-soft/40 p-2.5 text-[12.5px] text-primary">
-            <span>
-              Este pedido califica para regalar <strong>{productoRegalo.nombre}</strong> — se
-              agrega una sola vez, sin costo.
-            </span>
-            <Button type="button" size="sm" variant="outline" onClick={agregarRegalo}>
-              + Agregar regalo
-            </Button>
-          </div>
-        )}
 
         {nuevoProd && (
           <div className="space-y-2 rounded-lg border border-primary/25 bg-brand-soft/40 p-3">
