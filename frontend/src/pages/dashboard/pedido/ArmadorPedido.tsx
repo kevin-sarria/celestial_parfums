@@ -4,7 +4,7 @@ import { SelectSimple } from '@/components/ui/select-simple';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import { formatPrice } from '../helpers';
-import { precioUnitario, unidadesDeLineas, type LineaPedido } from './lineasPedido';
+import { precioUnitario, unidadesCobradas, unidadesDeLineas, type LineaPedido } from './lineasPedido';
 
 interface ArmadorPedidoProps {
   lineas: LineaPedido[];
@@ -14,6 +14,12 @@ interface ArmadorPedidoProps {
   porId: Map<number, Perfume>;
   /** Solo Créditos: check por línea para quitar el descuento de la página. */
   permitirSinDescuento?: boolean;
+  /**
+   * Solo Ventas: agrega el buscador de accesorios y el campo "Regalo" por línea.
+   * Créditos no la enciende porque su backend no guarda ninguno de los dos
+   * todavía — mostrarlos ahí dejaría escribir algo que se descarta en silencio.
+   */
+  permitirExtras?: boolean;
   /** Solo Ventas: da de alta un producto que no está en el catálogo. */
   onCrearProducto?: () => void;
   /** Texto del buscador. */
@@ -29,10 +35,18 @@ interface ArmadorPedidoProps {
  */
 export function ArmadorPedido({
   lineas, onChange, catalogo, porId,
-  permitirSinDescuento, onCrearProducto,
+  permitirSinDescuento, permitirExtras, onCrearProducto,
   placeholder = 'Buscar y agregar producto…',
 }: ArmadorPedidoProps) {
   const unidades = unidadesDeLineas(lineas);
+
+  /**
+   * Sin `permitirExtras` el buscador de siempre sigue mostrando TODO el
+   * catálogo: separar los accesorios solo tiene sentido cuando hay un segundo
+   * buscador que los recoja. Sin él quedarían invisibles para Créditos.
+   */
+  const fragancias = permitirExtras ? catalogo.filter(p => !p.es_accesorio) : catalogo;
+  const accesorios = permitirExtras ? catalogo.filter(p => p.es_accesorio) : [];
 
   /** Las tallas de un perfume, con su ml. Vacío = producto sin talla. */
   const tallasDe = (p: Perfume | undefined) => p?.precios ?? [];
@@ -43,9 +57,10 @@ export function ArmadorPedido({
     if (!p) return;
     const primera = tallasDe(p)[0];
     const presentacion = primera?.presentacion ?? null;
-    // Nunca se fusiona con una línea de regalo: sumarle unidades a esa línea
-    // las volvería gratis también.
-    const i = lineas.findIndex(l => l.perfume_id === id && l.presentacion === presentacion && !l.regalo);
+    // Fusión simple: el mismo producto y la misma talla son UNA línea. Con el
+    // regalo como número dentro de esa misma línea ya no hace falta el guarda
+    // que antes evitaba mezclarla con la línea-regalo aparte.
+    const i = lineas.findIndex(l => l.perfume_id === id && l.presentacion === presentacion);
     if (i >= 0) {
       onChange(lineas.map((l, k) => (k === i ? { ...l, cantidad: l.cantidad + 1 } : l)));
       return;
@@ -57,6 +72,7 @@ export function ArmadorPedido({
       presentacion,
       ml: primera?.ml ?? null,
       cantidad: 1,
+      regalo: 0,
       sin_descuento: false,
     }]);
   };
@@ -70,11 +86,15 @@ export function ArmadorPedido({
     const idx = siguientes.findIndex(l => l.key === key);
     const actual = siguientes[idx];
     const gemela = siguientes.findIndex(
-      (l, i) => i !== idx && l.perfume_id === actual.perfume_id
-        && l.presentacion === actual.presentacion && l.regalo === actual.regalo,
+      (l, i) => i !== idx && l.perfume_id === actual.perfume_id && l.presentacion === actual.presentacion,
     );
     if (gemela >= 0) {
-      siguientes[gemela] = { ...siguientes[gemela], cantidad: siguientes[gemela].cantidad + actual.cantidad };
+      // Al fusionar se suman las dos mitades: las unidades y las regaladas.
+      siguientes[gemela] = {
+        ...siguientes[gemela],
+        cantidad: siguientes[gemela].cantidad + actual.cantidad,
+        regalo: siguientes[gemela].regalo + actual.regalo,
+      };
       siguientes = siguientes.filter((_, i) => i !== idx);
     }
     onChange(siguientes);
@@ -87,7 +107,7 @@ export function ArmadorPedido({
       <BuscadorSelect
         opciones={[
           ...(onCrearProducto ? [{ id: 'nuevo', nombre: '+ Crear producto nuevo (no está en el catálogo)' }] : []),
-          ...catalogo.map(p => ({ id: p.id, nombre: p.nombre })),
+          ...fragancias.map(p => ({ id: p.id, nombre: p.nombre })),
         ]}
         placeholder={placeholder}
         vacio="Sin productos en el catálogo"
@@ -96,6 +116,17 @@ export function ArmadorPedido({
           else agregar(Number(id));
         }}
       />
+
+      {/* Si todavía no hay ninguna ficha marcada como accesorio, el buscador no
+          se pinta: un campo sin nada que ofrecer es solo ruido en la pantalla. */}
+      {permitirExtras && accesorios.length > 0 && (
+        <BuscadorSelect
+          opciones={accesorios.map(p => ({ id: p.id, nombre: p.nombre }))}
+          placeholder="Buscar y agregar accesorio (perfumero, bolsa, tarjeta…)"
+          vacio="Sin accesorios en el catálogo"
+          onSelect={id => agregar(Number(id))}
+        />
+      )}
 
       {lineas.length > 0 && (
         <ul className="flex flex-col gap-1.5">
@@ -110,9 +141,9 @@ export function ArmadorPedido({
               >
                 <span className="min-w-32 flex-1 text-[13px] font-medium text-foreground">
                   {p?.nombre ?? l.nombre ?? `#${l.perfume_id}`}
-                  {l.regalo && (
+                  {l.regalo > 0 && (
                     <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-primary">
-                      Regalo
+                      {l.regalo === l.cantidad ? 'Regalo' : `${l.regalo} regalo`}
                     </span>
                   )}
                 </span>
@@ -138,14 +169,33 @@ export function ArmadorPedido({
                   </SelectSimple>
                 )}
 
-                {/* El regalo es siempre 1 por venta: subirle cantidad regalaría más de lo pactado. */}
                 <Input
                   type="number" min="1" value={l.cantidad}
-                  disabled={l.regalo}
-                  className="h-8 w-16 text-[12.5px] disabled:opacity-60"
+                  className="h-8 w-16 text-[12.5px]"
                   aria-label="Cantidad"
-                  onChange={e => actualizar(l.key, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
+                  onChange={e => {
+                    const cantidad = Math.max(1, Number(e.target.value) || 1);
+                    // El regalo nunca puede quedar por encima de la cantidad nueva.
+                    actualizar(l.key, { cantidad, regalo: Math.min(l.regalo, cantidad) });
+                  }}
                 />
+
+                {permitirExtras && (
+                  <label
+                    className="flex items-center gap-1 text-[11.5px] text-muted-foreground"
+                    title="Cuántas de estas unidades van sin cobrar"
+                  >
+                    regalo
+                    <Input
+                      type="number" min="0" max={l.cantidad} value={l.regalo}
+                      className="h-8 w-14 text-[12.5px]"
+                      aria-label="Regalo"
+                      onChange={e => actualizar(l.key, {
+                        regalo: Math.min(l.cantidad, Math.max(0, Number(e.target.value) || 0)),
+                      })}
+                    />
+                  </label>
+                )}
 
                 {permitirSinDescuento && descuento > 0 && (
                   <label
@@ -162,7 +212,7 @@ export function ArmadorPedido({
                 )}
 
                 <span className="w-24 text-right text-[12.5px] font-semibold tabular-nums text-foreground">
-                  {formatPrice(precioUnitario(l, porId) * l.cantidad)}
+                  {formatPrice(precioUnitario(l, porId) * unidadesCobradas(l))}
                 </span>
 
                 <button
