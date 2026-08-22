@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import { useAuthContext } from '../context/useAuthContext';
 
 export interface AbonoPortal {
@@ -38,15 +39,13 @@ export function usePortalCredito() {
       return;
     }
     setLoading(true);
-    try {
-      const res = await authFetchWithRefresh(`${BASE_URL}/api/portal/credito`);
-      const json = await res.json();
-      setData(res.ok ? json.data : null);
-    } catch {
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
+    // Sin toast a propósito: esto lo pide `CatalogHeader`, o sea TODAS las
+    // páginas. Un servidor caído sacaría el mismo aviso una y otra vez encima
+    // de la tienda. Si falla, el cliente simplemente no ve su deuda arriba;
+    // la pantalla que la enseña de verdad es "Mi crédito".
+    const res = await http.get<{ data: PortalCredito }>(urls.portal.credito);
+    setData(res.cuerpo?.data ?? null);
+    setLoading(false);
   }, [user, isAdmin]);
 
   useEffect(() => {

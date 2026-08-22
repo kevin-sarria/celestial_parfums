@@ -98,6 +98,22 @@ formularios. Van 126 rutas centralizadas y **77 llamadas por `http`; quedan 38**
 viejo, **todas en la parte pública** —tienda, portal del cliente, login/registro— que es lo único
 pendiente (el total bajó de 151 porque varias se fusionaron: ver *Menos viajes al servidor*).
 
+**El portal del cliente ya está migrado** (2026-08-22): Mis compras (con la tarjeta de reseña y
+la garantía de cada pedido), Mis favoritos, Mis recompensas, Mi crédito y el `ListasProvider` que
+guarda los corazones y las campanas de todas las cards. Quedan **25 archivos** con el camino
+viejo: los hooks del catálogo público, login/registro/verificación con su botón de Google, Blog,
+Contáctame, Sobre nosotros y el PDF del catálogo.
+
+Al migrarlo salió lo que estas pantallas tenían en común y no se veía: **se tragaban el error en
+silencio**. Un fallo de red dejaba "no tienes favoritos" a quien sí los tiene y "el programa de
+recompensas no está activo" cuando sí lo está — mentiras educadas, imposibles de distinguir de la
+verdad. Ahora cada carga del portal enseña el mensaje del servidor, y `useMiTarjeta` **devuelve el
+error** en vez de tragárselo para que su pantalla separe *no hay* de *no cargó*. Las dos
+excepciones son a propósito y están comentadas en el código: `usePortalCredito` (lo pide
+`CatalogHeader`, o sea todas las páginas: un servidor caído sacaría el mismo aviso en cada una) y
+las dos listas del `ListasProvider`, que son adorno de las cards. Lo que SÍ avisa siempre es
+*cambiarlas*: un corazón que se deshace solo, sin una palabra, parece la aplicación rota.
+
 **`useGuardedFetch` ya no existe.** Era la función de red vieja, y el dashboard era su único
 usuario: al caer la última pantalla se borró el hook y el tipo `GuardedFetch`. Ninguna pantalla
 recibe ya la red como prop. `client.ts` sigue vivo **solo** para las páginas públicas.

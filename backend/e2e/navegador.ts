@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import { chromium, type Browser, type BrowserContext, type Page } from 'playwright-core';
-import { ARCHIVO_SESION, URL_TIENDA } from './arranque';
+import { ARCHIVO_SESION, URL_API, URL_TIENDA } from './arranque';
 
 /**
  * El navegador de los recorridos.
@@ -33,9 +33,8 @@ export const cerrarNavegador = async () => {
  * los 10 intentos cada 15 minutos, así que una entrada por archivo ponía techo
  * al número de recorridos. Con 12 archivos ya reventaba (2026-08-14).
  */
-const pedirCookiesDeAdmin = async () => {
-  const lineas = fs.readFileSync(ARCHIVO_SESION, 'utf8').split('\n').filter(Boolean);
-  return lineas.map((linea) => {
+const aCookies = (cabeceras: string[]) =>
+  cabeceras.filter(Boolean).map((linea) => {
     const [par] = linea.split(';');
     const corte = par.indexOf('=');
     return {
@@ -47,7 +46,9 @@ const pedirCookiesDeAdmin = async () => {
       path: '/',
     };
   });
-};
+
+const pedirCookiesDeAdmin = async () =>
+  aCookies(fs.readFileSync(ARCHIVO_SESION, 'utf8').split('\n'));
 
 /**
  * La entrada se lee UNA vez por archivo y se reutiliza.
@@ -82,6 +83,30 @@ export const abrirTienda = async (): Promise<{ contexto: BrowserContext; pagina:
 export const abrirDashboard = async (): Promise<{ contexto: BrowserContext; pagina: Page }> => {
   const contexto = await (await abrirNavegador()).newContext({ viewport: { width: 1366, height: 900 } });
   await contexto.addCookies(await cookiesDeAdmin());
+  return { contexto, pagina: await contexto.newPage() };
+};
+
+/**
+ * Una pestaña autenticada como CLIENTE, no como administrador.
+ *
+ * El portal enseña lo de cada quien —sus compras, sus favoritos, su deuda—, así
+ * que su recorrido no puede reutilizar la sesión del arranque: esa es la del
+ * dueño y vería otra cosa. Entrar cuesta uno de los 10 intentos que da el
+ * servidor cada 15 minutos, así que se pide UNA vez por recorrido.
+ */
+export const abrirComoCliente = async (
+  email: string,
+  clave: string,
+): Promise<{ contexto: BrowserContext; pagina: Page }> => {
+  const entrada = await fetch(`${URL_API}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password: clave }),
+  });
+  if (!entrada.ok) throw new Error(`No se pudo entrar como cliente: ${entrada.status}`);
+
+  const contexto = await (await abrirNavegador()).newContext({ viewport: { width: 1366, height: 900 } });
+  await contexto.addCookies(aCookies(entrada.headers.getSetCookie()));
   return { contexto, pagina: await contexto.newPage() };
 };
 

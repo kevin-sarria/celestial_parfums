@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { SelectSimple } from '@/components/ui/select-simple';
-import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import { GARANTIA } from '../../config/negocio';
 import {
   MOTIVOS, etiquetaMotivo, etiquetaSolucionCliente, metaEstado,
@@ -47,14 +48,12 @@ export default function MisPedidos() {
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    try {
-      const res = await authFetchWithRefresh(`${BASE_URL}/api/devoluciones/mis-compras`);
-      if (!res.ok) throw new Error();
-      setCompras((await res.json()).data ?? []);
-      setError('');
-    } catch {
-      setError('No pudimos cargar tus pedidos. Revisa tu conexión y reintenta.');
-    } finally { setLoading(false); }
+    const res = await http.get<{ data: MiCompra[] }>(urls.devoluciones.misCompras);
+    // El mensaje lo pone el servidor cuando lo tiene: dice más que un texto
+    // fijo de "revisa tu conexión" cuando el problema es otro.
+    setError(res.ok ? '' : res.error);
+    setCompras(res.cuerpo?.data ?? []);
+    setLoading(false);
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
@@ -184,20 +183,15 @@ function FormularioReclamo({ compraId, onListo }: { compraId: number; onListo: (
   const enviar = async () => {
     if (!detalle.trim()) { setError('Cuéntanos brevemente qué pasó'); return; }
     setEnviando(true); setError('');
-    try {
-      const fd = new FormData();
-      fd.append('venta_id', String(compraId));
-      fd.append('motivo', motivo);
-      fd.append('detalle', detalle.trim());
-      fotos.forEach((f) => fd.append('imagenes', f));
-      const res = await authFetchWithRefresh(`${BASE_URL}/api/devoluciones/solicitar`, {
-        method: 'POST', body: fd,
-      });
-      const json = await res.json().catch(() => null);
-      if (!res.ok) { setError(json?.error ?? 'No se pudo enviar tu solicitud'); return; }
-      onListo();
-    } catch { setError('No se pudo conectar con el servidor'); }
-    finally { setEnviando(false); }
+    const fd = new FormData();
+    fd.append('venta_id', String(compraId));
+    fd.append('motivo', motivo);
+    fd.append('detalle', detalle.trim());
+    fotos.forEach((f) => fd.append('imagenes', f));
+    const res = await http.subir(urls.devoluciones.solicitar, fd);
+    setEnviando(false);
+    if (!res.ok) { setError(res.error); return; }
+    onListo();
   };
 
   return (

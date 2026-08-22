@@ -113,6 +113,18 @@ pasan, y ningún recorrido escribe en `perfumes_db`.
 - **`selectOption()` de Playwright no sirve en esta aplicación**: ningún desplegable es un
   `<select>` del navegador, ni siquiera los escritos con `<option>` (`SelectSimple` envuelve al
   `BuscadorSelect`). Se abre y se hace clic — para eso está el ayudante `elegirOpcion()`.
+- **El portal del cliente tiene su propio recorrido** (`portalCliente.e2e.test.ts`) y es el
+  único que NO entra como administrador: sus tres pantallas enseñan lo de cada quien (sus
+  favoritos, sus compras, sus sellos, su deuda), así que una sesión de admin las vería vacías y
+  pasaría sin comprobar nada. Para eso está `abrirComoCliente(email, clave)` en `navegador.ts`,
+  que entra por la API y mete las cookies en una pestaña nueva. **Ojo con los intentos de login**:
+  cuesta uno de los 10 que da el servidor cada 15 minutos, así que se pide una vez por recorrido.
+- **Ningún recorrido puede dar por fijo un total de la base.** El del filtro de columna esperaba
+  "12 registros" —las ventas que él mismo sembraba— y se rompió el día que otro recorrido registró
+  una venta más, sin que nada estuviera mal. Ahora pregunta `prisma.venta.count()` y compara con
+  eso. Misma familia que la regla del material compartido: lo global se consulta, no se escribe a
+  mano. Y lo que es único en toda la tienda (la configuración de la tarjeta de sellos) **se
+  escribe justo antes de mirarlo**, porque otro recorrido también la configura.
 - **El buscador de un desplegable solo se pinta con 6+ opciones** (`MINIMO_PARA_BUSCAR` en
   `BuscadorSelect`). La tienda sembrada tiene un puñado de productos, así que
   `getByPlaceholder('Escribe para filtrar…')` se queda esperando los 30 s y el recorrido muere sin

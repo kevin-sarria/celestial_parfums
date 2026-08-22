@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 22 de agosto de 2026.** Todo compila, **243 pruebas en verde** (129 backend +
-77 frontend + 37 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
+**Última sesión: 22 de agosto de 2026.** Todo compila, **245 pruebas en verde** (129 backend +
+77 frontend + 39 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
 
 **Listo en código y esperando el próximo deploy: los regalos en la venta (Ola 1).** Cualquier
 línea puede llevar parte gratis y parte cobrada, y los accesorios tienen su buscador aparte. Trae
@@ -126,11 +126,17 @@ Detalle y decisiones en [`arquitectura.md`](arquitectura.md). Al 2026-08-15 van 
 `http` y quedan 38** con el `fetch` viejo. **El dashboard está terminado** —las 30 pestañas con sus
 modales— y `useGuardedFetch` se borró.
 
-Queda la **parte pública**: los hooks del catálogo (`useCatalog`, `usePerfumes`, `useCombos`,
-`usePerfumeDetail`, `useComboDetail`, `useAnuncios`, `usePerfumeIdeal`), el `ListasProvider`, el
-**portal del cliente** (Mis compras, Mis favoritos, Mis recompensas, crédito, devoluciones) y
-**login/registro/verificación** con su botón de Google. Ojo con `cachedFetch.ts`: la tienda tiene
-su propia caché de catálogo y hay que decidir si se queda o pasa a `http.getCacheado`.
+**El portal del cliente también cayó** (2026-08-22): Mis compras con su reseña y su garantía, Mis
+favoritos, Mis recompensas, Mi crédito y el `ListasProvider`. Tiene recorrido propio en navegador
+—el primero que entra como CLIENTE y no como administrador— y de paso dejaron de mentir cuando la
+petición falla (ver [`arquitectura.md`](arquitectura.md)).
+
+Quedan **25 archivos**: los hooks del catálogo (`useCatalog`, `usePerfumes`, `useCombos`,
+`usePerfumeDetail`, `useComboDetail`, `useAnuncios`, `usePerfumeIdeal`, `useDestacados`,
+`useComboDetector`), **login/registro/verificación** con su botón de Google y el `AuthProvider`,
+**Blog**, **Contáctame**, **Sobre nosotros**, la galería de ganadores, las reseñas públicas de un
+producto y el PDF del catálogo. Ojo con `cachedFetch.ts`: la tienda tiene su propia caché de
+catálogo y hay que decidir si se queda o pasa a `http.getCacheado`.
 
 Se migra **pantalla entera o nada**, y al migrarla se aprovecha para que ningún handler ignore la
 respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra `client.ts`.

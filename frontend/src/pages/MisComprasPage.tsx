@@ -5,7 +5,9 @@ import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
 import ResenaProductoCard, { type ProductoComprado } from '../components/resenas/ResenaProductoCard';
 import MisPedidos from '../components/devoluciones/MisPedidos';
-import { BASE_URL, authFetchWithRefresh } from '../infrastructure/api/client';
+import { toast } from 'sonner';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
 
@@ -23,11 +25,11 @@ export default function MisComprasPage() {
   useEffect(() => { if (!user) navigate('/login', { replace: true }); }, [user, navigate]);
 
   const cargar = useCallback(async () => {
-    try {
-      const res = await authFetchWithRefresh(`${BASE_URL}/api/resenas/mis-compras`);
-      const json = await res.json();
-      if (res.ok) setProductos(json.data ?? []);
-    } finally { setLoading(false); }
+    const res = await http.get<{ data: ProductoComprado[] }>(urls.resenas.misCompras);
+    // Sin esto, un fallo se ve igual que "todavía no has comprado nada".
+    if (!res.ok) toast.error(res.error, { id: 'mis-compras' });
+    setProductos(res.cuerpo?.data ?? []);
+    setLoading(false);
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);

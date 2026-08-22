@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
+import { toast } from 'sonner';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import { useAuthContext } from './useAuthContext';
 import { ListasContext } from './ListasContext';
 
@@ -12,35 +14,43 @@ export function ListasProvider({ children }: { children: ReactNode }) {
   const [favoritos, setFavoritos] = useState<Set<number>>(new Set());
   const [avisos, setAvisos] = useState<Set<number>>(new Set());
 
-  const recargar = useCallback(() => {
+  /**
+   * Las dos listas se piden a la vez y en silencio: son adorno de las cards
+   * (el corazón y la campana), no el contenido de ninguna pantalla, y este
+   * proveedor envuelve la tienda entera. Lo que SÍ avisa es cambiarlas —
+   * ahí el cliente acaba de tocar algo y espera una respuesta.
+   */
+  const recargar = useCallback(async () => {
     if (!user) {
       setFavoritos(new Set());
       setAvisos(new Set());
       return;
     }
-    authFetchWithRefresh(`${BASE_URL}/api/favoritos`)
-      .then((r) => (r.ok ? r.json() : { data: [] }))
-      .then((j) => setFavoritos(new Set<number>(j.data ?? [])))
-      .catch(() => {});
-    authFetchWithRefresh(`${BASE_URL}/api/avisos/mios`)
-      .then((r) => (r.ok ? r.json() : { data: [] }))
-      .then((j) => setAvisos(new Set<number>(j.data ?? [])))
-      .catch(() => {});
+    const [favs, avs] = await Promise.all([
+      http.get<{ data: number[] }>(urls.favoritos.mios),
+      http.get<{ data: number[] }>(urls.avisos.mios),
+    ]);
+    setFavoritos(new Set(favs.cuerpo?.data ?? []));
+    setAvisos(new Set(avs.cuerpo?.data ?? []));
   }, [user]);
 
   useEffect(() => { recargar(); }, [recargar]);
 
-  const toggleFavorito = useCallback((perfumeId: number) => {
+  const toggleFavorito = useCallback(async (perfumeId: number) => {
     if (!user) return;
     setFavoritos((prev) => {
       const next = new Set(prev);
       next.has(perfumeId) ? next.delete(perfumeId) : next.add(perfumeId);
       return next;
     });
-    authFetchWithRefresh(`${BASE_URL}/api/favoritos/${perfumeId}`, { method: 'POST' }).catch(() => recargar());
+    // El corazón ya cambió en la pantalla. Si el servidor no lo aceptó, se
+    // vuelve a lo que él diga y se explica: un corazón que se deshace solo,
+    // sin una palabra, parece que la aplicación está rota.
+    const res = await http.post(urls.favoritos.alternar(perfumeId));
+    if (!res.ok) { toast.error(res.error, { id: 'favoritos' }); recargar(); }
   }, [user, recargar]);
 
-  const toggleAviso = useCallback((perfumeId: number) => {
+  const toggleAviso = useCallback(async (perfumeId: number) => {
     if (!user) return;
     const activo = avisos.has(perfumeId);
     setAvisos((prev) => {
@@ -48,7 +58,9 @@ export function ListasProvider({ children }: { children: ReactNode }) {
       activo ? next.delete(perfumeId) : next.add(perfumeId);
       return next;
     });
-    authFetchWithRefresh(`${BASE_URL}/api/avisos/${perfumeId}`, { method: activo ? 'DELETE' : 'POST' }).catch(() => recargar());
+    const ruta = urls.avisos.aviso(perfumeId);
+    const res = activo ? await http.borrar(ruta) : await http.post(ruta);
+    if (!res.ok) { toast.error(res.error, { id: 'avisos-cliente' }); recargar(); }
   }, [avisos, user, recargar]);
 
   return (

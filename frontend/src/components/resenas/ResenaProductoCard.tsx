@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 
 export interface ProductoComprado {
   id: number;
@@ -47,23 +48,20 @@ export default function ResenaProductoCard({ producto, onGuardada }: { producto:
   const enviar = async () => {
     if (rating < 1) { setError('Elige cuántas estrellas le das'); return; }
     setGuardando(true); setError(''); setMsg('');
-    try {
-      const fd = new FormData();
-      fd.append('perfume_id', String(producto.id));
-      fd.append('rating', String(rating));
-      fd.append('comentario', comentario.trim());
-      conservar.forEach((u) => fd.append('conservar', u));
-      nuevas.forEach((f) => fd.append('imagenes', f));
-      const res = await authFetchWithRefresh(`${BASE_URL}/api/resenas`, { method: 'POST', body: fd });
-      const json = await res.json();
-      if (!res.ok) { setError(json.error ?? 'No se pudo enviar'); return; }
-      // Refleja lo que quedó guardado en el servidor (las nuevas ya son WebP con URL real)
-      setConservar(json.data?.imagenes ?? []);
-      setNuevas([]);
-      setMsg('¡Gracias! Tu reseña quedó en revisión.');
-      onGuardada();
-    } catch { setError('No se pudo conectar con el servidor'); }
-    finally { setGuardando(false); }
+    const fd = new FormData();
+    fd.append('perfume_id', String(producto.id));
+    fd.append('rating', String(rating));
+    fd.append('comentario', comentario.trim());
+    conservar.forEach((u) => fd.append('conservar', u));
+    nuevas.forEach((f) => fd.append('imagenes', f));
+    const res = await http.subir<{ data?: { imagenes?: string[] } }>(urls.resenas.crear, fd);
+    setGuardando(false);
+    if (!res.ok) { setError(res.error); return; }
+    // Refleja lo que quedó guardado en el servidor (las nuevas ya son WebP con URL real)
+    setConservar(res.cuerpo?.data?.imagenes ?? []);
+    setNuevas([]);
+    setMsg('¡Gracias! Tu reseña quedó en revisión.');
+    onGuardada();
   };
 
   return (

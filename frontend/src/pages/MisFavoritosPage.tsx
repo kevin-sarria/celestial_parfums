@@ -7,7 +7,9 @@ import CardSkeleton from '../components/CardSkeleton';
 import CartFab from '../components/CartFab';
 import WhatsAppFab from '../components/WhatsAppFab';
 import type { Perfume } from '../domain/entities/perfume.schema';
-import { BASE_URL, authFetchWithRefresh } from '../infrastructure/api/client';
+import { toast } from 'sonner';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useListas } from '../application/context/ListasContext';
 import { useSeo } from '../application/hooks/useSeo';
@@ -21,13 +23,13 @@ export default function MisFavoritosPage() {
   const [items, setItems] = useState<Perfume[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const cargar = useCallback(() => {
+  const cargar = useCallback(async () => {
     setLoading(true);
-    authFetchWithRefresh(`${BASE_URL}/api/favoritos/detalle`)
-      .then((r) => (r.ok ? r.json() : { data: [] }))
-      .then((j) => setItems(j.data ?? []))
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const res = await http.get<{ data: Perfume[] }>(urls.favoritos.detalle);
+    // Callar aquí enseñaría "no tienes favoritos" a quien sí los tiene.
+    if (!res.ok) toast.error(res.error, { id: 'favoritos-detalle' });
+    setItems(res.cuerpo?.data ?? []);
+    setLoading(false);
   }, []);
 
   useEffect(() => {

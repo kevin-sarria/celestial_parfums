@@ -95,12 +95,17 @@ describe('el filtro de columna busca en toda la data, no solo la página', () =>
 
     await pagina.getByRole('button', { name: 'Limpiar todo' }).click();
 
-    // El total de VERDAD (12 = 11 Relleno + 1 Referencia Única) es lo único
-    // que prueba que las DOS cosas quedaron limpias A LA VEZ: si ganó la
-    // carrera la recarga que limpiaba solo la búsqueda (con el filtro viejo
-    // colgando) el total da 1; si ganó la que limpiaba solo el filtro (con la
-    // búsqueda vieja colgando) el total da 11. Ninguna de las dos es 12.
-    await pagina.waitForSelector('text=12 registros', { timeout: 10_000 });
+    // El total de VERDAD es lo único que prueba que las DOS cosas quedaron
+    // limpias A LA VEZ: si ganó la carrera la recarga que limpiaba solo la
+    // búsqueda (con el filtro viejo colgando) el total da 1; si ganó la que
+    // limpiaba solo el filtro (con la búsqueda vieja colgando) da 11.
+    //
+    // Se PREGUNTA a la base en vez de escribir un 12 fijo: las ventas son de
+    // toda la corrida, no de este archivo, así que un recorrido nuevo que
+    // registre una venta cambiaba el número y rompía esta prueba sin que nada
+    // estuviera mal (pasó al sumar el del portal del cliente, 2026-08-22).
+    const total = await prisma.venta.count();
+    await pagina.waitForSelector(`text=${total} registros`, { timeout: 10_000 });
     expect(await pagina.locator('input[placeholder="Buscar en todos los registros..."]').inputValue()).toBe('');
     expect(await pagina.getByText(/filtro.*activo/i).count()).toBe(0);
 

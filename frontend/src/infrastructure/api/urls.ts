@@ -201,12 +201,36 @@ export const urls = {
     estado: (id: number) => `/devoluciones/${id}/estado`,
     /** Las ventas elegibles para devolver. */
     ventas: '/devoluciones/ventas',
+    /** Portal del cliente: sus compras con la garantía todavía viva. */
+    misCompras: '/devoluciones/mis-compras',
+    /** Lo que reporta el cliente, con fotos (multipart). */
+    solicitar: '/devoluciones/solicitar',
   },
 
   /** "Avísame cuando vuelva": el interés que dejan los clientes. */
   avisos: {
     admin: '/avisos/admin',
     marcarNotificados: (perfumeId: number) => `/avisos/admin/${perfumeId}/notificados`,
+    /** Los del cliente logueado, solo los ids: pintan la campana de cada card. */
+    mios: '/avisos/mios',
+    /** Mismo camino para poner (POST) y quitar (DELETE) el aviso de un perfume. */
+    aviso: (perfumeId: number) => `/avisos/${perfumeId}`,
+  },
+
+  /** El corazón de las cards. Solo existe para el cliente logueado. */
+  favoritos: {
+    /** Solo los ids, que es lo que necesita la card para pintarse. */
+    mios: '/favoritos',
+    /** Los perfumes enteros, para la página "Mis favoritos". */
+    detalle: '/favoritos/detalle',
+    /** POST alterna: si ya estaba, lo quita. */
+    alternar: (perfumeId: number) => `/favoritos/${perfumeId}`,
+  },
+
+  /** El portal del cliente: lo suyo, no lo del admin. */
+  portal: {
+    /** Su deuda y sus abonos. Solo lectura: los créditos los da el admin. */
+    credito: '/portal/credito',
   },
 
   /** La tarjeta de sellos: configuración, progreso de cada cliente y entregas. */
@@ -274,6 +298,10 @@ export const urls = {
   resenas: {
     admin: '/resenas/admin',
     moderar: (id: number) => `/resenas/admin/${id}`,
+    /** Lo que el cliente compró y todavía puede reseñar. */
+    misCompras: '/resenas/mis-compras',
+    /** Deja o corrige su reseña. Va con fotos, así que es multipart. */
+    crear: '/resenas',
   },
 
   /**

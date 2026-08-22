@@ -7,7 +7,9 @@ import TarjetaRecompensas3D from '../components/recompensas/TarjetaRecompensas3D
 import GaleriaGanadores from '../components/recompensas/GaleriaGanadores';
 import SubirFotosEntrega, { type EntregaCliente } from '../components/recompensas/SubirFotosEntrega';
 import { formatPrice } from '@/lib/format';
-import { BASE_URL, authFetchWithRefresh } from '../infrastructure/api/client';
+import { toast } from 'sonner';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useMiTarjeta } from '../application/hooks/useMiTarjeta';
 import { useSeo } from '../application/hooks/useSeo';
@@ -21,14 +23,13 @@ export default function MisRecompensasPage() {
   useSeo('Mis recompensas');
   const navigate = useNavigate();
   const { user } = useAuthContext();
-  const { data, loading } = useMiTarjeta();
+  const { data, loading, error } = useMiTarjeta();
   const [entregas, setEntregas] = useState<EntregaCliente[]>([]);
 
-  const cargarEntregas = useCallback(() => {
-    authFetchWithRefresh(`${BASE_URL}/api/recompensas/mis-entregas`)
-      .then((r) => (r.ok ? r.json() : { data: [] }))
-      .then((j) => setEntregas(j.data ?? []))
-      .catch(() => {});
+  const cargarEntregas = useCallback(async () => {
+    const res = await http.get<{ data: EntregaCliente[] }>(urls.recompensas.misEntregas);
+    if (!res.ok) toast.error(res.error, { id: 'mis-entregas' });
+    setEntregas(res.cuerpo?.data ?? []);
   }, []);
 
   useEffect(() => {
@@ -48,7 +49,16 @@ export default function MisRecompensasPage() {
 
         {loading && !data && <PerfumeSpinner />}
 
-        {!loading && !data?.activo && (
+        {/* Que no cargue y que no exista se ven igual en pantalla si no se
+            separan: uno se arregla reintentando y el otro no. */}
+        {!loading && error && (
+          <div className="mt-10 rounded-2xl border border-border bg-card p-8 text-center">
+            <Gift className="mx-auto size-8 text-muted-foreground/50" />
+            <p className="mt-3 text-[15px] text-muted-foreground">{error}</p>
+          </div>
+        )}
+
+        {!loading && !error && !data?.activo && (
           <div className="mt-10 rounded-2xl border border-border bg-card p-8 text-center">
             <Gift className="mx-auto size-8 text-muted-foreground/50" />
             <p className="mt-3 text-[15px] text-muted-foreground">

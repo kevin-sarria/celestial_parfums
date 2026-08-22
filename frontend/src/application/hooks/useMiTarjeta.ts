@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import { useAuthContext } from '../context/useAuthContext';
 
 /** Colores configurables de la tarjeta. */
@@ -28,22 +29,23 @@ export function useMiTarjeta() {
   const { user, isAdmin } = useAuthContext();
   const [data, setData] = useState<MiTarjeta | null>(null);
   const [loading, setLoading] = useState(false);
+  /**
+   * Por qué se devuelve el error y no se traga: sin tarjeta la pantalla dice
+   * "el programa no está activo por ahora", y eso sería MENTIRA cuando lo que
+   * pasó es que la petición falló. Quien la pinta decide qué enseñar.
+   */
+  const [error, setError] = useState('');
 
   const refresh = useCallback(async () => {
-    if (!user || isAdmin) { setData(null); return; }
+    if (!user || isAdmin) { setData(null); setError(''); return; }
     setLoading(true);
-    try {
-      const res = await authFetchWithRefresh(`${BASE_URL}/api/recompensas/mi-tarjeta`);
-      const json = await res.json();
-      setData(res.ok ? json.data : null);
-    } catch {
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
+    const res = await http.get<{ data: MiTarjeta }>(urls.recompensas.miTarjeta);
+    setData(res.cuerpo?.data ?? null);
+    setError(res.ok ? '' : res.error);
+    setLoading(false);
   }, [user, isAdmin]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  return { data, loading, refresh };
+  return { data, loading, error, refresh };
 }
