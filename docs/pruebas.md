@@ -113,6 +113,14 @@ pasan, y ningún recorrido escribe en `perfumes_db`.
 - **`selectOption()` de Playwright no sirve en esta aplicación**: ningún desplegable es un
   `<select>` del navegador, ni siquiera los escritos con `<option>` (`SelectSimple` envuelve al
   `BuscadorSelect`). Se abre y se hace clic — para eso está el ayudante `elegirOpcion()`.
+- **El buscador de un desplegable solo se pinta con 6+ opciones** (`MINIMO_PARA_BUSCAR` en
+  `BuscadorSelect`). La tienda sembrada tiene un puñado de productos, así que
+  `getByPlaceholder('Escribe para filtrar…')` se queda esperando los 30 s y el recorrido muere sin
+  decir por qué: se abre el desplegable y se hace clic en la opción por su nombre.
+- **El regalo por línea** (`regaloDeLinea.e2e.test.ts`): en Ventas, un accesorio que no se cuela
+  entre las fragancias, 2 unidades con 1 marcada como regalo que cobran una sola, y el inventario
+  descontando las dos. Y en Créditos, que NO aparezca ni el campo ni el buscador de accesorios —
+  era un paso manual del plan y ahora se comprueba solo.
 - **Un recorrido no puede tocar un material que otro da por fijo.** El de la compra empezó
   comprando el "Frasco 30 ml" sembrado: le subía el costo promedio y el recorrido de la venta
   —que comprueba un costo exacto— fallaba **según el orden de los archivos**, o sea a veces sí y a

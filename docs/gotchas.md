@@ -175,6 +175,14 @@ No lo está.
 - **Cómo verificar una migración sin `migrate diff`**: aplicarla sobre una copia real, comparar
   los conteos de filas antes y después, y revisar la estructura con `SHOW CREATE TABLE`. Es lo
   que se hizo con `20260814120000_producto_terminado`.
+- **Las pruebas pueden dispararlo solas.** `prepararBase.ts` compara las migraciones aplicadas
+  contra las carpetas del disco y, si no cuadran, **llama a `prisma migrate deploy`** — que es
+  justo lo que tumba este MySQL. Por eso una migración aplicada a mano hay que **registrarla en
+  `_prisma_migrations`** en las dos bases locales: si no, cada corrida de pruebas mata el servidor
+  antes de empezar. Síntoma exacto (2026-08-22): `P1001` desde Prisma, o un `TRUNCATE` que muere
+  con "Error in the underlying connector", y `mysqld` desaparecido sin escribir en el log. Se
+  arranca otra vez (`mysqld.exe --defaults-file=C:\xampp\mysql\bin\my.ini --standalone`) y se
+  sigue: hace *crash recovery* y las pruebas pasan.
 - **No encadenar reintentos**: cada segfault es una muerte de golpe, y las muertes de golpe son
   justo lo que corrompe las tablas Aria del sistema (ver el apartado siguiente). Si Prisma no
   conecta, mirar primero si el servidor sigue vivo.

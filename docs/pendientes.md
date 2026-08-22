@@ -1,7 +1,13 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 15 de agosto de 2026.** Todo compila, **209 pruebas en verde** (115 backend +
-68 frontend + 26 recorridos) y **todo está commiteado** en la rama `producto-terminado`.
+**Última sesión: 22 de agosto de 2026.** Todo compila, **243 pruebas en verde** (129 backend +
+77 frontend + 37 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
+
+**Listo en código y esperando el próximo deploy: los regalos en la venta (Ola 1).** Cualquier
+línea puede llevar parte gratis y parte cobrada, y los accesorios tienen su buscador aparte. Trae
+migración (`20260820120000_regalos_y_extras`), así que el deploy es `git pull` + `migrate deploy` +
+build, como siempre — ver [`deploy-migraciones.md`](deploy-migraciones.md). La **Ola 2 (el kit del
+combo)** queda a la espera de que el dueño use esta unos días y opine.
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -131,28 +137,32 @@ respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra 
 
 ## El resto de la lista (después del producto terminado)
 
-1. **DECISIÓN DEL DUEÑO — el caso de borde del costo promedio.** Al borrar la ÚNICA compra de un
+1. **Ola 2 de los regalos: el kit del combo** — configurar en Combos qué accesorios trae por
+   defecto y sugerirlos al detectar el combo, para no escribirlos a mano en cada venta. Diseño
+   listo en `docs/superpowers/specs/2026-08-18-regalos-y-extras-design.md`. **Primero hay que
+   desplegar la Ola 1 y dejar que el dueño la use unos días.**
+2. **DECISIÓN DEL DUEÑO — el caso de borde del costo promedio.** Al borrar la ÚNICA compra de un
    material, su costo se queda en el de la compra borrada en vez de volver al de partida. Está
    medido y con dos pruebas puestas (una `it.skip` con la etiqueta `DISCREPANCIA` y otra que fija
    lo que hace hoy). **No se arregló porque el precio de arranque no se guarda en ninguna parte**:
    exige una columna nueva (`precio_inicial`) con su migración. Detalle en
    [`inventario-costeo.md`](inventario-costeo.md).
-2. **Rellenar la talla de 4 líneas de venta** que sí se pueden deducir: las ventas **1269**
+3. **Rellenar la talla de 4 líneas de venta** que sí se pueden deducir: las ventas **1269**
    ("30ML") y **1272** ("50ML") lo dicen sin ambigüedad en el texto de la venta. Las otras 8
    (ventas 1179, 1180, 1181, 1249 y 1219) son ambiguas de verdad — solo el dueño sabe si fue el de
    200 o el de 250 ml, y la 1219 es un "Combo Personalizado" con dos tallas en una línea.
    **Rellenarlas NO recupera el descuento de inventario** (el consumo no es retroactivo, por
    diseño): sirve para que el histórico quede completo.
-3. **3 esencias sin género** (eran 189). Se llenan desde el Excel *Lista de materiales*.
-4. **La gama "Diseñador" tiene mínimo configurado y CERO esencias**: o se le cuelgan esencias o se
+4. **3 esencias sin género** (eran 189). Se llenan desde el Excel *Lista de materiales*.
+5. **La gama "Diseñador" tiene mínimo configurado y CERO esencias**: o se le cuelgan esencias o se
    borra.
-5. **Paso 3 del costeo por gama**: separar la pantalla — la receta se queda en *Tamaños y fórmulas*
+6. **Paso 3 del costeo por gama**: separar la pantalla — la receta se queda en *Tamaños y fórmulas*
    (la usa toda la app para descontar inventario) y los rangos de precio mayorista se van a
    *Mayoreo*. Hoy `formulas_volumen` mezcla tres cosas.
-6. **Separar "200/250ML" en dos tallas reales** y sembrar su stock inicial. Ya se puede hacer
+7. **Separar "200/250ML" en dos tallas reales** y sembrar su stock inicial. Ya se puede hacer
    desde Clasificaciones sin tocar la base: crear "200 ML" y "250 ML" nace con su número y su
    receta enganchados solos.
-7. **Accesibilidad de los formularios**: `Field` (`dashboard/ui.tsx`) pinta un `<label>` suelto sin
+8. **Accesibilidad de los formularios**: `Field` (`dashboard/ui.tsx`) pinta un `<label>` suelto sin
    `htmlFor`, así que ni el navegador ni un lector de pantalla lo asocian al campo. Hay que
    hablarlo con el dueño antes de tocar 25 modales.
 
@@ -164,7 +174,7 @@ respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra 
 - **Merma de fraccionamiento**: cuántos ml se pierden al trasvasar una botella original a decants.
   Mientras no se sepa, **un decant nunca se agota solo**: su botella se gasta por ml y no hay
   corte confiable para decir "ya no da para otro". Las otras tres categorías sí se agotan solas.
-- **`precio_inicial`** para el caso de borde del costo promedio (punto 1 de arriba).
+- **`precio_inicial`** para el caso de borde del costo promedio (punto 2 de arriba).
 
 ## No volver a levantar como hallazgo
 

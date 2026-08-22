@@ -126,6 +126,30 @@ Cuatro cosas que reportó el dueño y una que se destapó investigándolas.
 - **Se descubrió por qué el MySQL local se caía solo**: no era la base, era Prisma. Ver
   [`gotchas.md`](gotchas.md).
 
+## Sesión del 2026-08-18 al 22: filtros al servidor y regalos en la venta
+
+- **Los filtros de columna dejaron de mentir en 6 tablas.** Filtraban solo la página que ya
+  estaba cargada, así que "Rol = admin" sobre la página 1 escondía a los admin de la página 3.
+  Ahora el filtro viaja al servidor (`utils/filtros.ts`, compartido por Perfumes, Ventas,
+  Créditos, Pagos, Combos y Recompensas).
+- **Regalos y extras en la venta, Ola 1** (diseño y plan en `docs/superpowers/`). El caso real:
+  una venta con dos perfumeros recargables, uno del combo (gratis) y otro cobrado. Antes eso se
+  escribía en Notas — texto libre que **no descuenta inventario y no tiene costo**, así que la
+  ganancia del mes salía inflada justo en lo que costaban los regalos.
+  - Nació y murió en cuatro días un primer intento, `regalo_automatico`: un botón que agregaba
+    una línea aparte fija en 1. **No servía**: buscar el mismo producto otra vez subía la
+    cantidad de la OTRA línea y el número resultante no se podía separar en "regalo" y "cobrado".
+    Nunca llegó a producción; su migración se conserva solo para que aplicar en orden desde cero
+    siga funcionando.
+  - Lo que quedó: **cualquier línea tiene un campo "Regalo"** (`venta_perfume.regalo`, con el
+    candado `regalo <= cantidad` en el backend) y **los accesorios tienen su propio buscador**
+    en Ventas (`perfumes.es_accesorio`), para no mezclarse entre las 212 fragancias. Detalle en
+    [`reglas-negocio.md`](reglas-negocio.md).
+  - **Créditos se dejó igual a propósito**: su backend no guarda el regalo, así que su formulario
+    no enciende `permitirExtras`. Hay un recorrido que lo vigila, porque encenderlo por error
+    dejaría escribir un regalo que el servidor descarta en silencio.
+  - **La Ola 2 (el kit del combo) se dejó para después** de que el dueño use esta unos días.
+
 ## Cosas que se probaron y se descartaron
 
 - **Three.js para la tarjeta de recompensas**: pesaba mucho para el público de gama baja y el

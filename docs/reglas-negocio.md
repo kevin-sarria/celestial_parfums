@@ -128,6 +128,27 @@ devolviera a `activo` y esa persona pudiera usarlo otra vez. Ahora:
 - "Los más vendidos" reparte `cantidad_perfumes` de la venta proporcional a esas cantidades.
 - La referencia visible se escribe con el mismo formato (`2× Eros, Sauvage`).
 
+## Regalos dentro de una venta (`venta_perfume.regalo`)
+
+- Cada línea guarda cuántas de sus unidades van **gratis**: `regalo` (default 0). Nunca puede ser
+  mayor que `cantidad`, y el candado vive en el esquema del backend, no solo en el formulario:
+  una llamada directa a la API se saltaría la pantalla.
+- **Se cobran `cantidad - regalo` unidades y se descuentan del inventario TODAS.** Lo regalado
+  sale de la bodega igual y pesa en el costo de mercancía de la venta. Antes se escribía en Notas
+  y la ganancia del mes salía inflada exactamente en lo que costaban los regalos.
+- Sirve igual para un accesorio y para una fragancia: una promoción tipo "el 4º gratis" cabe aquí
+  sin nada nuevo (decidido con el dueño, 2026-08-18).
+- Al agrupar líneas repetidas del mismo perfume y talla se suman `cantidad` y `regalo` **por
+  separado**, o la fusión rompería el candado.
+- **`perfumes.es_accesorio`** marca la ficha que NO es fragancia (perfumero, bolsa, tarjeta). Es
+  ortogonal a `tipo_producto`: dice de qué clase es el producto, no cómo se abastece, y solo tiene
+  sentido en un `comprado`. En Ventas tiene su propio buscador para no mezclarse entre las 212
+  fragancias.
+- **Créditos NO maneja regalos todavía**: su backend no los guarda, así que su formulario no pinta
+  ni el campo "Regalo" ni el buscador de accesorios. Encenderlos ahí dejaría escribir un regalo
+  que el servidor descarta en silencio.
+- La referencia visible de la venta lo dice: `2× Perfumero Recargable [1 regalo]`.
+
 ## Matcher de perfumes (`backend/src/utils/perfumeMatcher.ts`)
 
 - Conservador: solo enlaza con candidato ÚNICO; ambigüedad = sin enlazar (fallo barato).

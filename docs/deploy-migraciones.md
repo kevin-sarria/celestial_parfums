@@ -62,8 +62,10 @@ aunque no falte nada. En ese caso, aplicar el SQL de la migración directo con m
 
 ## Historial de migraciones (orden exacto de aplicación)
 
-Se conserva porque es la referencia si alguna vez hay que reconstruir una base desde cero. Todas
-están aplicadas en producción.
+Se conserva porque es la referencia si alguna vez hay que reconstruir una base desde cero.
+Están aplicadas en producción **hasta `20260814120000_producto_terminado`** (desplegado el
+2026-08-17). Las dos últimas —`regalo_automatico` y `regalos_y_extras`— están en `main` y en las
+bases locales, y **esperan el próximo deploy**.
 
 Primeras (sin carpeta con nombre):
 - `anuncios.max_descuento` + `anuncios.max_canjes`
@@ -95,6 +97,9 @@ Primeras (sin carpeta con nombre):
 | `20260809160000_gamas_tabla` | La gama pasa de ENUM a la tabla `gamas_esencia` + `insumos_costo.gama_id` con FK ON DELETE SET NULL |
 | `20260810120000_genero_esencia` | `insumos_costo.genero` (ENUM nullable) + siembra desde el nombre (21 dama, 6 caballero; 189 en NULL a propósito) |
 | `20260810140000_minimos_por_gama` | `gamas_esencia.stock_minimo` + `insumos_costo.stock_minimo` admite NULL (= hereda el de su gama) y los ceros existentes pasan a NULL. **Ojo: cambia el significado de la columna** |
+| `20260814120000_producto_terminado` | Tabla `movimientos_terminado`, `perfume_presentacion.stock`/`.costo_promedio` y `perfumes.solo_armado`. **El catálogo lee esas columnas en CADA consulta: sin aplicarla la tienda entera responde error** |
+| `20260817120000_regalo_automatico` | `perfumes.regalo_automatico`. **Nunca llegó a producción**: la siguiente la borra. Se conserva para que aplicar en orden desde cero siga funcionando |
+| `20260820120000_regalos_y_extras` | Quita `perfumes.regalo_automatico` y agrega `perfumes.es_accesorio` + `venta_perfume.regalo` (default 0). Ninguna ficha ni venta existente cambia de significado |
 
 **Verificado el 2026-08-01**: la base local se reemplazó por el dump real de producción y las
 migraciones pendientes se aplicaron EN ORDEN sobre esos datos, sin perder una fila (212 perfumes,
