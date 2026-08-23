@@ -1,17 +1,15 @@
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, Link2, Upload, FileDown, FileUp } from 'lucide-react';
+import { Plus, Upload, FileDown, FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { SelectSimple } from '@/components/ui/select-simple';
-import { cn } from '@/lib/utils';
-import Modal from '../../../components/Modal';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { ContactoLinktree } from '../../../components/contacto/ContactoLinktree';
-import { RED_OPTIONS, getRedIcon, getRedLabel } from '../../../components/contacto/redIcons';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, ColorField } from '../ui';
+import { FilaEnlace } from './redes/FilaEnlace';
+import { ModalEnlace, type LinkForm } from './redes/ModalEnlace';
 import { subirImagenAdmin } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
@@ -38,21 +36,6 @@ const emptyConfigForm = (): ConfigForm => ({
   contenido_posicion: 'centro', redes_posicion: 'centro',
 });
 
-interface LinkForm {
-  tipo: 'boton' | 'red';
-  nombre: string;
-  plataforma: string;
-  url: string;
-  /** Qué se muestra como icono: nada, un emoji/texto o el icono de una plataforma. */
-  iconoTipo: 'ninguno' | 'emoji' | 'red';
-  emoji: string;
-  iconoRed: string;
-  usarGlobal: boolean;
-  forma: ContactoForma;
-  color_fondo: string;
-  color_texto: string;
-  activo: boolean;
-}
 
 export function RedesTab() {
   const [loading, setLoading] = useState(true);
@@ -293,53 +276,6 @@ export function RedesTab() {
     if (!res.ok) { toast.error(res.error, { id: 'redes' }); await load(); }
   };
 
-  const renderRow = (link: ContactoLink, group: ContactoLink[], index: number) => {
-    // Redes muestran su plataforma (salvo texto personalizado); botones su icono elegido
-    const Icon = link.tipo === 'red'
-      ? (link.emoji ? null : getRedIcon(link.nombre))
-      : (link.icono ? getRedIcon(link.icono) : null);
-    return (
-      // flex-wrap + basis del contenido: en pantallas angostas los 4 controles
-      // bajan a una segunda línea en lugar de aplastar el nombre a "C…"
-      <div key={link.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-background px-3.5 py-2.5">
-        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-secondary text-[15px]">
-          {Icon ? <Icon className="size-4 text-primary" /> : (link.emoji || <Link2 className="size-4 text-primary" />)}
-        </span>
-        <div className="min-w-0 flex-1 basis-40">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-            <span className="truncate text-[13.5px] font-medium text-foreground">
-              {link.tipo === 'red' ? getRedLabel(link.nombre) : link.nombre}
-            </span>
-            {!link.activo && (
-              <Badge variant="outline" className="rounded-full text-[10.5px] text-muted-foreground">Inactivo</Badge>
-            )}
-            {(link.forma || link.color_fondo || link.color_texto) && (
-              <Badge variant="secondary" className="rounded-full text-[10.5px] font-medium text-primary">Estilo propio</Badge>
-            )}
-          </div>
-          <span className="block truncate text-[12px] text-muted-foreground">{link.url}</span>
-        </div>
-        <div className="ml-auto flex shrink-0 items-center gap-0.5">
-          <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" title="Subir"
-            disabled={index === 0} onClick={() => moveLink(link, -1)}>
-            <ArrowUp className="size-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="size-8 text-muted-foreground" title="Bajar"
-            disabled={index === group.length - 1} onClick={() => moveLink(link, 1)}>
-            <ArrowDown className="size-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" title="Editar"
-            onClick={() => openEdit(link)}>
-            <Pencil className="size-4" />
-          </Button>
-          <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-destructive" title="Eliminar"
-            onClick={() => deleteLink(link.id)}>
-            <Trash2 className="size-4" />
-          </Button>
-        </div>
-      </div>
-    );
-  };
 
   if (loading) return <PerfumeSpinner />;
 
@@ -504,7 +440,18 @@ export function RedesTab() {
             {botones.length === 0 && (
               <p className="text-[13px] text-muted-foreground">Aún no hay botones. Crea el primero con "Nuevo link".</p>
             )}
-            {botones.map((l, i) => renderRow(l, botones, i))}
+            {botones.map((l, i) => (
+              <FilaEnlace
+                key={l.id}
+                link={l}
+                esPrimero={i === 0}
+                esUltimo={i === botones.length - 1}
+                onSubir={() => moveLink(l, -1)}
+                onBajar={() => moveLink(l, 1)}
+                onEditar={() => openEdit(l)}
+                onEliminar={() => deleteLink(l.id)}
+              />
+            ))}
           </div>
 
           <div className="space-y-2 pt-2">
@@ -512,7 +459,18 @@ export function RedesTab() {
             {redes.length === 0 && (
               <p className="text-[13px] text-muted-foreground">Sin redes sociales aún. Se muestran como iconos al pie de la página.</p>
             )}
-            {redes.map((l, i) => renderRow(l, redes, i))}
+            {redes.map((l, i) => (
+              <FilaEnlace
+                key={l.id}
+                link={l}
+                esPrimero={i === 0}
+                esUltimo={i === redes.length - 1}
+                onSubir={() => moveLink(l, -1)}
+                onBajar={() => moveLink(l, 1)}
+                onEditar={() => openEdit(l)}
+                onEliminar={() => deleteLink(l.id)}
+              />
+            ))}
           </div>
         </Section>
       </div>
@@ -529,136 +487,18 @@ export function RedesTab() {
       </Section>
 
       {/* ── Modal crear/editar link ── */}
+      {/* ── Modal crear/editar link ── */}
       {linkForm && (
-        <Modal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title={editingId ? 'Editar link' : 'Nuevo link'}
-          onSubmit={submitLink}
-          submitLabel={editingId ? 'Guardar cambios' : 'Crear link'}
-          loading={savingLink}
-          maxWidth={520}
-        >
-          <FormError>{linkError}</FormError>
-
-          <Field label="Tipo">
-            <SelectSimple
-              value={linkForm.tipo}
-              onChange={e => {
-                const tipo = e.target.value as 'boton' | 'red';
-                // Cada tipo tiene su icono por defecto: botón sin icono, red con el de su plataforma
-                setLinkForm(f => (f ? { ...f, tipo, iconoTipo: tipo === 'red' ? 'red' : 'ninguno' } : f));
-              }}
-            >
-              <option value="boton">Botón de link</option>
-              <option value="red">Icono de red social</option>
-            </SelectSimple>
-          </Field>
-
-          {linkForm.tipo === 'boton' ? (
-            <>
-              <Field label="Nombre a mostrar">
-                <Input required value={linkForm.nombre} maxLength={100}
-                  placeholder="Ej: Catálogo de perfumes"
-                  onChange={e => setLink('nombre', e.target.value)} />
-              </Field>
-              <FieldRow>
-                <Field label="Icono del botón">
-                  <SelectSimple
-                    value={linkForm.iconoTipo}
-                    onChange={e => setLink('iconoTipo', e.target.value as LinkForm['iconoTipo'])}
-                  >
-                    <option value="ninguno">Sin icono</option>
-                    <option value="emoji">Emoji o texto</option>
-                    <option value="red">Icono de red social</option>
-                  </SelectSimple>
-                </Field>
-                {linkForm.iconoTipo === 'emoji' && (
-                  <Field label="Emoji o texto">
-                    <Input value={linkForm.emoji} maxLength={8} placeholder="Ej: ✨"
-                      onChange={e => setLink('emoji', e.target.value)} />
-                  </Field>
-                )}
-                {linkForm.iconoTipo === 'red' && (
-                  <Field label="Red social">
-                    <SelectSimple value={linkForm.iconoRed} onChange={e => setLink('iconoRed', e.target.value)}>
-                      {RED_OPTIONS.map(o => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </SelectSimple>
-                  </Field>
-                )}
-              </FieldRow>
-            </>
-          ) : (
-            <FieldRow>
-              <Field label="Plataforma">
-                <SelectSimple value={linkForm.plataforma} onChange={e => setLink('plataforma', e.target.value)}>
-                  {RED_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </SelectSimple>
-              </Field>
-              <Field label="Contenido del círculo">
-                <div className="flex gap-2">
-                  <SelectSimple
-                    value={linkForm.iconoTipo === 'emoji' ? 'emoji' : 'red'}
-                    onChange={e => setLink('iconoTipo', e.target.value as LinkForm['iconoTipo'])}
-                  >
-                    <option value="red">Icono de la plataforma</option>
-                    <option value="emoji">Emoji o letras</option>
-                  </SelectSimple>
-                  {linkForm.iconoTipo === 'emoji' && (
-                    <Input value={linkForm.emoji} maxLength={8} placeholder="Ej: KD"
-                      className="max-w-24"
-                      onChange={e => setLink('emoji', e.target.value)} />
-                  )}
-                </div>
-              </Field>
-            </FieldRow>
-          )}
-
-          <Field label="Link (URL)">
-            <Input required type="url" value={linkForm.url} placeholder="https://..."
-              onChange={e => setLink('url', e.target.value)} />
-          </Field>
-
-          {linkForm.tipo === 'boton' && (
-            <div className="space-y-3 rounded-xl border border-border bg-secondary/40 p-3.5">
-              <label className="flex cursor-pointer items-center gap-2 text-[13px] font-medium text-foreground">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-primary"
-                  checked={linkForm.usarGlobal}
-                  onChange={e => setLink('usarGlobal', e.target.checked)}
-                />
-                Usar el estilo global de botones
-              </label>
-              {!linkForm.usarGlobal && (
-                <div className={cn('grid gap-3 sm:grid-cols-3')}>
-                  <Field label="Forma">
-                    <SelectSimple value={linkForm.forma} onChange={e => setLink('forma', e.target.value as ContactoForma)}>
-                      <option value="redondo">Bordes redondos</option>
-                      <option value="cuadrado">Cuadrado</option>
-                    </SelectSimple>
-                  </Field>
-                  <ColorField label="Color del botón" value={linkForm.color_fondo} onChange={v => setLink('color_fondo', v)} />
-                  <ColorField label="Color del texto" value={linkForm.color_texto} onChange={v => setLink('color_texto', v)} />
-                </div>
-              )}
-            </div>
-          )}
-
-          <label className="flex cursor-pointer items-center gap-2 text-[13px] font-medium text-foreground">
-            <input
-              type="checkbox"
-              className="size-4 accent-primary"
-              checked={linkForm.activo}
-              onChange={e => setLink('activo', e.target.checked)}
-            />
-            Visible en la página
-          </label>
-        </Modal>
+        <ModalEnlace
+          abierto={modalOpen}
+          editando={editingId !== null}
+          form={linkForm}
+          cambiar={setLink}
+          onGuardar={submitLink}
+          onCerrar={() => setModalOpen(false)}
+          guardando={savingLink}
+          error={linkError}
+        />
       )}
     </div>
   );

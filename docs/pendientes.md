@@ -265,12 +265,17 @@ enorme; en una tabla de datos eso no pasa.
 re-exporta todo, así que **ninguno de los 29 archivos que lo importaban cambió**. Partirlo destapó
 de paso el bug de `toISOString()` de las 7 p.m. (ver [`gotchas.md`](gotchas.md)).
 
-**Faltan 4 archivos, todos pantallas.** Cada una hay que abrirla en el navegador y mirarla antes
+**`RedesTab.tsx` (665) ya se partió** (2026-08-23): salieron `redes/FilaEnlace.tsx` (la fila de un
+link) y `redes/ModalEnlace.tsx` (crear/editar, 129 líneas de JSX que estaban al final del
+`return`). Quedó en 505. Verificado con capturas antes/después: **la pantalla es idéntica píxel a
+píxel**, y se recorrió el flujo entero en el navegador (crear un link → verlo en la lista → verlo
+en la vista previa).
+
+**Faltan 3 archivos, todos pantallas.** Cada una hay que abrirla en el navegador y mirarla antes
 de darla por buena — no basta con que compile:
 
 | Archivo | Líneas |
 |---|---|
-| `frontend/src/pages/dashboard/tabs/RedesTab.tsx` | 665 |
 | `frontend/src/pages/dashboard/tabs/PerfumesTab.tsx` | 547 |
 | `frontend/src/components/table/SmartTable.tsx` | 538 (la usan TODAS las tablas del dashboard: la más delicada) |
 | `frontend/src/pages/dashboard/compras/DetalleCompra.tsx` | 513 |
