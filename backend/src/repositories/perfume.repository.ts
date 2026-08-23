@@ -12,11 +12,11 @@ import { filtroEnum, filtroNumero, filtroTexto, type MapaFiltros } from '../util
 import { mapPerfume, perfumeInclude, NUEVO_DIAS } from './perfume.mapeo';
 
 /**
- * Este archivo es SOLO el perfume: consultarlo, crearlo, editarlo y su lista de
- * precios. Lo que colgaba de él y no era eso ya se fue a su sitio:
+ * Este archivo es SOLO el perfume: consultarlo, crearlo y editarlo. Lo que colgaba de él y no era eso ya se fue a su sitio:
  *
  * - `perfume.mapeo.ts` — cómo se LEE (precio en cascada, agotado, armados).
  * - `clasificacion.repository.ts` — aromas, ocasiones, categorías y tallas.
+ * - `precio.repository.ts` — la lista de precios por categoría × talla.
  * - `emparejarEsencias.repository.ts` — qué esencia le toca a cada perfume.
  *
  * Se partió en dos tandas por la misma razón: iba en 912 líneas y luego en 713,
@@ -356,48 +356,6 @@ export const asignarEsenciaMasiva = async (perfumeIds: number[], insumoId: numbe
     data: { insumo_esencia_id: insumoId },
   });
   return count;
-};
-
-// ── Lista de precios (categoría × presentación) ─────────────────────────────
-
-/** Toda la lista, para pintar la tabla de precios del dashboard. */
-export const selectPrecios = async () => {
-  const rows = await prisma.precioLista.findMany({
-    include: { categoria: true, presentacion: true },
-    orderBy: [{ categoria: { nombre: 'asc' } }, { presentacion: { nombre: 'asc' } }],
-  });
-  return rows.map((r) => ({
-    categoria_id:    r.categoria_id,
-    categoria:       r.categoria.nombre,
-    presentacion_id: r.presentacion_id,
-    presentacion:    r.presentacion.nombre,
-    precio:          Number(r.precio),
-  }));
-};
-
-/**
- * Fija (o borra) el precio estándar de una categoría en una presentación.
- * precio null = esa combinación deja de tener precio de lista.
- */
-export const setPrecioLista = async (categoriaId: number, presentacionId: number, precio: number | null) => {
-  const where = { categoria_id_presentacion_id: { categoria_id: categoriaId, presentacion_id: presentacionId } };
-  if (precio == null) {
-    await prisma.precioLista.deleteMany({ where: { categoria_id: categoriaId, presentacion_id: presentacionId } });
-    return { borrado: true };
-  }
-  await prisma.precioLista.upsert({
-    where,
-    create: { categoria_id: categoriaId, presentacion_id: presentacionId, precio },
-    update: { precio },
-  });
-  // Cuántos perfumes quedan cobrando este precio (los que no tienen uno propio)
-  const afectados = await prisma.perfume.count({
-    where: {
-      categoria_id: categoriaId,
-      presentaciones: { some: { presentacion_id: presentacionId, precio: null } },
-    },
-  });
-  return { afectados };
 };
 
 export const findRelatedPerfumes = async (currentId: number, aromaNames: string[]) => {

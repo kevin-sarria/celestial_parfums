@@ -1,10 +1,12 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import {
+  aBase, costosConFlete, desglosarIva, type IvaCompra, type IvaModo,
+} from './inventario.compras';
 import { CreatePagoDTO } from '../types/pago.type';
 import { paginatedResponse } from '../utils/pagination';
 import {
-  aBase, aplicarMovimiento, costosConFlete, desglosarIva, revertirMovimientos,
-  type IvaCompra, type IvaModo,
+  aplicarMovimiento, revertirMovimientos,
 } from './inventario.repository';
 import { sanearUploadsConservados } from '../utils/uploadsUrl';
 import { filtroFecha, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';

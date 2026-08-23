@@ -1,6 +1,7 @@
 import * as perfumeRepository from '../repositories/perfume.repository';
 import * as emparejar from '../repositories/emparejarEsencias.repository';
 import * as clasificacion from '../repositories/clasificacion.repository';
+import * as precios from '../repositories/precio.repository';
 import { CreatePerfumeDTO } from '../types/perfume.type';
 import { cacheClear, cacheGet, cacheSet } from '../utils/cache';
 
@@ -139,7 +140,7 @@ export const patchPublicadoPerfume = async (id: string, publicado: boolean) => {
 
 export const resumenPublicacion = () => perfumeRepository.resumenPublicacion();
 
-export const getPrecios = () => perfumeRepository.selectPrecios();
+export const getPrecios = () => precios.selectPrecios();
 
 /** Cambiar un precio de la lista mueve a todos los perfumes que lo heredan. */
 export const setPrecioLista = async (
@@ -147,7 +148,7 @@ export const setPrecioLista = async (
   presentacionId: number,
   precio: number | null,
 ) => {
-  const result = await perfumeRepository.setPrecioLista(categoriaId, presentacionId, precio);
+  const result = await precios.setPrecioLista(categoriaId, presentacionId, precio);
   bustCatalogoCache();
   return result;
 };

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../config/prisma';
 import { estadoDe, limpiarBase, sembrarFabricacion30ml } from '../test/baseDePrueba';
-import { consumirPorVenta, registrarProduccion, eliminarProduccion, revertirVenta } from './inventario.repository';
+import { registrarProduccion, eliminarProduccion } from './inventario.repository';
+import { consumirPorVenta, revertirVenta } from './inventario.consumoVenta';
 import { listarTerminado } from './inventario.terminado';
 
 /**

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../config/prisma';
 import { crearInsumo, estadoDe, limpiarBase, sembrarFabricacion30ml } from '../test/baseDePrueba';
-import { consumirPorVenta, revertirVenta } from './inventario.repository';
+import { consumirPorVenta, revertirVenta } from './inventario.consumoVenta';
 
 /**
  * La venta es la que gasta los insumos: aquí se arma contra pedido, así que de

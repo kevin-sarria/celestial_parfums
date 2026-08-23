@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
+import { r3, r4 } from '../utils/redondeo';
 
 /**
  * Motor de inventario: stock y **costo promedio ponderado** de cada insumo.
@@ -12,14 +13,11 @@ import { badRequest } from '../utils/httpError';
  */
 
 const num = (v: unknown) => Number(v);
-/** Redondeo a 3 decimales: los ml de una fórmula no necesitan más. */
-const r3 = (n: number) => Math.round(n * 1000) / 1000;
-/** El costo unitario sí lleva 4 decimales: a $0,0001/ml × 30 ml importa. */
-const r4 = (n: number) => Math.round(n * 10000) / 10000;
 
 import {
   aplicarMovimientoTerminado, revertirTerminado, sacarDeTerminado, tallaDeFormula,
 } from './inventario.terminado';
+import { aBase } from './inventario.compras';
 
 export type TipoMovimiento = 'compra' | 'produccion' | 'garantia' | 'ajuste' | 'merma' | 'muestra' | 'venta';
 
@@ -93,84 +91,6 @@ export const aplicarMovimiento = async (tx: Prisma.TransactionClient, mov: Movim
   return { stock: nuevoStock, promedio: nuevoPromedio, costoAplicado };
 };
 
-/**
- * Cuánto vale UNA unidad de compra en la unidad base del insumo (ml o piezas).
- *
- * Los proveedores facturan ml y gramos **1 a 1** (así lo maneja el sector), por
- * eso `g` no lleva densidad. Los **litros SÍ multiplican por 1000**: sin esto,
- * teclear "20 L" de alcohol se registraba como 20 ml y el costo por ml quedaba
- * mil veces inflado — con el diluyente siendo casi la mitad del volumen de un
- * frasco, eso solo daba costos de producción absurdos.
- */
-export const FACTOR_UNIDAD: Record<string, number> = {
-  ml: 1,
-  g: 1,
-  l: 1000,
-  kg: 1000,
-  unidad: 1,
-};
-
-export const aBase = (cantidad: number, unidad: string) =>
-  r3(cantidad * (FACTOR_UNIDAD[unidad] ?? 1));
-
-export type IvaModo = 'incluido' | 'agregado' | 'sin_iva';
-
-/** Cómo se liquida el IVA de una compra, resuelto contra el proveedor. */
-export interface IvaCompra {
-  modo: IvaModo;
-  tasa: number;
-  /** true = el negocio lo descuenta ante la DIAN, así que NO es costo. */
-  descontable: boolean;
-}
-
-/**
- * Parte un valor de línea en base gravable e IVA, según cómo factura ESE proveedor.
- *
- * Existe porque el IVA no es global: el distribuidor principal entrega el precio
- * ya con impuesto, otros lo suman aparte y las compras al exterior no lo cobran.
- * Aplicarle 19% a todos contaría el impuesto dos veces con el proveedor más grande.
- */
-export const desglosarIva = (subtotal: number, modo: IvaModo, tasa: number) => {
-  if (modo === 'sin_iva' || tasa <= 0) return { base: r4(subtotal), iva: 0 };
-  if (modo === 'agregado') return { base: r4(subtotal), iva: r4(subtotal * tasa) };
-  const base = subtotal / (1 + tasa); // 'incluido': el valor ya lo trae dentro
-  return { base: r4(base), iva: r4(subtotal - base) };
-};
-
-/**
- * Cuánto cuesta de verdad una unidad de cada línea de la compra.
- *
- * Suma lo que se pagó: el material, su IVA (cuando no se descuenta) y la parte
- * proporcional del flete. El prorrateo del transporte se hace sobre el valor CON
- * impuesto, que es lo que de verdad pesa cada línea en la factura.
- *
- * Devuelve el costo por unidad BASE (por ml, no por litro), que es como se valora
- * el inventario y como lo consumen las fórmulas.
- *
- * `iva` es opcional: sin él se comporta exactamente igual que antes.
- */
-export const costosConFlete = (
-  lineas: { cantidad: number; subtotal: number; unidad_compra?: string }[],
-  flete: number,
-  iva?: IvaCompra,
-): number[] => {
-  // Costo = base gravable + el IVA SOLO si no se descuenta.
-  // Ojo: no es `subtotal + iva`. Con el modo `incluido` el subtotal ya trae el
-  // impuesto dentro, así que sumárselo lo contaría dos veces — que es
-  // precisamente el error que esta función existe para evitar.
-  const valores = lineas.map((l) => {
-    if (!iva) return l.subtotal;
-    const { base, iva: impuesto } = desglosarIva(l.subtotal, iva.modo, iva.tasa);
-    return iva.descontable ? base : base + impuesto;
-  });
-  const total = valores.reduce((s, v) => s + v, 0);
-  return lineas.map((l, i) => {
-    const base = aBase(l.cantidad, l.unidad_compra ?? 'unidad');
-    if (base <= 0) return 0;
-    const parteFlete = total > 0 ? (valores[i] / total) * flete : 0;
-    return r4((valores[i] + parteFlete) / base);
-  });
-};
 
 /**
  * Deshace los movimientos de una referencia (al borrar una compra o una
@@ -492,157 +412,6 @@ export const salidasDelMes = async () => {
   return { muestras: suma('muestra'), mermas: suma('merma'), ajustes: suma('ajuste') };
 };
 
-// ── Consumo por venta ───────────────────────────────────────────────────────
-
-/**
- * Qué insumos gasta UNA unidad de un perfume en una talla, y cuánto cuesta.
- *
- * La esencia sale del PERFUME (cada fragancia tiene la suya, con su costo); el
- * envase y los accesorios, de la receta de la talla. Si el perfume no tiene
- * esencia asignada devuelve null: no se descuenta nada y se lista aparte, que
- * es lo acordado — usar una esencia genérica descuadraría ese insumo y daría
- * un costo falso.
- */
-export const recetaDe = async (perfumeId: number, ml: number | null) => {
-  const [perfume, presentacion] = await Promise.all([
-    prisma.perfume.findUnique({
-      where: { id: perfumeId },
-      select: {
-        nombre: true, insumo_esencia_id: true,
-        tipo_producto: true, insumo_producto_id: true, ml_utiles: true,
-      },
-    }),
-    ml
-      ? prisma.presentacion.findFirst({
-          where: { ml },
-          include: {
-            formula: { include: { accesorios: true } },
-            // Frasco y accesorios propios de ESTE perfume en ESTA talla
-            perfumes: { where: { perfume_id: perfumeId } },
-          },
-        })
-      : null,
-  ]);
-  if (!perfume) return null;
-
-  // COMPRADO: no se fabrica, se revende. Sale UNA unidad del propio producto.
-  if (perfume.tipo_producto === 'comprado') {
-    if (!perfume.insumo_producto_id) return { sinEsencia: true, nombre: perfume.nombre, items: [] };
-    return { sinEsencia: false, nombre: perfume.nombre, items: [{ insumo_id: perfume.insumo_producto_id, cantidad: 1 }] };
-  }
-
-  const formula = presentacion?.formula;
-
-  // FRACCIONADO: sale el líquido de la botella original + el envase del decant.
-  // Se descuenta lo NOMINAL del decant; la merma de trasvase se refleja en
-  // `ml_utiles` al costear la botella, no aquí.
-  if (perfume.tipo_producto === 'fraccionado') {
-    // Sin talla no se sabe cuántos ml lleva el decant: no se descuenta.
-    if (!perfume.insumo_producto_id || !ml) return { sinEsencia: true, nombre: perfume.nombre, items: [] };
-    const items = [{ insumo_id: perfume.insumo_producto_id, cantidad: ml }];
-    const envaseDecant = presentacion?.perfumes?.[0]?.envase_insumo_id ?? formula?.envase_insumo_id;
-    if (envaseDecant) items.push({ insumo_id: envaseDecant, cantidad: 1 });
-    return { sinEsencia: false, nombre: perfume.nombre, items };
-  }
-
-  // FABRICADO: la receta de la talla
-  if (!formula) return null;
-  if (!perfume.insumo_esencia_id) return { sinEsencia: true, nombre: perfume.nombre, items: [] };
-
-  const porNombre = async (clave: string) => {
-    const i = await prisma.insumoCosto.findFirst({
-      where: { tipo: 'materia_prima', nombre: { contains: clave } },
-    });
-    return i?.id ?? null;
-  };
-  const total = num(formula.ml_total);
-  const esen = num(formula.esencia_ml);
-  const sell = num(formula.sellador_ml);
-  const fero = num(formula.feromonas_ml);
-
-  const items: { insumo_id: number; cantidad: number }[] = [];
-  const add = (id: number | null | undefined, cant: number) => {
-    if (id && cant > 0) items.push({ insumo_id: id, cantidad: r3(cant) });
-  };
-  add(perfume.insumo_esencia_id, esen);
-  add(await porNombre('iluyente'), r3(total - esen - sell - fero));
-  add(await porNombre('ellador'), sell);
-  add(await porNombre('eromona'), fero);
-  // El frasco y la caja de ESTA referencia mandan sobre los de la receta:
-  // un 1.1 de Sauvage no usa el mismo frasco que uno de Bleu.
-  const propio = presentacion?.perfumes?.[0];
-  add(propio?.envase_insumo_id ?? formula.envase_insumo_id, 1);
-  const accesoriosPropios = (propio?.accesorios as number[] | null) ?? null;
-  if (accesoriosPropios?.length) accesoriosPropios.forEach((id) => add(id, 1));
-  else formula.accesorios.forEach((a) => add(a.insumo_id, 1));
-  return { sinEsencia: false, nombre: perfume.nombre, items };
-};
-
-/**
- * Descuenta del inventario lo que gastó una venta y devuelve lo que costó.
- *
- * Reglas acordadas con el dueño:
- *  - Se descuenta AL REGISTRAR la venta (el producto ya salió, aunque sea a crédito).
- *  - Si no alcanza el stock NO se bloquea: la venta ya ocurrió; el stock queda
- *    en negativo y la pestaña lo muestra en ámbar.
- *  - Línea sin talla o perfume sin esencia: no se descuenta y se reporta.
- */
-export const consumirPorVenta = async (
-  tx: Prisma.TransactionClient,
-  ventaId: number,
-  fecha: Date,
-  lineas: { perfume_id: number; ml: number | null; cantidad: number }[],
-) => {
-  let costo = 0;
-  const sinCostear: string[] = [];
-
-  for (const l of lineas) {
-    /**
-     * PRIMERO los frascos que ya están armados.
-     *
-     * Regla acordada con el dueño: lo que ya se armó no se vuelve a fabricar.
-     * Su costo es el que tuvo el día que se armó (congelado), no el que tendría
-     * la receta hoy — esa plata ya se gastó.
-     */
-    const armado = await sacarDeTerminado(tx, {
-      perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad,
-      ventaId, fecha,
-    });
-    costo += armado.costo;
-    const porArmar = l.cantidad - armado.unidades;
-    // Si lo armado cubrió la línea entera, no se toca ni un material.
-    if (porArmar <= 0) continue;
-
-    // Un producto COMPRADO (una gorra, un splash) no tiene talla y aun así se
-    // descuenta: su costo es lo que se pagó por él.
-    const receta = await recetaDe(l.perfume_id, l.ml);
-    if (!receta) { sinCostear.push(l.ml ? `talla ${l.ml} ml sin receta` : 'producto sin talla'); continue; }
-    if (receta.sinEsencia) { sinCostear.push(`${receta.nombre} (sin esencia asignada)`); continue; }
-
-    for (const it of receta.items) {
-      const res = await aplicarMovimiento(tx, {
-        insumo_id: it.insumo_id,
-        tipo: 'venta',
-        cantidad: -r3(it.cantidad * porArmar),
-        fecha,
-        referencia_id: ventaId,
-        nota: `Venta #${ventaId}`,
-      });
-      costo += res.costoAplicado * it.cantidad * porArmar;
-    }
-  }
-  return { costo: Math.round(costo * 100) / 100, sinCostear: [...new Set(sinCostear)] };
-};
-
-/**
- * Al editar o borrar una venta se devuelve lo que había salido: los materiales
- * Y los frascos que estaban armados. Revertir solo una de las dos partes dejaría
- * el descuadre al revés.
- */
-export const revertirVenta = async (tx: Prisma.TransactionClient, ventaId: number) => {
-  await revertirMovimientos(tx, 'venta', ventaId);
-  await revertirTerminado(tx, 'venta', ventaId);
-};
 
 /** Perfumes que ya se vendieron pero no tienen esencia asignada (para configurar). */
 export const perfumesSinCostear = async () => {

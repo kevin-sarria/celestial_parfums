@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aBase, costosConFlete, desglosarIva } from './inventario.repository';
+import { aBase, costosConFlete, desglosarIva } from './inventario.compras';
 
 /**
  * El IVA de las compras y el reparto del flete.

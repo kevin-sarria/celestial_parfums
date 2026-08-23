@@ -242,14 +242,25 @@ codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva
 
 ## Archivos que pasan de ~500 líneas (regla del `CLAUDE.md`)
 
-Medido el 2026-08-23. **`perfume.repository.ts` ya se partió** (713 → 492): las clasificaciones
-—aromas, ocasiones, categorías y tallas— salieron a `clasificacion.repository.ts` y el emparejado
-de esencias se fue con los suyos a `emparejarEsencias.repository.ts`. Quedan estos, en orden:
+**El backend ya cumple.** Se partieron los dos repositorios grandes (2026-08-23):
+
+| Antes | Ahora | Qué salió |
+|---|---|---|
+| `perfume.repository.ts` 713 | **463** | `clasificacion.repository.ts` (aromas, ocasiones, categorías, tallas), `precio.repository.ts` (la lista categoría × talla) y el emparejado de esencias, que se fue con los suyos |
+| `inventario.repository.ts` 683 | **452** | `inventario.compras.ts` (unidades, IVA y flete: cálculo puro, se prueba sin MySQL) y `inventario.consumoVenta.ts` (qué gasta una venta), más `utils/redondeo.ts` para que `r3`/`r4` no estén copiados |
+
+**`schemas/import.spec.ts` (667) se deja como está, a propósito.** No es lógica: es la TABLA que
+describe qué columnas acepta cada importación, un bloque por entidad. Ya tiene una sola
+responsabilidad, y partirla en seis archivos solo haría más difícil lo único que se hace con ella
+—agregar una entidad nueva— sin quitar ningún riesgo: aquí no hay reglas que se puedan duplicar
+sin querer. La regla de las 500 líneas existe para que nadie pierda una regla dentro de un archivo
+enorme; en una tabla de datos eso no pasa.
+
+**Falta el frontend** (5 archivos). Son pantallas, así que cada una hay que abrirla en el
+navegador y mirarla antes de darla por buena — no basta con que compile:
 
 | Archivo | Líneas |
 |---|---|
-| `backend/src/repositories/inventario.repository.ts` | 683 |
-| `backend/src/schemas/import.spec.ts` | 667 (es una tabla de datos, no lógica: partirlo quizá no aplica) |
 | `frontend/src/pages/dashboard/tabs/RedesTab.tsx` | 665 |
 | `frontend/src/pages/dashboard/tabs/PerfumesTab.tsx` | 547 |
 | `frontend/src/components/table/SmartTable.tsx` | 538 |

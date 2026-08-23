@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma';
 import { notFound } from '../utils/httpError';
 import { CreateVentaDTO } from '../types/venta.type';
 import { lineasDeVenta } from '../schemas/venta.schema';
-import { consumirPorVenta, revertirVenta } from './inventario.repository';
+import { consumirPorVenta, revertirVenta } from './inventario.consumoVenta';
 import { filtroEnum, filtroFecha, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
 
 /**
