@@ -1,5 +1,6 @@
 import * as perfumeRepository from '../repositories/perfume.repository';
 import * as emparejar from '../repositories/emparejarEsencias.repository';
+import * as clasificacion from '../repositories/clasificacion.repository';
 import { CreatePerfumeDTO } from '../types/perfume.type';
 import { cacheClear, cacheGet, cacheSet } from '../utils/cache';
 
@@ -102,7 +103,7 @@ export const asignarEsenciaMasiva = async (perfumeIds: number[], insumoId: numbe
   return count;
 };
 
-export const sugerirEsencias = () => perfumeRepository.sugerirEsencias();
+export const sugerirEsencias = () => emparejar.sugerirEsencias();
 
 /** Puesta al día: qué esencias no tienen perfume y con cuál podrían emparejarse. */
 export const proponerEmparejamientos = () => emparejar.proponerEmparejamientos();
@@ -117,7 +118,7 @@ export const aplicarEmparejamientos = async (acciones: emparejar.AccionEmparejar
 export const aplicarEnlacesEsencia = async (
   enlaces: { perfume_id: number; insumo_esencia_id: number }[],
 ) => {
-  const count = await perfumeRepository.aplicarEnlacesEsencia(enlaces);
+  const count = await emparejar.aplicarEnlacesEsencia(enlaces);
   bustCatalogoCache();
   return count;
 };
@@ -166,48 +167,48 @@ export const getRelatedPerfumes = async (slug: string) => {
 };
 
 export const getAllAromas = async () => {
-  return await perfumeRepository.getAllAromas();
+  return await clasificacion.getAllAromas();
 };
 
 export const createAroma = async (nombre: string) => {
   if (!nombre?.trim()) throw new Error('El nombre del aroma es obligatorio');
-  return await perfumeRepository.createAroma(nombre.trim());
+  return await clasificacion.createAroma(nombre.trim());
 };
 
 export const deleteAroma = async (id: string) => {
-  return await perfumeRepository.deleteAroma(id);
+  return await clasificacion.deleteAroma(id);
 };
 
 export const updateAroma = async (id: string, nombre: string) => {
   if (!nombre?.trim()) throw new Error('El nombre del aroma es obligatorio');
-  return await perfumeRepository.updateAroma(id, nombre.trim());
+  return await clasificacion.updateAroma(id, nombre.trim());
 };
 
 export const getAllOcasiones = async () => {
-  return await perfumeRepository.getAllOcasiones();
+  return await clasificacion.getAllOcasiones();
 };
 
 export const createOcasion = async (nombre: string) => {
   if (!nombre?.trim()) throw new Error('El nombre de la ocasión es obligatorio');
-  return await perfumeRepository.createOcasion(nombre.trim());
+  return await clasificacion.createOcasion(nombre.trim());
 };
 
 export const deleteOcasion = async (id: string) => {
-  return await perfumeRepository.deleteOcasion(id);
+  return await clasificacion.deleteOcasion(id);
 };
 
 export const updateOcasion = async (id: string, nombre: string) => {
   if (!nombre?.trim()) throw new Error('El nombre de la ocasión es obligatorio');
-  return await perfumeRepository.updateOcasion(id, nombre.trim());
+  return await clasificacion.updateOcasion(id, nombre.trim());
 };
 
 export const getAllCategorias = async () => {
-  return await perfumeRepository.getAllCategorias();
+  return await clasificacion.getAllCategorias();
 };
 
 export const createCategoria = async (nombre: string) => {
   if (!nombre?.trim()) throw new Error('El nombre de la categoría es obligatorio');
-  return await perfumeRepository.createCategoria(nombre.trim());
+  return await clasificacion.createCategoria(nombre.trim());
 };
 
 /**
@@ -218,28 +219,28 @@ export const createCategoria = async (nombre: string) => {
 export const deleteCategoria = async (id: string, destino?: string) => {
   const destinoId = destino ? Number(destino) : null;
   if (destino && !Number.isInteger(destinoId)) throw new Error('Categoría de destino inválida');
-  return await perfumeRepository.deleteCategoriaConMudanza(Number(id), destinoId);
+  return await clasificacion.deleteCategoriaConMudanza(Number(id), destinoId);
 };
 
 export const updateCategoria = async (id: string, nombre: string) => {
   if (!nombre?.trim()) throw new Error('El nombre de la categoría es obligatorio');
-  return await perfumeRepository.updateCategoria(id, nombre.trim());
+  return await clasificacion.updateCategoria(id, nombre.trim());
 };
 
 export const getAllPresentaciones = async () => {
-  return await perfumeRepository.getAllPresentaciones();
+  return await clasificacion.getAllPresentaciones();
 };
 
 export const createPresentacion = async (nombre: string) => {
   if (!nombre?.trim()) throw new Error('El nombre de la presentación es obligatorio');
-  return await perfumeRepository.createPresentacion(nombre.trim());
+  return await clasificacion.createPresentacion(nombre.trim());
 };
 
 export const deletePresentacion = async (id: string) => {
-  return await perfumeRepository.deletePresentacion(id);
+  return await clasificacion.deletePresentacion(id);
 };
 
 export const updatePresentacion = async (id: string, nombre: string) => {
   if (!nombre?.trim()) throw new Error('El nombre de la presentación es obligatorio');
-  return await perfumeRepository.updatePresentacion(id, nombre.trim());
+  return await clasificacion.updatePresentacion(id, nombre.trim());
 };

@@ -1,3 +1,4 @@
+import { buildPerfumeIndex, matchPerfume } from '../utils/perfumeMatcher';
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
 
@@ -310,4 +311,101 @@ export const aplicarEmparejamientos = async (acciones: AccionEmparejar[]) => {
   }
 
   return resultado;
+};
+
+/**
+ * Sugerir y aplicar enlaces perfume→esencia EN BLOQUE.
+ *
+ * Vivían en `perfume.repository.ts`, pero son el mismo trabajo que el resto de
+ * este archivo —averiguar qué esencia le toca a cada perfume— y usan el mismo
+ * matcher conservador. Juntarlas evita que dos sitios distintos decidan lo
+ * mismo con criterios que se separen con el tiempo.
+ */
+/**
+ * Propone qué esencia le corresponde a cada perfume, SIN aplicar nada.
+ *
+ * Nace de cómo el dueño cargó sus datos: cada esencia se llama
+ * "‹Fragancia› – Esencia", así que el nombre ya dice a qué perfume pertenece.
+ * Enlazarlas a mano serían 200+ visitas.
+ *
+ * Usa el MISMO matcher que las ventas, que es conservador a propósito: si un
+ * nombre encaja con dos perfumes, no elige — prefiere dejarlo sin enlazar a
+ * enlazarlo mal, porque un enlace equivocado descuenta la esencia de otro y el
+ * costo sale falso sin que nadie lo note.
+ *
+ * Solo mira perfumes fabricados que AÚN no tienen esencia: nunca pisa una
+ * asignación hecha a mano.
+ */
+export const sugerirEsencias = async () => {
+  const [perfumes, esencias] = await Promise.all([
+    prisma.perfume.findMany({
+      where: { tipo_producto: 'fabricado', insumo_esencia_id: null },
+      select: { id: true, nombre: true },
+    }),
+    prisma.insumoCosto.findMany({
+      where: { tipo: 'materia_prima', activo: true },
+      select: { id: true, nombre: true },
+    }),
+  ]);
+
+  const index = buildPerfumeIndex(perfumes);
+  const enlaces: { perfume_id: number; perfume: string; insumo_id: number; esencia: string }[] = [];
+  const yaPropuesto = new Set<number>();
+
+  for (const e of esencias) {
+    // El nombre de la esencia lleva el del perfume delante del separador
+    const corto = e.nombre.split(' – ')[0].split(' - ')[0].trim();
+    if (!corto || corto.length < 3) continue;
+    const perfumeId = matchPerfume(corto, index);
+    if (!perfumeId || yaPropuesto.has(perfumeId)) continue;
+    yaPropuesto.add(perfumeId);
+    enlaces.push({
+      perfume_id: perfumeId,
+      perfume: perfumes.find((p) => p.id === perfumeId)!.nombre,
+      insumo_id: e.id,
+      esencia: e.nombre,
+    });
+  }
+
+  return {
+    enlaces: enlaces.sort((a, b) => a.perfume.localeCompare(b.perfume)),
+    // Los que habrá que poner a mano después
+    sin_sugerencia: perfumes.filter((p) => !yaPropuesto.has(p.id)).length,
+    perfumes_pendientes: perfumes.length,
+  };
+};
+
+/**
+ * Aplica una lista de enlaces perfume→esencia de una sola vez.
+ *
+ * Se valida que cada insumo sea materia prima: apuntar un perfume a un envase
+ * daría un costo por ml sin sentido.
+ */
+export const aplicarEnlacesEsencia = async (
+  enlaces: { perfume_id: number; insumo_esencia_id: number }[],
+) => {
+  const ids = [...new Set(enlaces.map((e) => e.insumo_esencia_id))];
+  const validos = await prisma.insumoCosto.findMany({
+    where: { id: { in: ids }, tipo: 'materia_prima' },
+    select: { id: true },
+  });
+  const permitidos = new Set(validos.map((v) => v.id));
+  const malos = ids.filter((id) => !permitidos.has(id));
+  if (malos.length > 0) {
+    throw badRequest(`${malos.length} de los insumos elegidos no son materia prima`);
+  }
+
+  return prisma.$transaction(async (tx) => {
+    let count = 0;
+    for (const e of enlaces) {
+      const r = await tx.perfume.updateMany({
+        // Solo si sigue sin esencia: si alguien la puso mientras revisabas la
+        // vista previa, su decisión manda sobre la sugerencia automática.
+        where: { id: e.perfume_id, insumo_esencia_id: null },
+        data: { insumo_esencia_id: e.insumo_esencia_id },
+      });
+      count += r.count;
+    }
+    return count;
+  });
 };

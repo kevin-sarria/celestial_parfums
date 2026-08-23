@@ -240,6 +240,22 @@ codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva
    receta ya enganchada (se rechaza; decisión del dueño). Detalle y porqué en
    [`inventario-costeo.md`](inventario-costeo.md). En producción no había ninguna talla suelta.
 
+## Archivos que pasan de ~500 líneas (regla del `CLAUDE.md`)
+
+Medido el 2026-08-23. **`perfume.repository.ts` ya se partió** (713 → 492): las clasificaciones
+—aromas, ocasiones, categorías y tallas— salieron a `clasificacion.repository.ts` y el emparejado
+de esencias se fue con los suyos a `emparejarEsencias.repository.ts`. Quedan estos, en orden:
+
+| Archivo | Líneas |
+|---|---|
+| `backend/src/repositories/inventario.repository.ts` | 683 |
+| `backend/src/schemas/import.spec.ts` | 667 (es una tabla de datos, no lógica: partirlo quizá no aplica) |
+| `frontend/src/pages/dashboard/tabs/RedesTab.tsx` | 665 |
+| `frontend/src/pages/dashboard/tabs/PerfumesTab.tsx` | 547 |
+| `frontend/src/components/table/SmartTable.tsx` | 538 |
+| `frontend/src/pages/dashboard/types.ts` | 517 |
+| `frontend/src/pages/dashboard/compras/DetalleCompra.tsx` | 513 |
+
 ## Decisiones pendientes con el dueño
 
 
