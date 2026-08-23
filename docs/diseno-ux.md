@@ -322,6 +322,13 @@ que no entiende de tecnología poco entendería cómo hacer las cosas"*. Skill d
   porque 7 recorridos se cayeron**: buscaban el botón por su valor y ya no lo encontraban. La
   prueba que se rompe es la que avisa de que un cambio "de accesibilidad" empeoró la
   accesibilidad.
+- **La URL de un enlace se pide DENTRO de la pantalla** (2026-08-23). Era un `window.prompt`:
+  una ventana gris del sistema operativo en medio de un diseño marfil e iris, y encima congela la
+  página entera mientras está abierta. Ahora es una casilla en la propia barra del editor, con
+  Enter para aceptar y Escape para salir. **Lo delicado**: al escribir en la casilla el foco sale
+  del área editable y el navegador **pierde la selección**, así que hay que guardar el rango al
+  abrir y devolverlo antes de crear el enlace — si no, el botón no hace nada y no dice por qué.
+  Y una URL sin `https://` se guarda como enlace relativo a la tienda: se completa sola.
 - El campo de dinero va **sin flechitas**: en un precio no sirven y en el celular tapaban un
   dígito.
 - **Confirmar antes de una acción de cara al público** (`PublicarSwitch.tsx`): un clic sin

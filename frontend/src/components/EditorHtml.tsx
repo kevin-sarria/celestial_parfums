@@ -1,5 +1,8 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Link2, Pilcrow } from 'lucide-react';
+import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   value: string;
@@ -38,6 +41,16 @@ function Btn({ onClick, title, children }: { onClick: () => void; title: string;
 export default function EditorHtml({ value, onChange }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const iniciado = useRef(false);
+  const [pidiendoUrl, setPidiendoUrl] = useState(false);
+  const [url, setUrl] = useState('');
+  /**
+   * Lo que estaba seleccionado cuando se pulsó "Enlace".
+   *
+   * Al escribir en la casilla el foco se va del área editable y **el navegador
+   * pierde la selección**, así que `createLink` no tendría a qué aplicarse. Se
+   * guarda el rango antes y se devuelve justo antes de crear el enlace.
+   */
+  const seleccion = useRef<Range | null>(null);
 
   // Solo se pinta el valor inicial una vez (re-escribir innerHTML mueve el cursor)
   useEffect(() => {
@@ -49,7 +62,38 @@ export default function EditorHtml({ value, onChange }: Props) {
 
   const emitir = () => { if (ref.current) onChange(ref.current.innerHTML); };
   const exec = (cmd: string, val?: string) => { document.execCommand(cmd, false, val); ref.current?.focus(); emitir(); };
-  const enlace = () => { const url = window.prompt('URL del enlace (https://…):'); if (url) exec('createLink', url); };
+  /**
+   * Se pide la URL en la propia pantalla y no con `window.prompt`: aquel abre
+   * una ventana gris del sistema operativo en medio de un diseño marfil e iris,
+   * y además congela la página entera mientras está abierta.
+   */
+  const abrirEnlace = () => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed) {
+      toast.error('Primero marca el texto que quieres enlazar', { id: 'enlace' });
+      return;
+    }
+    seleccion.current = sel.getRangeAt(0).cloneRange();
+    setUrl('');
+    setPidiendoUrl(true);
+  };
+
+  const cerrarEnlace = () => { setPidiendoUrl(false); seleccion.current = null; };
+
+  const ponerEnlace = () => {
+    const limpia = url.trim();
+    if (!limpia) { toast.error('Escribe la dirección del enlace', { id: 'enlace' }); return; }
+    const rango = seleccion.current;
+    if (!rango) { cerrarEnlace(); return; }
+    // Se devuelve la selección al texto ANTES de crear el enlace.
+    const sel = window.getSelection();
+    sel?.removeAllRanges();
+    sel?.addRange(rango);
+    // Sin esquema, el navegador arma un enlace relativo a la tienda y el
+    // visitante acaba en una página que no existe.
+    exec('createLink', /^https?:\/\//i.test(limpia) ? limpia : `https://${limpia}`);
+    cerrarEnlace();
+  };
 
   return (
     <div className="overflow-hidden rounded-md border border-input bg-card shadow-xs">
@@ -63,8 +107,27 @@ export default function EditorHtml({ value, onChange }: Props) {
         <span className="mx-1 w-px bg-border" />
         <Btn title="Lista" onClick={() => exec('insertUnorderedList')}><List className="size-4" /></Btn>
         <Btn title="Lista numerada" onClick={() => exec('insertOrderedList')}><ListOrdered className="size-4" /></Btn>
-        <Btn title="Enlace" onClick={enlace}><Link2 className="size-4" /></Btn>
+        <Btn title="Enlace" onClick={abrirEnlace}><Link2 className="size-4" /></Btn>
       </div>
+
+      {pidiendoUrl && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-brand-soft/40 px-2 py-2">
+          <Input
+            autoFocus
+            value={url}
+            placeholder="celestialparfums.com/blog"
+            aria-label="Dirección del enlace"
+            className="h-8 w-full min-w-40 flex-1 sm:w-auto"
+            onChange={(e) => setUrl(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); ponerEnlace(); }
+              if (e.key === 'Escape') { e.preventDefault(); cerrarEnlace(); }
+            }}
+          />
+          <Button type="button" size="sm" className="h-8" onClick={ponerEnlace}>Poner enlace</Button>
+          <Button type="button" size="sm" variant="ghost" className="h-8" onClick={cerrarEnlace}>Cancelar</Button>
+        </div>
+      )}
       <div
         ref={ref}
         contentEditable

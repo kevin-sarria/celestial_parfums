@@ -61,6 +61,40 @@ describe('el blog', () => {
 
     await contexto.close();
   });
+
+  /**
+   * El enlace se pide DENTRO de la pantalla (antes era un `window.prompt`, una
+   * ventana gris del sistema que además congela la página).
+   *
+   * Lo delicado y por lo que existe esta prueba: al escribir en la casilla el
+   * foco se va del área editable y **el navegador pierde la selección**. Si el
+   * rango no se guarda y se devuelve, `createLink` no tiene a qué aplicarse y
+   * el botón no hace nada, en silencio.
+   */
+  it('el enlace se pide en la pantalla y se aplica a lo que estaba marcado', async () => {
+    const { contexto, pagina } = await abrirDashboard();
+    await irA(pagina, '/dashboard/blog');
+    await pagina.waitForSelector('text=+ Nueva entrada');
+    await pagina.getByRole('button', { name: '+ Nueva entrada' }).click();
+
+    const editor = pagina.locator('[contenteditable="true"]');
+    await editor.fill('Mira el catálogo');
+    await editor.click();
+    await pagina.keyboard.press('Control+a');
+    await pagina.getByTitle('Enlace').click();
+
+    // Sin `window.prompt`: la casilla vive en la propia barra.
+    const casilla = pagina.getByLabel('Dirección del enlace');
+    await casilla.fill('celestialparfums.com/blog');
+    await pagina.getByRole('button', { name: 'Poner enlace' }).click();
+
+    // Sin esquema, el navegador armaría un enlace relativo a la tienda.
+    const href = await editor.locator('a').first().getAttribute('href');
+    expect(href).toBe('https://celestialparfums.com/blog');
+    expect(await editor.locator('a').first().innerText()).toContain('Mira el catálogo');
+
+    await contexto.close();
+  });
 });
 
 describe('la página Contáctame', () => {

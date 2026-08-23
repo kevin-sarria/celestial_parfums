@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 23 de agosto de 2026.** Todo compila, **261 pruebas en verde** (142 backend +
-77 frontend + 42 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
+**Última sesión: 23 de agosto de 2026.** Todo compila, **262 pruebas en verde** (142 backend +
+77 frontend + 43 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
 
@@ -191,9 +191,9 @@ codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva
 3. ~~55 archivos empiezan con BOM.~~ **HECHO (2026-08-23)**: cero. Se quitaron **en binario**
    —los 3 bytes y nada más—, que es la única forma segura en este proyecto: cualquier lectura y
    reescritura de texto se lleva por delante las tildes o los saltos de línea.
-4. **`window.prompt` en `EditorHtml`** para pedir la URL de un enlace: bloquea la página y se ve
-   como una ventana de Windows en medio del diseño. `window.confirm` **sí** está aprobado (ver
-   [`diseno-ux.md`](diseno-ux.md)); este no se habló nunca.
+4. ~~`window.prompt` en `EditorHtml`.~~ **HECHO (2026-08-23)**: la URL se pide en una casilla
+   dentro de la propia barra del editor. `window.confirm` **sí** sigue aprobado (ver
+   [`diseno-ux.md`](diseno-ux.md)); el `prompt` era el único que no se había hablado.
 5. **`presentaciones` (la tienda) y `formulas_volumen` (el costeo) se enlazan por el número de
    ml**, no por una relación de verdad. Funciona, pero ya estaba escrito en
    [`inventario-costeo.md`](inventario-costeo.md) que conviene revisarlo **antes de apoyar más
