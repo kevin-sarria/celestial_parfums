@@ -244,52 +244,31 @@ codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva
    receta ya enganchada (se rechaza; decisión del dueño). Detalle y porqué en
    [`inventario-costeo.md`](inventario-costeo.md). En producción no había ninguna talla suelta.
 
-## Archivos que pasan de ~500 líneas (regla del `CLAUDE.md`)
+## La regla de las ~500 líneas: CUMPLIDA (2026-08-23)
 
-**El backend ya cumple.** Se partieron los dos repositorios grandes (2026-08-23):
+Ningún archivo del proyecto pasa de 500 líneas, con **una excepción escrita y razonada**.
 
-| Antes | Ahora | Qué salió |
-|---|---|---|
-| `perfume.repository.ts` 713 | **463** | `clasificacion.repository.ts` (aromas, ocasiones, categorías, tallas), `precio.repository.ts` (la lista categoría × talla) y el emparejado de esencias, que se fue con los suyos |
-| `inventario.repository.ts` 683 | **452** | `inventario.compras.ts` (unidades, IVA y flete: cálculo puro, se prueba sin MySQL) y `inventario.consumoVenta.ts` (qué gasta una venta), más `utils/redondeo.ts` para que `r3`/`r4` no estén copiados |
+| Archivo | Antes | Ahora | Qué salió |
+|---|---|---|---|
+| `backend/repositories/perfume.repository.ts` | 713 | **463** | `clasificacion.repository.ts`, `precio.repository.ts` y el emparejado de esencias |
+| `backend/repositories/inventario.repository.ts` | 683 | **452** | `inventario.compras.ts` (unidades, IVA y flete: cálculo puro), `inventario.consumoVenta.ts` y `utils/redondeo.ts` |
+| `frontend/tabs/RedesTab.tsx` | 665 | **486** | la fila de un link, el modal de crear/editar y su formulario de configuración |
+| `frontend/tabs/PerfumesTab.tsx` | 547 | **468** | los checkboxes de relaciones y el bloque de tallas |
+| `frontend/components/table/SmartTable.tsx` | 538 | **484** | el paginador; y `SortIcon` subió a nivel de módulo |
+| `frontend/dashboard/types.ts` | 517 | **20** | los 37 tipos, repartidos por área en `types/` |
+| `frontend/compras/DetalleCompra.tsx` | 513 | **281** | el alta de un insumo sin salir de la factura, con su estado |
 
-**`schemas/import.spec.ts` (667) se deja como está, a propósito.** No es lógica: es la TABLA que
-describe qué columnas acepta cada importación, un bloque por entidad. Ya tiene una sola
-responsabilidad, y partirla en seis archivos solo haría más difícil lo único que se hace con ella
-—agregar una entidad nueva— sin quitar ningún riesgo: aquí no hay reglas que se puedan duplicar
-sin querer. La regla de las 500 líneas existe para que nadie pierda una regla dentro de un archivo
-enorme; en una tabla de datos eso no pasa.
+**La excepción: `backend/schemas/import.spec.ts` (667).** No es lógica, es la TABLA que describe qué
+columnas acepta cada importación, un bloque por entidad. Ya tiene una sola responsabilidad, y
+partirla en seis archivos solo haría más difícil lo único que se hace con ella —agregar una entidad
+nueva— sin quitar ningún riesgo: en una tabla de datos no se pierde una regla, que es de lo que la
+regla de las 500 líneas protege.
 
-**`dashboard/types.ts` (517) ya se partió** (2026-08-23): sus 37 tipos se repartieron por área en
-`dashboard/types/` —pedidos, compras, catálogo, clientes, publicidad— con un `index.ts` que
-re-exporta todo, así que **ninguno de los 29 archivos que lo importaban cambió**. Partirlo destapó
-de paso el bug de `toISOString()` de las 7 p.m. (ver [`gotchas.md`](gotchas.md)).
-
-**`RedesTab.tsx` (665) ya se partió** (2026-08-23): salieron `redes/FilaEnlace.tsx` (la fila de un
-link) y `redes/ModalEnlace.tsx` (crear/editar, 129 líneas de JSX que estaban al final del
-`return`). Quedó en 505. Verificado con capturas antes/después: **la pantalla es idéntica píxel a
-píxel**, y se recorrió el flujo entero en el navegador (crear un link → verlo en la lista → verlo
-en la vista previa).
-
-**`SmartTable.tsx` (538) ya se partió** (2026-08-23): el paginador —con las opciones de tamaño y
-el cálculo de qué números mostrar— salió a `table/PaginadorTabla.tsx`, y `SortIcon`, que estaba
-**declarado dentro** del componente (lo que prohíbe el `CLAUDE.md`), subió a nivel de módulo. Quedó
-en 484. Verificado con capturas de tres tablas distintas —perfumes, ventas e inventario—:
-**idénticas píxel a píxel**, y además se probó el paginador haciendo clic (página 2 y cambio de
-filas por página), que es lo que se movió.
-
-**`PerfumesTab.tsx` (547) ya se partió** (2026-08-23): salieron `perfumes/CheckGroup.tsx` (los
-checkboxes de aromas y ocasiones, que no saben nada de perfumes) y `perfumes/TallasDelPerfume.tsx`
-—lo más enredado del formulario: por cada talla se cruzan si se vende, si cuesta distinto de la
-lista y con qué frasco se arma—. Quedó en 468. Verificado: el modal es **idéntico píxel a píxel**,
-y se probó marcando una talla en el navegador (aparecen su precio, su nota y su frasco).
-
-**Falta 1 archivo.** Cada una hay que abrirla en el navegador y mirarla antes
-de darla por buena — no basta con que compile:
-
-| Archivo | Líneas |
-|---|---|
-| `frontend/src/pages/dashboard/compras/DetalleCompra.tsx` | 513 |
+**Cómo se verificó cada pantalla** (no basta con que compile): captura antes y después, y las de
+`RedesTab`, `PerfumesTab`, `SmartTable` (tres tablas distintas) y el modal de perfume salieron
+**idénticas píxel a píxel**. En `DetalleCompra` ese método NO sirve —dos capturas del mismo código
+también difieren, por el cursor que parpadea en el campo con foco—, así que se verificó recorriendo
+el flujo entero: crear un insumo desde la factura y verlo quedar como línea.
 
 ## Decisiones pendientes con el dueño
 

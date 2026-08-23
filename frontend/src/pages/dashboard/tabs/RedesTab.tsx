@@ -8,6 +8,7 @@ import { SelectSimple } from '@/components/ui/select-simple';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { ContactoLinktree } from '../../../components/contacto/ContactoLinktree';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, ColorField } from '../ui';
+import { emptyConfigForm, type ConfigForm } from './redes/configForm';
 import { FilaEnlace } from './redes/FilaEnlace';
 import { ModalEnlace, type LinkForm } from './redes/ModalEnlace';
 import { subirImagenAdmin } from '../helpers';
@@ -15,26 +16,6 @@ import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import type { ContactoConfig, ContactoForma, ContactoLink } from '../../../domain/entities/contacto.schema';
 
-interface ConfigForm {
-  avatar_url: string;
-  nombre: string;
-  descripcion: string;
-  fondo_tipo: 'color' | 'imagen';
-  fondo_color: string;
-  fondo_imagen: string;
-  boton_forma: ContactoForma;
-  boton_color_fondo: string;
-  boton_color_texto: string;
-  contenido_posicion: 'arriba' | 'centro';
-  redes_posicion: 'centro' | 'abajo';
-}
-
-const emptyConfigForm = (): ConfigForm => ({
-  avatar_url: '', nombre: 'Celestial Parfums', descripcion: '',
-  fondo_tipo: 'color', fondo_color: '#f6f3ec', fondo_imagen: '',
-  boton_forma: 'redondo', boton_color_fondo: '#ffffff', boton_color_texto: '#2f2a3d',
-  contenido_posicion: 'centro', redes_posicion: 'centro',
-});
 
 
 export function RedesTab() {
