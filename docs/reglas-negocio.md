@@ -86,8 +86,22 @@ devolviera a `activo` y esa persona pudiera usarlo otra vez. Ahora:
   reabre; borrar el crédito borra su venta).
 - Estadística "Ingresos este mes" = ventas de contado del mes + abonos del mes. La venta
   enlazada a crédito NUNCA suma ahí (su plata entra por abonos; evita doble conteo).
-- `creditos.fecha_limite` (`@db.Date`): acuerdo de pago, por defecto 1 mes desde `fecha`,
-  editable. El crédito sale "Vencido" en la tabla si sigue con saldo pasada esa fecha.
+- `creditos.fecha_limite` (`@db.Date`): acuerdo de pago, **por defecto 30 días de calendario**
+  desde `fecha`, editable. El crédito sale "Vencido" en la tabla si sigue con saldo pasada esa
+  fecha.
+  - **Son días, no "el mismo día del mes siguiente"** — decidido por el dueño el 2026-08-23. Su
+    razón: un crédito de fin de enero con límite el 28 de febrero *parece* menos de un mes;
+    contando 30 días el plazo es siempre el mismo, y "un mes" en un acuerdo de palabra es
+    aproximado.
+  - Antes se calculaba con `setMonth(+1)` y en los días **29, 30 y 31 se desbordaba**: un crédito
+    del 31 de enero vencía el **3 de marzo** (31 días de plazo) y uno del 31 de marzo, el 1 de
+    mayo. Nadie lo había notado porque ningún crédito de producción nació esos días (6 créditos,
+    cero afectados al 2026-08-14). Le habría tocado a 1 de cada 10.
+  - La cuenta vive en `utils/fechas.ts` (`DIAS_PLAZO_CREDITO` + `sumarDias`) **en los dos lados**:
+    el formulario la propone mientras escribes y el servidor la decide al guardar. Están
+    probadas de las tres formas —la aritmética sola, lo que se guarda de verdad y lo que el dueño
+    ve en pantalla— porque son dos cálculos distintos y el día que se separen mostraría una fecha
+    y guardaría otra.
 
 ### Crédito itemizado (productos reales, no texto libre)
 

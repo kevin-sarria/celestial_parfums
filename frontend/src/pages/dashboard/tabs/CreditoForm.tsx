@@ -21,7 +21,7 @@ import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { BloqueCampos, Field, FieldRow, FormError } from '../ui';
 import type { CodigoValidado, ClienteSeleccion, Credito, Usuario } from '../types';
-import { unMesDespues } from '../types';
+import { fechaLimitePorDefecto } from '../../../utils/fechas';
 
 interface CreditoFormProps {
   open: boolean;
@@ -53,7 +53,7 @@ interface EstadoForm {
 const hoy = () => new Date().toISOString().slice(0, 10);
 
 const vacio = (): EstadoForm => ({
-  fecha: hoy(), fecha_limite: unMesDespues(hoy()), user_id: '',
+  fecha: hoy(), fecha_limite: fechaLimitePorDefecto(hoy()), user_id: '',
   lineas: [], aplicar_combo: false, articulos: '',
   deuda_inicial: '', deuda_manual: false, codigo_descuento: '',
   nuevo_nombre: '', nuevo_apellido: '', nuevo_correo: '',
@@ -112,7 +112,7 @@ export function CreditoForm({
       fecha: credito.fecha.slice(0, 10),
       fecha_limite: credito.fecha_limite
         ? credito.fecha_limite.slice(0, 10)
-        : unMesDespues(credito.fecha.slice(0, 10)),
+        : fechaLimitePorDefecto(credito.fecha.slice(0, 10)),
       user_id: credito.cliente.id,
       lineas,
       articulos: credito.articulos,
@@ -227,7 +227,7 @@ export function CreditoForm({
               onChange={e => setForm(f => ({
                 ...f,
                 fecha: e.target.value,
-                fecha_limite: f.fecha_limite === unMesDespues(f.fecha) ? unMesDespues(e.target.value) : f.fecha_limite,
+                fecha_limite: f.fecha_limite === fechaLimitePorDefecto(f.fecha) ? fechaLimitePorDefecto(e.target.value) : f.fecha_limite,
               }))} />
           </Field>
           <Field label="Fecha límite de pago *">

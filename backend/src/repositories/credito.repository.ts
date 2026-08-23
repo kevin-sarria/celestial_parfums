@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { notFound } from '../utils/httpError';
+import { DIAS_PLAZO_CREDITO, sumarDias } from '../utils/fechas';
 import { CreateCreditoDTO } from '../types/credito.type';
 import { paginatedResponse } from '../utils/pagination';
 import { filtroFecha, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
@@ -43,13 +44,12 @@ const includeAll = {
   },
 } as const;
 
-/** Fecha límite pactada: la que se envía, o 1 mes después de la fecha del crédito. */
-const calcularFechaLimite = (fecha: string, limite?: string | null) => {
-  if (limite) return new Date(limite);
-  const d = new Date(fecha);
-  d.setMonth(d.getMonth() + 1);
-  return d;
-};
+/**
+ * Fecha límite pactada: la que se envía, o el plazo por defecto contado desde
+ * la fecha del crédito. Cuántos días son y por qué, en `utils/fechas.ts`.
+ */
+const calcularFechaLimite = (fecha: string, limite?: string | null) =>
+  new Date(limite ?? sumarDias(fecha, DIAS_PLAZO_CREDITO));
 
 /** La fila del crédito con todo lo que `includeAll` arrastra (cliente, abonos, venta). */
 type CreditoRow = Prisma.CreditoGetPayload<{ include: typeof includeAll }>;

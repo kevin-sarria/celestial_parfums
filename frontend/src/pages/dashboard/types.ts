@@ -1,3 +1,4 @@
+import { fechaLimitePorDefecto } from '../../utils/fechas';
 import type { LineaPedido } from './pedido/lineasPedido';
 
 export interface Lookup {
@@ -293,12 +294,13 @@ export interface CreditoForm {
   codigo_descuento: string;
 }
 
-/** Fecha AAAA-MM-DD un mes después de la dada (por defecto del acuerdo de pago). */
-export const unMesDespues = (fecha: string) => {
-  const d = new Date(fecha);
-  d.setMonth(d.getMonth() + 1);
-  return d.toISOString().slice(0, 10);
-};
+/**
+ * El plazo por defecto del acuerdo de pago vive en `utils/fechas.ts`, con su
+ * porqué. Se re-exporta aquí para no romper a quien ya lo importaba de este
+ * archivo. Se llamaba `unMesDespues` y el nombre mentía desde que el plazo se
+ * cuenta en días: el 31 de enero le daba el 3 de MARZO.
+ */
+export { fechaLimitePorDefecto } from '../../utils/fechas';
 
 export const emptyCreditoForm = (): CreditoForm => {
   const hoy = new Date().toISOString().slice(0, 10);
@@ -309,7 +311,7 @@ export const emptyCreditoForm = (): CreditoForm => {
     nuevo_telefono: '', nuevo_direccion: '',
     articulos: '', deuda_inicial: '',
     lineas: [], aplicar_combo: false, deuda_manual: false,
-    fecha_limite: unMesDespues(hoy),
+    fecha_limite: fechaLimitePorDefecto(hoy),
     codigo_descuento: '',
   };
 };

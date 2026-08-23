@@ -32,3 +32,34 @@ export const hoyEnColombia = (ahora: Date = new Date()): Date => {
   const local = new Date(ahora.getTime() + DESFASE_COLOMBIA_MS);
   return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()));
 };
+
+/**
+ * El plazo por defecto de un crédito: **30 días de calendario**.
+ *
+ * Decidido por el dueño el 2026-08-23, sobre la alternativa de "el mismo día
+ * del mes siguiente". Su razón: un crédito de fin de enero con fecha límite el
+ * 28 de febrero *parece* menos de un mes; contando 30 días siempre da el mismo
+ * plazo, y "un mes" en un acuerdo de palabra es aproximado.
+ *
+ * Antes se hacía con `setMonth(+1)`, que en los días 29, 30 y 31 se desbordaba
+ * al mes siguiente: un crédito del 31 de enero vencía el **3 de marzo** (31
+ * días) y uno del 31 de marzo el 1 de mayo. Nadie lo había notado porque
+ * todavía ningún crédito nació esos días.
+ */
+export const DIAS_PLAZO_CREDITO = 30;
+
+/**
+ * Suma días a una fecha de CALENDARIO ('AAAA-MM-DD') y devuelve otra igual.
+ *
+ * Todo el cálculo va en UTC —incluida la lectura y la escritura del texto—
+ * porque mezclar `getDate()` (local) con `toISOString()` (UTC) es justo lo que
+ * corre el día en Colombia. Nunca convierte a instante local: entra texto,
+ * sale texto.
+ */
+export const sumarDias = (fecha: string, dias: number): string => {
+  const [anio, mes, dia] = fecha.slice(0, 10).split('-').map(Number);
+  const destino = new Date(Date.UTC(anio, mes - 1, dia) + dias * 86400000);
+  const mm = String(destino.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(destino.getUTCDate()).padStart(2, '0');
+  return `${destino.getUTCFullYear()}-${mm}-${dd}`;
+};

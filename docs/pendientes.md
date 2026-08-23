@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 23 de agosto de 2026.** Todo compila, **268 pruebas en verde** (148 backend +
-77 frontend + 43 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
+**Última sesión: 23 de agosto de 2026.** Todo compila, **276 pruebas en verde** (155 backend +
+77 frontend + 44 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
 
@@ -24,7 +24,11 @@
    invisible para el dueño, pero **dos arreglos sí se notan**: marcar una cotización como
    "enviada" ya no la devuelve sin sus productos, y guardar una venta o un crédito ya no puede
    responder con un error 500. Detalle en la sección de deuda técnica, más abajo.
-6. **Una receta nueva engancha sola las tallas de ese tamaño.** Solo código, sin migración. Hace
+6. **El plazo por defecto de un crédito son 30 días de calendario.** Solo código, sin migración.
+   Los créditos ya guardados **no cambian** (su fecha límite está escrita en la base); solo cambia
+   la que se propone de aquí en adelante. Antes, un crédito de un 29, 30 o 31 se desbordaba al mes
+   siguiente y daba 2-3 días de más.
+7. **Una receta nueva engancha sola las tallas de ese tamaño.** Solo código, sin migración. Hace
    falta ANTES de separar "200/250ML" (punto 6 de la lista de abajo): sin esto, esas dos tallas se
    quedarían sin costear y sus ventas entrarían con costo cero. De paso, cambiarle los mililitros
    a una receta que ya usa alguna talla **ahora se rechaza** con un mensaje que dice cuáles.
