@@ -32,6 +32,20 @@ Cada uno de estos costó horas. Si un síntoma se parece, empieza por aquí ante
 - **NUNCA usar `toISOString()` para una fecha de calendario**: da la fecha **UTC**, así que
   pasadas las 7 p.m. en Colombia un archivo salía fechado un día después que su portada. Usar
   `hoyLocal()` (`getFullYear/getMonth/getDate`). **Tercera vez que este error aparece.**
+- **Los anuncios se apagaban un día antes** (2026-08-22, corregido). `whereVigentes()` comparaba
+  `fin >= new Date()`, o sea una fecha de CALENDARIO contra un INSTANTE. Como Prisma lee un
+  `@db.Date` a medianoche UTC, una campaña "hasta el 22" moría a las **7:00 p.m. del 21 hora
+  Colombia** — y arrancaba con la misma anticipación. No se detectó antes porque no falla nada:
+  simplemente el popup deja de salir, en silencio. Se encontró midiendo, no leyendo: los 4
+  anuncios del dueño estaban activos y con fecha del día, y `/api/anuncios` devolvía `[]`.
+  **Cuarta vez que este error aparece**, así que ahora la regla vive en UN solo sitio:
+  `utils/fechas.ts` → `hoyEnColombia()`, que devuelve el día de hoy como fecha de calendario a
+  medianoche UTC, justo en la forma en que Prisma lee las columnas `@db.Date`. Tiene 7 pruebas de
+  aritmética (`fechas.test.ts`) que fijan los bordes: 11:59 p.m. del 22 sigue siendo el 22, y a
+  las 00:00 del 23 ya no. **Si aparece otra comparación de fechas con la base, usar ese ayudante**
+  en vez de escribir la quinta versión — los cortes de `reporte.repository.ts`,
+  `venta.repository.ts` y `devolucion.repository.ts` siguen con su solución propia y podrían
+  adoptarlo el día que se toquen.
 
 ## Red y API
 

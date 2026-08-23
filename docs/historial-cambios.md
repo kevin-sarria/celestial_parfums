@@ -150,6 +150,42 @@ Cuatro cosas que reportó el dueño y una que se destapó investigándolas.
     dejaría escribir un regalo que el servidor descarta en silencio.
   - **La Ola 2 (el kit del combo) se dejó para después** de que el dueño use esta unos días.
 
+## Sesión del 2026-08-22: cae la parte pública y muere `cachedFetch`
+
+La capa HTTP única (nacida el 2026-08-14, detalle en [`arquitectura.md`](arquitectura.md)) llegó
+a la tienda. En un día pasó de **38 llamadas viejas repartidas en 26 archivos a 12 archivos**, y
+de esos 12 dos ni siquiera son red: solo importan la constante `BASE_URL`.
+
+- **El portal del cliente**, las **pantallas de contenido** (Blog, Sobre nosotros, reseñas
+  públicas, galería de ganadores, Invita y gana) y **la tienda entera** (home, catálogo con
+  búsqueda y filtros, ficha de perfume, combos, popups con sus cupones y el detector de combos
+  del carrito).
+- **`cachedFetch.ts` borrado.** Era `http.getCacheado` escrito por segunda vez: el mismo `Map` en
+  memoria, la misma caducidad, la misma deduplicación. Y peor, porque **no miraba `res.ok`**: un
+  500 llegaba a la pantalla disfrazado de dato bueno. La caducidad quedó en los 5 minutos de la
+  casa.
+- **`useCatalog` borrado entero** — 182 líneas y 6 llamadas del catálogo viejo del home,
+  reemplazado hacía tiempo por `useDestacados` y `usePerfumes`, sin un solo import en toda la
+  aplicación. Se comprobó antes de borrarlo; migrarlo habría sido mantener código muerto.
+- **`usePerfumeDetail` y `useComboDetail` eran el mismo archivo dos veces.** Ahora son
+  envoltorios de tres líneas sobre `useDetallePorSlug`.
+
+**Lo que de verdad salió de levantar la tapa: estas pantallas mentían al fallar**, y en sitios
+que venden. El blog prometía "pronto publicaremos contenido aquí" cuando lo que pasaba era que no
+había cargado; la ficha decía "aún no hay reseñas publicadas" aunque el catálogo acabara de
+contar que el perfume tiene opiniones —le quita ventas justo al mejor calificado—; y *Sobre
+nosotros* y las entradas del blog **echaban al visitante a otra página** ante cualquier fallo de
+red, que es indistinguible de "esto ya no existe". Ahora solo se redirige cuando el servidor
+confirma que no hay nada, y un fallo se queda en su sitio y lo dice.
+
+**Y un bug de negocio que no se buscaba: los anuncios se apagaban un día antes.** Se encontró
+porque los popups no salían al verificar la migración en el navegador. `whereVigentes()` comparaba
+una fecha de calendario contra un instante, así que una campaña "hasta el 22" moría a las 7 p.m.
+del 21 hora Colombia. Los 4 anuncios del dueño llevaban más de un día apagados sin que nada
+fallara. **El dueño decidió que "hasta el 22" incluye el 22 entero**, y la regla quedó en un solo
+sitio (`utils/fechas.ts` → `hoyEnColombia()`) con 7 pruebas que fijan los bordes. Es la **cuarta
+vez** que la familia de este error aparece — ver [`gotchas.md`](gotchas.md).
+
 ## Cosas que se probaron y se descartaron
 
 - **Three.js para la tarjeta de recompensas**: pesaba mucho para el público de gama baja y el

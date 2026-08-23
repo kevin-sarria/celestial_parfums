@@ -1,13 +1,19 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 22 de agosto de 2026.** Todo compila, **245 pruebas en verde** (129 backend +
+**Última sesión: 22 de agosto de 2026.** Todo compila, **252 pruebas en verde** (136 backend +
 77 frontend + 39 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
 
-**Listo en código y esperando el próximo deploy: los regalos en la venta (Ola 1).** Cualquier
-línea puede llevar parte gratis y parte cobrada, y los accesorios tienen su buscador aparte. Trae
-migración (`20260820120000_regalos_y_extras`), así que el deploy es `git pull` + `migrate deploy` +
-build, como siempre — ver [`deploy-migraciones.md`](deploy-migraciones.md). La **Ola 2 (el kit del
-combo)** queda a la espera de que el dueño use esta unos días y opine.
+**Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
+
+1. **Los regalos en la venta (Ola 1).** Cualquier línea puede llevar parte gratis y parte cobrada,
+   y los accesorios tienen su buscador aparte. Trae migración
+   (`20260820120000_regalos_y_extras`), así que el deploy es `git pull` + `migrate deploy` +
+   build, como siempre — ver [`deploy-migraciones.md`](deploy-migraciones.md). La **Ola 2 (el kit
+   del combo)** queda a la espera de que el dueño use esta unos días y opine.
+2. **El arreglo de los anuncios que se apagaban un día antes.** Sin migración: es solo código.
+   **Va con prisa razonable** — hasta que se despliegue, los 4 popups del dueño siguen apagados en
+   producción desde su último día de vigencia. Mientras tanto, el parche manual es correrles la
+   fecha de fin desde el dashboard. Detalle en [`gotchas.md`](gotchas.md).
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -120,40 +126,33 @@ mucho de la tabla de arriba, avisar antes de seguir.
   el código nuevo y la migración de producto terminado ya están en vivo — queda pendiente el
   runbook de abajo para meter los 9 frascos armados al sistema.
 
-## El refactor del frontend (capa HTTP única) — falta solo la parte pública
+## El refactor del frontend (capa HTTP única) — falta el login y dos pantallas
 
-Detalle y decisiones en [`arquitectura.md`](arquitectura.md). Al 2026-08-15 van **77 llamadas por
-`http` y quedan 38** con el `fetch` viejo. **El dashboard está terminado** —las 30 pestañas con sus
-modales— y `useGuardedFetch` se borró.
+**Ya está hecho el dashboard entero, el portal del cliente, las pantallas de contenido y la
+tienda completa** — lo hecho está contado en
+[`historial-cambios.md`](historial-cambios.md#sesión-del-2026-08-22-cae-la-parte-pública-y-muere-cachedfetch),
+con las decisiones en [`arquitectura.md`](arquitectura.md). `useGuardedFetch` y `cachedFetch.ts`
+ya no existen.
 
-**El portal del cliente también cayó** (2026-08-22): Mis compras con su reseña y su garantía, Mis
-favoritos, Mis recompensas, Mi crédito y el `ListasProvider`. Tiene recorrido propio en navegador
-—el primero que entra como CLIENTE y no como administrador— y de paso dejaron de mentir cuando la
-petición falla (ver [`arquitectura.md`](arquitectura.md)).
+**Quedan 12 archivos**, en dos grupos:
 
-**Las pantallas de contenido también cayeron** (2026-08-22): Blog (lista y entrada), Sobre
-nosotros, las reseñas públicas de un producto, la galería de ganadores e *Invita y gana*. Traían
-las mismas mentiras educadas —el blog prometía "pronto publicaremos" cuando no había cargado, y
-dos de ellas te echaban a otra página ante un fallo de red— y ya están arregladas (detalle en
-[`arquitectura.md`](arquitectura.md)).
+1. **La autenticación** (9 de los 12, y el grupo delicado porque toca sesiones):
+   `AuthProvider`, `LoginPage`, `RegisterPage`, `VerifyPage` y `GoogleAuthButton`.
+2. **Dos pantallas sueltas**: `ContactPage` y `PerfumeIdealPage` (esta última con 423 líneas,
+   así que probablemente pida partirse antes o después de migrarla).
 
-**Y la TIENDA entera** (2026-08-22): el home con sus destacados y su franja de combos, el catálogo
-con su búsqueda y sus filtros, la ficha de un perfume, los combos con su ficha, los popups de
-anuncios con sus cupones y el detector de combos del carrito. **`cachedFetch.ts` ya no existe**:
-era `http.getCacheado` escrito por segunda vez y encima peor (no miraba `res.ok`, así que un error
-llegaba a la pantalla disfrazado de dato bueno).
-
-De paso se borró **`useCatalog`** entero —182 líneas de catálogo viejo que ya no importaba nadie—
-y **`usePerfumeDetail` y `useComboDetail`**, que eran el mismo archivo dos veces, quedaron como
-envoltorios de tres líneas sobre el nuevo `useDetallePorSlug`.
-
-Quedan **12 archivos**: **login/registro/verificación** con su botón de Google y el
-`AuthProvider`, **Contáctame** y **Perfume ideal**. Dos de los 12 no son red:
-`dashboard/helpers.ts` y `catalogoPdf.ts` solo usan la constante `BASE_URL`, que necesitará otra
-casa el día que se borre `client.ts`.
+Y **dos que no son red**: `dashboard/helpers.ts` y `catalogoPdf.ts` solo importan la constante
+`BASE_URL`. El día que se borre `client.ts` hay que darle otra casa — hoy `http.ts` solo exporta
+`API_BASE`, que ya lleva `/api` pegado y no sirve para armar URLs de imágenes.
 
 Se migra **pantalla entera o nada**, y al migrarla se aprovecha para que ningún handler ignore la
 respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra `client.ts`.
+
+**Aviso para quien siga**: las pantallas públicas no tienen prueba automática. La suite de
+frontend es toda de cálculo puro (no hay `@testing-library`, ni entorno jsdom montado), así que
+estas migraciones se verifican **en el navegador**, y con el backend tumbado a propósito para ver
+el camino del error. Montar pruebas de componentes es una decisión del dueño que todavía no se ha
+tomado.
 
 ## El resto de la lista (después del producto terminado)
 
@@ -188,16 +187,6 @@ respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra 
 
 ## Decisiones pendientes con el dueño
 
-- **Los anuncios se apagan un día antes de tiempo** (encontrado el 2026-08-22, midiendo, no
-  opinando). `whereVigentes()` en `anuncio.service.ts` compara `fin >= new Date()`, pero `fin` es
-  `@db.Date`: Prisma lo lee como **medianoche UTC**, o sea las **7:00 p.m. de Colombia del día
-  ANTERIOR**. Comprobado en vivo: los 4 anuncios del dueño tienen `fin = 2026-08-22`, y ese mismo
-  día `/api/anuncios` devolvía `{"data":[]}` — el popup de "¡25% de Bienvenida!" llevaba horas
-  apagado. Es el mismo pariente del gotcha de `toISOString()` con fechas de calendario. **La
-  corrección es de una línea** (comparar contra el final del día local, no contra el instante),
-  pero *cuándo exactamente vence una campaña* es regla de negocio y la decide el dueño: si "hasta
-  el 22" incluye el 22 entero, hoy está perdiendo el último día y cinco horas. Cuando se resuelva,
-  la lección va a `gotchas.md`.
 
 - **Igualar la regla del cupón en créditos y ventas.** Hoy en ventas un cupón canjeado queda
   amarrado a su venta, y en créditos quitar el código lo libera. Es a propósito (es el único camino

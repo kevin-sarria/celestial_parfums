@@ -94,15 +94,13 @@ perfil de cupo), **Proveedores** (compras con sus líneas, IVA por proveedor, al
 **Clasificaciones** (las cuatro listas + la carga inicial del dashboard), **Devoluciones**,
 **Usuarios**, **Reposiciones (avisos)**, **Reseñas**, **Sobre nosotros**, **los tres reportes**,
 **EL DASHBOARD ENTERO** está migrado (2026-08-15): las 30 pestañas, sus modales y sus
-formularios. Van 126 rutas centralizadas y **77 llamadas por `http`; quedan 38** por el camino
-viejo, **todas en la parte pública** —tienda, portal del cliente, login/registro— que es lo único
-pendiente (el total bajó de 151 porque varias se fusionaron: ver *Menos viajes al servidor*).
+formularios. Ahí quedaban **38 llamadas** por el camino viejo, todas en la parte pública (el total
+bajó de 151 porque varias se fusionaron: ver *Menos viajes al servidor*). **Al 2026-08-22 solo
+quedan 12 archivos**, y el desglose vivo está más abajo.
 
 **El portal del cliente ya está migrado** (2026-08-22): Mis compras (con la tarjeta de reseña y
 la garantía de cada pedido), Mis favoritos, Mis recompensas, Mi crédito y el `ListasProvider` que
-guarda los corazones y las campanas de todas las cards. Quedan **25 archivos** con el camino
-viejo: los hooks del catálogo público, login/registro/verificación con su botón de Google, Blog,
-Contáctame, Sobre nosotros y el PDF del catálogo.
+guarda los corazones y las campanas de todas las cards.
 
 **Las pantallas de contenido también cayeron** (2026-08-22): Blog (lista y entrada), Sobre
 nosotros, las reseñas públicas de un producto, la galería de ganadores e *Invita y gana*.

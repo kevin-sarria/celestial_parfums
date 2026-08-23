@@ -4,6 +4,7 @@ import { cacheClear, cacheGet, cacheSet } from '../utils/cache';
 import { generarCodigoDescuento } from '../utils/codigoDescuento';
 import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 import { conflict, notFound } from '../utils/httpError';
+import { hoyEnColombia } from '../utils/fechas';
 
 const includeRel = {
   categorias: { include: { categoria: { select: { id: true, nombre: true } } } },
@@ -34,9 +35,20 @@ const mapAnuncio = (a: any) => ({
   codigos_canjeados: (a.codigos ?? []).filter((c: any) => c.estado === 'canjeado').length,
 });
 
-/** Solo anuncios activos y dentro de su vigencia (para el catálogo público). */
+/**
+ * Solo anuncios activos y dentro de su vigencia (para el catálogo público).
+ *
+ * `inicio` y `fin` son fechas de CALENDARIO (`@db.Date`), así que se comparan
+ * contra el día de hoy en Colombia, no contra el instante actual. Con
+ * `new Date()` la campaña se apagaba a las 7:00 p.m. del día ANTERIOR a su
+ * fecha de fin —medido: los 4 anuncios del dueño llevaban un día largo
+ * apagados el 2026-08-22— y arrancaba con la misma anticipación.
+ *
+ * Decidido con el dueño el 2026-08-22: **"hasta el 22" incluye el 22 entero**,
+ * y la campaña muere a la medianoche colombiana del 23.
+ */
 const whereVigentes = () => {
-  const hoy = new Date();
+  const hoy = hoyEnColombia();
   return {
     activo: true,
     AND: [
