@@ -1,3 +1,4 @@
+import { hoy } from '../../../utils/fechas';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
@@ -14,11 +15,12 @@ import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import type { Produccion } from '../types';
 
 
-/** Corte del mes en curso en UTC: las fechas @db.Date se leen a medianoche UTC. */
-const inicioDeMes = () => {
-  const h = new Date();
-  return new Date(Date.UTC(h.getUTCFullYear(), h.getUTCMonth(), 1)).toISOString().slice(0, 10);
-};
+/**
+ * El día 1 del mes en curso. Sale de `hoy()` —la fecha LOCAL— y no de
+ * `getUTCMonth()`: el último día del mes, pasadas las 7 p.m., en UTC ya es el
+ * mes siguiente, y esa noche el historial arrancaba un mes adelantado.
+ */
+const inicioDeMes = () => `${hoy().slice(0, 8)}01`;
 
 /**
  * Historial de lotes armados.

@@ -1,3 +1,4 @@
+import { hoy } from '../../../../utils/fechas';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -94,7 +95,7 @@ export function ProduccionModal({
     setGuardando(true);
     try {
       const res = await http.post<{ data?: { costo_total?: number } }>(urls.inventario.producciones, {
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: hoy(),
         formula_volumen_id: formulaElegida.id, cantidad: cant, consumos,
         perfume_id: perfumeId || null,
         envase_insumo_id: envaseId || formulaElegida.envase_insumo_id || null,

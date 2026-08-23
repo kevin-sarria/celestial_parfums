@@ -1,3 +1,4 @@
+import { hoy } from '../../../utils/fechas';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -50,7 +51,6 @@ interface EstadoForm {
   nuevo_telefono: string; nuevo_direccion: string;
 }
 
-const hoy = () => new Date().toISOString().slice(0, 10);
 
 const vacio = (): EstadoForm => ({
   fecha: hoy(), fecha_limite: fechaLimitePorDefecto(hoy()), user_id: '',

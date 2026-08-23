@@ -18,6 +18,17 @@ Cada uno de estos costó horas. Si un síntoma se parece, empieza por aquí ante
 
 ## Fechas (bugs ya corregidos — no reintroducirlos)
 
+- **`new Date().toISOString().slice(0, 10)` para decir "hoy" fecha MAÑANA a partir de las 7 p.m.**
+  (2026-08-23, corregido). `toISOString()` devuelve el día en UTC, y Colombia va en UTC-5: a las
+  8:00 p.m. del 23 de agosto esa expresión da `2026-08-24`. Estaba en **11 sitios** del frontend
+  —el formulario de ventas, el de créditos, el de producción, el de salidas, devoluciones,
+  inventario, el nombre del respaldo y el corte de mes de Producciones—, así que **toda venta
+  registrada de noche nacía fechada al día siguiente**, un lote entraba al inventario con fecha
+  futura y el crédito de esa venta contaba sus 30 días desde mañana. Se ve poco porque la fecha
+  igual sale escrita en el formulario: hay que estar mirándola. Ahora existe `hoy()` en
+  `frontend/src/utils/fechas.ts`, que lo arma con `getFullYear`/`getMonth`/`getDate` (hora local).
+  **Nunca `toISOString()` sobre una fecha de calendario** — es la misma regla del `CLAUDE.md`, y
+  ya había mordido dos veces antes.
 - **Inicio de mes en las estadísticas**: las columnas `@db.Date` se leen como medianoche **UTC**.
   Armar el corte con `setHours(0,0,0,0)` da medianoche LOCAL (05:00 UTC en Colombia) y **todo lo
   del día 1 queda fuera del mes** (ventas, abonos y devoluciones). En `getVentaTotales` se

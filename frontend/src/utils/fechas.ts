@@ -22,6 +22,23 @@
  */
 export const DIAS_PLAZO_CREDITO = 30;
 
+/**
+ * Qué día es HOY donde está el usuario, como 'AAAA-MM-DD'.
+ *
+ * Se lee con `getFullYear`/`getMonth`/`getDate` —la hora LOCAL— y nunca con
+ * `toISOString()`, que devuelve el día en UTC. La diferencia no es teórica:
+ * Colombia va en UTC-5, así que **desde las 7:00 p.m. `toISOString()` ya dice
+ * mañana**. Con eso, una venta registrada a las 8 de la noche nacía fechada al
+ * día siguiente, un lote de producción entraba al inventario con fecha futura,
+ * y el crédito de esa venta contaba sus 30 días desde mañana.
+ */
+export const hoy = () => {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+};
+
 /** Suma días a una fecha 'AAAA-MM-DD' y devuelve otra igual. Todo en UTC. */
 export const sumarDias = (fecha: string, dias: number): string => {
   const [anio, mes, dia] = fecha.slice(0, 10).split('-').map(Number);

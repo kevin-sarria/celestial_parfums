@@ -1,3 +1,4 @@
+import { hoy } from '../../../utils/fechas';
 import { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Lock, TriangleAlert, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -49,7 +50,7 @@ interface EstadoForm {
 }
 
 const vacio = (): EstadoForm => ({
-  dia: new Date().toISOString().slice(0, 10),
+  dia: hoy(),
   persona: '', user_id: '', lineas: [], valor_venta: '',
   datos_adicionales: '', pagada: true, codigo_descuento: '',
   nuevo_nombre: '', nuevo_apellido: '', nuevo_correo: '',

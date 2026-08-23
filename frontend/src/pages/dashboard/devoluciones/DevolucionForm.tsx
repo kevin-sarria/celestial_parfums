@@ -1,3 +1,4 @@
+import { hoy } from '../../../utils/fechas';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -24,7 +25,6 @@ interface Props {
   onGuardada: () => void;
 }
 
-const hoy = () => new Date().toISOString().slice(0, 10);
 
 /**
  * Alta y edición de una devolución. Siempre arranca eligiendo la VENTA: de ahí

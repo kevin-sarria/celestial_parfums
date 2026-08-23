@@ -1,3 +1,4 @@
+import { hoy } from '../../../../utils/fechas';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -43,7 +44,7 @@ export function SalidaModal({ insumos, onClose, onGuardado }: SalidaModalProps) 
     try {
       const res = await http.post<{ data?: { costo?: number } }>(urls.inventario.salidas, {
         insumo_id: insumoId, cantidad: Number(cantidad), unidad, motivo,
-        fecha: new Date().toISOString().slice(0, 10),
+        fecha: hoy(),
         nota: nota.trim() || null,
       });
       if (!res.ok) { toast.error(res.error, { id: 'salida' }); return; }

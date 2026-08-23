@@ -1,3 +1,4 @@
+import { hoy } from './fechas';
 import type { Perfume } from '../domain/entities/perfume.schema';
 
 /**
@@ -147,16 +148,13 @@ export const describirSeleccion = (
  * documento. Es el mismo error de zona horaria que ya se corrigió en las
  * estadísticas y en las fechas del dashboard.
  */
-const hoyLocal = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
+// La cuenta vive en `utils/fechas.ts`: era esta misma, copiada.
 
 /** `catalogo-arabes-dama-2026-08-09.pdf` — para no tener cinco "catalogo.pdf". */
 export const nombreArchivo = (descripcion: string) => {
-  const hoy = hoyLocal();
+  const fecha = hoy();
   const trozo = descripcion
     .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  return `catalogo-celestial-parfums${trozo ? `-${trozo}` : ''}-${hoy}.pdf`;
+  return `catalogo-celestial-parfums${trozo ? `-${trozo}` : ''}-${fecha}.pdf`;
 };

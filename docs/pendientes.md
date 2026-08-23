@@ -260,15 +260,19 @@ responsabilidad, y partirla en seis archivos solo haría más difícil lo único
 sin querer. La regla de las 500 líneas existe para que nadie pierda una regla dentro de un archivo
 enorme; en una tabla de datos eso no pasa.
 
-**Falta el frontend** (5 archivos). Son pantallas, así que cada una hay que abrirla en el
-navegador y mirarla antes de darla por buena — no basta con que compile:
+**`dashboard/types.ts` (517) ya se partió** (2026-08-23): sus 37 tipos se repartieron por área en
+`dashboard/types/` —pedidos, compras, catálogo, clientes, publicidad— con un `index.ts` que
+re-exporta todo, así que **ninguno de los 29 archivos que lo importaban cambió**. Partirlo destapó
+de paso el bug de `toISOString()` de las 7 p.m. (ver [`gotchas.md`](gotchas.md)).
+
+**Faltan 4 archivos, todos pantallas.** Cada una hay que abrirla en el navegador y mirarla antes
+de darla por buena — no basta con que compile:
 
 | Archivo | Líneas |
 |---|---|
 | `frontend/src/pages/dashboard/tabs/RedesTab.tsx` | 665 |
 | `frontend/src/pages/dashboard/tabs/PerfumesTab.tsx` | 547 |
-| `frontend/src/components/table/SmartTable.tsx` | 538 |
-| `frontend/src/pages/dashboard/types.ts` | 517 |
+| `frontend/src/components/table/SmartTable.tsx` | 538 (la usan TODAS las tablas del dashboard: la más delicada) |
 | `frontend/src/pages/dashboard/compras/DetalleCompra.tsx` | 513 |
 
 ## Decisiones pendientes con el dueño

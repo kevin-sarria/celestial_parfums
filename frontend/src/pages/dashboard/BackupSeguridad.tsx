@@ -1,3 +1,4 @@
+import { hoy } from '../../utils/fechas';
 import { useEffect, useState } from 'react';
 import { DatabaseBackup, Loader2, ShieldCheck, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -82,7 +83,7 @@ export default function BackupSeguridad({ enMenu = false }: Props) {
       if (!res.ok || !res.cuerpo) { setError(res.error); return; }
       const a = document.createElement('a');
       a.href = URL.createObjectURL(res.cuerpo);
-      a.download = `backup-celestial-${new Date().toISOString().slice(0, 10)}.sql`;
+      a.download = `backup-celestial-${hoy()}.sql`;
       a.click();
       URL.revokeObjectURL(a.href);
       setExito('Copia descargada. Guárdala fuera del servidor: Drive, disco externo o similar.');

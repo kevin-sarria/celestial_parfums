@@ -1,3 +1,4 @@
+import { hoy } from '../../../utils/fechas';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Droplets, FlaskConical, PackagePlus, Pencil, Plus, Scale, ShoppingCart, ToggleLeft, ToggleRight, Trash2, Wand2 } from 'lucide-react';
@@ -26,7 +27,6 @@ import type {
 } from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
 
-const hoy = () => new Date().toISOString().slice(0, 10);
 
 /**
  * Inventario de insumos: qué hay, cuánto vale y por dónde se mueve.
