@@ -336,7 +336,6 @@ en `dashboard-interno-ux/references/verificacion-visual.md` y el script en
 escritorio y celular). Lo que aporta y no se puede improvisar: **medir en vez de opinar** —
 "quedó más compacto" no se verifica, "pasó de 55 renglones a 41 píxeles" sí.
 
-**Hueco conocido de accesibilidad**: `Field` (`dashboard/ui.tsx`) pinta un `<label>` suelto,
-sin `htmlFor` y sin envolver el campo, así que el navegador no los relaciona — un lector de
-pantalla tampoco. Por eso `getByLabel` no funciona en los recorridos, que usan el ayudante
-`campo()`. Pendiente de hablar con el dueño.
+**Cerrado el 2026-08-23**: `Field` pintaba un `<label>` suelto y el navegador no lo relacionaba
+con su campo, así que `getByLabel` no servía en los recorridos. Ya se enlaza solo (ver
+*Formularios: etiquetas y ancho*, más arriba) y el ayudante `campo()` es hoy un `getByLabel`.
