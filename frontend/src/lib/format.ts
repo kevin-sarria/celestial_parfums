@@ -1,4 +1,4 @@
-﻿import { CURRENCY_OPTIONS } from '../config/constants';
+import { CURRENCY_OPTIONS } from '../config/constants';
 
 /** Formatea un valor en pesos colombianos sin decimales. */
 export const formatPrice = (value: number): string =>

@@ -303,3 +303,23 @@ Cada muerte de golpe iba rompiendo las tablas de permisos.
   de la tabla derivada. Si un valor se repite, MySQL corta con **"Duplicate column name"** y la
   migración no corre. **Aliasea siempre cada columna** (`SELECT 'x' AS n, …`). Este fallo NO se ve
   con `prisma db push` (nunca ejecuta los .sql).
+
+## `npm run build` del backend falla con EPERM y NO es el código
+
+`prisma generate` intenta reemplazar `node_modules/.prisma/client/query_engine-windows.dll.node`
+y Windows no deja renombrar un archivo que otro proceso tiene abierto:
+
+```
+EPERM: operation not permitted, rename '...query_engine-windows.dll.node.tmp12256' -> '...'
+```
+
+**Lo tiene tomado un `node` que sigue corriendo** (el backend de desarrollo, o uno que quedó vivo
+de una corrida anterior). Se cierra ese proceso y el build vuelve a correr.
+
+**Cómo saber que no es el código antes de buscar donde no es**: `npx tsc --noEmit` compila y
+`npm test` pasa. Si esos dos van bien, el TypeScript está sano y lo que falla es el archivo
+bloqueado. **En el servidor no pasa**: ahí nadie tiene el motor de Prisma abierto durante el
+deploy, porque `pm2 restart` va después del build.
+
+Visto el 2026-08-23. Ojo con el atajo de `| tail`: `echo $?` devuelve el código de `tail`, no el
+de `npm`, así que un build roto parece exitoso. Hay que mirar el código del comando de verdad.

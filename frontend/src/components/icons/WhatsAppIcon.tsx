@@ -1,4 +1,4 @@
-﻿interface WhatsAppIconProps {
+interface WhatsAppIconProps {
   size?: number;
   className?: string;
 }

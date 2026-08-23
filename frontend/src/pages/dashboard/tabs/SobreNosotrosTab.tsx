@@ -22,7 +22,7 @@ export function SobreNosotrosTab() {
     const r = await http.get<{ data?: Config }>(urls.nosotros.config);
     setCfg(r.cuerpo?.data ?? null);
   };
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   const guardar = async () => {
     if (!cfg) return;

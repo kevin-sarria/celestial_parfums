@@ -43,7 +43,7 @@ export function ProduccionesTab() {
       setError('No se pudieron cargar las producciones. Revisa tu conexión y reintenta.');
     } finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   const borrar = async (p: Produccion) => {
     // Borrar un lote deshace las DOS cosas que hizo al registrarse: devuelve el

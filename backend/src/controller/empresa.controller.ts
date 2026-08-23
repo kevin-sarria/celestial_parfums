@@ -1,4 +1,4 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import * as empresaService from '../services/empresa.service';
 import { mensajeSeguro } from '../utils/errorSeguro';
 

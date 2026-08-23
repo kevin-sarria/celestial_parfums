@@ -1,4 +1,4 @@
-﻿import { lazy, Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthContext } from '../application/context/useAuthContext';
 import PerfumeSpinner from '../components/PerfumeSpinner';

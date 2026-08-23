@@ -94,7 +94,7 @@ export function InventarioTab() {
       setError('No se pudo cargar el inventario. Revisa tu conexión y reintenta.');
     } finally { setLoading(false); }
   };
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   const abrirAjuste = (i: InventarioInsumo) => {
     setAjuste(i); setCantidadFinal(String(i.stock)); setCostoAjuste(String(i.costo_promedio));

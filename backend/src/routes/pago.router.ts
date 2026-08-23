@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { getPagos, addPago, editPago, removePago, getTotalesPagos } from '../controller/pago.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';

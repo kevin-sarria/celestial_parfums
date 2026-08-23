@@ -310,9 +310,10 @@ export const cargarCatalogo = async (): Promise<Perfume[]> => {
    * faltaban en silencio. El endpoint sin paginar devuelve todos (y ya excluye
    * los que están fuera de la tienda), pero responde anidado: `{data:{data:[]}}`.
    */
-  const res = await http.get<any>(urls.perfumes.todos);
-  const cuerpo = res.cuerpo;
-  return Array.isArray(cuerpo?.data) ? cuerpo.data : (cuerpo?.data?.data ?? []);
+  const res = await http.get<{ data?: Perfume[] | { data?: Perfume[] } }>(urls.perfumes.todos);
+  const dato = res.cuerpo?.data;
+  if (Array.isArray(dato)) return dato;
+  return dato?.data ?? [];
 };
 
 const ALTO_TITULO = 13;

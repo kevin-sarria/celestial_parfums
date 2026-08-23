@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ShoppingCart, X } from 'lucide-react';
 import { useCart } from '../application/context/useCart';
 import { cerrarRecordatorio, recordatorioPendiente } from '../application/carritoRecordatorio';

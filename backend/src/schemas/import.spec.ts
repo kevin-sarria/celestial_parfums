@@ -1,4 +1,4 @@
-﻿export interface ImportColumn {
+export interface ImportColumn {
   key: string;
   required: boolean;
   descripcion: string;

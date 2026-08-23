@@ -1,4 +1,4 @@
-﻿import { useEffect } from 'react';
+import { useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 
 /** Lleva la ventana al inicio cada vez que cambia la ruta (ej. al abrir el detalle de un producto). */

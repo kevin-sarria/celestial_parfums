@@ -1,4 +1,4 @@
-﻿import { useSeo } from '../application/hooks/useSeo';
+import { useSeo } from '../application/hooks/useSeo';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';

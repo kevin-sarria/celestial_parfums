@@ -40,7 +40,8 @@ export function ListasProvider({ children }: { children: ReactNode }) {
     if (!user) return;
     setFavoritos((prev) => {
       const next = new Set(prev);
-      next.has(perfumeId) ? next.delete(perfumeId) : next.add(perfumeId);
+      if (next.has(perfumeId)) next.delete(perfumeId);
+      else next.add(perfumeId);
       return next;
     });
     // El corazón ya cambió en la pantalla. Si el servidor no lo aceptó, se
@@ -55,7 +56,8 @@ export function ListasProvider({ children }: { children: ReactNode }) {
     const activo = avisos.has(perfumeId);
     setAvisos((prev) => {
       const next = new Set(prev);
-      activo ? next.delete(perfumeId) : next.add(perfumeId);
+      if (activo) next.delete(perfumeId);
+      else next.add(perfumeId);
       return next;
     });
     const ruta = urls.avisos.aviso(perfumeId);

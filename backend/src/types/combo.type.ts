@@ -1,4 +1,4 @@
-﻿export interface CreateComboDTO {
+export interface CreateComboDTO {
   nombre: string;
   descripcion?: string;
   imagen_url?: string;

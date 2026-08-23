@@ -87,6 +87,7 @@ export function PagosTab() {
     setEmpresas(eRes.cuerpo?.data ?? []);
   };
 
+  // Solo al entrar: las tres cargas no dependen de nada que cambie después.
   useEffect(() => { load(1); cargarInsumos(); cargarConfigIva(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Se llega aquí desde el botón "Registrar llegada" de Inventario
@@ -97,7 +98,7 @@ export function PagosTab() {
       openCreate();
       window.history.replaceState(null, '', window.location.pathname);
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   function openCreate() {
     setForm(emptyPagoForm()); setError(''); setLineas([]); setArchivos([]);

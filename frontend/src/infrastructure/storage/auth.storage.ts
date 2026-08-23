@@ -1,4 +1,4 @@
-﻿import { authUserSchema, type AuthUser } from '../../domain/entities/auth.schema';
+import { authUserSchema, type AuthUser } from '../../domain/entities/auth.schema';
 
 const USER_KEY = 'user';
 

@@ -241,6 +241,30 @@ escribiendo—, y aquí no hacía falta romperla: el botón no usa nada del edit
 delicado, que es el `onMouseDown` + `preventDefault` sin el cual el botón le roba la selección
 al texto y "Negrita" no aplica a nada. La barra no la tocaba ninguna prueba.
 
+### El linter vuelve a servir: de 66 avisos a CERO
+
+Un linter que nunca pasa deja de avisar — **el aviso 67, el que sí importa, se pierde entre los
+otros 66**. Se revisaron uno por uno y salieron dos montones muy distintos:
+
+- **26 arreglos de verdad**: los 8 botones del editor declarados dentro del editor, 3 ternarios
+  usados como instrucción (`cond ? a() : b()`, que se lee como una condición y es un `if`
+  disfrazado), 3 `any` —dos `catch (err: any)` que pasaron al idioma que ya usa el resto del
+  proyecto (`err instanceof Error`) y uno que tapaba una respuesta anidada que el comentario de
+  al lado YA explicaba—, y 13 directivas `eslint-disable` muertas.
+- **40 de dos reglas que no encajan con este código**, apagadas enteras y explicadas en
+  `eslint.config.js`: `set-state-in-effect` (las 26 coincidencias son la forma en que esta
+  aplicación carga datos sobre su capa HTTP propia; obedecerla significaría meter una librería de
+  datos y contradecir una decisión de agosto) y `only-export-components` (comodidad de recarga en
+  caliente; las 14 son archivos que guardan un componente y su ayudante juntos **a propósito**).
+
+**Al quitar las directivas muertas se borró de más**: en `PagosTab` había una que sí hacía su
+trabajo y el linter la volvió a pedir en el acto. Se devolvió con su explicación. Es el argumento
+a favor de dejar el linter en cero: **avisó al instante**.
+
+**Y los 55 archivos con BOM**, quitados **en binario** —los 3 bytes y nada más—. Cualquier
+lectura-y-reescritura de texto en Windows se lleva por delante las tildes o los saltos de línea, y
+este proyecto ya se quemó ahí antes.
+
 ## Cosas que se probaron y se descartaron
 
 - **Three.js para la tarjeta de recompensas**: pesaba mucho para el público de gama baja y el

@@ -53,7 +53,7 @@ export default function BackupSeguridad({ enMenu = false }: Props) {
     setTotpListo(!!res.cuerpo?.data?.totp_configurado);
   };
 
-  useEffect(() => { cargarEstado(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { cargarEstado(); }, []);
 
   const diasSin = ultima ? Math.floor((Date.now() - new Date(ultima).getTime()) / 86_400_000) : null;
   const urgente = totpListo !== null && (diasSin === null || diasSin >= DIAS_AVISO);

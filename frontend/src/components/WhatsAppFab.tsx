@@ -1,4 +1,4 @@
-﻿import WhatsAppIcon from './icons/WhatsAppIcon';
+import WhatsAppIcon from './icons/WhatsAppIcon';
 import { WHATSAPP_NUMBER } from '../config/constants';
 
 export default function WhatsAppFab() {

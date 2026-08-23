@@ -56,8 +56,8 @@ export default function LoginPage() {
 
       auth.login(res.cuerpo!.data.token, res.cuerpo!.data.user as never);
       navigate(res.cuerpo!.data.user?.rol_id === 1 ? '/dashboard' : '/');
-    } catch (err: any) {
-      if (err?.message === 'reCAPTCHA no cargado') {
+    } catch (err) {
+      if (err instanceof Error && err.message === 'reCAPTCHA no cargado') {
         setError('Verificación de seguridad no disponible. Recarga la página.');
       } else {
         setError('No se pudo conectar con el servidor');

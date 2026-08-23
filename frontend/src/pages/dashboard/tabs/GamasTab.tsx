@@ -38,7 +38,7 @@ export function GamasTab() {
     } catch { /* la vista se queda con lo que tenía */ }
   };
 
-  useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { cargar(); }, []);
 
   /** Quita el "· N esencias" que se le agregó al nombre para mostrarlo. */
   const soloNombre = (n: string) => n.split('  ·  ')[0];

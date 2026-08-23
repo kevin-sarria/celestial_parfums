@@ -1,4 +1,4 @@
-﻿export interface CreateEmpresaDTO {
+export interface CreateEmpresaDTO {
   nombre: string;
   nit?: string;
   telefono?: string;

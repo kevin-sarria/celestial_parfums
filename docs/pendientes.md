@@ -184,15 +184,13 @@ codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva
    recomendacion.service 11). `any` apaga el chequeo de tipos justo donde debería avisar. No es
    urgente, pero es la red de seguridad con agujeros: conviene atacarlo **por partes y empezando
    por lo que toca dinero**, no de una sentada.
-2. **El linter del frontend no pasa: 54 errores y 12 avisos.** 26 son de una regla nueva de React
-   sobre cargar datos en un efecto (`set-state-in-effect`), 14 de recarga en caliente
-   (`only-export-components`), 3 de `any` y 3 de expresiones que no hacen nada. **La mayoría es
-   ruido**, pero mientras estén, un aviso de verdad se pierde entre ellos. Hay que **decidir: se
-   limpian o se silencian las reglas que no apliquen**; a medias no sirve.
-   - *Ya cerrados de esa cuenta*: los 8 de `static-components` (el editor) y el `htmlFor` de
-     `Field`.
-3. **55 archivos empiezan con BOM**, la marca invisible que la regla del proyecto prohíbe.
-   Mecánico y sin riesgo, pero toca muchos archivos y no aporta nada al negocio.
+2. ~~El linter del frontend no pasa.~~ **HECHO (2026-08-23): `npm run lint` da CERO.** De los 66
+   avisos, 26 eran arreglos de verdad y 40 eran dos reglas que no encajan con este código, que se
+   apagaron **enteras y explicadas** en `eslint.config.js` (el porqué vive ahí, no aquí). El
+   criterio: 40 comentarios sueltos por los archivos no es una decisión, es ruido.
+3. ~~55 archivos empiezan con BOM.~~ **HECHO (2026-08-23)**: cero. Se quitaron **en binario**
+   —los 3 bytes y nada más—, que es la única forma segura en este proyecto: cualquier lectura y
+   reescritura de texto se lleva por delante las tildes o los saltos de línea.
 4. **`window.prompt` en `EditorHtml`** para pedir la URL de un enlace: bloquea la página y se ve
    como una ventana de Windows en medio del diseño. `window.confirm` **sí** está aprobado (ver
    [`diseno-ux.md`](diseno-ux.md)); este no se habló nunca.

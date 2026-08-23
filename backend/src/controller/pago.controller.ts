@@ -1,4 +1,4 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import * as pagoService from '../services/pago.service';
 import { mapaFiltrosPagos } from '../repositories/pago.repository';
 import { parsePagination, parseSearch } from '../utils/pagination';

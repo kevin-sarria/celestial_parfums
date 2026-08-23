@@ -53,7 +53,7 @@ export function MaterialModal({ material, onClose, onGuardado }: Props) {
       const r = await http.get<{ data: Gama[] }>(urls.costeo.gamas);
       if (r.ok) setGamas(r.cuerpo?.data ?? []);
     })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState('');
 

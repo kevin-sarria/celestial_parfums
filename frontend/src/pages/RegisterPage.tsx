@@ -66,8 +66,8 @@ export default function RegisterPage() {
       }
 
       setSuccess('Registro exitoso. Revisa tu correo y activa tu cuenta antes de ingresar.');
-    } catch (err: any) {
-      if (err?.message === 'reCAPTCHA no cargado') {
+    } catch (err) {
+      if (err instanceof Error && err.message === 'reCAPTCHA no cargado') {
         setError('Verificación de seguridad no disponible. Recarga la página.');
       } else {
         setError('No se pudo conectar con el servidor');

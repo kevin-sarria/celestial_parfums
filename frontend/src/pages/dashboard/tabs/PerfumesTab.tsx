@@ -96,7 +96,7 @@ export function PerfumesTab({
       setInsumosProducto(todos);
       setEnvases(todos.filter((i: Insumo) => i.tipo === 'envase'));
     })();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   const [formError, setFormError] = useState('');
   const [imgMode, setImgMode] = useState<'url' | 'file'>('url');
   const [uploading, setUploading] = useState(false);
@@ -111,7 +111,7 @@ export function PerfumesTab({
       if (res.ok) setPrecios(res.cuerpo?.data ?? []);
     } catch { /* sin lista, el form pide precio propio */ }
   };
-  useEffect(() => { cargarPrecios(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { cargarPrecios(); }, []);
 
   /** Precio estándar de una presentación para la categoría elegida en el form. */
   const precioDeLista = (presentacionId: number) => {

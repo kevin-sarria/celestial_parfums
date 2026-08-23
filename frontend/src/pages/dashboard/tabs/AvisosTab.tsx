@@ -24,7 +24,7 @@ export function AvisosTab() {
     setRows(r.cuerpo?.data ?? []);
     setLoading(false);
   };
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   const marcar = async (perfumeId: number) => {
     if (!window.confirm('¿Marcar a todos como avisados? Salen de la lista.')) return;

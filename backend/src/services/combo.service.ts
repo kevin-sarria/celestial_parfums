@@ -1,4 +1,4 @@
-﻿import * as comboRepo from '../repositories/combo.repository';
+import * as comboRepo from '../repositories/combo.repository';
 import { CreateComboDTO } from '../types/combo.type';
 
 export const getAllCombos = () => comboRepo.selectAllCombos();

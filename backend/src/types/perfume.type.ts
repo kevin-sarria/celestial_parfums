@@ -1,4 +1,4 @@
-﻿export interface CreatePerfumeDTO {
+export interface CreatePerfumeDTO {
   nombre: string;
   descripcion?: string;
   precio: number;

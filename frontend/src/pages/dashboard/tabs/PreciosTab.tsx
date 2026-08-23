@@ -47,7 +47,7 @@ export function PreciosTab({ categorias, presentaciones, onMutate }: Props) {
     finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   const precioDe = (catId: number, presId: number) =>
     precios.find(p => p.categoria_id === catId && p.presentacion_id === presId)?.precio ?? null;

@@ -1,4 +1,4 @@
-﻿export interface CreateCreditoDTO {
+export interface CreateCreditoDTO {
   fecha: string;
   user_id: number;
   articulos: string;

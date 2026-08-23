@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 export type ColType = 'string' | 'number' | 'currency' | 'date' | 'enum';
 export type SortDir = 'asc' | 'desc';

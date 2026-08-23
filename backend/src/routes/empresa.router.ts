@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { getEmpresas, addEmpresa, editEmpresa, removeEmpresa } from '../controller/empresa.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';

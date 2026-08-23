@@ -1,4 +1,4 @@
-﻿import * as repo from '../repositories/empresa.repository';
+import * as repo from '../repositories/empresa.repository';
 import { CreateEmpresaDTO } from '../types/empresa.type';
 
 export const getAllEmpresas = () => repo.getAllEmpresas();

@@ -64,7 +64,7 @@ export function CostosProduccionTab() {
       setLoading(false);
     }
   };
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
 
   /**
    * Guarda qué accesorios incluye este tamaño por defecto. La marca cambia al
