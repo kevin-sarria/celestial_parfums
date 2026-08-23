@@ -273,19 +273,72 @@ export const listarFormulas = async () => {
   return rows.map(mapFormula);
 };
 
+/**
+ * Una receta nueva se engancha a las tallas de ese tamaño que estaban sueltas.
+ *
+ * El enlace `presentaciones.formula_volumen_id` es lo que hace que vender una
+ * talla descuente materiales y tenga costo. Hasta hoy solo se ponía **al crear
+ * o renombrar la talla**, así que en el orden inverso —talla primero, receta
+ * después— quedaba en null PARA SIEMPRE: nadie lo volvía a mirar, y cada venta
+ * de esa talla entraba con costo cero, inflando la ganancia del mes en
+ * silencio. Es justo el orden que toca al separar "200/250ML" en dos tallas.
+ *
+ * Solo rellena huecos (`formula_volumen_id: null`): pisar un enlace que ya
+ * existe cambiaría sin avisar qué materiales gasta esa talla. Y las que no son
+ * un tamaño (un combo, una gorra) tienen `ml` en null y no casan con nada.
+ */
+export const engancharTallasSueltas = (formulaId: number, ml: number) =>
+  prisma.presentacion.updateMany({
+    where: { ml, formula_volumen_id: null },
+    data: { formula_volumen_id: formulaId },
+  });
+
 export const crearFormula = async (data: FormulaInput) => {
   const row = await prisma.formulaVolumen.create({
     data: { ...data, activo: data.activo ?? true, orden: data.orden ?? 0 },
     include: FORMULA_INCLUDE,
   });
+  await engancharTallasSueltas(row.id, row.ml_total);
   return mapFormula(row);
 };
 
+/**
+ * A una receta que ya usa alguna talla NO se le cambian los mililitros.
+ *
+ * Decisión del dueño (2026-08-23), sobre la alternativa de reenganchar solo:
+ * si la receta de 200 ml pasa a 250, la talla "200 ML" sigue apuntándole y
+ * desde ese momento cada venta suya descuenta material de 250 — sin que nadie
+ * lo vea, y arrastrando el costo y la ganancia del mes. Para un tamaño
+ * distinto se crea otra receta, que es una decisión visible.
+ *
+ * El resto de la receta (nombre, esencia, sellador, envase) sí se puede
+ * corregir siempre: eso ajusta lo que gasta ese mismo tamaño, que es su
+ * trabajo.
+ */
+const comprobarCambioDeMl = async (id: number, mlNuevo: number) => {
+  const actual = await prisma.formulaVolumen.findUnique({ where: { id }, select: { ml_total: true } });
+  if (!actual || actual.ml_total === mlNuevo) return;
+  const tallas = await prisma.presentacion.findMany({
+    where: { formula_volumen_id: id }, select: { nombre: true },
+  });
+  if (!tallas.length) return;
+  throw badRequest(
+    `No se le pueden cambiar los mililitros a esta receta: la usa${tallas.length > 1 ? 'n' : ''} `
+    + `la${tallas.length > 1 ? 's' : ''} talla${tallas.length > 1 ? 's' : ''} `
+    + `${tallas.map((t) => t.nombre).join(', ')}, y sus ventas empezarían a descontar otra cosa. `
+    + 'Si necesitas un tamaño distinto, crea una receta nueva.',
+  );
+};
+
 export const actualizarFormula = async (id: number, data: FormulaInput) => {
+  await comprobarCambioDeMl(id, data.ml_total);
   const row = await prisma.formulaVolumen.update({
     where: { id }, data,
     include: FORMULA_INCLUDE,
   });
+  // Si se corrigió el tamaño (solo posible sin tallas enganchadas), la receta
+  // pasa a hacerse cargo de las tallas de ese número que estaban sueltas.
+  await engancharTallasSueltas(row.id, row.ml_total);
   return mapFormula(row);
 };
 

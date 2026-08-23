@@ -1,4 +1,5 @@
 import { prisma } from '../../config/prisma';
+import { engancharTallasSueltas } from '../../repositories/costeo.repository';
 import { toNum, toStr, FilaExcel } from './core';
 import type { EntityImportResult } from './core';
 
@@ -66,7 +67,11 @@ export const importarFormulas = async (rows: FilaExcel[], result: EntityImportRe
       await prisma.formulaVolumen.update({ where: { id: existente.id }, data: datos });
       result.actualizados++;
     } else {
-      await prisma.formulaVolumen.create({ data: datos });
+      const creada = await prisma.formulaVolumen.create({ data: datos });
+      // Misma regla que al crearla desde la pantalla, y en un solo sitio: una
+      // receta nueva engancha las tallas de ese tamaño que estaban sueltas, o
+      // esas ventas seguirían entrando con costo cero.
+      await engancharTallasSueltas(creada.id, ml);
       result.insertados++;
     }
   }

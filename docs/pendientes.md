@@ -1,6 +1,6 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 23 de agosto de 2026.** Todo compila, **262 pruebas en verde** (142 backend +
+**Última sesión: 23 de agosto de 2026.** Todo compila, **268 pruebas en verde** (148 backend +
 77 frontend + 43 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
@@ -24,6 +24,10 @@
    invisible para el dueño, pero **dos arreglos sí se notan**: marcar una cotización como
    "enviada" ya no la devuelve sin sus productos, y guardar una venta o un crédito ya no puede
    responder con un error 500. Detalle en la sección de deuda técnica, más abajo.
+6. **Una receta nueva engancha sola las tallas de ese tamaño.** Solo código, sin migración. Hace
+   falta ANTES de separar "200/250ML" (punto 6 de la lista de abajo): sin esto, esas dos tallas se
+   quedarían sin costear y sus ventas entrarían con costo cero. De paso, cambiarle los mililitros
+   a una receta que ya usa alguna talla **ahora se rechaza** con un mensaje que dice cuáles.
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -176,8 +180,10 @@ camino del error. Montar pruebas de componentes es una decisión del dueño que 
 5. **La gama "Diseñador" tiene mínimo configurado y CERO esencias**: o se le cuelgan esencias o se
    borra.
 6. **Separar "200/250ML" en dos tallas reales** y sembrar su stock inicial. Ya se puede hacer
-   desde Clasificaciones sin tocar la base: crear "200 ML" y "250 ML" nace con su número y su
-   receta enganchados solos.
+   desde Clasificaciones sin tocar la base: crear "200 ML" y "250 ML" nace con su número, y su
+   receta se engancha sola **en cualquiera de los dos órdenes** (talla primero o receta primero,
+   desde el 2026-08-23). Ojo: las recetas de 200 y 250 ml todavía NO existen, así que hay que
+   crearlas en *Tamaños y fórmulas* o esas ventas no descontarán material.
 
 ## Deuda técnica encontrada el 2026-08-23 (no estaba en ninguna lista)
 
@@ -227,10 +233,12 @@ codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva
 4. ~~`window.prompt` en `EditorHtml`.~~ **HECHO (2026-08-23)**: la URL se pide en una casilla
    dentro de la propia barra del editor. `window.confirm` **sí** sigue aprobado (ver
    [`diseno-ux.md`](diseno-ux.md)); el `prompt` era el único que no se había hablado.
-5. **`presentaciones` (la tienda) y `formulas_volumen` (el costeo) se enlazan por el número de
-   ml**, no por una relación de verdad. Funciona, pero ya estaba escrito en
-   [`inventario-costeo.md`](inventario-costeo.md) que conviene revisarlo **antes de apoyar más
-   lógica encima**. Toca inventario y costos.
+5. ~~`presentaciones` y `formulas_volumen` se enlazan por el número de ml.~~ **REVISADO Y
+   CERRADO (2026-08-23).** La relación de verdad ya existía y el número de ml solo la siembra; lo
+   que faltaba era mantenerla cuando la receta nace DESPUÉS de la talla —quedaba en null para
+   siempre y esas ventas entraban con costo cero—, y decidir qué pasa al cambiarle los ml a una
+   receta ya enganchada (se rechaza; decisión del dueño). Detalle y porqué en
+   [`inventario-costeo.md`](inventario-costeo.md). En producción no había ninguna talla suelta.
 
 ## Decisiones pendientes con el dueño
 

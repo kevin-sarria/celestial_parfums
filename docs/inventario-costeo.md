@@ -645,6 +645,25 @@ Sigue vigente y **no se cambia sin volver a preguntarle al dueño**:
 4. **Originales: falta decidir con el dueño cuántos ml se pierden al trasvasar** (merma de
    fraccionamiento).
 5. **Merchandising con inventario** (gorras y demás): ya cubierto por `tipo_producto = comprado`.
-6. **Punto delicado pendiente**: `PerfumePresentacion` usa `presentaciones` (catálogo público) y
-   el costeo usa `formulas_volumen`. Ya se enlazan por número (`presentaciones.formula_volumen_id`),
-   pero conviene revisarlo antes de apoyar más lógica encima.
+6. **El enlace catálogo↔costeo, revisado (2026-08-23).** `PerfumePresentacion` usa
+   `presentaciones` (catálogo público) y el costeo usa `formulas_volumen`. La relación de verdad
+   —`presentaciones.formula_volumen_id`— ya existía, y todo lo que gasta materiales la usa a ella;
+   el número de ml solo sirve para **sembrarla**. Lo que faltaba era mantenerla en los dos
+   sentidos:
+   - **Antes**: el enlace solo se ponía al crear o renombrar la TALLA. En el orden inverso —talla
+     primero, receta después— quedaba en null y **nadie lo volvía a mirar**: cada venta de esa
+     talla entraba con costo cero y la ganancia del mes salía inflada. Es exactamente el orden que
+     toca al separar "200/250ML" en dos tallas, así que estaba a punto de pasar.
+   - **Ahora**: crear una receta engancha las tallas de ese tamaño que estaban sueltas
+     (`engancharTallasSueltas`), desde la pantalla y desde el importador de Excel. **Solo rellena
+     huecos**: nunca pisa un enlace que ya existe, porque eso cambiaría en silencio qué materiales
+     gasta esa talla.
+   - **Cambiar los ml de una receta que ya usa alguna talla se RECHAZA** con el nombre de las
+     tallas que la usan. Decidido por el dueño el 2026-08-23 frente a la alternativa de
+     reenganchar solo: si la receta de 200 pasa a 250, la talla "200 ML" le sigue apuntando y
+     desde ese momento sus ventas descuentan material de 250 sin que nadie lo vea. Para otro
+     tamaño, receta nueva — que es una decisión visible. El resto de la receta (nombre, esencia,
+     sellador, envase) se corrige siempre.
+   - Comprobado contra la copia de producción del 2026-08-14: las 5 tallas reales (6, 30, 50, 75 y
+     100 ml) estaban bien enlazadas, así que **no había daño vivo que reparar**. 12 pruebas en
+     `presentacion.tallas.bd.test.ts`.
