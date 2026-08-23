@@ -231,6 +231,8 @@ export const urls = {
   portal: {
     /** Su deuda y sus abonos. Solo lectura: los créditos los da el admin. */
     credito: '/portal/credito',
+    /** Su código de invitación y los amigos que trajo, con si ya compraron. */
+    referidos: '/portal/referidos',
   },
 
   /** La tarjeta de sellos: configuración, progreso de cada cliente y entregas. */
@@ -254,6 +256,8 @@ export const urls = {
 
   /** Textos e imágenes de la página "Sobre nosotros". */
   nosotros: {
+    /** Lo que ve el visitante. Responde `{ data: null }` si aún no se configuró. */
+    publico: '/nosotros',
     config: '/nosotros/config',
     imagen: '/nosotros/imagen',
   },
@@ -272,6 +276,10 @@ export const urls = {
   reportes: (ruta: string) => `/reportes/${ruta}`,
 
   blog: {
+    /** La lista pública de entradas publicadas, paginada. */
+    publico: (pagina: number, porPagina: number) => `/blog?page=${pagina}&limit=${porPagina}`,
+    /** Una entrada por su slug. Responde `{ data: null }` si no existe. */
+    porSlug: (slug: string) => `/blog/${encodeURIComponent(slug)}`,
     admin: '/blog/admin',
     crear: '/blog/admin',
     entrada: (id: number) => `/blog/admin/${id}`,
@@ -296,6 +304,8 @@ export const urls = {
   upload: '/upload',
 
   resenas: {
+    /** Las reseñas publicadas de un perfume. Públicas: se ven sin sesión. */
+    producto: (perfumeId: number) => `/resenas/producto/${perfumeId}`,
     admin: '/resenas/admin',
     moderar: (id: number) => `/resenas/admin/${id}`,
     /** Lo que el cliente compró y todavía puede reseñar. */

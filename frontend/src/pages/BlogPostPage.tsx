@@ -3,8 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
-import { BASE_URL } from '../infrastructure/api/client';
-import { fetchJsonCached } from '../infrastructure/api/cachedFetch';
+import { toast } from 'sonner';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { useSeo } from '../application/hooks/useSeo';
 
 interface Post {
@@ -25,10 +26,19 @@ export default function BlogPostPage() {
   useSeo(post?.titulo ?? 'Blog');
 
   useEffect(() => {
-    fetchJsonCached<{ data: Post | null }>(`${BASE_URL}/api/blog/${slug}`)
-      .then((j) => { if (!j.data) { navigate('/blog', { replace: true }); return; } setPost(j.data); })
-      .catch(() => navigate('/blog', { replace: true }))
-      .finally(() => setCargando(false));
+    if (!slug) return;
+    (async () => {
+      const res = await http.getCacheado<{ data: Post | null }>(urls.blog.porSlug(slug));
+      /**
+       * Solo se sale del artículo cuando el servidor CONFIRMA que no existe.
+       * Antes cualquier fallo de red te devolvía a la lista, que es indistinguible
+       * de "esta entrada se borró": el lector perdía el artículo por un semáforo.
+       */
+      if (res.ok && !res.cuerpo?.data) { navigate('/blog', { replace: true }); return; }
+      if (!res.ok) toast.error(res.error, { id: 'blog-entrada' });
+      setPost(res.cuerpo?.data ?? null);
+      setCargando(false);
+    })();
   }, [slug, navigate]);
 
   return (
@@ -39,8 +49,12 @@ export default function BlogPostPage() {
           <ArrowLeft className="size-4" /> Volver al blog
         </Link>
 
-        {cargando || !post ? (
+        {cargando ? (
           <PerfumeSpinner />
+        ) : !post ? (
+          <p className="mt-10 text-center text-[15px] text-muted-foreground">
+            No pudimos cargar esta entrada. Revisa tu conexión y vuelve a intentarlo.
+          </p>
         ) : (
           <article className="mt-6">
             <p className="text-[12px] text-muted-foreground">{fmt(post.fecha)}</p>

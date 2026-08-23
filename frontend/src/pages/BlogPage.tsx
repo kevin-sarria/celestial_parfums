@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
-import { BASE_URL } from '../infrastructure/api/client';
-import { fetchJsonCached } from '../infrastructure/api/cachedFetch';
+import { toast } from 'sonner';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { useSeo } from '../application/hooks/useSeo';
 
 interface PostLista {
@@ -21,12 +22,17 @@ export default function BlogPage() {
   useSeo('Blog', 'Consejos y novedades de perfumería de Celestial Parfums.');
   const [posts, setPosts] = useState<PostLista[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [fallo, setFallo] = useState(false);
 
   useEffect(() => {
-    fetchJsonCached<{ data?: PostLista[] }>(`${BASE_URL}/api/blog?page=1&limit=24`)
-      .then((j) => setPosts(j.data ?? []))
-      .catch(() => {})
-      .finally(() => setCargando(false));
+    (async () => {
+      const res = await http.getCacheado<{ data?: PostLista[] }>(urls.blog.publico(1, 24));
+      // Callar aquí prometería "pronto publicaremos" cuando la verdad es que no cargó.
+      if (!res.ok) toast.error(res.error, { id: 'blog-lista' });
+      setFallo(!res.ok);
+      setPosts(res.cuerpo?.data ?? []);
+      setCargando(false);
+    })();
   }, []);
 
   return (
@@ -39,7 +45,11 @@ export default function BlogPage() {
         {cargando ? (
           <PerfumeSpinner />
         ) : posts.length === 0 ? (
-          <p className="mt-10 text-center text-[15px] text-muted-foreground">Pronto publicaremos contenido aquí.</p>
+          <p className="mt-10 text-center text-[15px] text-muted-foreground">
+            {fallo
+              ? 'No pudimos cargar el blog. Revisa tu conexión y vuelve a intentarlo.'
+              : 'Pronto publicaremos contenido aquí.'}
+          </p>
         ) : (
           <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((p) => (

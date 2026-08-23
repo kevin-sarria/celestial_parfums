@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Trophy } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { BASE_URL } from '../../infrastructure/api/client';
-import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 
 interface Ganador {
   id: number;
@@ -22,9 +22,16 @@ export default function GaleriaGanadores({ titulo = 'Nuestros ganadores', classN
 
   useEffect(() => {
     let vivo = true;
-    fetchJsonCached<{ data?: Ganador[] }>(`${BASE_URL}/api/recompensas/ganadores`)
-      .then((j) => { if (vivo) setGanadores(j.data ?? []); })
-      .catch(() => {});
+    (async () => {
+      /**
+       * Callar aquí SÍ es correcto, igual que en `ListasProvider`: la sección es
+       * adorno y se esconde entera cuando no hay fotos, así que no llega a decir
+       * "no hay ganadores" — no miente, solo no aparece. Y va en el home: un
+       * servidor caído sacaría el mismo aviso en la primera pantalla de la tienda.
+       */
+      const res = await http.getCacheado<{ data?: Ganador[] }>(urls.recompensas.ganadores);
+      if (vivo) setGanadores(res.cuerpo?.data ?? []);
+    })();
     return () => { vivo = false; };
   }, []);
 

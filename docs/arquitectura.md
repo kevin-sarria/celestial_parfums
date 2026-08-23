@@ -104,6 +104,13 @@ guarda los corazones y las campanas de todas las cards. Quedan **25 archivos** c
 viejo: los hooks del catálogo público, login/registro/verificación con su botón de Google, Blog,
 Contáctame, Sobre nosotros y el PDF del catálogo.
 
+**Las pantallas de contenido también cayeron** (2026-08-22): Blog (lista y entrada), Sobre
+nosotros, las reseñas públicas de un producto, la galería de ganadores e *Invita y gana*. Quedan
+**19 archivos**: los nueve hooks del catálogo, login/registro/verificación con su botón de Google,
+`AuthProvider`, Contáctame, el home y Perfume ideal. De esos 19, **dos no son red**:
+`dashboard/helpers.ts` y `catalogoPdf.ts` solo importan la constante `BASE_URL` — cuando se borre
+`client.ts` hay que darle otra casa (hoy `http.ts` solo exporta `API_BASE`, que lleva `/api`).
+
 Al migrarlo salió lo que estas pantallas tenían en común y no se veía: **se tragaban el error en
 silencio**. Un fallo de red dejaba "no tienes favoritos" a quien sí los tiene y "el programa de
 recompensas no está activo" cuando sí lo está — mentiras educadas, imposibles de distinguir de la
@@ -113,6 +120,26 @@ excepciones son a propósito y están comentadas en el código: `usePortalCredit
 `CatalogHeader`, o sea todas las páginas: un servidor caído sacaría el mismo aviso en cada una) y
 las dos listas del `ListasProvider`, que son adorno de las cards. Lo que SÍ avisa siempre es
 *cambiarlas*: un corazón que se deshace solo, sin una palabra, parece la aplicación rota.
+
+**`cachedFetch.ts` se retira: era `http.getCacheado` otra vez** (decidido el 2026-08-22, estaba
+pendiente). Los dos hacían exactamente lo mismo —un `Map` en memoria, con caducidad y
+deduplicando lo que va en vuelo—, o sea la misma regla escrita dos veces, que es justo lo que
+garantiza que un día digan cosas distintas. Gana `http.getCacheado`, y no por antigüedad: la
+versión vieja **devolvía el JSON del error como si fuera el dato** (no miraba `res.ok`), así que
+un 500 llegaba a la pantalla disfrazado de respuesta buena. Las pantallas de contenido ya están
+en la nueva; queda por mudar la caché del catálogo, y cuando caiga se borra el archivo. Único
+efecto colateral: la caducidad pasa de 4 a 5 minutos, que es la de la casa.
+
+Y traían la misma mentira educada que el portal, en un sitio que además vende: el blog anunciaba
+**"Pronto publicaremos contenido aquí"** cuando lo que pasaba era que no había cargado, y la ficha
+de un perfume decía **"Aún no hay reseñas publicadas"** aunque el catálogo acabara de contar que
+tiene opiniones — le quita ventas justo al perfume mejor calificado. Peor todavía: *Sobre
+nosotros* y la entrada del blog **te echaban a otra página** ante cualquier fallo de red, que es
+indistinguible de "esto ya no existe". Ahora solo se redirige cuando el servidor **confirma** que
+no hay nada (`ok` con `data` en null), y un fallo se queda en su sitio y lo dice. De paso,
+*Invita y gana* dejó de girar para siempre: al fallar, `data` seguía en null y el spinner nunca
+daba paso a nada. La galería de ganadores sigue callada a propósito, como el `ListasProvider`: es
+adorno, se esconde entera y nunca llega a afirmar que no hay ganadores.
 
 **`useGuardedFetch` ya no existe.** Era la función de red vieja, y el dashboard era su único
 usuario: al caer la última pantalla se borró el hook y el tipo `GuardedFetch`. Ninguna pantalla

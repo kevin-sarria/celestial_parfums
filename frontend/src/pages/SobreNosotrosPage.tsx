@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
-import { BASE_URL } from '../infrastructure/api/client';
-import { fetchJsonCached } from '../infrastructure/api/cachedFetch';
+import { toast } from 'sonner';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { useSeo } from '../application/hooks/useSeo';
 
 interface Config {
@@ -20,18 +21,27 @@ export default function SobreNosotrosPage() {
   const [cargando, setCargando] = useState(true);
 
   useEffect(() => {
-    fetchJsonCached<{ data: Config | null }>(`${BASE_URL}/api/nosotros`)
-      .then((j) => { if (!j.data) { navigate('/', { replace: true }); return; } setCfg(j.data); })
-      .catch(() => navigate('/', { replace: true }))
-      .finally(() => setCargando(false));
+    (async () => {
+      const res = await http.getCacheado<{ data: Config | null }>(urls.nosotros.publico);
+      // Al home solo se va si el servidor confirma que la página no está configurada.
+      // Un fallo de red no es lo mismo, y echar al visitante lo hacía parecer igual.
+      if (res.ok && !res.cuerpo?.data) { navigate('/', { replace: true }); return; }
+      if (!res.ok) toast.error(res.error, { id: 'nosotros' });
+      setCfg(res.cuerpo?.data ?? null);
+      setCargando(false);
+    })();
   }, [navigate]);
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <CatalogHeader />
       <main className="mx-auto w-full max-w-3xl flex-1 px-5 pb-20 pt-10 md:px-8 animate-fade-up">
-        {cargando || !cfg ? (
+        {cargando ? (
           <PerfumeSpinner />
+        ) : !cfg ? (
+          <p className="mt-10 text-center text-[15px] text-muted-foreground">
+            No pudimos cargar esta página. Revisa tu conexión y vuelve a intentarlo.
+          </p>
         ) : (
           <>
             <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-primary">Celestial Parfums</p>

@@ -4,7 +4,9 @@ import { Copy, Check, Users, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
-import { BASE_URL, authFetchWithRefresh } from '../infrastructure/api/client';
+import { toast } from 'sonner';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
 
@@ -22,12 +24,13 @@ export default function InvitaPage() {
   const [cargando, setCargando] = useState(true);
   const [copiado, setCopiado] = useState(false);
 
-  const cargar = useCallback(() => {
-    authFetchWithRefresh(`${BASE_URL}/api/portal/referidos`)
-      .then((r) => (r.ok ? r.json() : { data: null }))
-      .then((j) => setData(j.data))
-      .catch(() => {})
-      .finally(() => setCargando(false));
+  const cargar = useCallback(async () => {
+    const res = await http.get<{ data: Data | null }>(urls.portal.referidos);
+    // Sin esto la pantalla se quedaba girando para siempre: al fallar, `data`
+    // seguía en null y el spinner nunca daba paso a nada.
+    if (!res.ok) toast.error(res.error, { id: 'portal-referidos' });
+    setData(res.cuerpo?.data ?? null);
+    setCargando(false);
   }, []);
 
   useEffect(() => {
@@ -49,8 +52,12 @@ export default function InvitaPage() {
           <Gift className="size-7 text-primary" /> Invita y gana
         </h1>
 
-        {cargando || !data ? (
+        {cargando ? (
           <PerfumeSpinner />
+        ) : !data ? (
+          <p className="mt-10 text-center text-[15px] text-muted-foreground">
+            No pudimos cargar tu enlace de invitación. Revisa tu conexión y vuelve a intentarlo.
+          </p>
         ) : (
           <>
             <div className="mt-8 rounded-2xl border border-border bg-card p-5">

@@ -131,12 +131,22 @@ favoritos, Mis recompensas, Mi crédito y el `ListasProvider`. Tiene recorrido p
 —el primero que entra como CLIENTE y no como administrador— y de paso dejaron de mentir cuando la
 petición falla (ver [`arquitectura.md`](arquitectura.md)).
 
-Quedan **25 archivos**: los hooks del catálogo (`useCatalog`, `usePerfumes`, `useCombos`,
+**Las pantallas de contenido también cayeron** (2026-08-22): Blog (lista y entrada), Sobre
+nosotros, las reseñas públicas de un producto, la galería de ganadores e *Invita y gana*. Traían
+las mismas mentiras educadas —el blog prometía "pronto publicaremos" cuando no había cargado, y
+dos de ellas te echaban a otra página ante un fallo de red— y ya están arregladas (detalle en
+[`arquitectura.md`](arquitectura.md)).
+
+**Decidido de paso: `cachedFetch.ts` se retira.** Era `http.getCacheado` escrito por segunda vez,
+y encima peor (no miraba `res.ok`, así que un error llegaba disfrazado de dato). Ya no le quedan
+usuarios fuera de los hooks del catálogo; cuando esos caigan, se borra el archivo.
+
+Quedan **19 archivos**: los nueve hooks del catálogo (`useCatalog`, `usePerfumes`, `useCombos`,
 `usePerfumeDetail`, `useComboDetail`, `useAnuncios`, `usePerfumeIdeal`, `useDestacados`,
 `useComboDetector`), **login/registro/verificación** con su botón de Google y el `AuthProvider`,
-**Blog**, **Contáctame**, **Sobre nosotros**, la galería de ganadores, las reseñas públicas de un
-producto y el PDF del catálogo. Ojo con `cachedFetch.ts`: la tienda tiene su propia caché de
-catálogo y hay que decidir si se queda o pasa a `http.getCacheado`.
+**Contáctame**, **el home** y **Perfume ideal**. Dos de los 19 no son red: `dashboard/helpers.ts`
+y `catalogoPdf.ts` solo usan la constante `BASE_URL`, que necesitará otra casa el día que se
+borre `client.ts`.
 
 Se migra **pantalla entera o nada**, y al migrarla se aprovecha para que ningún handler ignore la
 respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra `client.ts`.

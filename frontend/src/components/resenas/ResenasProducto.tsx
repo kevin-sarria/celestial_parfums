@@ -6,8 +6,8 @@ import ResenaItem from './ResenaItem';
 import ResenasModal from './ResenasModal';
 import VisorImagenes from './VisorImagenes';
 import { contarPorEstrella, type Resena } from './tipos';
-import { BASE_URL } from '../../infrastructure/api/client';
-import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 
 interface Props {
   perfumeId: number;
@@ -24,14 +24,18 @@ const PREVIEW = 3;
 /** Sección pública de reseñas: resumen con distribución + preview + modal con filtro y carrusel. */
 export default function ResenasProducto({ perfumeId, nombre, promedio, total, open, onOpenChange }: Props) {
   const [resenas, setResenas] = useState<Resena[]>([]);
+  const [fallo, setFallo] = useState(false);
   const [visor, setVisor] = useState<{ imgs: string[]; i: number } | null>(null);
   const conteo = useMemo(() => contarPorEstrella(resenas), [resenas]);
 
   useEffect(() => {
     let vivo = true;
-    fetchJsonCached<{ data?: Resena[] }>(`${BASE_URL}/api/resenas/producto/${perfumeId}`)
-      .then((j) => { if (vivo) setResenas(j.data ?? []); })
-      .catch(() => {});
+    (async () => {
+      const res = await http.getCacheado<{ data?: Resena[] }>(urls.resenas.producto(perfumeId));
+      if (!vivo) return;
+      setFallo(!res.ok);
+      setResenas(res.cuerpo?.data ?? []);
+    })();
     return () => { vivo = false; };
   }, [perfumeId]);
 
@@ -42,7 +46,18 @@ export default function ResenasProducto({ perfumeId, nombre, promedio, total, op
       <h2 className="mb-5 font-display text-2xl font-light text-ink">Opiniones del producto</h2>
 
       {resenas.length === 0 ? (
-        <p className="text-[14px] text-muted-foreground">Aún no hay reseñas publicadas de este perfume.</p>
+        /**
+         * "No hay" y "no cargó" tienen que verse distinto: el catálogo ya dijo que
+         * este perfume tiene `total` opiniones, así que anunciar que no hay ninguna
+         * cuando lo que falló fue la petición le quita ventas al perfume mejor
+         * calificado. Aquí no va toast: el aviso vive en su sitio y un mensaje
+         * flotante encima de la ficha es ruido para quien está comprando.
+         */
+        <p className="text-[14px] text-muted-foreground">
+          {fallo
+            ? 'No pudimos cargar las opiniones. Revisa tu conexión y vuelve a intentarlo.'
+            : 'Aún no hay reseñas publicadas de este perfume.'}
+        </p>
       ) : (
         <div className="grid gap-8 md:grid-cols-[minmax(0,20rem)_1fr]">
           {/* Resumen con distribución (clic filtra y abre el modal) */}
