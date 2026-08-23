@@ -21,6 +21,8 @@ import { urls } from '../../../infrastructure/api/urls';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { perfumesColumns } from '../columns';
 import { formatPrice, subirImagenAdmin } from '../helpers';
+import { CheckGroup } from './perfumes/CheckGroup';
+import { TallasDelPerfume } from './perfumes/TallasDelPerfume';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { Lookup, PerfumeForm, PrecioLista } from '../types';
 import { emptyPerfumeForm } from '../types';
@@ -43,34 +45,6 @@ interface PerfumesTabProps {
   /** "Limpiar todo": UNA sola recarga con búsqueda y filtros vacíos a la vez. */
   onClearAll: () => void;
   onMutate: () => void;
-}
-
-interface CheckGroupProps {
-  items: Lookup[];
-  selected: number[];
-  onToggle: (id: number) => void;
-}
-
-/** Grupo de checkboxes para relaciones (aromas, ocasiones, presentaciones). */
-function CheckGroup({ items, selected, onToggle }: CheckGroupProps) {
-  return (
-    <div className="grid max-h-36 grid-cols-2 gap-x-3 gap-y-1 overflow-y-auto rounded-lg border border-border bg-secondary/30 p-2.5">
-      {items.map(item => (
-        <label
-          key={item.id}
-          className="flex cursor-pointer items-center gap-2 rounded-md px-1.5 py-1 text-[13px] text-foreground transition-colors hover:bg-secondary"
-        >
-          <input
-            type="checkbox"
-            className="accent-primary"
-            checked={selected.includes(item.id)}
-            onChange={() => onToggle(item.id)}
-          />
-          {item.nombre}
-        </label>
-      ))}
-    </div>
-  );
 }
 
 export function PerfumesTab({
@@ -358,67 +332,14 @@ export function PerfumesTab({
               onToggle={id => setForm(f => ({ ...f, ocasiones: toggleId(f.ocasiones, id) }))} />
           </Field>
         </FieldRow>
-        <Field label="Presentaciones y precio">
-          <div className="space-y-1.5 rounded-lg border border-border bg-secondary/30 p-2.5">
-            <p className="text-[12px] text-muted-foreground">
-              Marca las tallas que vendes. Cada una cobra el precio de la lista de su
-              categoría; escribe un valor solo si ESTE perfume cuesta distinto.
-            </p>
-            {presentaciones.map(pr => {
-              const activa = form.presentaciones.includes(pr.id);
-              const deLista = precioDeLista(pr.id);
-              return (
-                // `flex-wrap`: en celular los cuatro controles (nombre, precio,
-                // nota y frasco) no caben en una línea y la fila se desbordaba
-                // por fuera del modal. Bajan de renglón en vez de salirse.
-                <div key={pr.id} className="flex flex-wrap items-center gap-2">
-                  <label className="flex min-w-28 flex-1 cursor-pointer items-center gap-2 text-[13px] text-foreground">
-                    <input
-                      type="checkbox" className="size-4 accent-primary" checked={activa}
-                      onChange={() => setForm(f => ({ ...f, presentaciones: toggleId(f.presentaciones, pr.id) }))}
-                    />
-                    {pr.nombre}
-                  </label>
-                  {activa && (
-                    <>
-                      <Input
-                        type="number" min="0" className="h-8 max-w-32 text-[13px]"
-                        placeholder={deLista != null ? `Lista: ${deLista}` : 'Precio'}
-                        value={form.precios_propios[pr.id] ?? ''}
-                        onChange={e => setForm(f => ({
-                          ...f,
-                          precios_propios: { ...f.precios_propios, [pr.id]: e.target.value },
-                        }))}
-                      />
-                      <span className="w-24 shrink-0 text-[12px] text-muted-foreground">
-                        {form.precios_propios[pr.id]
-                          ? 'precio propio'
-                          : deLista != null
-                            ? formatPrice(deLista)
-                            : 'sin precio'}
-                      </span>
-                      {/* El frasco cambia según la referencia: un 1.1 de Sauvage
-                          no usa el mismo que uno de Bleu. Vacío = el del tamaño. */}
-                      {form.tipo_producto !== 'comprado' && (
-                        <SelectSimple
-                          className="h-8 max-w-48"
-                          value={form.envases_talla[pr.id] ?? ''}
-                          onChange={e => setForm(f => ({
-                            ...f,
-                            envases_talla: { ...f.envases_talla, [pr.id]: Number(e.target.value) || '' },
-                          }))}
-                        >
-                          <option value="">Frasco del tamaño</option>
-                          {envases.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-                        </SelectSimple>
-                      )}
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </Field>
+
+        <TallasDelPerfume
+          form={form}
+          setForm={setForm}
+          presentaciones={presentaciones}
+          envases={envases}
+          precioDeLista={precioDeLista}
+        />
 
         {/* Cómo se abastece: define con qué motor se costea */}
         <Field label="¿Cómo consigues este producto?">

@@ -278,12 +278,17 @@ en 484. Verificado con capturas de tres tablas distintas —perfumes, ventas e i
 **idénticas píxel a píxel**, y además se probó el paginador haciendo clic (página 2 y cambio de
 filas por página), que es lo que se movió.
 
-**Faltan 2 archivos, los dos pantallas.** Cada una hay que abrirla en el navegador y mirarla antes
+**`PerfumesTab.tsx` (547) ya se partió** (2026-08-23): salieron `perfumes/CheckGroup.tsx` (los
+checkboxes de aromas y ocasiones, que no saben nada de perfumes) y `perfumes/TallasDelPerfume.tsx`
+—lo más enredado del formulario: por cada talla se cruzan si se vende, si cuesta distinto de la
+lista y con qué frasco se arma—. Quedó en 468. Verificado: el modal es **idéntico píxel a píxel**,
+y se probó marcando una talla en el navegador (aparecen su precio, su nota y su frasco).
+
+**Falta 1 archivo.** Cada una hay que abrirla en el navegador y mirarla antes
 de darla por buena — no basta con que compile:
 
 | Archivo | Líneas |
 |---|---|
-| `frontend/src/pages/dashboard/tabs/PerfumesTab.tsx` | 547 |
 | `frontend/src/pages/dashboard/compras/DetalleCompra.tsx` | 513 |
 
 ## Decisiones pendientes con el dueño
