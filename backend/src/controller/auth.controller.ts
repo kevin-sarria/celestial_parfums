@@ -30,7 +30,7 @@ export const login = async (req: Request, res: Response) => {
     const { accessToken, refreshToken, user } = await loginService(req.body);
     setAuthCookies(res, accessToken, refreshToken);
     res.status(200).json({ message: 'Login exitoso', data: { token: accessToken, user } });
-  } catch (err: any) {
+  } catch (err) {
     res.status(401).json({ error: mensajeSeguro(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.') });
   }
 };
@@ -40,7 +40,7 @@ export const googleAuth = async (req: Request, res: Response) => {
     const { accessToken, refreshToken, user } = await googleAuthService(req.body?.credential);
     setAuthCookies(res, accessToken, refreshToken);
     res.status(200).json({ message: 'Login con Google exitoso', data: { token: accessToken, user } });
-  } catch (err: any) {
+  } catch (err) {
     res.status(401).json({ error: mensajeSeguro(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.') });
   }
 };
@@ -55,7 +55,7 @@ export const refresh = async (req: Request, res: Response) => {
     const { accessToken, refreshToken } = refreshService(token);
     setAuthCookies(res, accessToken, refreshToken);
     res.json({ message: 'Token renovado' });
-  } catch (err: any) {
+  } catch (err) {
     res.clearCookie('access_token');
     res.clearCookie('refresh_token', { path: '/api/auth' });
     res.status(401).json({ error: mensajeSeguro(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.') });
@@ -79,7 +79,7 @@ export const registerAdmin = async (req: Request, res: Response) => {
       message: 'Registro exitoso. Revisa tu correo para activar tu cuenta.',
       data,
     });
-  } catch (err: any) {
+  } catch (err) {
     res.status(400).json({ error: mensajeSeguro(err) });
   }
 };
@@ -91,7 +91,7 @@ export const registerClient = async (req: Request, res: Response) => {
       message: 'Registro exitoso. Revisa tu correo para activar tu cuenta.',
       data,
     });
-  } catch (err: any) {
+  } catch (err) {
     res.status(400).json({ error: mensajeSeguro(err) });
   }
 };
@@ -100,7 +100,7 @@ export const verifyEmail = async (req: Request, res: Response) => {
   try {
     const data = await verifyEmailService(req.params.token as string);
     res.status(200).json({ message: 'Cuenta activada exitosamente', data });
-  } catch (err: any) {
+  } catch (err) {
     res.status(400).json({ error: mensajeSeguro(err) });
   }
 };

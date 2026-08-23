@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { prisma } from '../../config/prisma';
 import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../../utils/perfumeMatcher';
 import { bustImportCache, toDate, toNum, toStr, toNullStr, toNullNum, toDateOrNull, rows , loadPerfumeIndex, ensurePersona } from './core';
+import { textoDeError } from '../../utils/errorSeguro';
 
 /**
  * Importador histórico de un Excel con VARIAS hojas a la vez (ventas, créditos,
@@ -52,8 +53,8 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
           data: { ...venta, perfumes: { create: agruparEnlaces(perfume_ids) } },
         });
         result.ventas++;
-      } catch (e: any) {
-        result.errores.push(`Venta (${venta.persona}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Venta (${venta.persona}): ${textoDeError(e)}`);
       }
     }
   }
@@ -95,8 +96,8 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
           },
         });
         result.creditos++;
-      } catch (e: any) {
-        result.errores.push(`Crédito (${nombre} ${apellido}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Crédito (${nombre} ${apellido}): ${textoDeError(e)}`);
       }
     }
   }
@@ -129,8 +130,8 @@ export const importExcel = async (buffer: Buffer): Promise<ImportResult> => {
           },
         });
         result.pagos++;
-      } catch (e: any) {
-        result.errores.push(`Pago (${nombre}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Pago (${nombre}): ${textoDeError(e)}`);
       }
     }
   }

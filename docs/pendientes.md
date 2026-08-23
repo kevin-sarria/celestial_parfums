@@ -180,10 +180,18 @@ camino del error. Montar pruebas de componentes es una decisión del dueño que 
 Salió de revisar el código en vez de la lista, cuando el dueño preguntó *"¿qué más falta por
 codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva a perder.
 
-1. **El backend usa `any` en 215 sitios** (perfume.controller 40, core 14, contacto 11,
-   recomendacion.service 11). `any` apaga el chequeo de tipos justo donde debería avisar. No es
-   urgente, pero es la red de seguridad con agujeros: conviene atacarlo **por partes y empezando
-   por lo que toca dinero**, no de una sentada.
+1. **El backend usa `any`. EN CURSO: van 215 → 125** (2026-08-23). `any` apaga el chequeo de
+   tipos justo donde debería avisar. Se ataca por tandas, no de una sentada.
+   - **Tanda 1, hecha**: los **90 `catch (error: any)`**. TypeScript entrega `unknown` en un
+     `catch` —lo correcto: cualquiera puede lanzar cualquier cosa—, y `mensajeSeguro` ya lo
+     aceptaba, así que 90 salieron con un cambio mecánico **y el compilador señaló los 14 que sí
+     tocaban el error**. Esos se arreglaron de verdad, con dos ayudantes nuevos en
+     `utils/errorSeguro.ts` (`textoDeError` y `codigoPrisma`) para no repetir el criterio en
+     catorce sitios. Es el método a repetir: cambio mecánico → que el compilador diga dónde duele.
+   - **Quedan 125**, concentrados en el importador (`import/core.ts` 14, `inventario.ts` 9,
+     `resto.ts` 5, `ventas.ts` 5, `contenido.ts` 4), `recomendacion.service.ts` (11),
+     `costeo.repository.ts` (6), `devolucion.repository.ts` (5) y `recompensa.router.ts` (5).
+     Esos ya no son mecánicos: son formas de datos que hay que escribir.
 2. ~~El linter del frontend no pasa.~~ **HECHO (2026-08-23): `npm run lint` da CERO.** De los 66
    avisos, 26 eran arreglos de verdad y 40 eran dos reglas que no encajan con este código, que se
    apagaron **enteras y explicadas** en `eslint.config.js` (el porqué vive ahí, no aquí). El

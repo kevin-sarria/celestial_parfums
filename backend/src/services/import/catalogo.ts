@@ -1,6 +1,7 @@
 import { prisma } from '../../config/prisma';
 import { clampPct, fmtDate, lowerMap, splitList, toBool, toNullNum, toNullStr, toNum, toStr } from './core';
 import type { EntityImportResult } from './core';
+import { textoDeError } from '../../utils/errorSeguro';
 
 /**
  * Importación/exportación del catálogo: perfumes, precios, combos y descuentos.
@@ -141,8 +142,8 @@ export const importarCatalogo = async (
           },
         });
         result.insertados++;
-      } catch (e: any) {
-        result.errores.push(`Fila ${fila} (${nombre}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Fila ${fila} (${nombre}): ${textoDeError(e)}`);
         result.omitidos++;
       }
     }
@@ -178,8 +179,8 @@ export const importarCatalogo = async (
           },
         });
         result.insertados++;
-      } catch (e: any) {
-        result.errores.push(`Fila ${fila} (${nombre}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Fila ${fila} (${nombre}): ${textoDeError(e)}`);
         result.omitidos++;
       }
     }
@@ -215,8 +216,8 @@ export const importarCatalogo = async (
           update: { precio },
         });
         if (previo) result.actualizados++; else result.insertados++;
-      } catch (e: any) {
-        result.errores.push(`Fila ${fila} (${catNombre} ${presNombre}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Fila ${fila} (${catNombre} ${presNombre}): ${textoDeError(e)}`);
         result.omitidos++;
       }
     }
@@ -245,8 +246,8 @@ export const importarCatalogo = async (
         } else {
           result.actualizados += updated.count;
         }
-      } catch (e: any) {
-        result.errores.push(`Fila ${fila} (${nombre}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Fila ${fila} (${nombre}): ${textoDeError(e)}`);
         result.omitidos++;
       }
     }

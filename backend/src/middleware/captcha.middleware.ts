@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import logger from '../config/logger';
+import { textoDeError } from '../utils/errorSeguro';
 
 interface SiteVerifyResponse {
   success: boolean;
@@ -66,8 +67,8 @@ export const verifyCaptcha = (action: string) =>
       }
 
       next();
-    } catch (err: any) {
-      logger.error('Error verificando captcha', { message: err?.message });
+    } catch (err) {
+      logger.error('Error verificando captcha', { message: textoDeError(err) });
       res.status(502).json({ error: 'No se pudo validar la verificación de seguridad' });
     }
   };

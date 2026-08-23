@@ -32,3 +32,29 @@ export const mensajeSeguro = (err: unknown, generico = 'No se pudo completar la 
   });
   return generico;
 };
+
+/**
+ * El texto de un error, venga como venga.
+ *
+ * En un `catch` TypeScript entrega `unknown` —lo correcto: cualquiera puede
+ * lanzar cualquier cosa, no solo un `Error`—, así que `err.message` no existe
+ * hasta comprobarlo. Esto es para los sitios que **reportan el fallo a quien
+ * está usando el sistema** (el informe de una importación, un log), no para lo
+ * que se le manda al visitante: para eso está `mensajeSeguro`, que además
+ * esconde las tripas del servidor.
+ */
+export const textoDeError = (err: unknown): string =>
+  err instanceof Error ? err.message : String(err);
+
+/**
+ * El código de un error de Prisma (`P2002` = clave repetida, y demás), o
+ * `undefined` si el error no es de Prisma.
+ *
+ * Se usa para distinguir un choque esperado —dos veces el mismo código
+ * aleatorio de referido— de un fallo real que hay que dejar subir.
+ */
+export const codigoPrisma = (err: unknown): string | undefined => {
+  if (typeof err !== 'object' || err === null) return undefined;
+  const codigo = (err as { code?: unknown }).code;
+  return typeof codigo === 'string' ? codigo : undefined;
+};

@@ -1,5 +1,6 @@
 import { randomInt } from 'crypto';
 import { prisma } from '../config/prisma';
+import { codigoPrisma } from '../utils/errorSeguro';
 
 // Código de invitación legible (sin caracteres ambiguos), ej: REF-7XK2M9.
 const ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -13,8 +14,8 @@ export const getCodigo = async (userId: number): Promise<string> => {
     try {
       const row = await prisma.user.update({ where: { id: userId }, data: { codigo_referido: generar() }, select: { codigo_referido: true } });
       return row.codigo_referido!;
-    } catch (e: any) {
-      if (e?.code !== 'P2002') throw e; // colisión rara del aleatorio: reintenta
+    } catch (e) {
+      if (codigoPrisma(e) !== 'P2002') throw e; // colisión rara del aleatorio: reintenta
     }
   }
   throw new Error('No se pudo generar el código, intenta de nuevo');

@@ -6,6 +6,7 @@ import {
   toNullNum, toNullStr, toNum, toStr, loadPerfumeIndex, ensurePersona,
 } from './core';
 import type { EntityImportResult } from './core';
+import { textoDeError } from '../../utils/errorSeguro';
 
 /**
  * Importación/exportación del movimiento del negocio: publicidad, ventas,
@@ -147,8 +148,8 @@ export const importarVentas = async (
           },
         });
         result.insertados++;
-      } catch (e: any) {
-        result.errores.push(`Fila ${fila} (${titulo}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Fila ${fila} (${titulo}): ${textoDeError(e)}`);
         result.omitidos++;
       }
     }
@@ -191,8 +192,8 @@ export const importarVentas = async (
           data: { ...venta, perfumes: { create: agruparEnlaces(perfume_ids) } },
         });
         result.insertados++;
-      } catch (e: any) {
-        result.errores.push(`Venta (${venta.persona}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Venta (${venta.persona}): ${textoDeError(e)}`);
         result.omitidos++;
       }
     }
@@ -238,8 +239,8 @@ export const importarVentas = async (
           },
         });
         result.insertados++;
-      } catch (e: any) {
-        result.errores.push(`Fila ${fila} (${nombre} ${apellido}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Fila ${fila} (${nombre} ${apellido}): ${textoDeError(e)}`);
         result.omitidos++;
       }
     }
@@ -276,8 +277,8 @@ export const importarVentas = async (
           },
         });
         result.insertados++;
-      } catch (e: any) {
-        result.errores.push(`Fila ${fila} (${empresaNombre}): ${e.message}`);
+      } catch (e) {
+        result.errores.push(`Fila ${fila} (${empresaNombre}): ${textoDeError(e)}`);
         result.omitidos++;
       }
     }

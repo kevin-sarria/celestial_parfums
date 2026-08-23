@@ -5,6 +5,7 @@ import { generarCodigoDescuento } from '../utils/codigoDescuento';
 import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 import { conflict, notFound } from '../utils/httpError';
 import { hoyEnColombia } from '../utils/fechas';
+import { codigoPrisma } from '../utils/errorSeguro';
 
 const includeRel = {
   categorias: { include: { categoria: { select: { id: true, nombre: true } } } },
@@ -211,8 +212,8 @@ const crearCodigoUnico = async (anuncioId: number, userId: number | null) => {
       return await prisma.descuentoCodigo.create({
         data: { codigo: generarCodigoDescuento(), anuncio_id: anuncioId, user_id: userId },
       });
-    } catch (e: any) {
-      if (e?.code !== 'P2002') throw e;
+    } catch (e) {
+      if (codigoPrisma(e) !== 'P2002') throw e;
     }
   }
   throw new Error('No se pudo generar el código, intenta de nuevo');
