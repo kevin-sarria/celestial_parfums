@@ -32,7 +32,7 @@ describe('un accesorio comprado queda listo para vender', () => {
     await irA(pagina, '/dashboard/pagos');
     await pagina.waitForSelector('text=Registrar pago');
     await pagina.getByRole('button', { name: '+ Registrar pago' }).click();
-    await campo(pagina, 'Dia *').fill(new Date().toISOString().slice(0, 10));
+    await campo(pagina, 'Día *').fill(new Date().toISOString().slice(0, 10));
     await campo(pagina, 'Valor compra (COP) *').fill(String(COSTO_TOTAL));
 
     await pagina.getByRole('button', { name: /selecciona una empresa/i }).click();

@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { CampoEtiquetaContext, type RegistroDeCampo } from '@/components/ui/campoEtiqueta';
 import { cn } from '@/lib/utils';
 
 /**
@@ -66,13 +67,33 @@ interface FieldProps {
   className?: string;
 }
 
-/** Campo de formulario: etiqueta + control. */
+/**
+ * Campo de formulario: etiqueta + control.
+ *
+ * La etiqueta se enlaza sola con el primer control que se anuncie desde dentro
+ * (ver `campoEtiqueta.ts`): así hacer clic en el texto lleva el cursor al campo
+ * y un lector de pantalla sabe cómo se llama. Si dentro no hay un control al
+ * que enlazarse —un grupo de casillas, el editor de HTML—, no se inventa un
+ * `htmlFor` que apunte al vacío.
+ */
 export function Field({ label, children, className }: FieldProps) {
+  const idEtiqueta = useId();
+  const [ids, setIds] = useState<string[]>([]);
+  const registro = useMemo<RegistroDeCampo>(() => ({
+    idEtiqueta,
+    registrar: id => setIds(prev => (prev.includes(id) ? prev : [...prev, id])),
+    soltar: id => setIds(prev => prev.filter(x => x !== id)),
+  }), [idEtiqueta]);
+
   return (
-    <div className={cn('space-y-1.5', className)}>
-      <label className="block text-[12.5px] font-semibold text-foreground/80">{label}</label>
-      {children}
-    </div>
+    <CampoEtiquetaContext.Provider value={registro}>
+      <div className={cn('space-y-1.5', className)}>
+        <label id={idEtiqueta} htmlFor={ids[0]} className="block text-[12.5px] font-semibold text-foreground/80">
+          {label}
+        </label>
+        {children}
+      </div>
+    </CampoEtiquetaContext.Provider>
   );
 }
 

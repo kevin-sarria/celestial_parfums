@@ -306,6 +306,22 @@ que no entiende de tecnología poco entendería cómo hacer las cosas"*. Skill d
   por cada uno") con vista previa y alerta si el "desde" es ≥ 1000. Nació de un caso real: el
   dueño metió el precio donde iba la cantidad. Igual la cuenta del IVA y los dos nombres al
   crear una esencia: **ver el resultado antes de guardar es lo que impide el error**.
+- **La etiqueta se enlaza SOLA con su control, y no hay que hacer nada en la pantalla**
+  (2026-08-23). `Field` pintaba un `<label>` suelto sin `htmlFor`: hacer clic en "Nombre" no
+  llevaba el cursor a su casilla y un lector de pantalla decía "cuadro de edición" sin decir de
+  qué. Medido en el modal de perfume: **3 etiquetas de 16 asociadas antes, 13 de 16 después**.
+  El mecanismo está en `components/ui/campoEtiqueta.ts` y va **de abajo hacia arriba** —el
+  control se anuncia, la etiqueta no manda—, por dos razones: los 230 usos de `Field` no cambian
+  ni una línea, y **nunca queda un `htmlFor` apuntando al vacío** en los campos que envuelven un
+  grupo (aromas, ocasiones, la tabla de presentaciones), donde no existe control al que apuntar.
+  Si un campo lleva dos controles, se queda con la etiqueta el primero.
+- **Un desplegable NO puede dejar que la etiqueta le robe el nombre.** El nombre de un `<button>`
+  sale de su texto —el valor elegido—, y una etiqueta enlazada lo pisa: el lector diría "Esencia,
+  botón" sin decir nunca qué hay elegido. `BuscadorSelect` cita las dos cosas
+  (`aria-labelledby="<etiqueta> <botón>"`) y se anuncia "Esencia, Sin asignar". **Se descubrió
+  porque 7 recorridos se cayeron**: buscaban el botón por su valor y ya no lo encontraban. La
+  prueba que se rompe es la que avisa de que un cambio "de accesibilidad" empeoró la
+  accesibilidad.
 - El campo de dinero va **sin flechitas**: en un precio no sirven y en el celular tapaban un
   dígito.
 - **Confirmar antes de una acción de cara al público** (`PublicarSwitch.tsx`): un clic sin

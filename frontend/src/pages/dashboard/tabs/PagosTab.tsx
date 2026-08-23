@@ -267,7 +267,7 @@ export function PagosTab() {
         loading={loading}
       >
         <FieldRow>
-          <Field label="Dia *">
+          <Field label="Día *">
             <Input type="date" required value={form.dia}
               onChange={e => setForm(f => ({ ...f, dia: e.target.value }))} />
           </Field>
@@ -304,7 +304,7 @@ export function PagosTab() {
               </Field>
             </FieldRow>
             <FieldRow>
-              <Field label="Telefono">
+              <Field label="Teléfono">
                 <Input value={form.nueva_telefono} maxLength={20}
                   onChange={e => setForm(f => ({ ...f, nueva_telefono: e.target.value }))} />
               </Field>
@@ -313,7 +313,7 @@ export function PagosTab() {
                   onChange={e => setForm(f => ({ ...f, nueva_correo: e.target.value }))} />
               </Field>
             </FieldRow>
-            <Field label="Direccion">
+            <Field label="Dirección">
               <Input value={form.nueva_direccion} maxLength={150}
                 onChange={e => setForm(f => ({ ...f, nueva_direccion: e.target.value }))} />
             </Field>
@@ -339,7 +339,7 @@ export function PagosTab() {
           modoDelProveedor={modoProveedor}
           onModo={setIvaModo}
         />
-        <Field label="Numero de factura o remision">
+        <Field label="Número de factura o remisión">
           <Input value={form.numero_factura} maxLength={60} placeholder="Ej: FV-8891"
             onChange={e => setForm(f => ({ ...f, numero_factura: e.target.value }))} />
         </Field>

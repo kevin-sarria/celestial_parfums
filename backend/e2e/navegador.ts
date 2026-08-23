@@ -120,12 +120,12 @@ export const abrirComoCliente = async (
  * exista, aquí se busca por cercanía.
  */
 export const campo = (pagina: Page, etiqueta: string) =>
-  pagina
-    .locator('div')
-    .filter({ has: pagina.locator(`label:text-is(${JSON.stringify(etiqueta)})`) })
-    .last()
-    .locator('input, textarea, select')
-    .first();
+  // Desde el 2026-08-23 la etiqueta apunta de verdad a su control (`Field` +
+  // `campoEtiqueta.ts`), así que se pregunta por el nombre del campo en vez de
+  // adivinar por la forma del HTML ("el último div que contenga este label").
+  // Se queda el `.last()` porque puede haber un modal cerrado detrás con los
+  // mismos campos.
+  pagina.getByLabel(etiqueta, { exact: true }).last();
 
 /**
  * Elige una opción en un desplegable del dashboard.

@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 22 de agosto de 2026.** Todo compila, **259 pruebas en verde** (142 backend +
-77 frontend + 40 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
+**Última sesión: 23 de agosto de 2026.** Todo compila, **260 pruebas en verde** (142 backend +
+77 frontend + 41 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
 
@@ -14,6 +14,9 @@
    **Va con prisa razonable** — hasta que se despliegue, los 4 popups del dueño siguen apagados en
    producción desde su último día de vigencia. Mientras tanto, el parche manual es correrles la
    fecha de fin desde el dashboard. Detalle en [`gotchas.md`](gotchas.md).
+3. **Las etiquetas de los formularios y 10 tildes que faltaban.** Solo frontend, sin migración y
+   sin prisa: hacer clic en el nombre de un campo lleva el cursor a su casilla, y el dashboard
+   deja de decir "Descripcion" o "Genero". Entra con el mismo `npm run build` del frontend.
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -171,9 +174,6 @@ camino del error. Montar pruebas de componentes es una decisión del dueño que 
 7. **Separar "200/250ML" en dos tallas reales** y sembrar su stock inicial. Ya se puede hacer
    desde Clasificaciones sin tocar la base: crear "200 ML" y "250 ML" nace con su número y su
    receta enganchados solos.
-8. **Accesibilidad de los formularios**: `Field` (`dashboard/ui.tsx`) pinta un `<label>` suelto sin
-   `htmlFor`, así que ni el navegador ni un lector de pantalla lo asocian al campo. Hay que
-   hablarlo con el dueño antes de tocar 25 modales.
 
 ## Decisiones pendientes con el dueño
 

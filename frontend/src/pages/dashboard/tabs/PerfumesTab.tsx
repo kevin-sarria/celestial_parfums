@@ -284,19 +284,19 @@ export function PerfumesTab({
             </p>
           </Field>
         </FieldRow>
-        <Field label="Descripcion">
+        <Field label="Descripción">
           <Textarea value={form.descripcion} onChange={setF('descripcion')} rows={2} maxLength={500} />
         </Field>
         <FieldRow>
-          <Field label="Duracion">
+          <Field label="Duración">
             <Input placeholder="ej: 6-8 horas" value={form.duracion} onChange={setF('duracion')} maxLength={50} />
           </Field>
-          <Field label="Proyeccion">
+          <Field label="Proyección">
             <Input placeholder="ej: Moderada" value={form.proyeccion} onChange={setF('proyeccion')} maxLength={50} />
           </Field>
         </FieldRow>
         <FieldRow>
-          <Field label="Genero">
+          <Field label="Género">
             <SelectSimple value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value as PerfumeForm['genero'] }))}>
               <option value="">— Sin especificar —</option>
               <option value="dama">Dama</option>
@@ -304,7 +304,7 @@ export function PerfumesTab({
               <option value="unisex">Unisex</option>
             </SelectSimple>
           </Field>
-          <Field label="Categoria">
+          <Field label="Categoría">
             <SelectSimple value={form.categoria_id}
               onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value === '' ? '' : Number(e.target.value) }))}>
               <option value="">— Sin especificar —</option>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Search } from 'lucide-react';
+import { useIdDeCampo, useIdDeEtiqueta } from './ui/campoEtiqueta';
 import { cn } from '@/lib/utils';
 
 export interface OpcionBuscador {
@@ -80,6 +81,12 @@ export default function BuscadorSelect({
   id,
   'aria-label': ariaLabel,
 }: Props) {
+  // El botón es el control del campo: `<label htmlFor>` puede apuntarle porque
+  // un <button> sí admite etiqueta (a diferencia de un <div> con role).
+  const idBoton = useIdDeCampo(id);
+  // "Esencia, Sin asignar" en vez de solo "Esencia": ver `useIdDeEtiqueta`.
+  const idEtiqueta = useIdDeEtiqueta();
+  const citaEtiqueta = !ariaLabel && idEtiqueta ? `${idEtiqueta} ${idBoton}` : undefined;
   const esSelector = value !== undefined;
   // Con pocas opciones la caja de búsqueda sobra: se leen todas de un vistazo.
   const buscador = conBuscador ?? opciones.length >= MINIMO_PARA_BUSCAR;
@@ -234,8 +241,9 @@ export default function BuscadorSelect({
       {/* Disparador con la apariencia exacta de SelectSimple */}
       <button
         type="button"
-        id={id}
+        id={idBoton}
         aria-label={ariaLabel}
+        aria-labelledby={citaEtiqueta}
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={abierto}

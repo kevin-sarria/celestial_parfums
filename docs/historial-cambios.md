@@ -186,6 +186,32 @@ fallara. **El dueño decidió que "hasta el 22" incluye el 22 entero**, y la reg
 sitio (`utils/fechas.ts` → `hoyEnColombia()`) con 7 pruebas que fijan los bordes. Es la **cuarta
 vez** que la familia de este error aparece — ver [`gotchas.md`](gotchas.md).
 
+## Sesión del 2026-08-23: las etiquetas de los formularios
+
+**El punto 8 de la lista, cerrado.** `Field` pintaba la etiqueta suelta y nada la ataba al campo.
+Se arregló **sin tocar los 25 modales**: 159 de los 180 campos usan uno de cuatro controles
+compartidos, así que el enlace se resolvió ahí y los 230 usos de `Field` no cambiaron ni una
+línea. Medido en el modal de perfume: **3 etiquetas de 16 asociadas antes, 13 de 16 después**;
+las 3 que quedan fuera son grupos (aromas, ocasiones, la tabla de presentaciones), donde la
+etiqueta nombra un conjunto y no hay control al que apuntar — y ahí **no se inventa** un enlace
+roto. El porqué del diseño (el control se anuncia hacia arriba, no al revés) está en
+`campoEtiqueta.ts` y en [`diseno-ux.md`](diseno-ux.md).
+
+**Lo que de verdad salió de esto: el arreglo empeoraba la accesibilidad de los desplegables.**
+Se cayeron 7 recorridos a la vez y la causa no era la prueba: al enlazar la etiqueta, el botón
+de `BuscadorSelect` pasó a llamarse "Esencia" y **dejó de decir su valor** ("Sin asignar"), que
+es lo único que un lector de pantalla tenía de ese control. Ahora cita las dos cosas. Sin las
+pruebas de navegador esto se entregaba como una mejora.
+
+**Y de paso, 10 etiquetas sin tilde** que el dueño veía todos los días: "Descripcion",
+"Categoria", "Genero", "Telefono", "Direccion", "Duracion", "Proyeccion", "Numero de factura o
+remision", "Presentacion de los perfumes" y "Dia". Se comprobó en el navegador que se ven bien
+(no era una decisión de encoding: el resto de etiquetas del dashboard sí llevan tilde).
+
+Quedó **una prueba nueva** (`etiquetas.e2e.test.ts`, comprobada fallando sin el arreglo) y el
+helper `campo()` de los recorridos pasó de seis líneas adivinando la forma del HTML a un
+`getByLabel`. 260 pruebas en verde.
+
 ## Cosas que se probaron y se descartaron
 
 - **Three.js para la tarjeta de recompensas**: pesaba mucho para el público de gama baja y el

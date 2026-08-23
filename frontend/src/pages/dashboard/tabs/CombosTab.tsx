@@ -156,7 +156,7 @@ export function CombosTab({
           <Input value={form.nombre} required maxLength={100}
             onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
         </Field>
-        <Field label="Descripcion">
+        <Field label="Descripción">
           <Textarea rows={2} value={form.descripcion}
             onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} />
         </Field>
@@ -196,14 +196,14 @@ export function CombosTab({
           )}
         </Field>
         <FieldRow>
-          <Field label="Categoria">
+          <Field label="Categoría">
             <SelectSimple value={form.categoria_id}
               onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value !== '' ? Number(e.target.value) : '' }))}>
               <option value="">Sin categoria</option>
               {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
             </SelectSimple>
           </Field>
-          <Field label="Presentacion de los perfumes">
+          <Field label="Presentación de los perfumes">
             <SelectSimple value={form.presentacion_id}
               onChange={e => setForm(f => ({ ...f, presentacion_id: e.target.value !== '' ? Number(e.target.value) : '' }))}>
               <option value="">Cualquier tamaño</option>

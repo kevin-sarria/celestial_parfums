@@ -236,12 +236,12 @@ export function UsuariosTab() {
                 placeholder={editando?.sin_cuenta || modal.editId == null ? 'Opcional' : ''}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </Field>
-            <Field label="Telefono">
+            <Field label="Teléfono">
               <Input maxLength={20} value={form.telefono}
                 onChange={e => setForm(f => ({ ...f, telefono: e.target.value }))} />
             </Field>
           </FieldRow>
-          <Field label="Direccion">
+          <Field label="Dirección">
             <Input maxLength={255} value={form.direccion}
               onChange={e => setForm(f => ({ ...f, direccion: e.target.value }))} />
           </Field>

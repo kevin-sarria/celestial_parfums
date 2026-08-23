@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authStorage } from '../../infrastructure/storage/auth.storage';
 import { http, registrarSesionCaducada } from '../../infrastructure/api/http';

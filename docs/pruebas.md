@@ -133,6 +133,18 @@ pasan, y ningún recorrido escribe en `perfumes_db`.
   entre las fragancias, 2 unidades con 1 marcada como regalo que cobran una sola, y el inventario
   descontando las dos. Y en Créditos, que NO aparezca ni el campo ni el buscador de accesorios —
   era un paso manual del plan y ahora se comprueba solo.
+- **Las etiquetas de los formularios** (`etiquetas.e2e.test.ts`): abre el modal de perfume —el
+  formulario más grande— y cuenta cuántas etiquetas tienen control de verdad, que no haya
+  `htmlFor` apuntando al vacío ni `id` repetidos, y que **hacer clic en el texto lleve el cursor
+  a su casilla**. Los tres números salen del mismo sitio (`Field`, `Input`, `Textarea`,
+  `BuscadorSelect`), así que la prueba cubre los 25 modales a la vez. Se comprobó que **falla
+  sin el arreglo** (3 de 16) antes de darla por buena.
+- **`campo(pagina, 'Etiqueta')` pregunta por el nombre del campo, no por la forma del HTML.**
+  Antes buscaba "el último `div` que contenga este `label`" y luego el primer `input` de dentro:
+  seis líneas adivinando la estructura. Desde que la etiqueta apunta de verdad a su control es
+  un `getByLabel(exact)`. **Ojo**: eso ata las pruebas al TEXTO de la etiqueta —al ponerle la
+  tilde a "Día *" se cayeron dos recorridos—, que es exactamente lo que debe pasar cuando cambia
+  lo que el dueño lee en pantalla.
 - **Un recorrido no puede tocar un material que otro da por fijo.** El de la compra empezó
   comprando el "Frasco 30 ml" sembrado: le subía el costo promedio y el recorrido de la venta
   —que comprueba un costo exacto— fallaba **según el orden de los archivos**, o sea a veces sí y a
