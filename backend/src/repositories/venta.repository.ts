@@ -1,4 +1,6 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import { notFound } from '../utils/httpError';
 import { CreateVentaDTO } from '../types/venta.type';
 import { lineasDeVenta } from '../schemas/venta.schema';
 import { consumirPorVenta, revertirVenta } from './inventario.repository';
@@ -36,7 +38,21 @@ const includeRel = {
   codigo: { include: { anuncio: { select: { titulo: true, descuento_pct: true } } } },
 } as const;
 
-const mapVenta = (v: any) => ({
+/** La venta con su cliente, sus perfumes y su cupón: la forma que trae `includeRel`. */
+type VentaRow = Prisma.VentaGetPayload<{ include: typeof includeRel }>;
+
+/**
+ * Relee la venta recién guardada. `findUnique` puede devolver `null` —si la
+ * borraron entre la escritura y esta lectura—, y el mapeador reventaba con un
+ * "Cannot read properties of null": el dueño veía un 500 en vez de un aviso.
+ */
+const releerVenta = async (id: number) => {
+  const row = await prisma.venta.findUnique({ where: { id }, include: includeRel });
+  if (!row) throw notFound('Esa venta ya no existe');
+  return mapVenta(row);
+};
+
+const mapVenta = (v: VentaRow) => ({
   id:                 v.id,
   dia:                v.dia,
   persona:            v.persona,
@@ -48,7 +64,7 @@ const mapVenta = (v: any) => ({
   presentacion:       v.presentacion,
   referencia_perfume: v.referencia_perfume,
   // Una venta de combo puede llevar varios perfumes del catálogo enlazados
-  perfumes:           (v.perfumes ?? []).map((vp: any) => ({
+  perfumes:           (v.perfumes ?? []).map((vp) => ({
     id: vp.perfume.id, nombre: vp.perfume.nombre, ml: vp.ml ?? null,
     cantidad: vp.cantidad ?? 1, regalo: vp.regalo ?? 0,
   })),
@@ -169,7 +185,7 @@ export const createVenta = async (data: CreateVentaDTO) => {
   });
   if (codigo) {
     await aplicarCodigoAVenta(codigo, row.id, pagada);
-    return mapVenta(await prisma.venta.findUnique({ where: { id: row.id }, include: includeRel }));
+    return releerVenta(row.id);
   }
   return mapVenta(row);
 };
@@ -221,7 +237,7 @@ export const updateVenta = async (id: string, data: CreateVentaDTO) => {
   // Los ya canjeados NO: esos solo se sueltan borrando la venta.
   await liberarCodigoDeVenta(ventaId, codigo, true);
   if (codigo) await aplicarCodigoAVenta(codigo, ventaId, pagada);
-  return mapVenta(await prisma.venta.findUnique({ where: { id: ventaId }, include: includeRel }));
+  return releerVenta(ventaId);
 };
 
 /**

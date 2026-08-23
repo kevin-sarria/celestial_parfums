@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { DevolucionEstado, DevolucionMotivo } from '@prisma/client';
 import * as repo from '../repositories/devolucion.repository';
 import { requireAdmin, requireAuth } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
@@ -9,7 +10,8 @@ import { guardarVariasWebp } from '../utils/imagenWebp';
 import { borrarImagenSubida } from '../utils/imagenes';
 import { getPublicBaseUrl } from '../utils/publicUrl';
 import { badRequest } from '../utils/httpError';
-import { devolucionSchema, devolucionEstadoSchema, MOTIVOS } from '../schemas/devolucion.schema';
+import { aEnum } from '../utils/enums';
+import { devolucionSchema, devolucionEstadoSchema } from '../schemas/devolucion.schema';
 
 /**
  * Devoluciones y reclamos de garantía.
@@ -30,9 +32,9 @@ devolucionRouter.get('/mis-compras', requireAuth, h(async (req, res) => {
 devolucionRouter.post('/solicitar', requireAuth, uploadLimiter,
   uploadMemoria.array('imagenes', 3), h(async (req, res) => {
     const ventaId = Number(req.body.venta_id);
-    const motivo = String(req.body.motivo ?? '');
+    const motivo = aEnum(DevolucionMotivo, req.body.motivo);
     if (!ventaId) throw badRequest('Falta la compra');
-    if (!(MOTIVOS as readonly string[]).includes(motivo)) throw badRequest('Elige un motivo válido');
+    if (!motivo) throw badRequest('Elige un motivo válido');
     const detalle = (req.body.detalle ?? '').toString().trim().slice(0, 2000) || null;
 
     const files = (req.files as Express.Multer.File[]) ?? [];
@@ -59,7 +61,8 @@ devolucionRouter.post('/solicitar', requireAuth, uploadLimiter,
 devolucionRouter.use(requireAdmin);
 
 devolucionRouter.get('/', h(async (req, res) => {
-  res.json({ data: await repo.listarDevoluciones(String(req.query.estado ?? 'todas')) });
+  // Sin estado, con "todas" o con basura: la lista sale entera, sin filtro.
+  res.json({ data: await repo.listarDevoluciones(aEnum(DevolucionEstado, req.query.estado) ?? undefined) });
 }));
 
 /** Ventas candidatas para enganchar una devolución (buscador del formulario). */

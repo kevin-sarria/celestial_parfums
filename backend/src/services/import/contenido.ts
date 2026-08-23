@@ -1,5 +1,7 @@
+import { ContenidoEstado } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { cacheClear } from '../../utils/cache';
+import { aEnum, valoresDeEnum } from '../../utils/enums';
 import type { EntityImportResult, FilaExcel } from './core';
 
 /**
@@ -59,25 +61,35 @@ export const filasEntregas = async () => {
   }));
 };
 
-const ESTADOS = ['pendiente', 'aprobada', 'rechazada'];
 
 /**
  * Moderación en lote: solo cambia el `estado` de registros que YA existen,
  * buscados por su id. Ni crea ni edita lo que el cliente escribió.
  */
+/**
+ * Lo ÚNICO que la moderación necesita de un modelo: leerlo por id y cambiarle
+ * el estado. Escribirlo así —en vez de `delegate: any`— deja que sirva igual
+ * para reseñas y para entregas, pero sin apagar el chequeo: si mañana un modelo
+ * no tiene `estado`, el error sale aquí y no en producción.
+ */
+type Moderable = {
+  findUnique(args: { where: { id: number } }): Promise<{ estado: ContenidoEstado } | null>;
+  update(args: { where: { id: number }; data: { estado: ContenidoEstado } }): Promise<unknown>;
+};
+
 const moderar = async (
-  delegate: any, rows: FilaExcel[], result: EntityImportResult, quees: string,
+  delegate: Moderable, rows: FilaExcel[], result: EntityImportResult, quees: string,
 ) => {
   for (const [i, row] of rows.entries()) {
     const fila = i + 2;
     const id = Number(row.id);
-    const estado = txt(row.estado);
+    const estado = aEnum(ContenidoEstado, row.estado);
     if (!id) {
       result.errores.push(`Fila ${fila}: falta el id (no se pueden crear ${quees} desde un archivo, solo moderarlas)`);
       result.omitidos++; continue;
     }
-    if (!ESTADOS.includes(estado)) {
-      result.errores.push(`Fila ${fila}: estado debe ser pendiente, aprobada o rechazada`);
+    if (!estado) {
+      result.errores.push(`Fila ${fila}: estado debe ser ${valoresDeEnum(ContenidoEstado).join(', ')}`);
       result.omitidos++; continue;
     }
     const existente = await delegate.findUnique({ where: { id } });

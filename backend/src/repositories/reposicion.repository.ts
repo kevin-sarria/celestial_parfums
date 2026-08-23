@@ -1,3 +1,4 @@
+import type { MovimientoTipo } from '@prisma/client';
 import { prisma } from '../config/prisma';
 
 /**
@@ -13,7 +14,7 @@ import { prisma } from '../config/prisma';
  * ponerlo a mano en 219 esencias no lo hace nadie.
  */
 
-const num = (v: any) => Number(v);
+const num = (v: unknown) => Number(v);
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
 /** Ventana de historial con la que se estima el consumo diario. */
@@ -30,7 +31,13 @@ const DIAS_COBERTURA = 60;
  * que ya se absorbe al contar. Proyectar eso como si fueran ventas haría pedir
  * de más justo el primer mes.
  */
-const TIPOS_CONSUMO = ['venta', 'produccion', 'muestra', 'merma', 'garantia'] as const;
+/**
+ * Los movimientos que CUENTAN como consumo. Escribirlo como `MovimientoTipo[]`
+ * y no como texto suelto es lo que hace que un tipo mal escrito —o uno que
+ * mañana se renombre en el esquema— no compile, en vez de colarse y estimar el
+ * consumo de menos sin que nadie lo note.
+ */
+const TIPOS_CONSUMO: MovimientoTipo[] = ['venta', 'produccion', 'muestra', 'merma', 'garantia'];
 
 export interface FilaReposicion {
   id: number;
@@ -75,7 +82,7 @@ export const calcularReposicion = async (): Promise<Reposicion> => {
     }),
     prisma.movimientoInventario.groupBy({
       by: ['insumo_id'],
-      where: { tipo: { in: TIPOS_CONSUMO as any }, fecha: { gte: desde } },
+      where: { tipo: { in: TIPOS_CONSUMO }, fecha: { gte: desde } },
       _sum: { cantidad: true },
     }),
   ]);

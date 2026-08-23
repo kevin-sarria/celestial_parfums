@@ -22,7 +22,10 @@ const includeEmpresa = {
   items: { include: { insumo: { select: { nombre: true, unidad: true } } } },
 } as const;
 
-const mapPago = (p: any) => ({
+/** El pago con su empresa y sus renglones, tal como los trae `includeEmpresa`. */
+type PagoRow = Prisma.PagoProveedorGetPayload<{ include: typeof includeEmpresa }>;
+
+const mapPago = (p: PagoRow) => ({
   id:    p.id,
   dia:   p.dia,
   empresa: {
@@ -42,7 +45,7 @@ const mapPago = (p: any) => ({
   iva_modo:             p.iva_modo ?? null,
   iva_tasa:             p.iva_tasa != null ? Number(p.iva_tasa) : null,
   iva_valor:            Number(p.iva_valor ?? 0),
-  items: (p.items ?? []).map((i: any) => ({
+  items: (p.items ?? []).map((i) => ({
     id: i.id,
     insumo_id: i.insumo_id,
     insumo_nombre: i.insumo?.nombre ?? '',

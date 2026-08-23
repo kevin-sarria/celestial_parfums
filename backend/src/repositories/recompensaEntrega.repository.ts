@@ -1,3 +1,4 @@
+import type { RecompensaEntrega } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { paginatedResponse } from '../utils/pagination';
 import { borrarImagenSubida } from '../utils/imagenes';
@@ -8,9 +9,14 @@ import { borrarImagenSubida } from '../utils/imagenes';
  * cliente le suben fotos, y aparece pública solo si el admin la aprueba.
  */
 
-const imgs = (v: any): string[] => (Array.isArray(v) ? v : []);
+/** La columna `imagenes` es Json: puede traer cualquier cosa, solo sirven los textos. */
+const imgs = (v: unknown): string[] =>
+  (Array.isArray(v) ? v : []).filter((x): x is string => typeof x === 'string');
 
-const mapEntrega = (e: any) => ({
+/** La entrega con el cliente que la recibió (todas las consultas lo traen). */
+type EntregaRow = RecompensaEntrega & { user?: { nombre: string; apellido: string } | null };
+
+const mapEntrega = (e: EntregaRow) => ({
   id: e.id,
   user_id: e.user_id,
   cliente: e.user ? `${e.user.nombre} ${e.user.apellido}` : '',

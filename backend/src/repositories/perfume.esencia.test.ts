@@ -1,3 +1,4 @@
+import type { PerfumeRow } from './perfume.mapeo';
 import { describe, it, expect } from 'vitest';
 import { sinEsenciaParaUno } from './perfume.mapeo';
 
@@ -30,8 +31,9 @@ const fila = (over: {
   tipo_producto: over.tipo_producto ?? 'fabricado',
   insumo_esencia: over.conEsencia === false ? null : { stock: over.stock ?? 0 },
   presentaciones: over.tallas ?? [talla(30, 15)],
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-}) as any;
+  // Un doble de prueba trae solo los campos que la regla mira; el resto de la
+  // fila no influye en el resultado y armarla entera sería ruido.
+}) as unknown as PerfumeRow;
 
 describe('sinEsenciaParaUno', () => {
   it('con esencia de sobra, disponible', () => {

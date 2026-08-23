@@ -1,5 +1,5 @@
 import { prisma } from '../../config/prisma';
-import { clampPct, fmtDate, lowerMap, splitList, toBool, toNullNum, toNullStr, toNum, toStr, FilaExcel } from './core';
+import { clampPct, fmtDate, lowerMap, splitList, toBool, toNullNum, toNullStr, toNum, toStr, Celda, FilaExcel } from './core';
 import type { EntityImportResult } from './core';
 import { textoDeError } from '../../utils/errorSeguro';
 
@@ -97,7 +97,7 @@ export const importarCatalogo = async (
     const ocasionMap = lowerMap(ocasiones);
     const presMap = lowerMap(presentaciones);
     const catMap = lowerMap(categorias);
-    const ids = (val: any, map: Map<string, number>) =>
+    const ids = (val: Celda, map: Map<string, number>) =>
       [...new Set(splitList(val).map(n => map.get(n.toLowerCase())).filter((x): x is number => x != null))];
 
     for (const [i, r] of rows.entries()) {

@@ -8,10 +8,10 @@ import { getPublicBaseUrl } from '../utils/publicUrl';
 
 export const getPagos = async (req: Request, res: Response) => {
   try {
-    const { page, limit } = parsePagination(req.query as any);
+    const { page, limit } = parsePagination(req.query);
     const result = await pagoService.getAllPagos(
-      page, limit, parseSearch(req.query as any), req.query.con_totales === '1',
-      parseFiltros(req.query as any, mapaFiltrosPagos),
+      page, limit, parseSearch(req.query), req.query.con_totales === '1',
+      parseFiltros(req.query, mapaFiltrosPagos),
     );
     res.json(result);
   } catch (error) {

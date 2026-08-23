@@ -55,7 +55,7 @@ resenaRouter.post('/', requireAuth, uploadLimiter, uploadMemoria.array('imagenes
 
 // ── Admin (moderación) ───────────────────────────────────────────────────────
 resenaRouter.get('/admin', requireAdmin, h(async (req, res) => {
-  const { page, limit } = parsePagination(req.query as any);
+  const { page, limit } = parsePagination(req.query);
   res.json(await repo.listarAdmin(page, limit, req.query.estado as string | undefined));
 }));
 

@@ -81,6 +81,17 @@ const ORDEN_CATALOGO: Record<OrdenCatalogo, Prisma.PerfumeOrderByWithRelationInp
   nombre: { nombre: 'asc' },
 };
 
+/**
+ * ¿El `?sort=` que llegó por la URL es un orden que existe?
+ *
+ * La lista de órdenes válidos sale del mapa de aquí arriba, no de una copia en
+ * el controlador: eran dos listas que había que acordarse de mover a la vez.
+ * Se usa `hasOwnProperty` y no `in` porque `'toString' in ORDEN_CATALOGO` es
+ * verdadero —lo hereda del prototipo— y colaría un orden que no existe.
+ */
+export const esOrdenCatalogo = (v: string): v is OrdenCatalogo =>
+  Object.prototype.hasOwnProperty.call(ORDEN_CATALOGO, v);
+
 export const selectParfumsPaginated = async (
   page: number,
   limit: number,

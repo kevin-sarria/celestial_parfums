@@ -53,11 +53,9 @@ describe('regalo por línea', () => {
     const venta = await createVenta({
       dia: '2026-08-20', persona: 'Prueba', cantidad_perfumes: 2, presentacion: '30ML',
       perfume_ids: [], user_id: null,
-      // `CreateVentaDTO` está desactualizado y no declara `lineas`; en tiempo de
-      // ejecución el controlador pasa el body ya validado por Zod, que sí las trae.
       lineas: [{ perfume_id: s.perfume.id, ml: 30, cantidad: 2, regalo: 1 }],
       valor_venta: 60000,
-    } as any);
+    });
 
     expect(venta.perfumes[0].cantidad).toBe(2);
     expect(venta.perfumes[0].regalo).toBe(1);

@@ -26,9 +26,9 @@ export const getComboBySlug = async (req: Request, res: Response) => {
 export const getCombos = async (req: Request, res: Response) => {
   try {
     if (req.query.page) {
-      const { page, limit } = parsePagination(req.query as any);
+      const { page, limit } = parsePagination(req.query);
       const result = await comboService.getCombosPaginated(
-        page, limit, parseSearch(req.query as any), parseFiltros(req.query as any, mapaFiltrosCombos),
+        page, limit, parseSearch(req.query), parseFiltros(req.query, mapaFiltrosCombos),
       );
       res.json(result);
     } else {

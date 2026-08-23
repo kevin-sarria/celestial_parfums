@@ -1,8 +1,18 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 
 const includeRel = { rol: true } as const;
 
-const mapUser = (u: any) => ({
+/**
+ * El usuario con su rol y —solo en el listado del admin— sus cupones sin
+ * canjear. Por eso `codigos_descuento` es opcional: las demás consultas no los
+ * traen y el mapeador sirve para todas.
+ */
+type UserRow = Prisma.UserGetPayload<{ include: typeof includeRel }> & {
+  codigos_descuento?: { codigo: string; anuncio: { titulo: string; descuento_pct: number } | null }[];
+};
+
+const mapUser = (u: UserRow) => ({
   id: u.id,
   nombre: u.nombre,
   apellido: u.apellido,
@@ -16,7 +26,7 @@ const mapUser = (u: any) => ({
   // true = ficha creada por el admin sin acceso web todavía
   sin_cuenta: u.sin_cuenta,
   // Códigos de descuento emitidos y aún sin canjear (solo en el listado admin)
-  codigos_activos: (u.codigos_descuento ?? []).map((c: any) => ({
+  codigos_activos: (u.codigos_descuento ?? []).map((c) => ({
     codigo: c.codigo,
     titulo: c.anuncio?.titulo ?? '',
     descuento_pct: c.anuncio?.descuento_pct ?? 0,

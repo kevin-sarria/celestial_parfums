@@ -41,7 +41,16 @@ export const demandaStock = async () => {
     },
   });
   // Agrupa por perfume
-  const mapa = new Map<number, any>();
+  /** Quién está esperando ese perfume, con cómo contactarlo. */
+  type EnEspera = { nombre: string; telefono: string | null; email: string; fecha: Date };
+  type PerfumeEsperado = {
+    perfume_id: number;
+    nombre: string;
+    imagen_url: string | null;
+    agotado: boolean;
+    esperando: EnEspera[];
+  };
+  const mapa = new Map<number, PerfumeEsperado>();
   for (const r of rows) {
     if (!mapa.has(r.perfume_id)) {
       mapa.set(r.perfume_id, {
@@ -49,10 +58,10 @@ export const demandaStock = async () => {
         nombre: r.perfume.nombre,
         imagen_url: r.perfume.imagen_url,
         agotado: r.perfume.agotado,
-        esperando: [] as any[],
+        esperando: [],
       });
     }
-    mapa.get(r.perfume_id).esperando.push({
+    mapa.get(r.perfume_id)!.esperando.push({
       nombre: `${r.user.nombre} ${r.user.apellido}`,
       telefono: r.user.telefono,
       email: r.user.email,

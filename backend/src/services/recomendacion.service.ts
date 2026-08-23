@@ -1,6 +1,7 @@
 import { prisma } from '../config/prisma';
 import { SOLO_PUBLICADOS } from '../repositories/perfume.repository';
 import { mapPerfume, perfumeInclude, sinExistenciasParaUno } from '../repositories/perfume.mapeo';
+import type { PerfumeRow } from '../repositories/perfume.mapeo';
 import { FiltrosRecomendacion } from '../schemas/recomendacion.schema';
 
 /**
@@ -42,16 +43,25 @@ const GENERO_LABEL: Record<string, string> = {
   dama: 'para ella', caballero: 'para él', unisex: 'unisex',
 };
 
+/**
+ * El perfume tal como lo trae la consulta del quiz: la fila de siempre
+ * (`PerfumeRow`, con su categoría, aromas, ocasiones y presentaciones) más el
+ * conteo de ventas que se usa para la popularidad. Escribirlo aquí es lo que
+ * permite que `p.tipos_aroma` y `p.ocasiones` se recorran sin un `any` por
+ * vuelta: sus nombres y sus ids ya los sabe Prisma.
+ */
+type PerfumeParaQuiz = PerfumeRow & { _count: { ventas: number } };
+
 interface Puntuado {
-  perfume: any;
+  perfume: PerfumeParaQuiz;
   puntaje: number;
   razones: string[];
   ventas: number;
 }
 
-const puntuar = (p: any, f: FiltrosRecomendacion, maxVentas: number): Puntuado | null => {
+const puntuar = (p: PerfumeParaQuiz, f: FiltrosRecomendacion, maxVentas: number): Puntuado | null => {
   const razones: string[] = [];
-  const ventas = p._count?.ventas ?? 0;
+  const ventas = p._count.ventas;
   let posible = PESO_POPULARIDAD;
   let ganado = maxVentas > 0 ? (ventas / maxVentas) * PESO_POPULARIDAD : 0;
 
@@ -69,30 +79,30 @@ const puntuar = (p: any, f: FiltrosRecomendacion, maxVentas: number): Puntuado |
     }
   }
 
-  const nombresAroma: string[] = p.tipos_aroma.map((r: any) => r.tipo_aroma.nombre);
+  const nombresAroma: string[] = p.tipos_aroma.map((r) => r.tipo_aroma.nombre);
 
   if (f.aromas?.length) {
     posible += PESOS.aromas;
-    const idsPerfume = new Set(p.tipos_aroma.map((r: any) => r.tipo_aroma.id));
+    const idsPerfume = new Set(p.tipos_aroma.map((r) => r.tipo_aroma.id));
     const coinciden = f.aromas.filter((id) => idsPerfume.has(id));
     ganado += (PESOS.aromas * coinciden.length) / f.aromas.length;
     if (coinciden.length) {
       const nombres = p.tipos_aroma
-        .filter((r: any) => coinciden.includes(r.tipo_aroma.id))
-        .map((r: any) => r.tipo_aroma.nombre);
+        .filter((r) => coinciden.includes(r.tipo_aroma.id))
+        .map((r) => r.tipo_aroma.nombre);
       razones.push(`Notas que amas: ${nombres.join(', ')}`);
     }
   }
 
   if (f.ocasiones?.length) {
     posible += PESOS.ocasiones;
-    const idsPerfume = new Set(p.ocasiones.map((r: any) => r.ocasion.id));
+    const idsPerfume = new Set(p.ocasiones.map((r) => r.ocasion.id));
     const coinciden = f.ocasiones.filter((id) => idsPerfume.has(id));
     ganado += (PESOS.ocasiones * coinciden.length) / f.ocasiones.length;
     if (coinciden.length) {
       const nombres = p.ocasiones
-        .filter((r: any) => coinciden.includes(r.ocasion.id))
-        .map((r: any) => r.ocasion.nombre);
+        .filter((r) => coinciden.includes(r.ocasion.id))
+        .map((r) => r.ocasion.nombre);
       razones.push(`Perfecto para ${nombres.join(', ')}`);
     }
   }
@@ -171,8 +181,8 @@ export const calcularRecomendaciones = async (userId: number, filtros: FiltrosRe
   // Se guarda el cálculo: al volver al apartado se muestra tal cual
   const rec = await prisma.recomendacion.upsert({
     where: { user_id: userId },
-    update: { filtros: filtros as any, items: { deleteMany: {} } },
-    create: { user_id: userId, filtros: filtros as any },
+    update: { filtros, items: { deleteMany: {} } },
+    create: { user_id: userId, filtros },
   });
   await prisma.recomendacionItem.createMany({
     data: top.map((x, i) => ({

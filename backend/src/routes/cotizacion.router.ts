@@ -12,8 +12,8 @@ export const cotizacionRouter = Router();
 cotizacionRouter.use(requireAdmin);
 
 cotizacionRouter.get('/', h(async (req, res) => {
-  const { page, limit } = parsePagination(req.query as any);
-  res.json(await repo.listarCotizaciones(page, limit, parseSearch(req.query as any)));
+  const { page, limit } = parsePagination(req.query);
+  res.json(await repo.listarCotizaciones(page, limit, parseSearch(req.query)));
 }));
 
 cotizacionRouter.get('/:id', h(async (req, res) => {

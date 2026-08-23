@@ -7,10 +7,10 @@ import { mensajeSeguro } from '../utils/errorSeguro';
 
 export const getCreditos = async (req: Request, res: Response) => {
   try {
-    const { page, limit } = parsePagination(req.query as any);
+    const { page, limit } = parsePagination(req.query);
     const result = await creditoService.getAllCreditos(
-      page, limit, parseSearch(req.query as any), req.query.con_totales === '1',
-      parseFiltros(req.query as any, mapaFiltrosCreditos),
+      page, limit, parseSearch(req.query), req.query.con_totales === '1',
+      parseFiltros(req.query, mapaFiltrosCreditos),
     );
     res.json(result);
   } catch (error) {

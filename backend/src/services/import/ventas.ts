@@ -1,10 +1,12 @@
 import crypto from 'crypto';
+import { AnuncioAudiencia, AnuncioTipo } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../../utils/perfumeMatcher';
 import {
   clampPct, fmtDate, lowerMap, splitList, toBool, toDate, toDateOrNull,
   toNullNum, toNullStr, toNum, toStr, loadPerfumeIndex, ensurePersona, FilaExcel } from './core';
 import type { EntityImportResult } from './core';
+import { aEnum, valoresDeEnum } from '../../utils/enums';
 import { textoDeError } from '../../utils/errorSeguro';
 
 /**
@@ -94,22 +96,22 @@ export const importarVentas = async (
   if (entity === 'publicidad') {
     const categorias = await prisma.categoria.findMany();
     const catMap = lowerMap(categorias);
-    const TIPOS = ['imagen', 'mensaje', 'descuento'];
-    const AUDIENCIAS = ['todos', 'no_registrados', 'registrados'];
 
     for (const [i, r] of rows.entries()) {
       const fila = i + 2;
       const titulo = toStr(r['titulo']);
       if (!titulo) { result.errores.push(`Fila ${fila}: el titulo es obligatorio`); result.omitidos++; continue; }
 
-      const tipo = toStr(r['tipo']).toLowerCase() || 'mensaje';
-      if (!TIPOS.includes(tipo)) {
-        result.errores.push(`Fila ${fila} (${titulo}): el tipo debe ser "mensaje", "imagen" o "descuento"`);
+      // Las listas de valores buenos son las del enum de Prisma, no una copia
+      // suya: si mañana nace otro tipo de anuncio, el importador se entera solo.
+      const tipo = toStr(r['tipo']) ? aEnum(AnuncioTipo, r['tipo']) : AnuncioTipo.mensaje;
+      if (!tipo) {
+        result.errores.push(`Fila ${fila} (${titulo}): el tipo debe ser ${valoresDeEnum(AnuncioTipo).join(', ')}`);
         result.omitidos++; continue;
       }
-      const audienciaRaw = toStr(r['audiencia']).toLowerCase() || 'todos';
-      if (!AUDIENCIAS.includes(audienciaRaw)) {
-        result.errores.push(`Fila ${fila} (${titulo}): la audiencia debe ser "todos", "registrados" o "no_registrados"`);
+      const audiencia = toStr(r['audiencia']) ? aEnum(AnuncioAudiencia, r['audiencia']) : AnuncioAudiencia.todos;
+      if (!audiencia) {
+        result.errores.push(`Fila ${fila} (${titulo}): la audiencia debe ser ${valoresDeEnum(AnuncioAudiencia).join(', ')}`);
         result.omitidos++; continue;
       }
       // Un anuncio de imagen sin imagen no se vería en el catálogo
@@ -130,8 +132,8 @@ export const importarVentas = async (
             titulo,
             mensaje: toNullStr(r['mensaje']),
             imagen_url: imagen,
-            tipo: tipo as any,
-            audiencia: audienciaRaw as any,
+            tipo,
+            audiencia,
             una_vez: toBool(r['una_vez']),
             activo: toBool(r['activo']),
             orden: Math.max(0, Math.round(toNum(r['orden']))),
@@ -160,7 +162,18 @@ export const importarVentas = async (
   if (entity === 'ventas') {
     const perfumeIndex = await loadPerfumeIndex();
     let enlazadas = 0;
-    const data: any[] = [];
+    /** Una venta lista para crear, con los perfumes que se le engancharán aparte. */
+    type VentaParaCrear = {
+      dia: Date;
+      persona: string;
+      cantidad_perfumes: number;
+      presentacion: string;
+      referencia_perfume: string;
+      perfume_ids: number[];
+      valor_venta: number;
+      datos_adicionales: string | null;
+    };
+    const data: VentaParaCrear[] = [];
     for (const [i, r] of rows.entries()) {
       const fila = i + 2;
       const dia = toDateOrNull(r['dia']);

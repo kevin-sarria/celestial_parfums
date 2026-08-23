@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Request } from 'express';
 import * as repo from '../repositories/recompensa.repository';
 import * as entregaRepo from '../repositories/recompensaEntrega.repository';
 import { requireAuth, requireAdmin } from '../middleware/auth.middleware';
@@ -25,7 +26,7 @@ const parseEstadoEntrega = (v: unknown) => {
 };
 
 /** Fotos de una entrega desde un multipart (máx 3, convertidas a WebP). */
-const fotosDeEntrega = async (req: any) => {
+const fotosDeEntrega = async (req: Request) => {
   const baseUrl = getPublicBaseUrl(req);
   const files = (req.files as Express.Multer.File[]) ?? [];
   const conservarRaw: string[] = req.body?.conservar
@@ -68,10 +69,10 @@ recompensaRouter.patch('/config', requireAdmin, validate(recompensaConfigSchema)
 }));
 
 recompensaRouter.get('/clientes', requireAdmin, h(async (req, res) => {
-  const { page, limit } = parsePagination(req.query as any);
+  const { page, limit } = parsePagination(req.query);
   res.json(await repo.getClientes(
-    page, limit, parseSearch(req.query as any),
-    parseFiltros(req.query as any, repo.mapaFiltrosRecompensas),
+    page, limit, parseSearch(req.query),
+    parseFiltros(req.query, repo.mapaFiltrosRecompensas),
   ));
 }));
 
@@ -85,7 +86,7 @@ recompensaRouter.patch('/clientes/:id/override', requireAdmin, validate(recompen
 
 // ── Admin: galería de ganadores (fotos + moderación) ─────────────────────────
 recompensaRouter.get('/admin/entregas', requireAdmin, h(async (req, res) => {
-  const { page, limit } = parsePagination(req.query as any);
+  const { page, limit } = parsePagination(req.query);
   res.json(await entregaRepo.listarEntregasAdmin(page, limit, req.query.estado as string | undefined));
 }));
 

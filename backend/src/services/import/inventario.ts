@@ -1,5 +1,7 @@
+import { InsumoAlcance, InsumoTipo, InsumoUnidad } from '@prisma/client';
 import { prisma } from '../../config/prisma';
 import { ajustarStock } from '../../repositories/inventario.repository';
+import { aEnum, valoresDeEnum } from '../../utils/enums';
 import type { EntityImportResult, FilaExcel } from './core';
 
 /**
@@ -12,8 +14,6 @@ import type { EntityImportResult, FilaExcel } from './core';
 
 const num = (v: unknown) => Number(String(v ?? '').toString().replace(/[^\d.-]/g, '')) || 0;
 const txt = (v: unknown) => String(v ?? '').trim();
-
-const TIPOS_VALIDOS = ['materia_prima', 'envase', 'accesorio'];
 
 /** Para comparar nombres sin que una tilde o un espacio de más creen un duplicado. */
 const normalizar = (s: string) =>
@@ -107,7 +107,8 @@ export const filasMovimientos = async () => {
 
 // ── Importadores ────────────────────────────────────────────────────────────
 
-const TIPOS = ['materia_prima', 'envase', 'accesorio'];
+/** Los tipos válidos NO se escriben aquí: son los del enum de Prisma. */
+const TIPOS_TEXTO = valoresDeEnum(InsumoTipo).join(', ');
 
 /**
  * Índice de las gamas por nombre normalizado (sin tildes ni mayúsculas): en un
@@ -168,13 +169,13 @@ export const importarInsumos = async (rows: FilaExcel[], result: EntityImportRes
     const fila = i + 2;
     const nombre = txt(row.nombre);
     if (!nombre) { result.omitidos++; continue; }
-    const tipo = txt(row.tipo).toLowerCase();
-    if (!TIPOS.includes(tipo)) {
-      result.errores.push(`Fila ${fila}: tipo debe ser materia_prima, envase o accesorio`);
+    const tipo = aEnum(InsumoTipo, row.tipo);
+    if (!tipo) {
+      result.errores.push(`Fila ${fila}: tipo debe ser ${TIPOS_TEXTO}`);
       result.omitidos++; continue;
     }
-    const unidad = txt(row.unidad).toLowerCase() === 'ml' ? 'ml' : 'unidad';
-    const alcance = txt(row.alcance).toLowerCase() === 'pedido' ? 'pedido' : 'unidad';
+    const unidad = aEnum(InsumoUnidad, row.unidad) ?? InsumoUnidad.unidad;
+    const alcance = aEnum(InsumoAlcance, row.alcance) ?? InsumoAlcance.unidad;
     const precio = num(row.costo_promedio);
     const activo = txt(row.activo).toLowerCase() !== 'no';
     const gamaId = leerGama(row.gama, gamas, fila, result);
@@ -185,7 +186,7 @@ export const importarInsumos = async (rows: FilaExcel[], result: EntityImportRes
       await prisma.insumoCosto.update({
         where: { id: existente.id },
         // El costo NO se pisa si viene en cero: lo manda el promedio de compras
-        data: { tipo: tipo as any, unidad: unidad as any, alcance: alcance as any, activo,
+        data: { tipo, unidad, alcance, activo,
           ...(precio > 0 ? { precio } : {}),
           ...(gamaId !== undefined ? { gama_id: gamaId } : {}),
           ...(genero !== undefined ? { genero } : {}) },
@@ -193,7 +194,7 @@ export const importarInsumos = async (rows: FilaExcel[], result: EntityImportRes
       result.actualizados++;
     } else {
       await prisma.insumoCosto.create({
-        data: { nombre, tipo: tipo as any, unidad: unidad as any, alcance: alcance as any, precio, activo,
+        data: { nombre, tipo, unidad, alcance, precio, activo,
           gama_id: gamaId ?? null, genero: genero ?? null },
       });
       result.insertados++;
@@ -233,18 +234,18 @@ export const importarInventario = async (rows: FilaExcel[], result: EntityImport
     // a dar de alta el material a mano antes de poder contarlo — justo lo que la
     // hoja venía a evitar.
     if (!insumo) {
-      const tipo = txt(row.tipo).toLowerCase().replace(/\s+/g, '_');
-      if (!TIPOS_VALIDOS.includes(tipo)) {
+      const tipo = aEnum(InsumoTipo, row.tipo);
+      if (!tipo) {
         result.errores.push(
           `Fila ${fila}: "${nombre}" es nuevo, así que necesita la columna "tipo" `
-          + `(materia_prima, envase o accesorio) para poder crearlo.`);
+          + `(${TIPOS_TEXTO}) para poder crearlo.`);
         result.omitidos++; continue;
       }
-      const unidad = txt(row.unidad).toLowerCase() === 'ml' ? 'ml' : 'unidad';
+      const unidad = aEnum(InsumoUnidad, row.unidad) ?? InsumoUnidad.unidad;
       insumo = await prisma.insumoCosto.create({
         data: {
           nombre,
-          tipo: tipo as 'materia_prima' | 'envase' | 'accesorio',
+          tipo,
           unidad,
           // El precio arranca en lo que se teclee y de ahí en adelante lo lleva
           // el costo promedio de las compras.
@@ -274,7 +275,7 @@ export const importarInventario = async (rows: FilaExcel[], result: EntityImport
         fecha: hoy,
         nota: 'Conteo físico importado',
       });
-      if ((res as any).sinCambios) result.omitidos++;
+      if (res.sinCambios) result.omitidos++;
       else result.actualizados++;
     } catch (e) {
       result.errores.push(`Fila ${fila}: ${e instanceof Error ? e.message : 'no se pudo ajustar'}`);

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as perfumeService from '../services/perfume.service';
-import { mapaFiltrosPerfumes } from '../repositories/perfume.repository';
+import { esOrdenCatalogo, mapaFiltrosPerfumes } from '../repositories/perfume.repository';
 import { parsePagination, parseSearch } from '../utils/pagination';
 import { parseFiltros } from '../utils/filtros';
 import { mensajeSeguro } from '../utils/errorSeguro';
@@ -44,17 +44,16 @@ const parseLista = (v: unknown): string[] | undefined => {
 export const selectAllPerfumes = async (req: Request, res: Response) => {
   try {
     if (req.query.page) {
-      const { page, limit } = parsePagination(req.query as any);
+      const { page, limit } = parsePagination(req.query);
       const generoRaw = typeof req.query.genero === 'string' ? req.query.genero : '';
       const ordenRaw = typeof req.query.sort === 'string' ? req.query.sort : '';
-      const ordenes = ['destacados', 'precio_asc', 'precio_desc', 'nombre'];
-      const result = await perfumeService.allPerfumesPaginated(page, limit, parseSearch(req.query as any), {
+      const result = await perfumeService.allPerfumesPaginated(page, limit, parseSearch(req.query), {
         genero: ['dama', 'caballero', 'unisex'].includes(generoRaw) ? (generoRaw as 'dama' | 'caballero' | 'unisex') : undefined,
         categorias: parseLista(req.query.categorias),
         aromas: parseLista(req.query.aromas),
         ocasiones: parseLista(req.query.ocasiones),
-        orden: ordenes.includes(ordenRaw) ? (ordenRaw as any) : undefined,
-      }, req.query.todos === '1' && esAdminRequest(req), parseFiltros(req.query as any, mapaFiltrosPerfumes));
+        orden: esOrdenCatalogo(ordenRaw) ? ordenRaw : undefined,
+      }, req.query.todos === '1' && esAdminRequest(req), parseFiltros(req.query, mapaFiltrosPerfumes));
       res.json(result);
     } else {
       // `?todos=1` trae también los que están fuera de la tienda. Se honra SOLO

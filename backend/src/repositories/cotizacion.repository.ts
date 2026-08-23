@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { paginatedResponse } from '../utils/pagination';
 import type { CotizacionInput } from '../schemas/cotizacion.schema';
@@ -9,9 +10,20 @@ import type { CotizacionInput } from '../schemas/cotizacion.schema';
  * cuando mañana suba el precio de un insumo (mismo criterio que los créditos).
  */
 
-const num = (v: any) => Number(v);
+const num = (v: unknown) => Number(v);
 
-const mapItem = (i: any) => ({
+const incluirItems = {
+  items: {
+    orderBy: { orden: 'asc' as const },
+    include: { perfume: { select: { imagen_url: true } } },
+  },
+} as const;
+
+/** Las filas tal como las trae la consulta de arriba; no se escriben a mano. */
+type CotizacionRow = Prisma.CotizacionGetPayload<{ include: typeof incluirItems }>;
+type ItemRow = CotizacionRow['items'][number];
+
+const mapItem = (i: ItemRow) => ({
   id: i.id,
   perfume_id: i.perfume_id,
   perfume_nombre: i.perfume_nombre,
@@ -26,7 +38,7 @@ const mapItem = (i: any) => ({
   orden: i.orden,
 });
 
-const mapCotizacion = (c: any) => ({
+const mapCotizacion = (c: CotizacionRow) => ({
   id: c.id,
   numero: c.numero,
   tipo: c.tipo,
@@ -49,13 +61,6 @@ const mapCotizacion = (c: any) => ({
   fecha: c.created_at,
   items: (c.items ?? []).map(mapItem),
 });
-
-const incluirItems = {
-  items: {
-    orderBy: { orden: 'asc' as const },
-    include: { perfume: { select: { imagen_url: true } } },
-  },
-};
 
 /** Consecutivo legible por año: COT-2026-0007. */
 const siguienteNumero = async () => {
@@ -184,7 +189,13 @@ export const actualizarCotizacion = async (id: number, data: CotizacionInput) =>
   return obtenerCotizacion(id);
 };
 
+/**
+ * El `include` NO es adorno: sin él la respuesta salía con `items: []` —el
+ * mapeador rellenaba el hueco— y la pantalla se quedaba con una cotización sin
+ * líneas al marcarla como enviada. Se veía como "se borraron los productos".
+ */
 export const marcarEstado = (id: number, estado: 'borrador' | 'enviada') =>
-  prisma.cotizacion.update({ where: { id }, data: { estado } }).then(mapCotizacion);
+  prisma.cotizacion.update({ where: { id }, data: { estado }, include: incluirItems })
+    .then(mapCotizacion);
 
 export const eliminarCotizacion = (id: number) => prisma.cotizacion.delete({ where: { id } });

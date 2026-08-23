@@ -20,6 +20,10 @@
 4. **Los precios al mayoreo salieron de *Tamaños y fórmulas*** y ahora son su propia pantalla en
    *Mayoreo B2B*. Solo frontend, sin migración: no cambia ni un precio ni una receta, solo dónde
    se editan. **Ojo al abrirlo**: los rangos que ya tenías siguen ahí, pero en el sitio nuevo.
+5. **El backend se quedó sin `any` (215 → 0).** Solo código, sin migración. Casi todo es
+   invisible para el dueño, pero **dos arreglos sí se notan**: marcar una cotización como
+   "enviada" ya no la devuelve sin sus productos, y guardar una venta o un crédito ya no puede
+   responder con un error 500. Detalle en la sección de deuda técnica, más abajo.
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -180,27 +184,39 @@ camino del error. Montar pruebas de componentes es una decisión del dueño que 
 Salió de revisar el código en vez de la lista, cuando el dueño preguntó *"¿qué más falta por
 codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva a perder.
 
-1. **El backend usa `any`. EN CURSO: van 215 → 94** (2026-08-23). `any` apaga el chequeo de
-   tipos justo donde debería avisar. Se ataca por tandas, no de una sentada.
-   - **Tanda 1, hecha**: los **90 `catch (error: any)`**. TypeScript entrega `unknown` en un
-     `catch` —lo correcto: cualquiera puede lanzar cualquier cosa—, y `mensajeSeguro` ya lo
-     aceptaba, así que 90 salieron con un cambio mecánico **y el compilador señaló los 14 que sí
-     tocaban el error**. Esos se arreglaron de verdad, con dos ayudantes nuevos en
-     `utils/errorSeguro.ts` (`textoDeError` y `codigoPrisma`) para no repetir el criterio en
-     catorce sitios. Es el método a repetir: cambio mecánico → que el compilador diga dónde duele.
-   - **Tanda 2, hecha**: el importador de Excel. Las funciones que convierten una celda
-     (`toStr`, `toNum`, `toDate`…) pasaron a `unknown` con dos nombres propios —`Celda` y
-     `FilaExcel`— porque **`unknown` es el tipo honesto de una celda**: obliga a mirar qué vino,
-     que es justo su trabajo. De paso, una celda de fecha vacía daba **el 1 de enero de 1970**
-     —una fecha que parece buena y no lo es— y ahora da fecha inválida, que el importador reporta
-     como fila con error.
-   - **Quedan 94**, y los que faltan son de otra clase: `as any` al asignar a un enum de Prisma
-     (`tipo`, `unidad`, `alcance`, `audiencia`) —ahí el `any` **apaga una validación de verdad**,
-     así que hay que comprobar el texto contra el enum y rechazar lo que no encaje—, un
-     `delegate: any` en `contenido.ts` y `recomendacion.service.ts` (11). ANTES: el importador (`import/core.ts` 14, `inventario.ts` 9,
-     `resto.ts` 5, `ventas.ts` 5, `contenido.ts` 4), `recomendacion.service.ts` (11),
-     `costeo.repository.ts` (6), `devolucion.repository.ts` (5) y `recompensa.router.ts` (5).
-     Esos ya no son mecánicos: son formas de datos que hay que escribir.
+1. ~~El backend usa `any`.~~ **HECHO (2026-08-23): 215 → CERO**, pruebas y código de pruebas
+   incluidos. `any` apaga el chequeo de tipos justo donde debería avisar. Se atacó por tandas, y
+   el método fue siempre el mismo: **cambio mecánico → que el compilador diga dónde duele**.
+   - **Tanda 1**: los **90 `catch (error: any)`**. TypeScript entrega `unknown` en un `catch`
+     —lo correcto: cualquiera puede lanzar cualquier cosa— y `mensajeSeguro` ya lo aceptaba. El
+     compilador señaló los 14 que sí tocaban el error; esos se arreglaron de verdad, con
+     `textoDeError` y `codigoPrisma` en `utils/errorSeguro.ts`.
+   - **Tanda 2**: el importador de Excel. Las funciones que convierten una celda pasaron a
+     `unknown` con dos nombres propios, `Celda` y `FilaExcel`. De paso, una celda de fecha vacía
+     daba **el 1 de enero de 1970**; ahora da fecha inválida y el importador la reporta.
+   - **Tanda 3**: el resto. Tres patrones y **cuatro fallos reales** que el `any` tapaba:
+     - **`req.query as any` × 22**: los tres ayudantes de paginación pedían `string` donde Express
+       entrega valores desconocidos. Se arregló la firma (`ConsultaUrl`) y los 22 casts murieron.
+     - **Los enums de Prisma** (`tipo`, `unidad`, `alcance`, `audiencia`, `estado`, `motivo`):
+       ahí el `as any` **apagaba una validación de verdad**. Ahora se comprueban con `aEnum` en
+       `utils/enums.ts`, y **las listas de valores válidos salen del enum**, no de una copia a
+       mano: los motivos de devolución estaban escritos en tres sitios.
+     - **Los mapeadores `(x: any) => ({…})`**: la forma de cada fila se la pide a Prisma
+       (`Prisma.XGetPayload<{ include: typeof INCLUDE }>`), así que un `d.venta.persoan` deja de
+       compilar. De paso, cada `include` repetido pasó a una constante única.
+   - **Lo que apareció al quitarlos** (todo arreglado y con la suite en verde):
+     1. **Marcar una cotización como "enviada" la devolvía sin sus ítems** (`marcarEstado` no
+        traía el `include`, y el mapeador rellenaba con `[]`): en pantalla se veía como si se
+        hubieran borrado los productos.
+     2. **Créditos y ventas podían responder 500** al releer con `findUnique` una fila recién
+        guardada: si ya no estaba, el mapeador reventaba con "Cannot read properties of null".
+        Ahora hay un `releerCredito`/`releerVenta` que responde "ya no existe".
+     3. **Tres columnas `Json` se leían con `as string[]`**, que no comprueba nada: las
+        condiciones comerciales de una cotización reventaban el `...spread` si la columna no
+        guardaba un objeto, y un `accesorios` con basura viajaba a la pantalla como id.
+     4. **`CreateVentaDTO` estaba desactualizado** (no declaraba `lineas`, por donde entran hoy
+        los productos y los regalos). Ahora ES el tipo del esquema de Zod, no una copia a mano.
+
 2. ~~El linter del frontend no pasa.~~ **HECHO (2026-08-23): `npm run lint` da CERO.** De los 66
    avisos, 26 eran arreglos de verdad y 40 eran dos reglas que no encajan con este código, que se
    apagaron **enteras y explicadas** en `eslint.config.js` (el porqué vive ahí, no aquí). El

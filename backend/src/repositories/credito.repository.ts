@@ -1,4 +1,6 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import { notFound } from '../utils/httpError';
 import { CreateCreditoDTO } from '../types/credito.type';
 import { paginatedResponse } from '../utils/pagination';
 import { filtroFecha, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
@@ -49,14 +51,17 @@ const calcularFechaLimite = (fecha: string, limite?: string | null) => {
   return d;
 };
 
-const mapCredito = (c: any) => {
-  const abonos = (c.abonos ?? []).map((a: any) => ({
+/** La fila del crédito con todo lo que `includeAll` arrastra (cliente, abonos, venta). */
+type CreditoRow = Prisma.CreditoGetPayload<{ include: typeof includeAll }>;
+
+const mapCredito = (c: CreditoRow) => {
+  const abonos = (c.abonos ?? []).map((a) => ({
     id: a.id,
     monto: Number(a.monto),
     fecha: a.fecha,
   }));
 
-  const totalAbonado = abonos.reduce((acc: number, a: any) => acc + a.monto, 0);
+  const totalAbonado = abonos.reduce((acc, a) => acc + a.monto, 0);
   const deudaInicial = Number(c.deuda_inicial);
 
   const saldo = Math.max(0, deudaInicial - totalAbonado);
@@ -96,10 +101,24 @@ const mapCredito = (c: any) => {
       : null,
     // Presentación y productos de la venta enlazada (para reconstruir el editor)
     presentacion: c.venta?.presentacion ?? '',
-    productos: (c.venta?.perfumes ?? []).map((p: any) => ({ perfume_id: p.perfume_id, cantidad: p.cantidad })),
+    productos: (c.venta?.perfumes ?? []).map((p) => ({ perfume_id: p.perfume_id, cantidad: p.cantidad })),
     venta:          c.venta ? { id: c.venta.id, pagada: c.venta.pagada } : null,
     created_at:     c.created_at,
   };
+};
+
+/**
+ * Relee el crédito recién guardado para devolverlo ya mapeado.
+ *
+ * El `null` de `findUnique` no es un detalle de tipos: si alguien borró el
+ * crédito entre la escritura y esta lectura, el mapeador reventaba con un
+ * "Cannot read properties of null" y el dueño veía un error 500 sin sentido.
+ * Ahora responde "ya no existe", que es lo que pasó.
+ */
+const releerCredito = async (id: number) => {
+  const row = await prisma.credito.findUnique({ where: { id }, include: includeAll });
+  if (!row) throw notFound('Ese crédito ya no existe');
+  return mapCredito(row);
 };
 
 /**
@@ -197,9 +216,7 @@ export const createCredito = async (data: CreateCreditoDTO) => {
   // El cupón de un crédito se consume YA (un solo uso, no espera a que pague todo).
   if (codigo && row.venta_id) await canjearCodigoEnCredito(codigo, row.venta_id);
 
-  return mapCredito(
-    await prisma.credito.findUnique({ where: { id: row.id }, include: includeAll }),
-  );
+  return releerCredito(row.id);
 };
 
 /**
@@ -268,7 +285,7 @@ export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
     if (codigo) await canjearCodigoEnCredito(codigo, ventaId);
   }
 
-  return mapCredito(await prisma.credito.findUnique({ where: { id: numId }, include: includeAll }));
+  return releerCredito(numId);
 };
 
 /** La venta enlazada refleja el estado real de la deuda: pagada ⇔ saldada. */
@@ -298,11 +315,7 @@ export const addAbono = async (id: string, monto: number) => {
   });
   await sincronizarVenta(Number(id));
 
-  const row = await prisma.credito.findUnique({
-    where: { id: Number(id) },
-    include: includeAll,
-  });
-  return mapCredito(row);
+  return releerCredito(Number(id));
 };
 
 export const deleteAbono = async (abonoId: string) => {

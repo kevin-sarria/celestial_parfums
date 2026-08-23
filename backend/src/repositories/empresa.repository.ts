@@ -1,7 +1,8 @@
+import type { Empresa } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { CreateEmpresaDTO } from '../types/empresa.type';
 
-const mapEmpresa = (e: any) => ({
+const mapEmpresa = (e: Empresa) => ({
   id:        e.id,
   nombre:    e.nombre,
   nit:       e.nit ?? null,

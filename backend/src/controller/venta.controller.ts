@@ -8,12 +8,12 @@ import { h } from '../middleware/error.middleware';
 // semántico, ej. conflictos de códigos de descuento) van al middleware central.
 
 export const getVentas = h(async (req, res) => {
-  const { page, limit } = parsePagination(req.query as any);
+  const { page, limit } = parsePagination(req.query);
   // `con_totales=1`: la pantalla pinta lista y totales a la vez, así que se
   // mandan juntos y se ahorra un viaje al servidor.
   res.json(await ventaService.getAllVentas(
-    page, limit, parseSearch(req.query as any), req.query.con_totales === '1',
-    parseFiltros(req.query as any, mapaFiltrosVenta),
+    page, limit, parseSearch(req.query), req.query.con_totales === '1',
+    parseFiltros(req.query, mapaFiltrosVenta),
   ));
 });
 

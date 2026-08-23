@@ -10,29 +10,36 @@ import { getPublicBaseUrl } from '../utils/publicUrl';
 
 export const blogRouter = Router();
 
-const validarPost = (body: any): repo.PostInput => {
-  const titulo = (body?.titulo ?? '').toString().trim();
-  const contenido = (body?.contenido ?? '').toString();
+/**
+ * El cuerpo de una petición es lo que el navegador quiso mandar: se mira campo
+ * por campo antes de creerle. Con `body: any` daba igual escribir `body.titluo`
+ * —compilaba— y el post salía sin título.
+ */
+const texto = (v: unknown) => (typeof v === 'string' ? v : '');
+
+const validarPost = (body: Record<string, unknown>): repo.PostInput => {
+  const titulo = texto(body?.titulo).trim();
+  const contenido = texto(body?.contenido);
   if (!titulo) throw badRequest('El título es obligatorio');
   if (!contenido.trim()) throw badRequest('El contenido no puede estar vacío');
   return {
     titulo,
     contenido,
-    resumen: body?.resumen,
-    portada: body?.portada ?? null,
+    resumen: texto(body?.resumen) || undefined,
+    portada: texto(body?.portada) || null,
     publicado: !!body?.publicado,
   };
 };
 
 // ── Público ──────────────────────────────────────────────────────────────────
 blogRouter.get('/', h(async (req, res) => {
-  const { page, limit } = parsePagination(req.query as any);
+  const { page, limit } = parsePagination(req.query);
   res.json(await repo.listarPublicos(page, limit));
 }));
 
 // ── Admin ── (antes de /:slug para que no lo capture) ─────────────────────────
 blogRouter.get('/admin', requireAdmin, h(async (req, res) => {
-  const { page, limit } = parsePagination(req.query as any);
+  const { page, limit } = parsePagination(req.query);
   res.json(await repo.listarAdmin(page, limit));
 }));
 

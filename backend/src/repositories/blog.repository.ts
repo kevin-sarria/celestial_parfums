@@ -1,4 +1,5 @@
 import sanitizeHtml from 'sanitize-html';
+import type { Post } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { toSlug } from '../utils/slug';
 import { paginatedResponse } from '../utils/pagination';
@@ -24,7 +25,7 @@ const OPCIONES_SANEO: sanitizeHtml.IOptions = {
 
 export const sanearHtml = (html: string) => sanitizeHtml(html ?? '', OPCIONES_SANEO);
 
-const mapPost = (p: any) => ({
+const mapPost = (p: Post) => ({
   id: p.id,
   titulo: p.titulo,
   slug: p.slug,

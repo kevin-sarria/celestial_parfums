@@ -1,3 +1,4 @@
+import type { DevolucionEstado, DevolucionMotivo, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { badRequest, notFound } from '../utils/httpError';
 import { borrarImagenSubida } from '../utils/imagenes';
@@ -15,7 +16,19 @@ const num = (v: unknown) => Number(v);
 /** Fecha de calendario a AAAA-MM-DD (nunca `new Date()`: corre un día en Colombia). */
 const fecha = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
 
-const map = (d: any) => ({
+const INCLUDE = {
+  venta: true,
+  perfumes: { include: { perfume: { select: { nombre: true } } } },
+} as const;
+
+/**
+ * La fila tal como la devuelve la consulta de arriba. Se la pedimos a Prisma en
+ * vez de escribirla: era el `d: any` que hacía que `d.venta.persoan` compilara
+ * feliz y saliera `undefined` en la pantalla.
+ */
+type FilaDevolucion = Prisma.DevolucionGetPayload<{ include: typeof INCLUDE }>;
+
+const map = (d: FilaDevolucion) => ({
   id: d.id,
   venta_id: d.venta_id,
   user_id: d.user_id,
@@ -43,18 +56,13 @@ const map = (d: any) => ({
     valor_venta: num(d.venta.valor_venta),
     referencia_perfume: d.venta.referencia_perfume,
   } : null,
-  perfumes: (d.perfumes ?? []).map((p: any) => ({
+  perfumes: (d.perfumes ?? []).map((p) => ({
     perfume_id: p.perfume_id,
     cantidad: p.cantidad,
     nombre: p.perfume?.nombre ?? '',
   })),
   created_at: d.created_at,
 });
-
-const INCLUDE = {
-  venta: true,
-  perfumes: { include: { perfume: { select: { nombre: true } } } },
-} as const;
 
 /**
  * Comprueba que lo devuelto quepa en la venta. Sin esto se podría devolver más
@@ -100,9 +108,9 @@ const datosBase = (data: DevolucionInput) => ({
   costo_envio: data.costo_envio,
 });
 
-export const listarDevoluciones = async (estado?: string) => {
+export const listarDevoluciones = async (estado?: DevolucionEstado) => {
   const rows = await prisma.devolucion.findMany({
-    where: estado && estado !== 'todas' ? { estado: estado as any } : undefined,
+    where: estado ? { estado } : undefined,
     include: INCLUDE,
     orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
   });
@@ -145,7 +153,7 @@ export const actualizarDevolucion = async (id: number, data: DevolucionInput) =>
   return map(row);
 };
 
-export const cambiarEstadoDevolucion = async (id: number, estado: string) => {
+export const cambiarEstadoDevolucion = async (id: number, estado: DevolucionEstado) => {
   const actual = await prisma.devolucion.findUnique({ where: { id } });
   if (!actual) throw notFound('Devolución no encontrada');
   if (estado === 'resuelta' && !actual.solucion) {
@@ -154,7 +162,7 @@ export const cambiarEstadoDevolucion = async (id: number, estado: string) => {
   const row = await prisma.devolucion.update({
     where: { id },
     data: {
-      estado: estado as any,
+      estado,
       fecha_resolucion: estado === 'resuelta' || estado === 'rechazada'
         ? (actual.fecha_resolucion ?? new Date())
         : null,
@@ -216,7 +224,7 @@ export const misCompras = async (userId: number) => {
  * cuánto se devuelve lo decide el admin al resolverlo, nunca el cliente.
  */
 export const solicitarDevolucion = async (
-  userId: number, ventaId: number, motivo: string, detalle: string | null, imagenes: string[],
+  userId: number, ventaId: number, motivo: DevolucionMotivo, detalle: string | null, imagenes: string[],
 ) => {
   const venta = await prisma.venta.findUnique({
     where: { id: ventaId },
@@ -235,7 +243,7 @@ export const solicitarDevolucion = async (
       user_id: userId,
       origen: 'cliente',
       fecha: new Date(),
-      motivo: motivo as any,
+      motivo,
       detalle,
       estado: 'pendiente',
       monto_devuelto: 0,

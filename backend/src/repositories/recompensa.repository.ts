@@ -1,3 +1,4 @@
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { paginatedResponse } from '../utils/pagination';
 import type { MapaFiltros } from '../utils/filtros';
@@ -42,7 +43,7 @@ export const saveConfig = async (data: RecompensaConfigInput) => {
 /** Config efectiva de un cliente: la global con el override propio encima. */
 const configEfectiva = (
   global: Awaited<ReturnType<typeof getConfig>>,
-  ov: { objetivo_override: number | null; premio_override: string | null; min_compra_override: any } | null,
+  ov: { objetivo_override: number | null; premio_override: string | null; min_compra_override: Prisma.Decimal | null } | null,
 ) => ({
   activo: global.activo,
   objetivo: ov?.objetivo_override ?? global.sellos_objetivo,

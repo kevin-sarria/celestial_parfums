@@ -1,3 +1,4 @@
+import { DevolucionEstado, DevolucionMotivo, DevolucionSolucion } from '@prisma/client';
 import { z } from 'zod/v4';
 
 /**
@@ -11,13 +12,12 @@ import { z } from 'zod/v4';
 
 const fecha = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida (AAAA-MM-DD)');
 
-export const MOTIVOS = [
-  'llego_danado', 'llego_equivocado', 'llego_incompleto',
-  'envase_defectuoso', 'no_llego', 'otro',
-] as const;
-
-export const ESTADOS = ['pendiente', 'en_revision', 'resuelta', 'rechazada'] as const;
-export const SOLUCIONES = ['reposicion', 'devolucion_dinero', 'ninguna'] as const;
+/**
+ * Los motivos, estados y soluciones NO se listan aquí: se leen del enum de
+ * Prisma. Estaban copiados en tres sitios (el esquema, el router y el
+ * `schema.prisma`), y tres copias de una lista terminan diciendo cosas
+ * distintas el día que nazca un motivo nuevo.
+ */
 
 /** Unidades que vuelven de una fragancia concreta de la venta. */
 const lineaSchema = z.object({
@@ -29,10 +29,10 @@ export const devolucionSchema = z
   .object({
     venta_id: z.number().int().positive('Elige la venta a la que pertenece'),
     fecha,
-    motivo: z.enum(MOTIVOS),
+    motivo: z.enum(DevolucionMotivo),
     detalle: z.string().max(2000).nullish(),
-    estado: z.enum(ESTADOS).default('pendiente'),
-    solucion: z.enum(SOLUCIONES).nullish(),
+    estado: z.enum(DevolucionEstado).default('pendiente'),
+    solucion: z.enum(DevolucionSolucion).nullish(),
     monto_devuelto: z.number().min(0, 'No puede ser negativo').default(0),
     fecha_resolucion: fecha.nullish(),
     notas: z.string().max(2000).nullish(),
@@ -81,7 +81,7 @@ export const devolucionSchema = z
 
 /** Cambio rápido de estado desde la tabla (sin abrir el formulario). */
 export const devolucionEstadoSchema = z.object({
-  estado: z.enum(ESTADOS),
+  estado: z.enum(DevolucionEstado),
 });
 
 export type DevolucionInput = z.infer<typeof devolucionSchema>;

@@ -1,15 +1,11 @@
-export interface CreateVentaDTO {
-  dia: string;
-  persona: string;
-  user_id?: number | null;
-  cantidad_perfumes: number;
-  presentacion: string;
-  /** Perfumes del catálogo incluidos en la venta (al menos uno). */
-  perfume_ids: number[];
-  valor_venta: number;
-  datos_adicionales?: string | null;
-  /** false = pendiente de pago; al pasar a true se canjea el código enlazado. */
-  pagada?: boolean;
-  /** Código único de descuento recibido en el pedido de WhatsApp. */
-  codigo_descuento?: string | null;
-}
+import type { CreateVentaInput } from '../schemas/venta.schema';
+
+/**
+ * Lo que se necesita para crear o editar una venta.
+ *
+ * NO se escribe aquí: es exactamente lo que el esquema de Zod deja pasar. Antes
+ * era una copia a mano y se había quedado atrás —no declaraba `lineas`, que es
+ * por donde entran hoy los productos y los regalos—, así que las pruebas y el
+ * controlador tenían que taparlo con un `as any`. Una regla en un solo sitio.
+ */
+export type CreateVentaDTO = CreateVentaInput;

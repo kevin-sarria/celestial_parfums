@@ -1,3 +1,4 @@
+import type { Resena } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { paginatedResponse } from '../utils/pagination';
 import { borrarImagenSubida } from '../utils/imagenes';
@@ -10,9 +11,21 @@ export const haComprado = async (userId: number, perfumeId: number) => {
   return n > 0;
 };
 
-const imgs = (v: any): string[] => (Array.isArray(v) ? v : []);
+/** La columna `imagenes` es Json: puede traer cualquier cosa, solo sirven los textos. */
+const imgs = (v: unknown): string[] =>
+  (Array.isArray(v) ? v : []).filter((x): x is string => typeof x === 'string');
 
-const mapResena = (r: any) => ({
+/**
+ * La reseña, con el autor y el perfume cuando la consulta los trae. Van
+ * opcionales a propósito: el portal del cliente no necesita el perfume y el
+ * cambio de estado no trae ninguno de los dos.
+ */
+type ResenaRow = Resena & {
+  user?: { nombre: string } | null;
+  perfume?: { id: number; nombre: string; imagen_url: string | null } | null;
+};
+
+const mapResena = (r: ResenaRow) => ({
   id: r.id,
   perfume_id: r.perfume_id,
   perfume: r.perfume ? { id: r.perfume.id, nombre: r.perfume.nombre, imagen_url: r.perfume.imagen_url ?? null } : undefined,

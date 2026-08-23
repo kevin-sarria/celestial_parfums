@@ -16,6 +16,8 @@
  * resolvers — no sabe nada de ventas, perfumes ni de ninguna tabla concreta.
  */
 
+import type { ConsultaUrl } from './pagination';
+
 type FiltroString = { type: 'string'; op: 'contains' | 'equals' | 'starts'; value: string };
 type FiltroNumero = { type: 'number' | 'currency'; op: 'eq' | 'gt' | 'lt'; value: string };
 type FiltroFecha = { type: 'date'; op: 'eq' | 'before' | 'after'; value: string };
@@ -37,7 +39,7 @@ const esFiltroValor = (v: unknown): v is FiltroValor =>
  * Nunca revienta con un JSON roto o una columna que no existe en el `mapa`:
  * un filtro mal formado se ignora en vez de tumbar la lista entera.
  */
-export const parseFiltros = (query: { filtros?: unknown }, mapa: MapaFiltros): object[] | undefined => {
+export const parseFiltros = (query: ConsultaUrl, mapa: MapaFiltros): object[] | undefined => {
   if (typeof query.filtros !== 'string' || !query.filtros) return undefined;
   let crudo: unknown;
   try {

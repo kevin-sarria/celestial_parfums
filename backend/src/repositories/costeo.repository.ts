@@ -1,3 +1,4 @@
+import type { CotizacionConfig, EscalaPrecio, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
 // La creación del perfume a partir de su esencia vive en un solo sitio: la usan
@@ -13,10 +14,14 @@ import type {
  * todavía), así que nada de esto vive quemado en el código.
  */
 
-const num = (v: any) => Number(v);
+const num = (v: unknown) => Number(v);
 
 // ── Insumos ─────────────────────────────────────────────────────────────────
-const mapInsumo = (i: any) => ({
+/** Lo que traen todas las consultas de insumos. El tipo de la fila sale de aquí. */
+const INSUMO_INCLUDE = { gama: true } as const;
+type InsumoRow = Prisma.InsumoCostoGetPayload<{ include: typeof INSUMO_INCLUDE }>;
+
+const mapInsumo = (i: InsumoRow) => ({
   id: i.id,
   nombre: i.nombre,
   tipo: i.tipo,
@@ -41,7 +46,7 @@ const mapInsumo = (i: any) => ({
 export const listarInsumos = async (todos = false) => {
   const rows = await prisma.insumoCosto.findMany({
     where: todos ? undefined : { activo: true },
-    include: { gama: true },
+    include: INSUMO_INCLUDE,
     orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
   });
   return rows.map(mapInsumo);
@@ -142,7 +147,7 @@ export const crearInsumo = async (data: InsumoInput) => {
 
   const insumo = await prisma.insumoCosto.create({
     data: { ...campos, activo: campos.activo ?? true },
-    include: { gama: true },
+    include: INSUMO_INCLUDE,
   });
 
   /**
@@ -174,7 +179,7 @@ export const actualizarInsumo = (id: number, data: InsumoInput) => {
   // pasárselos a Prisma reventaría con "Unknown argument".
   const { crear_perfume: _c, perfume_nombre: _p, precio_venta: _pv, ...campos } = data;
   return prisma.insumoCosto.update({
-    where: { id }, data: campos, include: { gama: true },
+    where: { id }, data: campos, include: INSUMO_INCLUDE,
   }).then(mapInsumo);
 };
 
@@ -216,7 +221,21 @@ export const eliminarInsumo = async (id: number) => {
 };
 
 // ── Fórmulas por volumen ────────────────────────────────────────────────────
-const mapFormula = (f: any) => {
+/**
+ * Todo lo que una receta necesita traer consigo: su envase, su esencia, los
+ * accesorios que incluye por defecto y sus escalas de precio. Estaba copiado en
+ * las cuatro consultas de abajo; ahora se escribe una vez y de él sale el tipo
+ * de la fila, que es lo que reemplaza al `f: any` del mapeador.
+ */
+const FORMULA_INCLUDE = {
+  envase: true,
+  esencia: true,
+  accesorios: { include: { insumo: true } },
+  escalas: { orderBy: { cantidad_min: 'asc' } },
+} as const;
+type FormulaRow = Prisma.FormulaVolumenGetPayload<{ include: typeof FORMULA_INCLUDE }>;
+
+const mapFormula = (f: FormulaRow) => {
   const esencia = num(f.esencia_ml);
   const sellador = num(f.sellador_ml);
   const feromonas = num(f.feromonas_ml);
@@ -240,7 +259,7 @@ const mapFormula = (f: any) => {
     orden: f.orden,
     escalas: (f.escalas ?? []).map(mapEscala),
     // Accesorios que este tamaño incluye por defecto (punto de partida al cotizar)
-    accesorios_default: (f.accesorios ?? []).map((a: any) => ({
+    accesorios_default: (f.accesorios ?? []).map((a) => ({
       insumo_id: a.insumo_id, nombre: a.insumo?.nombre ?? '', precio: num(a.insumo?.precio ?? 0),
     })),
   };
@@ -249,7 +268,7 @@ const mapFormula = (f: any) => {
 export const listarFormulas = async () => {
   const rows = await prisma.formulaVolumen.findMany({
     orderBy: [{ orden: 'asc' }, { ml_total: 'asc' }],
-    include: { envase: true, esencia: true, accesorios: { include: { insumo: true } }, escalas: { orderBy: { cantidad_min: 'asc' } } },
+    include: FORMULA_INCLUDE,
   });
   return rows.map(mapFormula);
 };
@@ -257,7 +276,7 @@ export const listarFormulas = async () => {
 export const crearFormula = async (data: FormulaInput) => {
   const row = await prisma.formulaVolumen.create({
     data: { ...data, activo: data.activo ?? true, orden: data.orden ?? 0 },
-    include: { envase: true, esencia: true, accesorios: { include: { insumo: true } }, escalas: true },
+    include: FORMULA_INCLUDE,
   });
   return mapFormula(row);
 };
@@ -265,7 +284,7 @@ export const crearFormula = async (data: FormulaInput) => {
 export const actualizarFormula = async (id: number, data: FormulaInput) => {
   const row = await prisma.formulaVolumen.update({
     where: { id }, data,
-    include: { envase: true, esencia: true, accesorios: { include: { insumo: true } }, escalas: { orderBy: { cantidad_min: 'asc' } } },
+    include: FORMULA_INCLUDE,
   });
   return mapFormula(row);
 };
@@ -283,13 +302,13 @@ export const setAccesoriosFormula = async (formulaId: number, insumoIds: number[
   ]);
   const row = await prisma.formulaVolumen.findUnique({
     where: { id: formulaId },
-    include: { envase: true, esencia: true, accesorios: { include: { insumo: true } }, escalas: { orderBy: { cantidad_min: 'asc' } } },
+    include: FORMULA_INCLUDE,
   });
   return row ? mapFormula(row) : null;
 };
 
 // ── Escalas de precio ───────────────────────────────────────────────────────
-const mapEscala = (e: any) => ({
+const mapEscala = (e: EscalaPrecio) => ({
   id: e.id,
   formula_volumen_id: e.formula_volumen_id,
   cantidad_min: e.cantidad_min,
@@ -342,11 +361,31 @@ const AVISOS_DEFAULT = [
   'La aceptación de esta cotización implica la aceptación de las condiciones comerciales aquí descritas.',
 ];
 
-const mapConfig = (c: any) => ({
+/**
+ * Estas tres columnas son `Json` en la base: pueden traer un texto, un número o
+ * un arreglo, no solo lo que esperamos. Antes se leían con `c: any` y un
+ * `as string[]`, y ese cast escondía dos caídas de verdad: si la columna
+ * guardara un arreglo o un texto, el `...spread` de abajo revienta, y una lista
+ * con números adentro se pintaría como "3" donde debía ir una condición.
+ * Se comprueba lo que vino y lo que no encaje se ignora.
+ */
+const textosGuardados = (v: Prisma.JsonValue): Partial<CondicionesComerciales> => {
+  if (!v || typeof v !== 'object' || Array.isArray(v)) return {};
+  const salida: Record<string, string> = {};
+  for (const [clave, valor] of Object.entries(v)) {
+    if (typeof valor === 'string') salida[clave] = valor;
+  }
+  return salida;
+};
+
+const listaDeTextos = (v: Prisma.JsonValue): string[] =>
+  (Array.isArray(v) ? v : []).filter((x): x is string => typeof x === 'string');
+
+const mapConfig = (c: CotizacionConfig) => ({
   vigencia_dias_default: c.vigencia_dias_default,
-  condiciones_comerciales: { ...CONDICIONES_DEFAULT, ...(c.condiciones_comerciales ?? {}) },
-  beneficios_items: (c.beneficios_items ?? []) as string[],
-  avisos_legales: (c.avisos_legales ?? []) as string[],
+  condiciones_comerciales: { ...CONDICIONES_DEFAULT, ...textosGuardados(c.condiciones_comerciales) },
+  beneficios_items: listaDeTextos(c.beneficios_items),
+  avisos_legales: listaDeTextos(c.avisos_legales),
 });
 
 export const getConfig = async () => {

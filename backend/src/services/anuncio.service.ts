@@ -1,3 +1,4 @@
+import type { CodigoEstado, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { CreateAnuncioInput } from '../schemas/anuncio.schema';
 import { cacheClear, cacheGet, cacheSet } from '../utils/cache';
@@ -11,7 +12,15 @@ const includeRel = {
   categorias: { include: { categoria: { select: { id: true, nombre: true } } } },
 } as const;
 
-const mapAnuncio = (a: any) => ({
+/**
+ * La fila del anuncio con sus categorías, y —solo en el listado del admin— el
+ * estado de sus códigos. Por eso `codigos` es opcional: la consulta pública no
+ * los trae, y el mapeador tiene que seguir sirviendo para las dos.
+ */
+type AnuncioRow = Prisma.AnuncioGetPayload<{ include: typeof includeRel }>
+  & { codigos?: { estado: CodigoEstado }[] };
+
+const mapAnuncio = (a: AnuncioRow) => ({
   id: a.id,
   titulo: a.titulo,
   mensaje: a.mensaje ?? null,
@@ -29,11 +38,11 @@ const mapAnuncio = (a: any) => ({
   min_monto: Number(a.min_monto ?? 0),
   max_descuento: Number(a.max_descuento ?? 0),
   max_canjes: a.max_canjes ?? 0,
-  categoria_ids: (a.categorias ?? []).map((c: any) => c.categoria.id),
-  categorias: (a.categorias ?? []).map((c: any) => c.categoria.nombre),
+  categoria_ids: (a.categorias ?? []).map((c) => c.categoria.id),
+  categorias: (a.categorias ?? []).map((c) => c.categoria.nombre),
   // Solo en el listado admin (a.codigos ausente en el público)
-  codigos_activos: (a.codigos ?? []).filter((c: any) => c.estado === 'activo').length,
-  codigos_canjeados: (a.codigos ?? []).filter((c: any) => c.estado === 'canjeado').length,
+  codigos_activos: (a.codigos ?? []).filter((c) => c.estado === 'activo').length,
+  codigos_canjeados: (a.codigos ?? []).filter((c) => c.estado === 'canjeado').length,
 });
 
 /**
