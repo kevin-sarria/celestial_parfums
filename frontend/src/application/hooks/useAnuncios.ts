@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
-import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import { useAuthContext } from '../context/useAuthContext';
 
 export interface Anuncio {
@@ -36,20 +36,19 @@ export function useAnuncios() {
   useEffect(() => {
     if (isAdmin) return;
     let vivo = true;
-    fetchJsonCached<{ data?: Anuncio[] }>(`${BASE_URL}/api/anuncios`)
-      .then((json) => {
-        if (!vivo) return;
-        const anuncios: Anuncio[] = json.data ?? [];
-        setPendientes(
-          anuncios.filter((a) => {
-            if (a.audiencia === 'registrados' && !user) return false;
-            if (a.audiencia === 'no_registrados' && user) return false;
-            if (a.una_vez && localStorage.getItem(VISTO_KEY(a.id))) return false;
-            return true;
-          }),
-        );
-      })
-      .catch(() => {}); // los popups son opcionales: si falla, la página sigue
+    (async () => {
+      // Los popups son opcionales: si falla, la página sigue y no sale ninguno.
+      const res = await http.getCacheado<{ data?: Anuncio[] }>(urls.anuncios.publico);
+      if (!vivo) return;
+      setPendientes(
+        (res.cuerpo?.data ?? []).filter((a) => {
+          if (a.audiencia === 'registrados' && !user) return false;
+          if (a.audiencia === 'no_registrados' && user) return false;
+          if (a.una_vez && localStorage.getItem(VISTO_KEY(a.id))) return false;
+          return true;
+        }),
+      );
+    })();
     return () => { vivo = false; };
   }, [user, isAdmin]);
 
@@ -85,26 +84,21 @@ export function useCupones() {
 
   const refresh = useCallback(async () => {
     if (isAdmin) { setCupones([]); return; }
-    try {
-      if (user) {
-        const res = await authFetchWithRefresh(`${BASE_URL}/api/portal/descuentos`);
-        const json = await res.json();
-        setCupones(json.data ?? []);
-        return;
-      }
-      // Sin cuenta: cupones de audiencia todos/no_registrados no usados en este navegador
-      const json = await fetchJsonCached<{ data?: Anuncio[] }>(`${BASE_URL}/api/anuncios`);
-      setCupones(
-        ((json.data ?? []) as Anuncio[]).filter(
-          (a) =>
-            a.tipo === 'descuento' &&
-            a.audiencia !== 'registrados' &&
-            !localStorage.getItem(CUPON_USADO_KEY(a.id)),
-        ),
-      );
-    } catch {
-      setCupones([]);
+    if (user) {
+      const res = await http.get<{ data?: Cupon[] }>(urls.portal.descuentos);
+      setCupones(res.cuerpo?.data ?? []);
+      return;
     }
+    // Sin cuenta: cupones de audiencia todos/no_registrados no usados en este navegador
+    const res = await http.getCacheado<{ data?: Anuncio[] }>(urls.anuncios.publico);
+    setCupones(
+      (res.cuerpo?.data ?? []).filter(
+        (a) =>
+          a.tipo === 'descuento' &&
+          a.audiencia !== 'registrados' &&
+          !localStorage.getItem(CUPON_USADO_KEY(a.id)),
+      ),
+    );
   }, [user, isAdmin]);
 
   useEffect(() => { refresh(); }, [refresh]);
@@ -114,20 +108,18 @@ export function useCupones() {
    * Devuelve null si la emisión falla: el pedido sigue y el admin decide.
    */
   const emitirCodigo = useCallback(async (cupon: Cupon): Promise<string | null> => {
-    try {
-      const res = user
-        ? await authFetchWithRefresh(`${BASE_URL}/api/portal/descuentos/${cupon.id}/codigo`, { method: 'POST' })
-        : await fetch(`${BASE_URL}/api/anuncios/${cupon.id}/codigo`, { method: 'POST' });
-      const json = await res.json();
-      if (!res.ok) return null;
-      if (!user) localStorage.setItem(CUPON_USADO_KEY(cupon.id), '1');
-      setCupones((prev) => prev.filter((c) => c.id !== cupon.id));
-      return json.data?.codigo ?? null;
-    } catch {
-      if (!user) localStorage.setItem(CUPON_USADO_KEY(cupon.id), '1');
-      setCupones((prev) => prev.filter((c) => c.id !== cupon.id));
-      return null;
-    }
+    const res = await http.post<{ data?: { codigo?: string } }>(
+      user ? urls.portal.emitirCodigo(cupon.id) : urls.anuncios.emitirCodigo(cupon.id),
+    );
+    /**
+     * Falle o no, el cupón sale de la lista y queda marcado como usado. Es a
+     * propósito y no es un handler mudo: reintentar podría emitir DOS códigos
+     * del mismo cupón, y el pedido de WhatsApp sale igual — el admin decide al
+     * validarlo. Por eso `null` no es un error que tapar, es la respuesta.
+     */
+    if (!user) localStorage.setItem(CUPON_USADO_KEY(cupon.id), '1');
+    setCupones((prev) => prev.filter((c) => c.id !== cupon.id));
+    return res.ok ? (res.cuerpo?.data?.codigo ?? null) : null;
   }, [user]);
 
   return { cupones, emitirCodigo };

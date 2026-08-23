@@ -137,16 +137,20 @@ las mismas mentiras educadas —el blog prometía "pronto publicaremos" cuando n
 dos de ellas te echaban a otra página ante un fallo de red— y ya están arregladas (detalle en
 [`arquitectura.md`](arquitectura.md)).
 
-**Decidido de paso: `cachedFetch.ts` se retira.** Era `http.getCacheado` escrito por segunda vez,
-y encima peor (no miraba `res.ok`, así que un error llegaba disfrazado de dato). Ya no le quedan
-usuarios fuera de los hooks del catálogo; cuando esos caigan, se borra el archivo.
+**Y la TIENDA entera** (2026-08-22): el home con sus destacados y su franja de combos, el catálogo
+con su búsqueda y sus filtros, la ficha de un perfume, los combos con su ficha, los popups de
+anuncios con sus cupones y el detector de combos del carrito. **`cachedFetch.ts` ya no existe**:
+era `http.getCacheado` escrito por segunda vez y encima peor (no miraba `res.ok`, así que un error
+llegaba a la pantalla disfrazado de dato bueno).
 
-Quedan **19 archivos**: los nueve hooks del catálogo (`useCatalog`, `usePerfumes`, `useCombos`,
-`usePerfumeDetail`, `useComboDetail`, `useAnuncios`, `usePerfumeIdeal`, `useDestacados`,
-`useComboDetector`), **login/registro/verificación** con su botón de Google y el `AuthProvider`,
-**Contáctame**, **el home** y **Perfume ideal**. Dos de los 19 no son red: `dashboard/helpers.ts`
-y `catalogoPdf.ts` solo usan la constante `BASE_URL`, que necesitará otra casa el día que se
-borre `client.ts`.
+De paso se borró **`useCatalog`** entero —182 líneas de catálogo viejo que ya no importaba nadie—
+y **`usePerfumeDetail` y `useComboDetail`**, que eran el mismo archivo dos veces, quedaron como
+envoltorios de tres líneas sobre el nuevo `useDetallePorSlug`.
+
+Quedan **12 archivos**: **login/registro/verificación** con su botón de Google y el
+`AuthProvider`, **Contáctame** y **Perfume ideal**. Dos de los 12 no son red:
+`dashboard/helpers.ts` y `catalogoPdf.ts` solo usan la constante `BASE_URL`, que necesitará otra
+casa el día que se borre `client.ts`.
 
 Se migra **pantalla entera o nada**, y al migrarla se aprovecha para que ningún handler ignore la
 respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra `client.ts`.
@@ -183,6 +187,17 @@ respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra 
    hablarlo con el dueño antes de tocar 25 modales.
 
 ## Decisiones pendientes con el dueño
+
+- **Los anuncios se apagan un día antes de tiempo** (encontrado el 2026-08-22, midiendo, no
+  opinando). `whereVigentes()` en `anuncio.service.ts` compara `fin >= new Date()`, pero `fin` es
+  `@db.Date`: Prisma lo lee como **medianoche UTC**, o sea las **7:00 p.m. de Colombia del día
+  ANTERIOR**. Comprobado en vivo: los 4 anuncios del dueño tienen `fin = 2026-08-22`, y ese mismo
+  día `/api/anuncios` devolvía `{"data":[]}` — el popup de "¡25% de Bienvenida!" llevaba horas
+  apagado. Es el mismo pariente del gotcha de `toISOString()` con fechas de calendario. **La
+  corrección es de una línea** (comparar contra el final del día local, no contra el instante),
+  pero *cuándo exactamente vence una campaña* es regla de negocio y la decide el dueño: si "hasta
+  el 22" incluye el 22 entero, hoy está perdiendo el último día y cinco horas. Cuando se resuelva,
+  la lección va a `gotchas.md`.
 
 - **Igualar la regla del cupón en créditos y ventas.** Hoy en ventas un cupón canjeado queda
   amarrado a su venta, y en créditos quitar el código lo libera. Es a propósito (es el único camino

@@ -1,6 +1,7 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { Combo } from '../../domain/entities/combo.schema';
-import { BASE_URL } from '../../infrastructure/api/client';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 
 export const COMBOS_PAGE_SIZE = 12;
 
@@ -15,11 +16,14 @@ export function useCombos() {
 
   useEffect(() => {
     const ac = new AbortController();
-    fetch(`${BASE_URL}/api/combos`, { signal: ac.signal })
-      .then((r) => r.json())
-      .then((json) => setCombos((json.data ?? []).filter((c: Combo) => c.activo)))
-      .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar los combos'); })
-      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    (async () => {
+      const res = await http.get<{ data?: Combo[] }>(urls.combos.todos, { signal: ac.signal });
+      // Cancelada al salir de la pantalla: ni error ni "ya cargó".
+      if (ac.signal.aborted) return;
+      if (!res.ok) setError(res.error);
+      setCombos((res.cuerpo?.data ?? []).filter((c) => c.activo));
+      setLoading(false);
+    })();
     return () => ac.abort();
   }, []);
 

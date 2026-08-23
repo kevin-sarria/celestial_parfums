@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CartItem } from '../context/CartContext';
 import type { Combo } from '../../domain/entities/combo.schema';
-import { BASE_URL } from '../../infrastructure/api/client';
-import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import { finalPrice } from '@/lib/format';
 
 /** Un combo del catálogo armado automáticamente con los perfumes del carrito. */
@@ -145,9 +145,11 @@ export function useComboDetector(items: CartItem[], habilitado: boolean) {
   useEffect(() => {
     if (!habilitado || combos.length > 0) return;
     let vivo = true;
-    fetchJsonCached<{ data?: Combo[] }>(`${BASE_URL}/api/combos`)
-      .then((json) => { if (vivo) setCombos((json.data ?? []).filter((c) => c.activo)); })
-      .catch(() => {}); // sin combos no hay detección, el carrito sigue normal
+    (async () => {
+      // Sin combos no hay detección y el carrito sigue normal, a precio de lista.
+      const res = await http.getCacheado<{ data?: Combo[] }>(urls.combos.todos);
+      if (vivo) setCombos((res.cuerpo?.data ?? []).filter((c) => c.activo));
+    })();
     return () => { vivo = false; };
   }, [habilitado, combos.length]);
 

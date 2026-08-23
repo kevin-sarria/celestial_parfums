@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Perfume } from '../../domain/entities/perfume.schema';
-import { BASE_URL } from '../../infrastructure/api/client';
-import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 
 export interface PerfumeVendido extends Perfume {
   unidades_vendidas: number;
@@ -17,15 +17,17 @@ export function useDestacados() {
 
   useEffect(() => {
     let vivo = true;
-    fetchJsonCached<{ data?: { nuevos?: Perfume[]; mas_vendidos?: PerfumeVendido[] } }>(
-      `${BASE_URL}/api/parfums/destacados`,
-    )
-      .then((json) => {
-        if (!vivo) return;
-        setNuevos(json.data?.nuevos ?? []);
-        setMasVendidos(json.data?.mas_vendidos ?? []);
-      })
-      .catch(() => {}); // sección opcional: si falla, el home sigue funcionando
+    (async () => {
+      // Sección opcional: si falla, el home sigue funcionando y las dos franjas
+      // simplemente no aparecen. No lleva aviso a propósito — es la primera
+      // pantalla de la tienda y no afirma nada que pueda ser mentira.
+      const res = await http.getCacheado<{
+        data?: { nuevos?: Perfume[]; mas_vendidos?: PerfumeVendido[] };
+      }>(urls.perfumes.destacados);
+      if (!vivo) return;
+      setNuevos(res.cuerpo?.data?.nuevos ?? []);
+      setMasVendidos(res.cuerpo?.data?.mas_vendidos ?? []);
+    })();
     return () => { vivo = false; };
   }, []);
 

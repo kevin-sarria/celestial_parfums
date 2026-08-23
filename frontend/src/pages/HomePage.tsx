@@ -15,8 +15,8 @@ import GaleriaGanadores from '../components/recompensas/GaleriaGanadores';
 import { CardCarousel, CarouselItem } from '../components/catalog/CardCarousel';
 import { useDestacados } from '../application/hooks/useDestacados';
 import { useSeo } from '../application/hooks/useSeo';
-import { BASE_URL } from '../infrastructure/api/client';
-import { fetchJsonCached } from '../infrastructure/api/cachedFetch';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { WHATSAPP_NUMBER } from '../config/constants';
 import type { Combo } from '../domain/entities/combo.schema';
 
@@ -65,9 +65,12 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
   }, [isAdmin, navigate]);
 
   useEffect(() => {
-    fetchJsonCached<{ data?: Combo[] }>(`${BASE_URL}/api/combos`)
-      .then((json) => setCombos((json.data ?? []).filter((c) => c.activo)))
-      .catch(() => {});
+    (async () => {
+      // Franja opcional del home: si falla, la sección de combos no se pinta y
+      // el resto de la tienda sigue igual. Sin aviso, como los destacados.
+      const res = await http.getCacheado<{ data?: Combo[] }>(urls.combos.todos);
+      setCombos((res.cuerpo?.data ?? []).filter((c) => c.activo));
+    })();
   }, []);
 
   const irAlCatalogo = () => {

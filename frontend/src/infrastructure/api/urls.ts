@@ -80,6 +80,12 @@ export const urls = {
   perfumes: {
     /** Catálogo COMPLETO, sin paginar. Ojo: responde `{ data: { data: [...] } }`. */
     todos: '/parfums',
+    /** La ficha pública de un perfume, por su slug. */
+    porSlug: (slug: string) => `/parfums/by-slug/${encodeURIComponent(slug)}`,
+    /** El "también te puede gustar" de esa misma ficha. */
+    relacionados: (slug: string) => `/parfums/by-slug/${encodeURIComponent(slug)}/related`,
+    /** Novedades y más vendidos del home, calculados de las ventas. */
+    destacados: '/parfums/destacados',
     crear: '/parfums/create',
     actualizar: (id: number) => `/parfums/update/${id}`,
     borrar: (id: number) => `/parfums/delete/${id}`,
@@ -130,6 +136,9 @@ export const urls = {
     todos: '/combos',
     /** Paginado para el dashboard. */
     lista: '/combos',
+    /** La ficha pública de un combo, por su slug. */
+    porSlug: (slug: string) => `/combos/by-slug/${encodeURIComponent(slug)}`,
+    relacionados: (slug: string) => `/combos/by-slug/${encodeURIComponent(slug)}/related`,
     crear: '/combos',
     combo: (id: number) => `/combos/${id}`,
     descuento: (id: number) => `/combos/${id}/descuento`,
@@ -151,6 +160,10 @@ export const urls = {
 
   /** Los popups de la tienda y los descuentos que reparten. */
   anuncios: {
+    /** Los vigentes que ve el visitante. La audiencia se filtra en el cliente. */
+    publico: '/anuncios',
+    /** Emite el código de un solo uso de ese cupón, para quien NO tiene cuenta. */
+    emitirCodigo: (id: number) => `/anuncios/${id}/codigo`,
     admin: '/anuncios/admin',
     crear: '/anuncios',
     anuncio: (id: number) => `/anuncios/${id}`,
@@ -233,6 +246,10 @@ export const urls = {
     credito: '/portal/credito',
     /** Su código de invitación y los amigos que trajo, con si ya compraron. */
     referidos: '/portal/referidos',
+    /** Los cupones que le quedan por usar (la versión con cuenta). */
+    descuentos: '/portal/descuentos',
+    /** Emite el código de un solo uso de ese cupón. */
+    emitirCodigo: (id: number) => `/portal/descuentos/${id}/codigo`,
   },
 
   /** La tarjeta de sellos: configuración, progreso de cada cliente y entregas. */

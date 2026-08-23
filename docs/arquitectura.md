@@ -105,11 +105,31 @@ viejo: los hooks del catálogo público, login/registro/verificación con su bot
 Contáctame, Sobre nosotros y el PDF del catálogo.
 
 **Las pantallas de contenido también cayeron** (2026-08-22): Blog (lista y entrada), Sobre
-nosotros, las reseñas públicas de un producto, la galería de ganadores e *Invita y gana*. Quedan
-**19 archivos**: los nueve hooks del catálogo, login/registro/verificación con su botón de Google,
-`AuthProvider`, Contáctame, el home y Perfume ideal. De esos 19, **dos no son red**:
-`dashboard/helpers.ts` y `catalogoPdf.ts` solo importan la constante `BASE_URL` — cuando se borre
-`client.ts` hay que darle otra casa (hoy `http.ts` solo exporta `API_BASE`, que lleva `/api`).
+nosotros, las reseñas públicas de un producto, la galería de ganadores e *Invita y gana*.
+
+**Y la TIENDA entera** (2026-08-22): el home con sus destacados y su franja de combos, el catálogo
+con su búsqueda y sus filtros, la ficha de un perfume, los combos con su ficha, los popups de
+anuncios con sus cupones y el detector de combos del carrito. Quedan **12 archivos**:
+login/registro/verificación con su botón de Google, el `AuthProvider`, Contáctame y Perfume ideal.
+De esos 12, **dos no son red**: `dashboard/helpers.ts` y `catalogoPdf.ts` solo importan la
+constante `BASE_URL` — cuando se borre `client.ts` hay que darle otra casa (hoy `http.ts` solo
+exporta `API_BASE`, que lleva `/api`).
+
+Dos cosas se limpiaron de paso, porque estaban en el camino:
+
+- **`useCatalog` se borró entero** (182 líneas y 6 llamadas). Era el catálogo viejo del home,
+  reemplazado hace tiempo por `useDestacados` y `usePerfumes`, y **no lo importaba nadie**.
+  Migrarlo habría sido trabajo para mantener código muerto.
+- **`usePerfumeDetail` y `useComboDetail` eran el mismo archivo dos veces** (34 líneas cada uno:
+  las dos peticiones en paralelo, el mismo error, el mismo cuidado con la respuesta que llega
+  tarde). Ahora los dos son envoltorios de tres líneas sobre `useDetallePorSlug`, que recibe la
+  entidad y sus dos rutas. Las pantallas siguen leyendo `perfume` y `combo`, no un `item` genérico.
+  **Ojo al usarlo**: el objeto de rutas se define FUERA del componente; creado en cada render, el
+  efecto lo ve siempre nuevo y no para de pedir.
+
+Al migrar el catálogo, los filtros dejaron de ir pegados a la cadena y pasaron a `params` de la
+petición — la misma regla que ya seguía el dashboard, y que evita tener que acordarse de
+`encodeURIComponent` cuando alguien busca un nombre con "&".
 
 Al migrarlo salió lo que estas pantallas tenían en común y no se veía: **se tragaban el error en
 silencio**. Un fallo de red dejaba "no tienes favoritos" a quien sí los tiene y "el programa de
@@ -121,14 +141,13 @@ excepciones son a propósito y están comentadas en el código: `usePortalCredit
 las dos listas del `ListasProvider`, que son adorno de las cards. Lo que SÍ avisa siempre es
 *cambiarlas*: un corazón que se deshace solo, sin una palabra, parece la aplicación rota.
 
-**`cachedFetch.ts` se retira: era `http.getCacheado` otra vez** (decidido el 2026-08-22, estaba
-pendiente). Los dos hacían exactamente lo mismo —un `Map` en memoria, con caducidad y
+**`cachedFetch.ts` YA NO EXISTE: era `http.getCacheado` otra vez** (decidido y ejecutado el
+2026-08-22). Los dos hacían exactamente lo mismo —un `Map` en memoria, con caducidad y
 deduplicando lo que va en vuelo—, o sea la misma regla escrita dos veces, que es justo lo que
-garantiza que un día digan cosas distintas. Gana `http.getCacheado`, y no por antigüedad: la
+garantiza que un día digan cosas distintas. Ganó `http.getCacheado`, y no por antigüedad: la
 versión vieja **devolvía el JSON del error como si fuera el dato** (no miraba `res.ok`), así que
-un 500 llegaba a la pantalla disfrazado de respuesta buena. Las pantallas de contenido ya están
-en la nueva; queda por mudar la caché del catálogo, y cuando caiga se borra el archivo. Único
-efecto colateral: la caducidad pasa de 4 a 5 minutos, que es la de la casa.
+un 500 llegaba a la pantalla disfrazado de respuesta buena. Único efecto colateral: la caducidad
+pasa de 4 a 5 minutos, que es la de la casa.
 
 Y traían la misma mentira educada que el portal, en un sitio que además vende: el blog anunciaba
 **"Pronto publicaremos contenido aquí"** cuando lo que pasaba era que no había cargado, y la ficha

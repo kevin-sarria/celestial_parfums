@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { Genero, Perfume } from '../../domain/entities/perfume.schema';
-import { BASE_URL } from '../../infrastructure/api/client';
-import { fetchJsonCached } from '../../infrastructure/api/cachedFetch';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 
 export const PERFUMES_PAGE_SIZE = 24;
 
@@ -51,18 +51,19 @@ export function usePerfumes() {
   // Opciones de los filtros (con caché en memoria: al navegar no se repiten)
   useEffect(() => {
     let vivo = true;
-    Promise.all([
-      fetchJsonCached<{ data?: Lookup[] }>(`${BASE_URL}/api/parfums/categorias`),
-      fetchJsonCached<{ data?: Lookup[] }>(`${BASE_URL}/api/parfums/tipos-aroma`),
-      fetchJsonCached<{ data?: Lookup[] }>(`${BASE_URL}/api/parfums/ocasiones`),
-    ])
-      .then(([cats, aromas, ocasiones]) => {
-        if (!vivo) return;
-        setCategorias(cats.data ?? []);
-        setAllAromas((aromas.data ?? []).map((a) => a.nombre).sort());
-        setAllOcasiones((ocasiones.data ?? []).map((o) => o.nombre).sort());
-      })
-      .catch(() => {}); // sin lookups los filtros quedan vacíos, la lista sigue
+    (async () => {
+      const [cats, aromas, ocasiones] = await Promise.all([
+        http.getCacheado<{ data?: Lookup[] }>(urls.clasificaciones('categorias').lista),
+        http.getCacheado<{ data?: Lookup[] }>(urls.clasificaciones('tipos-aroma').lista),
+        http.getCacheado<{ data?: Lookup[] }>(urls.clasificaciones('ocasiones').lista),
+      ]);
+      if (!vivo) return;
+      // Sin lookups los filtros quedan vacíos pero la lista sigue funcionando,
+      // así que no lleva aviso: el error que importa es el de la lista.
+      setCategorias(cats.cuerpo?.data ?? []);
+      setAllAromas((aromas.cuerpo?.data ?? []).map((a) => a.nombre).sort());
+      setAllOcasiones((ocasiones.cuerpo?.data ?? []).map((o) => o.nombre).sort());
+    })();
     return () => { vivo = false; };
   }, []);
 
@@ -70,22 +71,27 @@ export function usePerfumes() {
   useEffect(() => {
     const ac = new AbortController();
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: String(PERFUMES_PAGE_SIZE) });
-    if (searchQuery) params.set('search', searchQuery);
-    if (activeGenero) params.set('genero', activeGenero);
-    if (activeCategorias.size) params.set('categorias', [...activeCategorias].join(','));
-    if (activeAromas.size) params.set('aromas', [...activeAromas].join(','));
-    if (activeOcasiones.size) params.set('ocasiones', [...activeOcasiones].join(','));
-    if (orden) params.set('sort', orden);
-    fetch(`${BASE_URL}/api/parfums/?${params}`, { signal: ac.signal })
-      .then((r) => r.json())
-      .then((json) => {
-        setItems(json.data ?? []);
-        setTotal(json.total ?? 0);
-        setError('');
-      })
-      .catch((e) => { if (e.name !== 'AbortError') setError('No se pudo cargar los perfumes'); })
-      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    // Los filtros van como `params`, no pegados a la cadena: así nadie tiene que
+    // acordarse de `encodeURIComponent` y un nombre con "&" deja de romperlos.
+    const params: Record<string, string | number> = { page, limit: PERFUMES_PAGE_SIZE };
+    if (searchQuery) params.search = searchQuery;
+    if (activeGenero) params.genero = activeGenero;
+    if (activeCategorias.size) params.categorias = [...activeCategorias].join(',');
+    if (activeAromas.size) params.aromas = [...activeAromas].join(',');
+    if (activeOcasiones.size) params.ocasiones = [...activeOcasiones].join(',');
+    if (orden) params.sort = orden;
+
+    (async () => {
+      const res = await http.get<{ data?: Perfume[]; total?: number }>(
+        urls.perfumes.todos, { params, signal: ac.signal },
+      );
+      // Cancelada porque el visitante cambió de filtro: la petición nueva manda.
+      if (ac.signal.aborted) return;
+      setError(res.ok ? '' : res.error);
+      setItems(res.cuerpo?.data ?? []);
+      setTotal(res.cuerpo?.total ?? 0);
+      setLoading(false);
+    })();
     return () => ac.abort();
   }, [page, searchQuery, activeGenero, activeCategorias, activeAromas, activeOcasiones, orden]);
 
