@@ -89,14 +89,14 @@ export function CreditosTab() {
    */
   const loadCatalogos = async (refrescar = false) => {
     if (refrescar) {
-      [urls.usuarios.lista, urls.perfumes.todos, urls.combos.todos].forEach(http.olvidar);
+      [urls.usuarios.lista, urls.perfumes.todosConOcultos, urls.combos.todos].forEach(http.olvidar);
     }
     try {
       // Mismos catálogos que Ventas: con caché se traen una vez por sesión y
       // cambiar entre las dos pantallas deja de pedirlos otra vez.
       const [uRes, pRes, coRes] = await Promise.all([
         http.getCacheado<{ data: Usuario[] }>(urls.usuarios.lista),
-        http.getCacheado<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todos),
+        http.getCacheado<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todosConOcultos),
         http.getCacheado<{ data: Combo[] }>(urls.combos.todos),
       ]);
       setUsuarios((uRes.cuerpo?.data ?? []).filter((x) => x.rol_id !== 1));

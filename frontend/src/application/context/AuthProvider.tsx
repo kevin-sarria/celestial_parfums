@@ -1,8 +1,8 @@
 ﻿import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authStorage } from '../../infrastructure/storage/auth.storage';
-import { BASE_URL } from '../../infrastructure/api/client';
-import { registrarSesionCaducada } from '../../infrastructure/api/http';
+import { http, registrarSesionCaducada } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import type { AuthUser } from '../../domain/entities/auth.schema';
 import { AuthContext } from './AuthContext';
 
@@ -12,20 +12,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    fetch(`${BASE_URL}/api/auth/me`, { credentials: 'include' })
-      .then(res => res.ok ? res.json() : null)
-      .then(json => {
-        if (json?.data) {
-          setUser(prev => prev ?? json.data);
-          setIsAdmin(json.data.rol_id === 1);
-        } else {
-          setUser(null);
-          setIsAdmin(false);
-          authStorage.clear();
-        }
-      })
-      .catch(() => {})
-      .finally(() => setReady(true));
+    (async () => {
+      /**
+       * `sesionOpcional` es OBLIGATORIO aquí: esta es la primera petición que
+       * hace la aplicación al arrancar, y para un visitante anónimo responde
+       * 401. Sin la marca, el interceptor lo leería como "tu sesión venció" y
+       * **rebotaría al login a cualquiera que abra la tienda**.
+       */
+      const res = await http.get<{ data?: AuthUser }>(urls.auth.yo, { sesionOpcional: true });
+      const perfil = res.cuerpo?.data;
+      if (perfil) {
+        setUser(prev => prev ?? perfil);
+        setIsAdmin(perfil.rol_id === 1);
+      } else if (res.status === 401) {
+        // El servidor CONFIRMA que no hay sesión: se limpia lo que quedara.
+        setUser(null);
+        setIsAdmin(false);
+        authStorage.clear();
+      }
+      // Con el servidor caído no se toca nada: borrar la sesión guardada por un
+      // fallo de red desloguearía al dueño cada vez que parpadea el internet.
+      setReady(true);
+    })();
   }, []);
 
   /**
@@ -48,9 +56,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    try {
-      await fetch(`${BASE_URL}/api/auth/logout`, { method: 'POST', credentials: 'include' });
-    } catch {}
+    /**
+     * Falle o no, aquí se sale. No es un handler mudo: cerrar sesión es
+     * justamente lo que se quiere, y avisar de un fallo al salir solo asusta.
+     * Va con `sesionOpcional` porque una sesión ya muerta responde 401, y sin
+     * la marca el interceptor llamaría a `alCaducar`, que llama a este mismo
+     * `logout`.
+     */
+    await http.post(urls.auth.logout, undefined, { sesionOpcional: true });
     authStorage.clearAll();
     setUser(null);
     setIsAdmin(false);

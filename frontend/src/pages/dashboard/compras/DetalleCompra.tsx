@@ -48,8 +48,10 @@ interface NuevoInsumo {
   gama_id: number | null;
   /** Para quién es la fragancia. '' = todavía no se dice. */
   genero: '' | 'dama' | 'caballero' | 'unisex';
-  /** Crear además su producto del catálogo, ya enlazado a esta esencia. */
+  /** Crear además su producto del catálogo, ya enlazado a este material. */
   crear_perfume: boolean;
+  /** Solo accesorios: a cuánto se le vende. Texto porque es un input. */
+  precio_venta: string;
 }
 
 const GENERO_TEXTO: Record<string, string> = {
@@ -138,7 +140,7 @@ export default function DetalleCompra({
     if (id === 'nuevo') {
       setNuevo({
         nombre: '', tipo: 'materia_prima', unidad: 'ml',
-        gama_id: null, genero: '', crear_perfume: true,
+        gama_id: null, genero: '', crear_perfume: true, precio_venta: '',
       });
       void cargarGamas();
       return;
@@ -151,6 +153,17 @@ export default function DetalleCompra({
   const esEsencia = !!nuevo && nuevo.tipo === 'materia_prima' && nuevo.gama_id !== null;
   const nombres = nombresDe(nuevo?.nombre ?? '');
   const conPerfume = esEsencia && !!nuevo?.crear_perfume && !!nombres.fragancia;
+
+  /**
+   * Un accesorio —perfumero, bolsa, tarjeta— también se le vende al cliente, y
+   * hasta hoy no había forma de decirlo: quedaba solo como material, así que no
+   * aparecía en Registrar venta y lo que regalabas no descontaba de nada.
+   * Necesita SU precio, que no es el costo: el costo lo fija esta compra.
+   */
+  const esAccesorio = !!nuevo && nuevo.tipo === 'accesorio';
+  const precioVenta = Number(nuevo?.precio_venta);
+  const conAccesorio = esAccesorio && !!nuevo?.crear_perfume
+    && !!nuevo.nombre.trim() && precioVenta > 0;
 
   /** Crea el insumo con precio 0: su costo lo fija ESTA compra al guardarse. */
   const crearInsumo = async () => {
@@ -165,8 +178,9 @@ export default function DetalleCompra({
         nombre: esEsencia ? nombres.insumo : nuevo.nombre.trim(),
         gama_id: esEsencia ? nuevo.gama_id : null,
         genero: esEsencia && nuevo.genero ? nuevo.genero : null,
-        crear_perfume: conPerfume,
+        crear_perfume: conPerfume || conAccesorio,
         ...(conPerfume ? { perfume_nombre: nombres.fragancia } : {}),
+        ...(conAccesorio ? { perfume_nombre: nuevo.nombre.trim(), precio_venta: precioVenta } : {}),
         alcance: 'unidad',
         precio: 0,
       });
@@ -313,6 +327,49 @@ export default function DetalleCompra({
                 )}
               </span>
             </label>
+          )}
+
+          {/* Un accesorio no tiene receta ni talla: se compra hecho y se
+              revende tal cual. Por eso aquí sí se pide precio — sin él, el
+              producto nacería en cero y meterlo en una venta sería regalarlo. */}
+          {esAccesorio && (
+            <>
+              <label className="mt-2.5 flex items-start gap-2 rounded-lg border border-border bg-secondary/50 p-2.5">
+                <input type="checkbox" className="mt-0.5 size-4 shrink-0 accent-primary"
+                  checked={nuevo.crear_perfume}
+                  onChange={(e) => setNuevo({ ...nuevo, crear_perfume: e.target.checked })} />
+                <span className="text-[12.5px] leading-snug">
+                  <span className="font-medium text-foreground">
+                    También se lo vendo a los clientes
+                  </span>
+                  <span className="mt-1 block text-muted-foreground">
+                    Queda disponible en <strong className="font-medium text-foreground">Registrar
+                    venta</strong>, en el buscador de accesorios, para agregarlo a cualquier pedido
+                    como extra o como regalo. Nace{' '}
+                    <strong className="font-medium text-primary">fuera de la tienda</strong>: tú
+                    decides después si además quieres venderlo suelto en el catálogo.
+                  </span>
+                </span>
+              </label>
+
+              {/* FUERA de la etiqueta de arriba a propósito: un input dentro de
+                  un <label> hace que escribir el precio marque y desmarque la
+                  casilla. Aquí es un campo normal, como el resto del modal. */}
+              {nuevo.crear_perfume && (
+                <div className="mt-2">
+                  <Field label="Precio de venta *">
+                    <Input
+                      type="number" min="0" value={nuevo.precio_venta}
+                      placeholder="Ej: 5000"
+                      onChange={(e) => setNuevo({ ...nuevo, precio_venta: e.target.value })}
+                    />
+                  </Field>
+                  <p className="mt-1 text-[11.5px] text-muted-foreground">
+                    Lo que le cobras al cliente. Lo que a ti te cuesta lo fija esta compra.
+                  </p>
+                </div>
+              )}
+            </>
           )}
 
           {/* No se pregunta el precio a propósito: sale del costo promedio que

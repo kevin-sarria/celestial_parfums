@@ -9,7 +9,8 @@ import { Chip } from '../components/catalog/FilterChips';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { formatPrice } from '@/lib/format';
-import { BASE_URL } from '../infrastructure/api/client';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { useAuthContext } from '../application/context/useAuthContext';
 import {
   usePerfumeIdeal, filtrosVacios,
@@ -97,15 +98,23 @@ export default function PerfumeIdealPage() {
   const [aromas, setAromas] = useState<Lookup[]>([]);
   const [categorias, setCategorias] = useState<Lookup[]>([]);
   useEffect(() => {
-    const ac = new AbortController();
-    Promise.all([
-      fetch(`${BASE_URL}/api/parfums/ocasiones`, { signal: ac.signal }).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/parfums/tipos-aroma`, { signal: ac.signal }).then((r) => r.json()),
-      fetch(`${BASE_URL}/api/parfums/categorias`, { signal: ac.signal }).then((r) => r.json()),
-    ])
-      .then(([o, a, c]) => { setOcasiones(o.data ?? []); setAromas(a.data ?? []); setCategorias(c.data ?? []); })
-      .catch(() => {});
-    return () => ac.abort();
+    let vivo = true;
+    (async () => {
+      // Cacheados: son las mismas tres listas que ya pide el catálogo, así que
+      // llegando desde ahí no viaja ninguna petición.
+      const [o, a, c] = await Promise.all([
+        http.getCacheado<{ data?: Lookup[] }>(urls.clasificaciones('ocasiones').lista),
+        http.getCacheado<{ data?: Lookup[] }>(urls.clasificaciones('tipos-aroma').lista),
+        http.getCacheado<{ data?: Lookup[] }>(urls.clasificaciones('categorias').lista),
+      ]);
+      if (!vivo) return;
+      // Sin listas el quiz queda sin opciones que marcar, pero avanza igual:
+      // todas sus preguntas son opcionales y el cálculo las tolera vacías.
+      setOcasiones(o.cuerpo?.data ?? []);
+      setAromas(a.cuerpo?.data ?? []);
+      setCategorias(c.cuerpo?.data ?? []);
+    })();
+    return () => { vivo = false; };
   }, []);
 
   // Frases rotando durante el "análisis"

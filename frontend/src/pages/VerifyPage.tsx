@@ -3,7 +3,8 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { BrandMark } from '@/components/BrandMark';
-import { BASE_URL } from '../infrastructure/api/client';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { useSeo } from '../application/hooks/useSeo';
 
 export default function VerifyPage() {
@@ -21,21 +22,16 @@ export default function VerifyPage() {
       return;
     }
 
-    fetch(`${BASE_URL}/api/auth/verify/${token}`)
-      .then((r) => r.json())
-      .then((json) => {
-        if (json.error) {
-          setStatus('error');
-          setMessage(json.error);
-        } else {
-          setStatus('success');
-          setMessage(json.message ?? 'Cuenta activada exitosamente');
-        }
-      })
-      .catch(() => {
+    (async () => {
+      const res = await http.get<{ message?: string }>(urls.auth.verificar(token));
+      if (!res.ok) {
         setStatus('error');
-        setMessage('No se pudo conectar con el servidor');
-      });
+        setMessage(res.error);
+        return;
+      }
+      setStatus('success');
+      setMessage(res.cuerpo?.message ?? 'Cuenta activada exitosamente');
+    })();
   }, [params]);
 
   return (

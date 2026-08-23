@@ -57,6 +57,26 @@ const renovarSesion = async (): Promise<boolean> => {
 };
 
 /**
+ * Config de una petición, con una marca propia de la casa.
+ */
+export interface OpcionesPeticion extends AxiosRequestConfig {
+  /**
+   * Marca las rutas donde **un 401 es una respuesta legítima**, no una sesión
+   * vencida: `/auth/me` sin sesión (un visitante anónimo), un `/auth/login` con
+   * la contraseña equivocada, `/auth/google` que no cuajó, o el `/auth/logout`
+   * de una sesión que ya estaba muerta.
+   *
+   * Sin esto el interceptor haría lo de siempre —pedir refresco y, al fallar,
+   * cerrar sesión y mandar a `/login`—, y el resultado sería absurdo: **todo
+   * visitante anónimo saldría rebotado al login** al abrir la tienda, y
+   * escribir mal la clave te expulsaría en vez de decirte que la clave está
+   * mal. Peor aún, tras un refresco bueno el interceptor **reintenta la
+   * petición**, así que un login fallido se reenviaría solo.
+   */
+  sesionOpcional?: boolean;
+}
+
+/**
  * 401 = el token caducó → se renueva UNA vez y se reintenta.
  * 403 = ya no tienes permiso → fuera.
  *
@@ -66,8 +86,11 @@ const renovarSesion = async (): Promise<boolean> => {
 instancia.interceptors.response.use(
   (res) => res,
   async (error: AxiosError) => {
-    const original = error.config as (AxiosRequestConfig & { _reintentada?: boolean }) | undefined;
+    const original = error.config as (OpcionesPeticion & { _reintentada?: boolean }) | undefined;
     const status = error.response?.status;
+
+    // Aquí el 401 lo interpreta quien llamó, no el interceptor.
+    if (original?.sesionOpcional) return Promise.reject(error);
 
     if (status === 401 && original && !original._reintentada) {
       original._reintentada = true;
@@ -166,7 +189,7 @@ const ejecutarBinario = async (
 };
 
 export const http = {
-  get: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
+  get: <T = unknown>(url: string, config?: OpcionesPeticion) =>
     ejecutar<T>(() => instancia.get<T>(url, config)),
 
   /**
@@ -200,14 +223,14 @@ export const http = {
    */
   olvidar: (url: string) => { memoria.delete(url); },
 
-  post: <T = unknown>(url: string, datos?: unknown, config?: AxiosRequestConfig) =>
+  post: <T = unknown>(url: string, datos?: unknown, config?: OpcionesPeticion) =>
     ejecutar<T>(() => instancia.post<T>(url, datos, config)),
 
-  patch: <T = unknown>(url: string, datos?: unknown, config?: AxiosRequestConfig) =>
+  patch: <T = unknown>(url: string, datos?: unknown, config?: OpcionesPeticion) =>
     ejecutar<T>(() => instancia.patch<T>(url, datos, config)),
 
   /** `delete` es palabra reservada: el método se llama `borrar`. */
-  borrar: <T = unknown>(url: string, config?: AxiosRequestConfig) =>
+  borrar: <T = unknown>(url: string, config?: OpcionesPeticion) =>
     ejecutar<T>(() => instancia.delete<T>(url, config)),
 
   /**

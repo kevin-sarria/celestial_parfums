@@ -6,7 +6,8 @@ import { cn } from '@/lib/utils';
 import { readableTextOn } from '@/lib/color';
 import PerfumeSpinner from '../components/PerfumeSpinner';
 import { ContactoLinktree } from '../components/contacto/ContactoLinktree';
-import { BASE_URL } from '../infrastructure/api/client';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import type { ContactoConfig, ContactoLink } from '../domain/entities/contacto.schema';
 
 interface ContactoData {
@@ -27,11 +28,14 @@ export default function ContactPage() {
 
   useEffect(() => {
     let active = true;
-    fetch(`${BASE_URL}/api/contacto`)
-      .then((r) => r.json())
-      .then((json) => { if (active) setData(json.data); })
-      .catch(() => { if (active) setError('No se pudo cargar la información de contacto'); })
-      .finally(() => { if (active) setLoading(false); });
+    (async () => {
+      const res = await http.getCacheado<{ data?: ContactoData }>(urls.contacto.publico);
+      if (!active) return;
+      // El mensaje del servidor manda sobre el genérico que había aquí escrito.
+      setError(res.ok ? '' : res.error);
+      setData(res.cuerpo?.data ?? null);
+      setLoading(false);
+    })();
     return () => { active = false; };
   }, []);
 

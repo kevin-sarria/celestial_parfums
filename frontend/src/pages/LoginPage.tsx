@@ -7,7 +7,8 @@ import { AuthCard } from '@/components/auth/AuthCard';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { loginSchema } from '../domain/entities/auth.schema';
-import { BASE_URL } from '../infrastructure/api/client';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
@@ -39,22 +40,22 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const captcha = await executeRecaptcha('LOGIN');
-      const res = await fetch(`${BASE_URL}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ ...parsed.data, captcha }),
-      });
-
-      const json = await res.json();
+      /**
+       * `sesionOpcional`: una contraseña equivocada responde 401, y sin la
+       * marca el interceptor pediría refresco, **reenviaría el login solo** y
+       * al fallar te sacaría a `/login` en vez de decirte que la clave no es.
+       */
+      const res = await http.post<{ data: { token: string; user: { rol_id?: number } } }>(
+        urls.auth.login, { ...parsed.data, captcha }, { sesionOpcional: true },
+      );
 
       if (!res.ok) {
-        setError(json.error ?? 'Error al iniciar sesión');
+        setError(res.error);
         return;
       }
 
-      auth.login(json.data.token, json.data.user);
-      navigate(json.data.user?.rol_id === 1 ? '/dashboard' : '/');
+      auth.login(res.cuerpo!.data.token, res.cuerpo!.data.user as never);
+      navigate(res.cuerpo!.data.user?.rol_id === 1 ? '/dashboard' : '/');
     } catch (err: any) {
       if (err?.message === 'reCAPTCHA no cargado') {
         setError('Verificación de seguridad no disponible. Recarga la página.');

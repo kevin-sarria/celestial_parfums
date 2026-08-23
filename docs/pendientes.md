@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 22 de agosto de 2026.** Todo compila, **252 pruebas en verde** (136 backend +
-77 frontend + 39 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
+**Última sesión: 22 de agosto de 2026.** Todo compila, **259 pruebas en verde** (142 backend +
+77 frontend + 40 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
 
@@ -126,33 +126,23 @@ mucho de la tabla de arriba, avisar antes de seguir.
   el código nuevo y la migración de producto terminado ya están en vivo — queda pendiente el
   runbook de abajo para meter los 9 frascos armados al sistema.
 
-## El refactor del frontend (capa HTTP única) — falta el login y dos pantallas
+## ✅ El refactor del frontend (capa HTTP única) — TERMINADO
 
-**Ya está hecho el dashboard entero, el portal del cliente, las pantallas de contenido y la
-tienda completa** — lo hecho está contado en
-[`historial-cambios.md`](historial-cambios.md#sesión-del-2026-08-22-cae-la-parte-pública-y-muere-cachedfetch),
-con las decisiones en [`arquitectura.md`](arquitectura.md). `useGuardedFetch` y `cachedFetch.ts`
-ya no existen.
+**No queda nada.** `client.ts`, `useGuardedFetch` y `cachedFetch.ts` están borrados y **toda la
+aplicación habla por `http` + `urls`**: dashboard, portal del cliente, pantallas de contenido,
+tienda, login/registro y el PDF del catálogo. Lo hecho y su porqué están en
+[`historial-cambios.md`](historial-cambios.md) y las decisiones en
+[`arquitectura.md`](arquitectura.md).
 
-**Quedan 12 archivos**, en dos grupos:
-
-1. **La autenticación** (9 de los 12, y el grupo delicado porque toca sesiones):
-   `AuthProvider`, `LoginPage`, `RegisterPage`, `VerifyPage` y `GoogleAuthButton`.
-2. **Dos pantallas sueltas**: `ContactPage` y `PerfumeIdealPage` (esta última con 423 líneas,
-   así que probablemente pida partirse antes o después de migrarla).
-
-Y **dos que no son red**: `dashboard/helpers.ts` y `catalogoPdf.ts` solo importan la constante
-`BASE_URL`. El día que se borre `client.ts` hay que darle otra casa — hoy `http.ts` solo exporta
-`API_BASE`, que ya lleva `/api` pegado y no sirve para armar URLs de imágenes.
-
-Se migra **pantalla entera o nada**, y al migrarla se aprovecha para que ningún handler ignore la
-respuesta (toast con el mensaje del servidor). Cuando caiga la última se borra `client.ts`.
+Lo único que hay que **no deshacer** al tocar autenticación: la marca `sesionOpcional`. Sin ella,
+el interceptor lee cualquier 401 como sesión vencida — y entonces un visitante anónimo sale
+rebotado al login, y escribir mal la contraseña te expulsa en vez de avisarte. Está explicada con
+su tabla en [`arquitectura.md`](arquitectura.md).
 
 **Aviso para quien siga**: las pantallas públicas no tienen prueba automática. La suite de
 frontend es toda de cálculo puro (no hay `@testing-library`, ni entorno jsdom montado), así que
-estas migraciones se verifican **en el navegador**, y con el backend tumbado a propósito para ver
-el camino del error. Montar pruebas de componentes es una decisión del dueño que todavía no se ha
-tomado.
+estas pantallas se verifican **en el navegador**, y con el backend tumbado a propósito para ver el
+camino del error. Montar pruebas de componentes es una decisión del dueño que sigue sin tomarse.
 
 ## El resto de la lista (después del producto terminado)
 

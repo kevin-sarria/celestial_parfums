@@ -40,6 +40,12 @@ export const insumoSchema = z.object({
   crear_perfume: z.boolean().optional(),
   /** Nombre de la fragancia, sin el "– Esencia". Es el que verá el cliente. */
   perfume_nombre: z.string().max(150).optional(),
+  /**
+   * Solo para `tipo: 'accesorio'` con `crear_perfume`: a cuánto se le vende al
+   * cliente. Va aparte de `precio` a propósito — ese es lo que CUESTA, y este
+   * lo que se COBRA. Confundirlos es vender a precio de costo sin darse cuenta.
+   */
+  precio_venta: z.number().nonnegative().optional(),
 });
 
 /** Accesorios que un tamaño incluye por defecto. */

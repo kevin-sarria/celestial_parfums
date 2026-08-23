@@ -203,6 +203,53 @@ export const enlazarOCrearPerfume = async (
   return { id: creado.id, nombre: creado.nombre, accion: 'creado' as const };
 };
 
+/**
+ * Deja el ACCESORIO de este material listo para venderse.
+ *
+ * Hermano de `enlazarOCrearPerfume`, y separado a propósito porque un accesorio
+ * no es una fragancia: se compra hecho (`comprado`), sale del inventario por su
+ * PROPIO material (`insumo_producto_id`, no `insumo_esencia_id`), no tiene
+ * receta ni talla, y **nace con precio de venta**, porque un producto en cero
+ * no se puede meter en una venta sin regalarlo.
+ *
+ * Nace FUERA de la tienda (`publicado: false`): el dueño decide accesorio por
+ * accesorio si además quiere venderlo suelto en el catálogo público. El
+ * buscador de Registrar venta lo ve igual, publicado o no.
+ *
+ * Si ya hay un producto con ese nombre **no se toca**. Convertir una ficha
+ * existente a "accesorio comprado" porque coincide el nombre es justo como se
+ * corrompen los datos: se devuelve `ya_existe` y que el dueño decida.
+ */
+export const enlazarOCrearAccesorio = async (
+  insumoId: number, nombre: string, precioVenta: number,
+) => {
+  const clave = palabras(nombre).join(' ');
+  const existentes = await prisma.perfume.findMany({
+    select: { id: true, nombre: true, insumo_producto_id: true, es_accesorio: true },
+  });
+  const yaEsta = existentes.find((p) => palabras(p.nombre).join(' ') === clave);
+
+  if (yaEsta) {
+    // Ya es el accesorio de ESTE material: no hay nada que hacer.
+    if (yaEsta.es_accesorio && yaEsta.insumo_producto_id === insumoId) {
+      return { id: yaEsta.id, nombre: yaEsta.nombre, accion: 'ya_tenia' as const };
+    }
+    return { id: yaEsta.id, nombre: yaEsta.nombre, accion: 'ya_existe' as const };
+  }
+
+  const creado = await prisma.perfume.create({
+    data: {
+      nombre,
+      precio: precioVenta,
+      publicado: false,
+      tipo_producto: 'comprado',
+      es_accesorio: true,
+      insumo_producto_id: insumoId,
+    },
+  });
+  return { id: creado.id, nombre: creado.nombre, accion: 'creado' as const };
+};
+
 export interface AccionEmparejar {
   insumo_id: number;
   /** Enlazar con este perfume que ya existe. */

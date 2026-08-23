@@ -80,6 +80,14 @@ export const urls = {
   perfumes: {
     /** Catálogo COMPLETO, sin paginar. Ojo: responde `{ data: { data: [...] } }`. */
     todos: '/parfums',
+    /**
+     * Igual, pero **incluye lo que está fuera de la tienda**. Lo usan Ventas y
+     * Créditos: al registrar un pedido de WhatsApp se vende lo que hay, no solo
+     * lo que está publicado — y los accesorios (perfumero, bolsa) nacen sin
+     * publicar a propósito. El servidor solo honra `todos=1` si eres admin, así
+     * que nadie puede listar lo oculto agregándolo a la URL.
+     */
+    todosConOcultos: '/parfums?todos=1',
     /** La ficha pública de un perfume, por su slug. */
     porSlug: (slug: string) => `/parfums/by-slug/${encodeURIComponent(slug)}`,
     /** El "también te puede gustar" de esa misma ficha. */
@@ -304,8 +312,30 @@ export const urls = {
     portada: '/blog/admin/portada',
   },
 
+  /**
+   * La sesión. `refresh` NO está aquí a propósito: lo pide el interceptor de
+   * `http.ts` por su cuenta y fuera de la instancia, porque si él mismo diera
+   * 401 se llamaría a sí mismo para siempre.
+   */
+  auth: {
+    login: '/auth/login',
+    /** Inicia sesión con el token que devuelve el botón de Google. */
+    google: '/auth/google',
+    logout: '/auth/logout',
+    /** Quién soy. Responde 401 si no hay sesión: eso NO es un error que mostrar. */
+    yo: '/auth/me',
+    registro: '/auth/register',
+    /** El enlace que llega al correo. El token va en el camino, no en el cuerpo. */
+    verificar: (token: string) => `/auth/verify/${encodeURIComponent(token)}`,
+  },
+
+  /** "Encuentra tu perfume ideal": GET trae la última, POST pide una nueva. */
+  recomendaciones: '/recomendaciones',
+
   /** Redes sociales y el enlace único de contacto (la página /contactame). */
   contacto: {
+    /** Lo que ve el visitante en /contactame. `admin` es la versión editable. */
+    publico: '/contacto',
     admin: '/contacto/admin',
     config: '/contacto/config',
     avatar: '/contacto/avatar',

@@ -83,9 +83,9 @@ Decisiones que conviene no deshacer:
 - **El interceptor no sabe de React.** `AuthProvider` le registra qué hacer cuando la sesión
   caduca (`registrarSesionCaducada`). Antes eso vivía dentro de `guardedFetch`, y por eso **cada
   pantalla tenía que recibir la función de red como prop**; las migradas ya no la reciben.
-- **Se migra por pantallas completas, nunca a medias.** Lo que todavía no está en `urls.ts` sigue
-  con el `guardedFetch` viejo, que es fetch nativo. Convivencia temporal y a la vista, no
-  permanente: cuando caiga la última pantalla se borran `client.ts` y `useGuardedFetch`.
+- **Se migró por pantallas completas, nunca a medias.** La convivencia con el `fetch` viejo fue
+  temporal y a la vista, y **terminó el 2026-08-22**: `client.ts`, `useGuardedFetch` y
+  `cachedFetch.ts` están borrados.
 
 **Estado** (2026-08-15): migradas *Producción e inventario* (Inventario, Producciones, Pedido
 sugerido y sus 4 modales), **Ventas** (listado, formulario, crear persona y crear producto al
@@ -95,8 +95,8 @@ perfil de cupo), **Proveedores** (compras con sus líneas, IVA por proveedor, al
 **Usuarios**, **Reposiciones (avisos)**, **Reseñas**, **Sobre nosotros**, **los tres reportes**,
 **EL DASHBOARD ENTERO** está migrado (2026-08-15): las 30 pestañas, sus modales y sus
 formularios. Ahí quedaban **38 llamadas** por el camino viejo, todas en la parte pública (el total
-bajó de 151 porque varias se fusionaron: ver *Menos viajes al servidor*). **Al 2026-08-22 solo
-quedan 12 archivos**, y el desglose vivo está más abajo.
+bajó de 151 porque varias se fusionaron: ver *Menos viajes al servidor*). **El 2026-08-22 cayó la
+última**: ver más abajo.
 
 **El portal del cliente ya está migrado** (2026-08-22): Mis compras (con la tarjeta de reseña y
 la garantía de cada pedido), Mis favoritos, Mis recompensas, Mi crédito y el `ListasProvider` que
@@ -107,11 +107,42 @@ nosotros, las reseñas públicas de un producto, la galería de ganadores e *Inv
 
 **Y la TIENDA entera** (2026-08-22): el home con sus destacados y su franja de combos, el catálogo
 con su búsqueda y sus filtros, la ficha de un perfume, los combos con su ficha, los popups de
-anuncios con sus cupones y el detector de combos del carrito. Quedan **12 archivos**:
-login/registro/verificación con su botón de Google, el `AuthProvider`, Contáctame y Perfume ideal.
-De esos 12, **dos no son red**: `dashboard/helpers.ts` y `catalogoPdf.ts` solo importan la
-constante `BASE_URL` — cuando se borre `client.ts` hay que darle otra casa (hoy `http.ts` solo
-exporta `API_BASE`, que lleva `/api`).
+anuncios con sus cupones y el detector de combos del carrito.
+
+## ✅ TERMINADO: `client.ts` ya no existe (2026-08-22)
+
+**No queda una sola llamada de red por el camino viejo.** Cayeron los últimos: login, registro,
+verificación de correo, el botón de Google, el `AuthProvider`, Contáctame, Perfume ideal y el PDF
+del catálogo. `client.ts`, `useGuardedFetch` y `cachedFetch.ts` están borrados: **toda la
+aplicación habla por `http` + `urls`**, y quien quiera saber a qué endpoint va algo lo busca en un
+solo archivo.
+
+De paso, `dashboard/helpers.ts` soltó **10 constantes `API_*` muertas** (`API_VENTAS`,
+`API_COMBOS`…) que ya no usaba nadie desde que el dashboard se migró, y `catalogoPdf.ts` pasó a
+`API_BASE` para el proxy de imágenes y a `http.descargar` para bajarlas.
+
+### `sesionOpcional`: el 401 que NO significa "tu sesión venció"
+
+Lo delicado de este último tramo, y la razón de que se dejara para el final. El interceptor de
+`http` trata cualquier 401 como sesión caducada: pide refresco, **reintenta la petición** y, si no
+puede, cierra sesión y manda a `/login`. Eso está bien para el dashboard, y es **exactamente lo
+contrario** de lo que hace falta en cuatro sitios:
+
+| Ruta | Qué significa ahí un 401 | Qué habría pasado sin la marca |
+|---|---|---|
+| `GET /auth/me` | "no has iniciado sesión" | **Todo visitante anónimo rebotado al login** al abrir la tienda |
+| `POST /auth/login` | "esa contraseña no es" | El login **se reenvía solo** tras el refresco, y luego te expulsa en vez de decirte que la clave está mal |
+| `POST /auth/google` | el token de Google no cuajó | Lo mismo, sobre alguien que ni siquiera tenía sesión |
+| `POST /auth/logout` | la sesión ya estaba muerta | `alCaducar` llama a `logout`, que es justo lo que se estaba ejecutando |
+
+Por eso `OpcionesPeticion` lleva `sesionOpcional`, y el interceptor sale antes de tocar nada:
+`if (original?.sesionOpcional) return Promise.reject(error);`. El 401 lo interpreta quien llamó.
+**Si algún día aparece otro endpoint donde no tener sesión sea una respuesta válida, se marca
+igual** — no se le quita la protección al interceptor.
+
+Detalle relacionado en el `AuthProvider`: la sesión guardada **solo se borra cuando el servidor
+CONFIRMA el 401**. Con el servidor caído no se toca, porque limpiarla ante un fallo de red
+desloguearía al dueño cada vez que parpadea el internet.
 
 Dos cosas se limpiaron de paso, porque estaban en el camino:
 

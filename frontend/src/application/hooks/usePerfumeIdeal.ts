@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { BASE_URL, authFetchWithRefresh } from '../../infrastructure/api/client';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import { useAuthContext } from '../context/useAuthContext';
 import type { Perfume } from '../../domain/entities/perfume.schema';
 
@@ -45,27 +46,28 @@ export function usePerfumeIdeal() {
     if (!user) { setLoading(false); return; }
     let vivo = true;
     (async () => {
-      try {
-        const res = await authFetchWithRefresh(`${BASE_URL}/api/recomendaciones`);
-        const json = await res.json();
-        if (vivo) setGuardada(json.data ?? null);
-      } catch { /* sin guardado: la página arranca en el quiz */ }
-      finally { if (vivo) setLoading(false); }
+      // Sin guardado la página arranca en el quiz, que es un comienzo válido y
+      // no una mentira: por eso este no avisa. El que sí avisa es `calcular`.
+      const res = await http.get<{ data?: RecomendacionGuardada }>(urls.recomendaciones);
+      if (!vivo) return;
+      setGuardada(res.cuerpo?.data ?? null);
+      setLoading(false);
     })();
     return () => { vivo = false; };
   }, [user]);
 
   /** Calcula (o recalcula) y guarda el resultado en el perfil. */
   const calcular = useCallback(async (filtros: FiltrosIdeal): Promise<RecomendacionGuardada> => {
-    const res = await authFetchWithRefresh(`${BASE_URL}/api/recomendaciones`, {
-      method: 'POST',
-      body: JSON.stringify(filtros),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error ?? 'No se pudo calcular tu perfume ideal');
-    setGuardada(json.data);
-    return json.data;
+    const res = await http.post<{ data: RecomendacionGuardada }>(urls.recomendaciones, filtros);
+    /**
+     * Este SÍ lanza, al revés que el resto de la casa. Es el contrato que ya
+     * espera `PerfumeIdealPage`, que lo envuelve en try/catch y enseña el
+     * mensaje en su propio recuadro en vez de un toast — el resultado del quiz
+     * es la pantalla entera, no un aviso de paso.
+     */
+    if (!res.ok || !res.cuerpo?.data) throw new Error(res.error || 'No se pudo calcular tu perfume ideal');
+    setGuardada(res.cuerpo.data);
+    return res.cuerpo.data;
   }, []);
 
   return { guardada, loading, calcular };

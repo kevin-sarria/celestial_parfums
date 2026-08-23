@@ -8,7 +8,8 @@ import { PasswordInput } from '@/components/auth/PasswordInput';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
 import { BrandMark } from '@/components/BrandMark';
 import { registerSchema } from '../domain/entities/auth.schema';
-import { BASE_URL } from '../infrastructure/api/client';
+import { http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
 import { useSeo } from '../application/hooks/useSeo';
 
@@ -50,23 +51,17 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const captcha = await executeRecaptcha('REGISTER');
-      const res = await fetch(`${BASE_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nombre: parsed.data.nombre,
-          apellido: parsed.data.apellido,
-          email: parsed.data.email,
-          password: parsed.data.password,
-          captcha,
-          ...(ref ? { ref } : {}),
-        }),
+      const res = await http.post(urls.auth.registro, {
+        nombre: parsed.data.nombre,
+        apellido: parsed.data.apellido,
+        email: parsed.data.email,
+        password: parsed.data.password,
+        captcha,
+        ...(ref ? { ref } : {}),
       });
 
-      const json = await res.json();
-
       if (!res.ok) {
-        setError(json.error ?? 'Error al registrarse');
+        setError(res.error);
         return;
       }
 

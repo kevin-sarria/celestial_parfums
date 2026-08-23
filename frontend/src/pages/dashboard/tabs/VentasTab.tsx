@@ -85,7 +85,7 @@ export function VentasTab() {
    */
   const loadCatalogos = async (refrescar = false) => {
     if (refrescar) {
-      [urls.usuarios.lista, urls.perfumes.todos, urls.combos.todos].forEach(http.olvidar);
+      [urls.usuarios.lista, urls.perfumes.todosConOcultos, urls.combos.todos].forEach(http.olvidar);
     }
     try {
       // Los catálogos del formulario (personas, productos, combos) apenas
@@ -94,7 +94,7 @@ export function VentasTab() {
       // pestaña. Al crear una persona o un producto se refrescan (`recargar`).
       const [uRes, pRes, cRes] = await Promise.all([
         http.getCacheado<{ data: Usuario[] }>(urls.usuarios.lista),
-        http.getCacheado<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todos),
+        http.getCacheado<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todosConOcultos),
         http.getCacheado<{ data: Combo[] }>(urls.combos.todos),
       ]);
       setUsuarios((uRes.cuerpo?.data ?? []).filter((x) => x.rol_id !== 1));

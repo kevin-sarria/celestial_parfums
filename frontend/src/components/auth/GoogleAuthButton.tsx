@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BASE_URL } from '../../infrastructure/api/client';
+import { http } from '../../infrastructure/api/http';
+import { urls } from '../../infrastructure/api/urls';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import type { AuthUser } from '../../domain/entities/auth.schema';
 
@@ -82,24 +83,18 @@ export function GoogleAuthButton({ text = 'continue_with', onError }: Props) {
         onError?.('No se recibió la credencial de Google');
         return;
       }
-      try {
-        const r = await fetch(`${BASE_URL}/api/auth/google`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ credential: res.credential }),
-        });
-        const json = await r.json();
-        if (!r.ok) {
-          onError?.(json.error ?? 'No se pudo iniciar sesión con Google');
-          return;
-        }
-        const user = json.data.user as AuthUser;
-        auth.login(json.data.token, user);
-        navigate(user.rol_id === 1 ? '/dashboard' : '/');
-      } catch {
-        onError?.('No se pudo conectar con el servidor');
+      // `sesionOpcional`: un Google que no cuaja responde 401, y eso no es una
+      // sesión vencida — quien lo intenta ni siquiera tenía una.
+      const r = await http.post<{ data: { token: string; user: AuthUser } }>(
+        urls.auth.google, { credential: res.credential }, { sesionOpcional: true },
+      );
+      if (!r.ok || !r.cuerpo?.data) {
+        onError?.(r.error || 'No se pudo iniciar sesión con Google');
+        return;
       }
+      const user = r.cuerpo.data.user;
+      auth.login(r.cuerpo.data.token, user);
+      navigate(user.rol_id === 1 ? '/dashboard' : '/');
     };
 
     loadGsiScript()

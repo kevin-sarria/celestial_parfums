@@ -2,7 +2,7 @@ import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
 // La creación del perfume a partir de su esencia vive en un solo sitio: la usan
 // el alta desde una compra y la pantalla de puesta al día.
-import { enlazarOCrearPerfume, sinSufijoEsencia } from './emparejarEsencias.repository';
+import { enlazarOCrearAccesorio, enlazarOCrearPerfume, sinSufijoEsencia } from './emparejarEsencias.repository';
 import type {
   InsumoInput, FormulaInput, EscalaInput, CotizacionConfigInput, CondicionesComerciales,
 } from '../schemas/cotizacion.schema';
@@ -125,7 +125,7 @@ const normalizarNombre = (s: string) =>
  * que evita que eso vuelva a pasar.
  */
 export const crearInsumo = async (data: InsumoInput) => {
-  const { crear_perfume, perfume_nombre, ...campos } = data;
+  const { crear_perfume, perfume_nombre, precio_venta, ...campos } = data;
 
   // Un material repetido parte el stock en dos registros y ninguno de los dos
   // dice cuánto hay de verdad; además el costo promedio se calcula sobre la
@@ -145,18 +145,34 @@ export const crearInsumo = async (data: InsumoInput) => {
     include: { gama: true },
   });
 
+  /**
+   * El mismo favor para las dos formas de "esto también se vende":
+   *
+   * - Una **esencia** estrena la fragancia que sale de ella (`fabricado`).
+   * - Un **accesorio** —perfumero, bolsa, tarjeta— estrena el producto que se
+   *   revende tal cual (`comprado`), y por eso necesita su precio de venta.
+   *
+   * Los dos caminos existen para lo mismo: que el material quede enlazado con
+   * lo que se le cobra al cliente **en el primer contacto**, en vez de esperar
+   * a que alguien se acuerde. Sin ese enlace la venta no descuenta inventario
+   * y su costo entra en cero, así que la ganancia del mes sale inflada — que es
+   * exactamente lo que llevaba pasando con los perfumeros regalados.
+   */
   const nombrePerfume = (perfume_nombre ?? sinSufijoEsencia(insumo.nombre)).trim();
-  const perfume = crear_perfume && nombrePerfume
-    ? await enlazarOCrearPerfume(insumo.id, nombrePerfume.slice(0, 150), insumo.genero ?? null)
-    : null;
+  let perfume = null;
+  if (crear_perfume && nombrePerfume) {
+    perfume = insumo.tipo === 'accesorio'
+      ? await enlazarOCrearAccesorio(insumo.id, nombrePerfume.slice(0, 150), precio_venta ?? 0)
+      : await enlazarOCrearPerfume(insumo.id, nombrePerfume.slice(0, 150), insumo.genero ?? null);
+  }
 
   return { ...mapInsumo(insumo), perfume };
 };
 
 export const actualizarInsumo = (id: number, data: InsumoInput) => {
-  // `crear_perfume`/`perfume_nombre` son del alta, no columnas: pasárselos a
-  // Prisma reventaría con "Unknown argument".
-  const { crear_perfume: _c, perfume_nombre: _p, ...campos } = data;
+  // `crear_perfume`/`perfume_nombre`/`precio_venta` son del alta, no columnas:
+  // pasárselos a Prisma reventaría con "Unknown argument".
+  const { crear_perfume: _c, perfume_nombre: _p, precio_venta: _pv, ...campos } = data;
   return prisma.insumoCosto.update({
     where: { id }, data: campos, include: { gama: true },
   }).then(mapInsumo);

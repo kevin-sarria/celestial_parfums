@@ -3,7 +3,8 @@ import type { Perfume } from '../domain/entities/perfume.schema';
 import { GENERO_LABELS } from '../domain/entities/perfume.schema';
 import { aromaColor } from '../domain/entities/aroma.colors';
 import { finalPrice } from '@/lib/format';
-import { BASE_URL } from '../infrastructure/api/client';
+import { API_BASE, http } from '../infrastructure/api/http';
+import { urls } from '../infrastructure/api/urls';
 import { nombreArchivo, type OpcionesCatalogo } from './catalogoFiltros';
 
 /**
@@ -53,12 +54,12 @@ const formatCOP = (v: number) => `$${Math.round(v).toLocaleString('es-CO')}`;
  * piden por nuestro propio servidor, que sí puede descargarlas.
  */
 const esExterna = (url: string) => {
-  try { return new URL(url, window.location.href).origin !== new URL(BASE_URL, window.location.href).origin; }
+  try { return new URL(url, window.location.href).origin !== new URL(API_BASE, window.location.href).origin; }
   catch { return false; }
 };
 
 const porNuestroServidor = (url: string) =>
-  `${BASE_URL}/api/parfums/imagen-proxy?url=${encodeURIComponent(url)}`;
+  `${API_BASE}/parfums/imagen-proxy?url=${encodeURIComponent(url)}`;
 
 /** Dibuja una imagen ya accesible y la devuelve como JPEG pequeño. */
 const aJpegPequeno = (src: string): Promise<string | null> =>
@@ -101,9 +102,9 @@ const cargarImagen = async (url: string): Promise<string | null> => {
   if (!esExterna(url)) return aJpegPequeno(url);
   let local: string | null = null;
   try {
-    const res = await fetch(porNuestroServidor(url), { credentials: 'include' });
-    if (!res.ok) return null; // el PDF sigue, solo sin esa foto
-    local = URL.createObjectURL(await res.blob());
+    const res = await http.descargar(porNuestroServidor(url));
+    if (!res.ok || !res.cuerpo) return null; // el PDF sigue, solo sin esa foto
+    local = URL.createObjectURL(res.cuerpo);
     return await aJpegPequeno(local);
   } catch {
     return null;
@@ -309,9 +310,9 @@ export const cargarCatalogo = async (): Promise<Perfume[]> => {
    * faltaban en silencio. El endpoint sin paginar devuelve todos (y ya excluye
    * los que están fuera de la tienda), pero responde anidado: `{data:{data:[]}}`.
    */
-  const res = await fetch(`${BASE_URL}/api/parfums`);
-  const json = await res.json();
-  return Array.isArray(json?.data) ? json.data : (json?.data?.data ?? []);
+  const res = await http.get<any>(urls.perfumes.todos);
+  const cuerpo = res.cuerpo;
+  return Array.isArray(cuerpo?.data) ? cuerpo.data : (cuerpo?.data?.data ?? []);
 };
 
 const ALTO_TITULO = 13;
