@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 23 de agosto de 2026.** Todo compila, **260 pruebas en verde** (142 backend +
-77 frontend + 41 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
+**Última sesión: 23 de agosto de 2026.** Todo compila, **261 pruebas en verde** (142 backend +
+77 frontend + 42 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
 
@@ -174,6 +174,32 @@ camino del error. Montar pruebas de componentes es una decisión del dueño que 
 6. **Separar "200/250ML" en dos tallas reales** y sembrar su stock inicial. Ya se puede hacer
    desde Clasificaciones sin tocar la base: crear "200 ML" y "250 ML" nace con su número y su
    receta enganchados solos.
+
+## Deuda técnica encontrada el 2026-08-23 (no estaba en ninguna lista)
+
+Salió de revisar el código en vez de la lista, cuando el dueño preguntó *"¿qué más falta por
+codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva a perder.
+
+1. **El backend usa `any` en 215 sitios** (perfume.controller 40, core 14, contacto 11,
+   recomendacion.service 11). `any` apaga el chequeo de tipos justo donde debería avisar. No es
+   urgente, pero es la red de seguridad con agujeros: conviene atacarlo **por partes y empezando
+   por lo que toca dinero**, no de una sentada.
+2. **El linter del frontend no pasa: 54 errores y 12 avisos.** 26 son de una regla nueva de React
+   sobre cargar datos en un efecto (`set-state-in-effect`), 14 de recarga en caliente
+   (`only-export-components`), 3 de `any` y 3 de expresiones que no hacen nada. **La mayoría es
+   ruido**, pero mientras estén, un aviso de verdad se pierde entre ellos. Hay que **decidir: se
+   limpian o se silencian las reglas que no apliquen**; a medias no sirve.
+   - *Ya cerrados de esa cuenta*: los 8 de `static-components` (el editor) y el `htmlFor` de
+     `Field`.
+3. **55 archivos empiezan con BOM**, la marca invisible que la regla del proyecto prohíbe.
+   Mecánico y sin riesgo, pero toca muchos archivos y no aporta nada al negocio.
+4. **`window.prompt` en `EditorHtml`** para pedir la URL de un enlace: bloquea la página y se ve
+   como una ventana de Windows en medio del diseño. `window.confirm` **sí** está aprobado (ver
+   [`diseno-ux.md`](diseno-ux.md)); este no se habló nunca.
+5. **`presentaciones` (la tienda) y `formulas_volumen` (el costeo) se enlazan por el número de
+   ml**, no por una relación de verdad. Funciona, pero ya estaba escrito en
+   [`inventario-costeo.md`](inventario-costeo.md) que conviene revisarlo **antes de apoyar más
+   lógica encima**. Toca inventario y costos.
 
 ## Decisiones pendientes con el dueño
 

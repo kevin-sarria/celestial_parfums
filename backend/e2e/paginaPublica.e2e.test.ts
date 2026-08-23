@@ -35,6 +35,32 @@ describe('el blog', () => {
 
     await contexto.close();
   });
+
+  /**
+   * La barra del editor no la tocaba ninguna prueba, y sus ocho botones estaban
+   * declarados DENTRO del editor: en cada tecla React los desmontaba y volvía a
+   * montar (regla del proyecto, 2026-08-23). Al sacarlos fuera hay que
+   * comprobar lo delicado, que es el `onMouseDown` + `preventDefault`: sin él,
+   * pulsar el botón le roba la selección al texto y "Negrita" no aplica a nada.
+   */
+  it('la barra del editor pone negrita sin perder lo seleccionado', async () => {
+    const { contexto, pagina } = await abrirDashboard();
+    await irA(pagina, '/dashboard/blog');
+    await pagina.waitForSelector('text=+ Nueva entrada');
+    await pagina.getByRole('button', { name: '+ Nueva entrada' }).click();
+
+    const editor = pagina.locator('[contenteditable="true"]');
+    await editor.fill('Esto va en negrita');
+    await editor.click();
+    await pagina.keyboard.press('Control+a');
+    await pagina.getByTitle('Negrita').click();
+
+    const html = await editor.innerHTML();
+    expect(html).toMatch(/<(b|strong)[ >]/i);
+    expect(await editor.innerText()).toContain('Esto va en negrita');
+
+    await contexto.close();
+  });
 });
 
 describe('la página Contáctame', () => {

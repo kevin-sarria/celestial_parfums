@@ -228,6 +228,19 @@ editaba una receta. El dueño eligió pestaña propia en *Mayoreo B2B* (2026-08-
   lo guarda y lo vuelve a leer del servidor— pasa contra la pantalla nueva sin cambiarle la
   comprobación: solo la dirección.
 
+### Y un componente declarado dentro de otro, con su número
+
+Buscando qué quedaba por codificar apareció lo que ninguna lista tenía anotado:
+`EditorHtml.tsx` declaraba los **ocho botones de su barra DENTRO del editor**. Es la regla
+inquebrantable que más caro sale —en un formulario se pierde el foco y lo que el usuario estaba
+escribiendo—, y aquí no hacía falta romperla: el botón no usa nada del editor, solo sus props.
+
+**Medido con un MutationObserver sobre la barra**: escribir 4 letras destruía y reconstruía
+**32 botones** (los 8, en cada tecla). Después del arreglo, **0**. La prueba que se agregó
+(`paginaPublica.e2e.test.ts`) NO demuestra el arreglo —también pasaba antes—: guarda lo
+delicado, que es el `onMouseDown` + `preventDefault` sin el cual el botón le roba la selección
+al texto y "Negrita" no aplica a nada. La barra no la tocaba ninguna prueba.
+
 ## Cosas que se probaron y se descartaron
 
 - **Three.js para la tarjeta de recompensas**: pesaba mucho para el público de gama baja y el

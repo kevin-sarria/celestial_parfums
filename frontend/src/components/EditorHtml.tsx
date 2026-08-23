@@ -1,9 +1,33 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Link2, Pilcrow } from 'lucide-react';
 
 interface Props {
   value: string;
   onChange: (html: string) => void;
+}
+
+/**
+ * Un botón de la barra de herramientas.
+ *
+ * Vive FUERA del editor a propósito. Declarado dentro, en cada render era una
+ * función nueva y React desmontaba y volvía a montar los ocho botones con cada
+ * tecla que se escribiera. Es la regla del proyecto que más caro sale cuando se
+ * cuela en un formulario —ahí se pierde el foco y lo que el usuario estaba
+ * escribiendo—, y aquí no hacía falta romperla: el botón no usa nada del
+ * editor, solo lo que recibe por props.
+ */
+function Btn({ onClick, title, children }: { onClick: () => void; title: string; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={title}
+      // onMouseDown+preventDefault: no roba el foco/selección al área editable
+      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+    >
+      {children}
+    </button>
+  );
 }
 
 /**
@@ -26,18 +50,6 @@ export default function EditorHtml({ value, onChange }: Props) {
   const emitir = () => { if (ref.current) onChange(ref.current.innerHTML); };
   const exec = (cmd: string, val?: string) => { document.execCommand(cmd, false, val); ref.current?.focus(); emitir(); };
   const enlace = () => { const url = window.prompt('URL del enlace (https://…):'); if (url) exec('createLink', url); };
-
-  const Btn = ({ onClick, title, children }: { onClick: () => void; title: string; children: React.ReactNode }) => (
-    <button
-      type="button"
-      title={title}
-      // onMouseDown+preventDefault: no roba el foco/selección al área editable
-      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
-      className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-    >
-      {children}
-    </button>
-  );
 
   return (
     <div className="overflow-hidden rounded-md border border-input bg-card shadow-xs">
