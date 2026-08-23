@@ -1,5 +1,5 @@
 import { prisma } from '../../config/prisma';
-import { clampPct, fmtDate, lowerMap, splitList, toBool, toNullNum, toNullStr, toNum, toStr } from './core';
+import { clampPct, fmtDate, lowerMap, splitList, toBool, toNullNum, toNullStr, toNum, toStr, FilaExcel } from './core';
 import type { EntityImportResult } from './core';
 import { textoDeError } from '../../utils/errorSeguro';
 
@@ -11,7 +11,7 @@ import { textoDeError } from '../../utils/errorSeguro';
  */
 
 /** Filas de exportación por entidad del catálogo (null = no es de este módulo). */
-export const exportarCatalogo = async (entity: string): Promise<Record<string, any>[] | null> => {
+export const exportarCatalogo = async (entity: string): Promise<FilaExcel[] | null> => {
   if (entity === 'perfumes') {
     const perfumes = await prisma.perfume.findMany({
       orderBy: { nombre: 'asc' },
@@ -86,7 +86,7 @@ export const exportarCatalogo = async (entity: string): Promise<Record<string, a
 
 /** Importadores del catálogo. Devuelve true si la entidad es de este módulo. */
 export const importarCatalogo = async (
-  entity: string, rows: Record<string, any>[], result: EntityImportResult,
+  entity: string, rows: FilaExcel[], result: EntityImportResult,
 ): Promise<boolean> => {
   if (entity === 'perfumes') {
     const [aromas, ocasiones, presentaciones, categorias] = await Promise.all([

@@ -3,8 +3,7 @@ import { prisma } from '../../config/prisma';
 import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../../utils/perfumeMatcher';
 import {
   clampPct, fmtDate, lowerMap, splitList, toBool, toDate, toDateOrNull,
-  toNullNum, toNullStr, toNum, toStr, loadPerfumeIndex, ensurePersona,
-} from './core';
+  toNullNum, toNullStr, toNum, toStr, loadPerfumeIndex, ensurePersona, FilaExcel } from './core';
 import type { EntityImportResult } from './core';
 import { textoDeError } from '../../utils/errorSeguro';
 
@@ -16,7 +15,7 @@ import { textoDeError } from '../../utils/errorSeguro';
  */
 
 /** Filas de exportación (null = la entidad no es de este módulo). */
-export const exportarVentas = async (entity: string): Promise<Record<string, any>[] | null> => {
+export const exportarVentas = async (entity: string): Promise<FilaExcel[] | null> => {
   if (entity === 'publicidad') {
     // Los códigos ya emitidos NO viajan en el archivo: son de cada persona.
     const anuncios = await prisma.anuncio.findMany({
@@ -90,7 +89,7 @@ export const exportarVentas = async (entity: string): Promise<Record<string, any
 
 /** Importadores. Devuelve true si la entidad es de este módulo. */
 export const importarVentas = async (
-  entity: string, rows: Record<string, any>[], result: EntityImportResult,
+  entity: string, rows: FilaExcel[], result: EntityImportResult,
 ): Promise<boolean> => {
   if (entity === 'publicidad') {
     const categorias = await prisma.categoria.findMany();

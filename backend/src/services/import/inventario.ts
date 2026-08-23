@@ -1,6 +1,6 @@
 import { prisma } from '../../config/prisma';
 import { ajustarStock } from '../../repositories/inventario.repository';
-import type { EntityImportResult } from './core';
+import type { EntityImportResult, FilaExcel } from './core';
 
 /**
  * Importación/exportación de las entidades del inventario y las devoluciones.
@@ -162,7 +162,7 @@ const leerGenero = (
 };
 
 /** Crea o actualiza insumos por nombre. NO toca existencias (eso va por conteo). */
-export const importarInsumos = async (rows: any[], result: EntityImportResult) => {
+export const importarInsumos = async (rows: FilaExcel[], result: EntityImportResult) => {
   const gamas = await indiceGamas();
   for (const [i, row] of rows.entries()) {
     const fila = i + 2;
@@ -206,7 +206,7 @@ export const importarInsumos = async (rows: any[], result: EntityImportResult) =
  * exportas la hoja, escribes lo que hay de verdad y la vuelves a subir.
  * Reusa `ajustarStock`, así que cada fila deja su movimiento de auditoría.
  */
-export const importarInventario = async (rows: any[], result: EntityImportResult) => {
+export const importarInventario = async (rows: FilaExcel[], result: EntityImportResult) => {
   const hoy = new Date().toISOString().slice(0, 10);
   const gamas = await indiceGamas();
   for (const [i, row] of rows.entries()) {

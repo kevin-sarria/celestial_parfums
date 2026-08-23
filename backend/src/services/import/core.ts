@@ -50,50 +50,65 @@ export async function ensurePersona(nombre: string, apellido: string, telefono: 
 }
 
 
-export function toDate(val: any): Date {
+/**
+ * Una celda de Excel, tal como la entrega la librería: texto, número, fecha,
+ * booleano… o nada. **`unknown` es el tipo honesto**, no `any`: obliga a mirar
+ * qué vino antes de usarlo, que es justo el trabajo de las funciones de aquí
+ * abajo. Con `any`, `toNum(undefined)` compilaba tan feliz.
+ */
+export type Celda = unknown;
+
+/** Una fila de la hoja: el encabezado (en minúsculas) contra su celda. */
+export type FilaExcel = Record<string, Celda>;
+
+export function toDate(val: Celda): Date {
   if (val instanceof Date) return val;
+  // Excel guarda las fechas como días desde 1900, no como texto.
   if (typeof val === 'number') return new Date((val - 25569) * 86400000);
-  return new Date(val);
+  // `String(val ?? '')` en vez de `new Date(val)`: una celda vacía daba el
+  // 1 de enero de 1970 —una fecha que parece buena y no lo es— y ahora da una
+  // fecha inválida, que el importador reporta como fila con error.
+  return new Date(String(val ?? ''));
 }
 
-export function toStr(val: any): string {
+export function toStr(val: Celda): string {
   return val != null && val !== '' ? String(val).trim() : '';
 }
 
-export function toNullStr(val: any): string | null {
+export function toNullStr(val: Celda): string | null {
   const s = toStr(val);
   return s === '' || s === 'N/A' ? null : s;
 }
 
-export function toNum(val: any): number {
+export function toNum(val: Celda): number {
   const n = Number(val);
   return isNaN(n) ? 0 : n;
 }
 
-export function toNullNum(val: any): number | null {
+export function toNullNum(val: Celda): number | null {
   if (val === '' || val == null) return null;
   const n = Number(val);
   return isNaN(n) ? null : n;
 }
 
 export function rows(ws: xlsx.WorkSheet) {
-  return xlsx.utils.sheet_to_json<Record<string, any>>(ws, { defval: '' });
+  return xlsx.utils.sheet_to_json<FilaExcel>(ws, { defval: '' });
 }
 
-export function toDateOrNull(val: any): Date | null {
+export function toDateOrNull(val: Celda): Date | null {
   if (val === '' || val == null) return null;
   const d = toDate(val);
   return isNaN(d.getTime()) ? null : d;
 }
 
-export function splitList(val: any): string[] {
+export function splitList(val: Celda): string[] {
   return toStr(val)
     .split(',')
     .map(s => s.trim())
     .filter(Boolean);
 }
 
-export function clampPct(val: any): number {
+export function clampPct(val: Celda): number {
   const n = toNum(val);
   return Math.max(0, Math.min(100, Math.round(n)));
 }
@@ -103,22 +118,22 @@ export function lowerMap(items: { id: number; nombre: string }[]): Map<string, n
 }
 
 /** Columnas de si/no: vacio cuenta como "si" (es el valor por defecto del sistema). */
-export function toBool(val: any, porDefecto = true): boolean {
+export function toBool(val: Celda, porDefecto = true): boolean {
   const s = toStr(val).toLowerCase();
   if (s === '') return porDefecto;
   return !['no', 'false', '0', 'n'].includes(s);
 }
 
 /** Lee la primera hoja del libro con encabezados normalizados (minusculas, sin espacios extra). */
-export function entityRows(buffer: Buffer): { headers: string[]; rows: Record<string, any>[] } {
+export function entityRows(buffer: Buffer): { headers: string[]; rows: FilaExcel[] } {
   const wb = xlsx.read(buffer, { cellDates: true });
   const ws = wb.Sheets[wb.SheetNames[0]];
   if (!ws) return { headers: [], rows: [] };
-  const aoa = xlsx.utils.sheet_to_json<any[]>(ws, { header: 1, defval: '' });
+  const aoa = xlsx.utils.sheet_to_json<Celda[]>(ws, { header: 1, defval: '' });
   if (!aoa.length) return { headers: [], rows: [] };
   const headers = (aoa[0] ?? []).map(h => toStr(h).toLowerCase());
   const rows = aoa.slice(1).map(cells => {
-    const o: Record<string, any> = {};
+    const o: FilaExcel = {};
     headers.forEach((h, i) => { if (h) o[h] = cells?.[i] ?? ''; });
     return o;
   }).filter(r => Object.values(r).some(v => toStr(v) !== ''));
@@ -150,7 +165,7 @@ export function fmtDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-export function sheetFromRows(entity: string, rows: Record<string, any>[]): Buffer {
+export function sheetFromRows(entity: string, rows: FilaExcel[]): Buffer {
   const spec = IMPORT_SPECS[entity];
   const headers = spec.columnas.map(c => c.key);
   const aoa = [headers, ...rows.map(r => headers.map(h => r[h] ?? ''))];

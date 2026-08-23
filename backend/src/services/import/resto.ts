@@ -1,5 +1,5 @@
 import { prisma } from '../../config/prisma';
-import { toNum, toStr } from './core';
+import { toNum, toStr, FilaExcel } from './core';
 import type { EntityImportResult } from './core';
 
 /**
@@ -39,7 +39,7 @@ export const filasFormulas = async () => {
   });
 };
 
-export const importarFormulas = async (rows: any[], result: EntityImportResult) => {
+export const importarFormulas = async (rows: FilaExcel[], result: EntityImportResult) => {
   for (const [i, row] of rows.entries()) {
     const fila = i + 2;
     const nombre = toStr(row.nombre);
@@ -139,7 +139,7 @@ export const filasUsuarios = async () => {
 
 export const filasBlog = async () => {
   const rows = await prisma.post.findMany({ orderBy: [{ created_at: 'desc' }] });
-  return rows.map((p: any) => ({
+  return rows.map((p) => ({
     titulo: p.titulo,
     slug: p.slug,
     resumen: p.resumen ?? '',
@@ -156,7 +156,7 @@ export const filasAvisos = async () => {
       user: { select: { nombre: true, apellido: true, email: true, telefono: true } },
     },
   });
-  return rows.map((a: any) => ({
+  return rows.map((a) => ({
     perfume: a.perfume?.nombre ?? '',
     agotado: a.perfume?.agotado ? 'si' : 'no',
     cliente: `${a.user?.nombre ?? ''} ${a.user?.apellido ?? ''}`.trim(),
@@ -168,7 +168,7 @@ export const filasAvisos = async () => {
 
 const SOLO_EXPORTA = ['producciones', 'cotizaciones', 'blog', 'avisos'];
 
-export const exportarResto = async (entity: string): Promise<Record<string, any>[] | null> => {
+export const exportarResto = async (entity: string): Promise<FilaExcel[] | null> => {
   if (entity === 'formulas') return filasFormulas();
   if (entity === 'producciones') return filasProducciones();
   if (entity === 'cotizaciones') return filasCotizaciones();
@@ -179,7 +179,7 @@ export const exportarResto = async (entity: string): Promise<Record<string, any>
 };
 
 export const importarResto = async (
-  entity: string, rows: any[], result: EntityImportResult,
+  entity: string, rows: FilaExcel[], result: EntityImportResult,
 ): Promise<boolean> => {
   if (SOLO_EXPORTA.includes(entity)) {
     result.errores.push('Esta hoja es solo de consulta: es histórico y reescribirlo a mano rompería la trazabilidad.');

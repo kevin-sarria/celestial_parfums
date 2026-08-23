@@ -180,7 +180,7 @@ camino del error. Montar pruebas de componentes es una decisión del dueño que 
 Salió de revisar el código en vez de la lista, cuando el dueño preguntó *"¿qué más falta por
 codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva a perder.
 
-1. **El backend usa `any`. EN CURSO: van 215 → 125** (2026-08-23). `any` apaga el chequeo de
+1. **El backend usa `any`. EN CURSO: van 215 → 94** (2026-08-23). `any` apaga el chequeo de
    tipos justo donde debería avisar. Se ataca por tandas, no de una sentada.
    - **Tanda 1, hecha**: los **90 `catch (error: any)`**. TypeScript entrega `unknown` en un
      `catch` —lo correcto: cualquiera puede lanzar cualquier cosa—, y `mensajeSeguro` ya lo
@@ -188,7 +188,16 @@ codificar?"*. **Nada de esto rompe nada hoy**; está aquí para que no se vuelva
      tocaban el error**. Esos se arreglaron de verdad, con dos ayudantes nuevos en
      `utils/errorSeguro.ts` (`textoDeError` y `codigoPrisma`) para no repetir el criterio en
      catorce sitios. Es el método a repetir: cambio mecánico → que el compilador diga dónde duele.
-   - **Quedan 125**, concentrados en el importador (`import/core.ts` 14, `inventario.ts` 9,
+   - **Tanda 2, hecha**: el importador de Excel. Las funciones que convierten una celda
+     (`toStr`, `toNum`, `toDate`…) pasaron a `unknown` con dos nombres propios —`Celda` y
+     `FilaExcel`— porque **`unknown` es el tipo honesto de una celda**: obliga a mirar qué vino,
+     que es justo su trabajo. De paso, una celda de fecha vacía daba **el 1 de enero de 1970**
+     —una fecha que parece buena y no lo es— y ahora da fecha inválida, que el importador reporta
+     como fila con error.
+   - **Quedan 94**, y los que faltan son de otra clase: `as any` al asignar a un enum de Prisma
+     (`tipo`, `unidad`, `alcance`, `audiencia`) —ahí el `any` **apaga una validación de verdad**,
+     así que hay que comprobar el texto contra el enum y rechazar lo que no encaje—, un
+     `delegate: any` en `contenido.ts` y `recomendacion.service.ts` (11). ANTES: el importador (`import/core.ts` 14, `inventario.ts` 9,
      `resto.ts` 5, `ventas.ts` 5, `contenido.ts` 4), `recomendacion.service.ts` (11),
      `costeo.repository.ts` (6), `devolucion.repository.ts` (5) y `recompensa.router.ts` (5).
      Esos ya no son mecánicos: son formas de datos que hay que escribir.

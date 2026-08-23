@@ -1,6 +1,6 @@
 import { prisma } from '../../config/prisma';
 import { cacheClear } from '../../utils/cache';
-import type { EntityImportResult } from './core';
+import type { EntityImportResult, FilaExcel } from './core';
 
 /**
  * Contenido escrito por los CLIENTES: reseñas y fotos de premios entregados.
@@ -66,7 +66,7 @@ const ESTADOS = ['pendiente', 'aprobada', 'rechazada'];
  * buscados por su id. Ni crea ni edita lo que el cliente escribió.
  */
 const moderar = async (
-  delegate: any, rows: any[], result: EntityImportResult, quees: string,
+  delegate: any, rows: FilaExcel[], result: EntityImportResult, quees: string,
 ) => {
   for (const [i, row] of rows.entries()) {
     const fila = i + 2;
@@ -92,7 +92,7 @@ const moderar = async (
 };
 
 export const importarContenido = async (
-  entity: string, rows: any[], result: EntityImportResult,
+  entity: string, rows: FilaExcel[], result: EntityImportResult,
 ): Promise<boolean> => {
   if (entity === 'resenas') {
     await moderar(prisma.resena, rows, result, 'reseñas');
@@ -106,7 +106,7 @@ export const importarContenido = async (
   return false;
 };
 
-export const exportarContenido = async (entity: string): Promise<Record<string, any>[] | null> => {
+export const exportarContenido = async (entity: string): Promise<FilaExcel[] | null> => {
   if (entity === 'resenas') return filasResenas();
   if (entity === 'entregas') return filasEntregas();
   return null;
