@@ -17,8 +17,10 @@ afterAll(cerrarNavegador);
 describe('el mayoreo', () => {
   it('un rango de precio por cantidad se guarda y se ve en el tamaño', async () => {
     const { contexto, pagina } = await abrirDashboard();
-    await irA(pagina, '/dashboard/formulas');
-    await pagina.waitForSelector('text=Precios por cantidad');
+    // Los rangos salieron de "Tamaños y fórmulas" el 2026-08-23: aquella
+    // pantalla es la receta que descuenta inventario, esta es solo mayoreo.
+    await irA(pagina, '/dashboard/precios_mayoreo');
+    await pagina.waitForSelector('text=Precios al mayoreo');
 
     await pagina.getByRole('button', { name: /agregar rango de precio/i }).first().click();
     const casillas = pagina.locator('input[type="number"]');

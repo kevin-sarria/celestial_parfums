@@ -591,9 +591,13 @@ a ciegas: el panel de rentabilidad se ocultaba entero (`tipo === 'general' ? 'hi
 > queda como está.** Solo hay que avisarle si (a) sube el precio de la esencia premium, o (b)
 > llega un mayorista que pida casi puro premium — ahí el subsidio deja de alcanzar.
 
-**Pendiente (paso 3, acordado con el dueño):** separar la pantalla — la RECETA se queda en
-*Tamaños y fórmulas* (la usa toda la app para descontar inventario) y los rangos de precio
-mayorista se van a *Mayoreo*. Hoy `formulas_volumen` mezcla las tres cosas.
+**HECHO (paso 3, 2026-08-23):** la pantalla se separó. La RECETA se queda en *Tamaños y
+fórmulas* —la usa toda la app para descontar inventario— y los rangos de precio mayorista se
+fueron a **Mayoreo B2B → Precios al mayoreo** (`PreciosMayoreoTab`). La tabla
+`formulas_volumen` **sigue guardando las tres cosas y no se tocó**: no hacía falta migración
+para dejar de mezclarlas en pantalla, que era el problema real. Los accesorios por defecto se
+quedan con la receta a propósito: **también se descuentan al vender**
+(`inventario.repository.ts`), así que son operación, no mayoreo.
 
 ## El PDF del catálogo se segmenta antes de generarlo
 

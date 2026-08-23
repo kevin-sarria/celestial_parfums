@@ -17,6 +17,9 @@
 3. **Las etiquetas de los formularios y 10 tildes que faltaban.** Solo frontend, sin migración y
    sin prisa: hacer clic en el nombre de un campo lleva el cursor a su casilla, y el dashboard
    deja de decir "Descripcion" o "Genero". Entra con el mismo `npm run build` del frontend.
+4. **Los precios al mayoreo salieron de *Tamaños y fórmulas*** y ahora son su propia pantalla en
+   *Mayoreo B2B*. Solo frontend, sin migración: no cambia ni un precio ni una receta, solo dónde
+   se editan. **Ojo al abrirlo**: los rangos que ya tenías siguen ahí, pero en el sitio nuevo.
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -168,10 +171,7 @@ camino del error. Montar pruebas de componentes es una decisión del dueño que 
 4. **3 esencias sin género** (eran 189). Se llenan desde el Excel *Lista de materiales*.
 5. **La gama "Diseñador" tiene mínimo configurado y CERO esencias**: o se le cuelgan esencias o se
    borra.
-6. **Paso 3 del costeo por gama**: separar la pantalla — la receta se queda en *Tamaños y fórmulas*
-   (la usa toda la app para descontar inventario) y los rangos de precio mayorista se van a
-   *Mayoreo*. Hoy `formulas_volumen` mezcla tres cosas.
-7. **Separar "200/250ML" en dos tallas reales** y sembrar su stock inicial. Ya se puede hacer
+6. **Separar "200/250ML" en dos tallas reales** y sembrar su stock inicial. Ya se puede hacer
    desde Clasificaciones sin tocar la base: crear "200 ML" y "250 ML" nace con su número y su
    receta enganchados solos.
 

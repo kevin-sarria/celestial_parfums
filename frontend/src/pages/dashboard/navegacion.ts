@@ -2,7 +2,7 @@ import {
   SprayCan, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText,
   BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX,
-  ChartColumn, Layers, type LucideIcon,
+  ChartColumn, Layers, Coins, type LucideIcon,
 } from 'lucide-react';
 import type { Tab } from './types';
 
@@ -44,6 +44,7 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   blog: { label: 'Blog', icon: Newspaper },
   redes: { label: 'Redes sociales', icon: Share2 },
   cotizaciones: { label: 'Cotizaciones', icon: FileText },
+  precios_mayoreo: { label: 'Precios al mayoreo', icon: Coins },
   formulas: { label: 'Tamaños y fórmulas', icon: FlaskConical },
   costos: { label: 'Costos de producción', icon: Calculator },
 };
@@ -69,7 +70,7 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
    * todo el negocio. Mayoreo solo cotiza, y para eso las lee.
    */
   { id: 'operacion', label: 'Producción e inventario', tabs: ['inventario', 'reposicion', 'producciones', 'formulas', 'costos'] },
-  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones'] },
+  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'precios_mayoreo'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
 ];

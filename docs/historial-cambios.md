@@ -212,6 +212,22 @@ Quedó **una prueba nueva** (`etiquetas.e2e.test.ts`, comprobada fallando sin el
 helper `campo()` de los recorridos pasó de seis líneas adivinando la forma del HTML a un
 `getByLabel`. 260 pruebas en verde.
 
+**Y el punto 6, también cerrado: los precios al mayoreo tienen pantalla propia.** *Tamaños y
+fórmulas* guardaba dos cosas que se miran con cabezas distintas: la receta —de la que salen los
+materiales que descuenta CADA venta— y lo que se le cobra a un mayorista según cuántas unidades
+lleve, que solo se lee al cotizar. Juntas, se podía tocar un precio de mayoreo creyendo que se
+editaba una receta. El dueño eligió pestaña propia en *Mayoreo B2B* (2026-08-23).
+
+- **Sin migración y sin tocar un solo número.** `formulas_volumen` sigue guardando las tres
+  cosas; lo que se separó es la PANTALLA, que era el problema real.
+- Los **accesorios por defecto se quedan con la receta** a propósito: también se descuentan al
+  vender, así que son operación, no mayoreo.
+- La pantalla nueva **no crea tamaños**: sin ellos manda a *Tamaños y fórmulas* en vez de ofrecer
+  un botón que no debería existir.
+- `FormulasVolumenTab` bajó de **439 a 291 líneas** y el recorrido del mayoreo —que crea un rango,
+  lo guarda y lo vuelve a leer del servidor— pasa contra la pantalla nueva sin cambiarle la
+  comprobación: solo la dirección.
+
 ## Cosas que se probaron y se descartaron
 
 - **Three.js para la tarjeta de recompensas**: pesaba mucho para el público de gama baja y el

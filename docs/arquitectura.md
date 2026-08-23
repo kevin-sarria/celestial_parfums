@@ -291,6 +291,13 @@ fórmulas y demás, que no es el core de las ventas sino más de operaciones o d
 - **Producción e inventario** → inventario, pedido sugerido, producciones, tamaños y
   fórmulas, costos de producción. Todo es OPERACIÓN: qué tengo, qué pido, qué armé, con qué
   receta y cuánto me cuesta.
+- **Mayoreo B2B** → cotizaciones y **precios al mayoreo** (2026-08-23). Los rangos de precio
+  por cantidad vivían dentro de *Tamaños y fórmulas* y se separaron por decisión del dueño:
+  aquella pantalla mezclaba la RECETA —que descuenta inventario en cada venta, operación
+  diaria— con lo que se le cobra a un mayorista, que solo se lee al cotizar. Juntas, se podía
+  tocar un precio de mayoreo creyendo que se editaba una receta. **Los tamaños se siguen
+  creando en *Tamaños y fórmulas***: la pantalla de mayoreo no crea ninguno, solo les pone
+  precio, y sin tamaños manda allí en vez de ofrecer un botón que no debería existir.
 - Criterio para futuras pestañas: **si la pregunta es "cuánto dinero", va al primero; si es
   "cómo lo hago o con qué", al segundo.** Un grupo de ocho pestañas mezcladas obliga a
   leerlas todas para encontrar una.

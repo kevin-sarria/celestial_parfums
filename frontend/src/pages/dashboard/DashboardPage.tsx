@@ -30,6 +30,7 @@ import { SobreNosotrosTab } from './tabs/SobreNosotrosTab';
 import { BlogTab } from './tabs/BlogTab';
 import { CotizacionesTab } from './tabs/CotizacionesTab';
 import { FormulasVolumenTab } from './tabs/FormulasVolumenTab';
+import { PreciosMayoreoTab } from './tabs/PreciosMayoreoTab';
 import { GamasTab } from './tabs/GamasTab';
 import { CostosProduccionTab } from './tabs/CostosProduccionTab';
 import { DevolucionesTab } from './tabs/DevolucionesTab';
@@ -327,6 +328,7 @@ export default function DashboardPage() {
             {tab === 'blog' && <BlogTab />}
             {tab === 'cotizaciones' && <CotizacionesTab />}
             {tab === 'formulas' && <FormulasVolumenTab />}
+            {tab === 'precios_mayoreo' && <PreciosMayoreoTab />}
             {tab === 'costos' && <CostosProduccionTab />}
             {tab === 'devoluciones' && <DevolucionesTab />}
             {tab === 'inventario' && <InventarioTab />}
