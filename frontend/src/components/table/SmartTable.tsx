@@ -6,15 +6,14 @@ import {
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
 import type { ColumnDef, FilterValue, FiltersState } from './tableTypes';
 import { useTableControls } from './useTableControls';
 import { useMediaQuery } from './useMediaQuery';
 import { FilaTarjeta } from './FilaTarjeta';
 import { ColumnFilterPopover } from './ColumnFilterPopover';
+import { PaginadorTabla } from './PaginadorTabla';
 
-const PAGE_SIZE_OPTIONS = [5, 10, 25, 50, 100] as const;
 
 /**
  * Por defecto de la paginación en el navegador. Es distinto del
@@ -89,20 +88,17 @@ interface SmartTableProps<T> {
 
 const SERVER_SEARCH_DEBOUNCE_MS = 2000;
 
-function getPages(page: number, totalPages: number, compacto: boolean): (number | '...')[] {
-  // En pantallas angostas el paginador completo no cabe y se desbordaba del
-  // borde de la tarjeta: se muestra una ventana de máximo 5 posiciones.
-  if (compacto) {
-    if (totalPages <= 4) return Array.from({ length: totalPages }, (_, i) => i + 1);
-    if (page <= 2) return [1, 2, 3, '...', totalPages];
-    if (page >= totalPages - 1) return [1, '...', totalPages - 2, totalPages - 1, totalPages];
-    return [1, '...', page, '...', totalPages];
-  }
-  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-  if (page <= 4) return [1, 2, 3, 4, 5, '...', totalPages];
-  if (page >= totalPages - 3) return [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-  return [1, '...', page - 1, page, page + 1, '...', totalPages];
-}
+/**
+ * La flechita de ordenar de un encabezado.
+ *
+ * Va FUERA del componente a propósito (regla del `CLAUDE.md`): declarado
+ * dentro, en cada render sería una función nueva y React desmontaría y volvería
+ * a montar su subárbol. Aquí no se notaba —es un icono sin estado—, pero es el
+ * mismo descuido que en un campo de texto hace perder el foco a media palabra.
+ */
+const SortIcon = ({ dir }: { dir: 'asc' | 'desc' | null }) =>
+  dir === 'asc' ? <ArrowUp className="size-3.5" /> : dir === 'desc' ? <ArrowDown className="size-3.5" /> : <ArrowUpDown className="size-3.5 opacity-40" />;
+
 
 export function SmartTable<T>({
   columns,
@@ -253,9 +249,6 @@ export function SmartTable<T>({
     if (pagination) pagination.onPageSizeChange(s);
     else { setSizeLocal(s); setPageLocal(1); }
   };
-
-  const SortIcon = ({ dir }: { dir: 'asc' | 'desc' | null }) =>
-    dir === 'asc' ? <ArrowUp className="size-3.5" /> : dir === 'desc' ? <ArrowDown className="size-3.5" /> : <ArrowUpDown className="size-3.5 opacity-40" />;
 
   return (
     <div className="space-y-3">
@@ -468,61 +461,14 @@ export function SmartTable<T>({
 
       {/* ── Footer: tamaño de página + paginador ── */}
       {paginadorVisible && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <label htmlFor="st-ps">Filas:</label>
-            <SelectSimple
-              id="st-ps"
-              className="w-18"
-              value={tamanoActual}
-              onChange={e => cambiarTamano(Number(e.target.value))}
-            >
-              {PAGE_SIZE_OPTIONS.map(n => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </SelectSimple>
-          </div>
-
-          {totalPages > 1 && (
-            <div className="flex flex-wrap items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-8"
-                disabled={paginaActual === 1}
-                onClick={() => irAPagina(paginaActual - 1)}
-                aria-label="Página anterior"
-              >
-                ‹
-              </Button>
-              {getPages(paginaActual, totalPages, pantallaAngosta).map((p, i) =>
-                p === '...' ? (
-                  <span key={`e${i}`} className="px-1 text-muted-foreground">…</span>
-                ) : (
-                  <Button
-                    key={p}
-                    variant={p === paginaActual ? 'default' : 'outline'}
-                    size="icon"
-                    className="size-8 text-xs"
-                    onClick={() => irAPagina(p as number)}
-                  >
-                    {p}
-                  </Button>
-                )
-              )}
-              <Button
-                variant="outline"
-                size="icon"
-                className="size-8"
-                disabled={paginaActual === totalPages}
-                onClick={() => irAPagina(paginaActual + 1)}
-                aria-label="Página siguiente"
-              >
-                ›
-              </Button>
-            </div>
-          )}
-        </div>
+        <PaginadorTabla
+          tamano={tamanoActual}
+          onTamano={cambiarTamano}
+          pagina={paginaActual}
+          totalPaginas={totalPages}
+          onPagina={irAPagina}
+          compacto={pantallaAngosta}
+        />
       )}
 
       {tooltip && (

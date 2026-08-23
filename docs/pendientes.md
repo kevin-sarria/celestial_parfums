@@ -271,13 +271,19 @@ link) y `redes/ModalEnlace.tsx` (crear/editar, 129 líneas de JSX que estaban al
 píxel**, y se recorrió el flujo entero en el navegador (crear un link → verlo en la lista → verlo
 en la vista previa).
 
-**Faltan 3 archivos, todos pantallas.** Cada una hay que abrirla en el navegador y mirarla antes
+**`SmartTable.tsx` (538) ya se partió** (2026-08-23): el paginador —con las opciones de tamaño y
+el cálculo de qué números mostrar— salió a `table/PaginadorTabla.tsx`, y `SortIcon`, que estaba
+**declarado dentro** del componente (lo que prohíbe el `CLAUDE.md`), subió a nivel de módulo. Quedó
+en 484. Verificado con capturas de tres tablas distintas —perfumes, ventas e inventario—:
+**idénticas píxel a píxel**, y además se probó el paginador haciendo clic (página 2 y cambio de
+filas por página), que es lo que se movió.
+
+**Faltan 2 archivos, los dos pantallas.** Cada una hay que abrirla en el navegador y mirarla antes
 de darla por buena — no basta con que compile:
 
 | Archivo | Líneas |
 |---|---|
 | `frontend/src/pages/dashboard/tabs/PerfumesTab.tsx` | 547 |
-| `frontend/src/components/table/SmartTable.tsx` | 538 (la usan TODAS las tablas del dashboard: la más delicada) |
 | `frontend/src/pages/dashboard/compras/DetalleCompra.tsx` | 513 |
 
 ## Decisiones pendientes con el dueño

@@ -2,6 +2,19 @@
 
 Cada uno de estos costó horas. Si un síntoma se parece, empieza por aquí antes de investigar.
 
+## `npx tsc --noEmit` en el frontend NO comprueba nada (2026-08-23)
+
+El `tsconfig.json` de `frontend/` es un archivo **solución**: solo tiene `references` a
+`tsconfig.app.json` y `tsconfig.node.json`, sin `include` ni `files` propios. `tsc --noEmit` sobre
+él no mira ni un archivo y **sale con código 0**, así que parece que todo compila.
+
+Costó dos sustos en la misma sesión: un `import` con la ruta relativa mal y un componente usado
+sin importar, los dos "aprobados" por `tsc --noEmit` y cazados después por el build.
+
+**El chequeo de verdad del frontend es `npm run build`** (`tsc -b && vite build`), que sí recorre
+los proyectos referenciados. En el backend `npx tsc --noEmit` sí funciona: su `tsconfig.json`
+tiene `include`.
+
 ## Encoding y archivos
 
 - **TODOS los .ts/.tsx son UTF-8 sin BOM.** JAMÁS usar `Get-Content`/`Set-Content` de PowerShell
