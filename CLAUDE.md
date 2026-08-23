@@ -111,6 +111,11 @@ criterio general reutilizable.
   y él decide. Le gusta entender el porqué (explicar como a un socio).
 - Marketing/conversión: es tienda WhatsApp-first en LatAm; la fricción mínima y la confianza
   personal valen más que un checkout tradicional.
+- **Los resúmenes van en TABLA y muy breves** (2026-08-23, pedido textual: *"estilo
+  cavernícola"*). Solo tres cosas: **qué se hizo, qué falta, qué sigue**, una línea cada una, con
+  su estado (hecho / por confirmar / pendiente). **Nada de 20 párrafos**: no le sirven para
+  decidir. El porqué de cada decisión sigue yendo a `docs/` y al mensaje del commit —ahí SÍ se
+  escribe completo—, no al chat. Si hay algo que él deba decidir, una línea con la pregunta.
 
 ## Comandos
 
