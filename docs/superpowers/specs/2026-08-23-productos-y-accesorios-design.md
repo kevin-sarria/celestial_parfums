@@ -40,8 +40,20 @@ En columnas que ya existen:
 Productos = solo_armado = true            (los 1.1)
          OR tipo_producto = 'comprado'    (splash 200/250, gorras, y todo es_accesorio)
 
-Perfumes  = tipo_producto = 'fabricado' AND solo_armado = false
+Perfumes  = TODO LO DEMÁS  (el complemento exacto de Productos)
 ```
+
+**Perfumes se define como el complemento, no como una segunda lista.** Corregido el
+2026-08-23 tras la revisión de la Tarea 1: la primera versión decía
+`tipo_producto = 'fabricado' AND solo_armado = false`, y eso dejaba un hueco — un
+`fraccionado` (un decant sacado de una botella grande) no caía en ninguna de las dos y
+habría desaparecido de las dos pestañas sin avisar. Hoy no hay ninguno en el catálogo,
+pero el código de decants existe y está vivo (`inventario.consumoVenta.ts`).
+
+Un **decant va en Perfumes**, y sale de la propia regla que gobierna el diseño: no existe
+antes de venderse — se corta de la botella grande en el momento de la venta. Definir una
+familia en positivo y la otra como su complemento hace que la partición no pueda volver a
+agujerearse, ni siquiera el día que aparezca un cuarto `tipo_producto`.
 
 **El 212 VIP Black armado NO entra en Productos.** Es un perfume normal que casualmente tiene 5
 frascos hechos; se queda en Perfumes. Se descartó explícitamente el criterio "lo que tenga stock
