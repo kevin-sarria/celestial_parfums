@@ -302,6 +302,77 @@ fórmulas y demás, que no es el core de las ventas sino más de operaciones o d
   "cómo lo hago o con qué", al segundo.** Un grupo de ocho pestañas mezcladas obliga a
   leerlas todas para encontrar una.
 
+### Catálogo: Perfumes y Productos son la MISMA tabla, partida en dos (2026-08-23, Ola 1)
+
+El dueño empezó a vender 1.1 (contratipos con envase premium), accesorios (perfumero, bolsa,
+tarjeta) y reventa (splash comprado hecho) además de sus fragancias fabricadas. Meterlos todos
+en la pestaña **Perfumes** original —pensada para "elige esencia, arma la receta, cobra por
+talla"— les mostraba campos que no aplican (talla, esencia) y escondía los suyos (con qué
+insumo se compraron). La solución NO fue crear una tabla nueva: `perfumes` sigue siendo una
+sola tabla en la base; el dashboard le pone DOS pestañas encima, cada una pidiendo el mismo
+endpoint con un filtro distinto.
+
+- **`GET /parfums?familia=fabricadas|productos`**. Sin el parámetro, devuelve TODO (lo que
+  siguen usando Ventas, Créditos y la tienda pública — ver el gotcha de abajo). La partición
+  vive en UN solo sitio, `WHERE_FAMILIA` en `perfume.repository.ts`:
+  ```ts
+  const ES_PRODUCTO = { OR: [{ solo_armado: true }, { tipo_producto: 'comprado' }] };
+  WHERE_FAMILIA = {
+    productos:  ES_PRODUCTO,
+    fabricadas: { NOT: ES_PRODUCTO },   // el complemento EXACTO, no una segunda lista
+  };
+  ```
+  **`productos` se define en positivo y `fabricadas` es su `NOT`, a propósito.** La primera
+  versión escribía las dos listas por separado y el enum `tipo_producto` tiene un tercer valor
+  (`fraccionado`, los decants) que no caía en ninguna: un decant no existe antes de venderse
+  (se corta de la botella grande en el momento de la venta — `inventario.consumoVenta.ts`), así
+  que debe caer en Perfumes, y con dos listas paralelas se quedaba huérfano en las DOS pestañas
+  sin que nada avisara. Con el `NOT`, un cuarto valor futuro del enum no puede volver a abrir
+  ese hueco: cae automáticamente en `fabricadas` mientras no se le añada explícitamente a
+  `ES_PRODUCTO`.
+- **La ficha es la MISMA en las dos pestañas** (`FichaPerfumeModal.tsx` + `useFichaPerfume.ts`,
+  extraída de `PerfumesTab.tsx` en esta misma ola). Solo cambia el sustantivo del título y el
+  botón ("perfume" vs. "producto"); los campos que no aplican a un tipo se ocultan por
+  `tipo_producto`, no por en qué pestaña se abrió.
+- **La columna TIPO de Productos** (`columns.tsx`, `productosColumns`) deduce el texto de los
+  mismos tres campos que parten la familia: `solo_armado` → "1.1", si no `es_accesorio` →
+  "Accesorio", si no → "Comprado". Se decidió NO agregar una columna ESTADO/TIENDA aparte:
+  `EstadoPerfume` (columna Estado, reutilizada tal cual) ya dice "Fuera de la tienda", agotado y
+  qué falta para vender — una columna nueva diría lo mismo con menos información, y sería una
+  segunda regla contando la misma historia.
+- **La pestaña Productos nace vacía** (hoy, 2026-08-24: 222 perfumes del dueño, todos
+  `fabricado`, 0 productos) y muestra una caja de "primeros pasos" con 3 tareas en vez de una
+  tabla en blanco (`PrimerosPasosProductos.tsx`, `GET /parfums/primeros-pasos`, solo admin).
+  Los 3 contadores se recalculan de los datos en cada visita, nunca de una bandera guardada.
+
+#### El gotcha que alguien va a deshacer por error: el dashboard y la tienda agrupan DISTINTO
+
+Son dos preguntas distintas y las dos son legítimas — pero es fácil asumir que "ya existe una
+partición del catálogo" y reutilizar la del otro lado sin darse cuenta de que responde otra
+cosa:
+
+- **El dashboard** (esta sección) parte por **"¿existe antes de venderse?"** — es la pregunta de
+  quien arma inventario: un 1.1 se arma por adelantado (existe antes), un decant se corta al
+  vender (no existe antes). Por eso el decant cae en Perfumes y no en Productos.
+- **La tienda pública** (`/perfumes`, ver "Páginas públicas" arriba) parte por
+  **"¿es una fragancia o un accesorio?"** (`es_accesorio`) — es la pregunta de quien compra: a
+  un cliente le interesa si está buscando un perfume o un perfumero, no si el dueño lo fabrica o
+  lo arma con antelación. **Esta ola NO tocó la tienda**: hoy `/perfumes` sigue mostrando
+  fragancias Y accesorios juntos, mezclados (se ve en la captura de la verificación: un
+  accesorio de prueba salió listado ahí, con su propia card). Separar `/accesorios` de
+  `/perfumes` es la Ola 3 (ver `docs/pendientes.md`) — y cuando se haga, **no reutilizar
+  `WHERE_FAMILIA`**: la tienda necesita partir por `es_accesorio`, no por `fabricadas/productos`.
+  Un 1.1 y un comprado-no-accesorio son "Productos" en el dashboard, pero siguen siendo
+  fragancias en la tienda.
+- **Gotcha de código, no solo de diseño**: `todosConOcultos` (`/parfums?todos=1`, lo que leen
+  `VentasTab.tsx` y `CreditosTab.tsx` para el buscador de "Registrar venta") **no lleva
+  `familia`** — a propósito. Si algún día se le agregara un `familia=fabricadas` "para limpiar
+  la lista", el buscador de ventas dejaría de ver los 1.1 y los comprados, y el dueño volvería
+  al problema que esta ola resolvió (no poder vender lo que no fabrica). El split de
+  fragancias/accesorios que SÍ hace ese buscador (`ArmadorPedido.tsx`, filtra por
+  `es_accesorio` client-side sobre la respuesta completa) es la partición de la TIENDA, aplicada
+  del lado del cliente — no tiene nada que ver con `WHERE_FAMILIA`.
+
 ## La tabla del dashboard (`SmartTable`)
 
 La usan ~10 pestañas, así que **todas sus capacidades son props OPCIONALES**: una pestaña

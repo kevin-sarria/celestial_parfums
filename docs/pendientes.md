@@ -1,7 +1,9 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 23 de agosto de 2026.** Todo compila, **276 pruebas en verde** (155 backend +
-77 frontend + 44 recorridos, más 1 saltada a propósito) y **todo está commiteado en `main`**.
+**Última sesión: 24 de agosto de 2026.** Todo compila, **287 pruebas en verde** (166 backend +
+77 frontend + 44 recorridos, más 1 saltada a propósito). Todo lo de antes sigue en `main`; la
+**Ola 1 de Productos** (punto 8 de abajo — no confundir con la Ola 1 de regalos del punto 1)
+vive en la rama `ola1-productos`, terminada y verificada, a la espera de mergearse.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
 
@@ -32,6 +34,30 @@
    falta ANTES de separar "200/250ML" (punto 6 de la lista de abajo): sin esto, esas dos tallas se
    quedarían sin costear y sus ventas entrarían con costo cero. De paso, cambiarle los mililitros
    a una receta que ya usa alguna talla **ahora se rechaza** con un mensaje que dice cuáles.
+8. **Catálogo: Perfumes y Productos, en dos pestañas (Ola 1 de Productos).** Solo código, sin migración. El
+   dashboard partió la tabla de perfumes en dos pestañas del grupo *Catálogo* — **Perfumes**
+   (lo que se fabrica al vender) y **Productos** (1.1, comprados y accesorios) — para que cada
+   ficha muestre solo los campos que le aplican. Verificado contra los datos reales: hoy da
+   **222 en Perfumes y 0 en Productos** (los 222 perfumes del dueño son todos `fabricado`), así
+   que la pestaña Productos nace vacía y trae su propia caja de "primeros pasos". El porqué
+   completo, con la regla que parte las dos familias, en
+   [`arquitectura.md`](arquitectura.md#catálogo-perfumes-y-productos-son-la-misma-tabla-partida-en-dos-2026-08-23-ola-1).
+   **Tres cosas menores, encontradas al verificar y NO arregladas** (ninguna bloquea el merge):
+   - El botón **Exportar** de la pestaña Productos descarga el catálogo ENTERO (perfumes y
+     productos juntos), no solo los productos — usa `entity="perfumes"` sin distinguir familia
+     (confirmado en `backend/src/services/import/catalogo.ts:15-25`).
+   - El botón del **paso 3** de la caja de primeros pasos ("Muéstralos en tu tienda") abre una
+     ficha en blanco — publicar de verdad se hace desde el menú `⋯` de la fila, no desde ahí.
+   - **Un producto nuevo nace PUBLICADO, no apagado**, aunque el texto del paso 3 diga "Nacen
+     apagados a propósito: nadie ve una ficha a medio llenar". `useFichaPerfume.ts` nunca manda
+     `publicado` en el body al crear, así que el servidor aplica su default de siempre
+     (`perfume.repository.ts:225`, `data.publicado ?? true`) — pensado para un perfume normal,
+     que SÍ conviene publicar apenas se llena. Efecto práctico: el paso 3 queda "hecho" en cuanto
+     se crea el primer producto, junto con el paso 1 o el 2, y la caja de arranque casi nunca
+     llega a mostrarse a medio camino (se vio en la verificación: con un solo accesorio creado ya
+     marcaba "2 de 3"). No es grave —el dueño puede despublicarlo a mano— pero si se quiere que
+     Productos SÍ nazca apagado habría que decidirlo y que `guardar()` mande `publicado: false`
+     al crear (nunca al editar, para no despublicar por accidente algo que el dueño ya activó).
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -208,6 +234,32 @@ nunca entraron.
 en 0 van al final, en gris, con "sin existencias", y elegir uno avisa que el stock quedará
 negativo. Esconderlos por completo bloquearía el caso legítimo de registrar una producción de hace
 una semana, cuando sí había envase.
+
+## Sigue de Productos y Accesorios: Ola 2 y Ola 3
+
+La Ola 1 (punto 8 de la lista de arriba) partió el CATÁLOGO del dashboard en dos pestañas.
+Quedan dos olas más, decididas de antemano y fuera de esta (diseño completo en
+`docs/superpowers/specs/2026-08-23-productos-y-accesorios-design.md`):
+
+- **Ola 2 — Producciones y la ficha completa.**
+  - **Alta del 1.1 desde el lote**: hoy un 1.1 se crea desde *+ Nuevo producto* y LUEGO hay que
+    armarlo aparte en Inventario; la idea es poder darlo de alta directamente al registrar el
+    lote de producción, sin pasar por dos pantallas.
+  - **Columna STOCK** en la tabla de Productos: no entró en la Ola 1 a propósito — el listado no
+    trae hoy las unidades armadas ni el stock del insumo enlazado, y traerlas es una consulta más
+    en el camino caliente del catálogo. Va junto a Producciones, que es donde el dueño mira las
+    unidades de verdad.
+  - Completar el resto de la ficha por familia (hoy el modal es el mismo para las tres, con
+    textos que siguen hablando de "esencia" y "receta" aunque el producto no las tenga).
+- **Ola 3 — La tienda pública.** Hoy `/perfumes` sigue mostrando fragancias Y accesorios
+  juntos (la tienda no se tocó en la Ola 1 — ver el gotcha del dashboard-vs-tienda en
+  `arquitectura.md`). Falta:
+  - Ruta `/accesorios` aparte.
+  - Sacar los accesorios de `/perfumes`, para que el catálogo de fragancias vuelva a ser solo
+    fragancias.
+
+**No entra en ninguna de las tres**: la maceración (ver más abajo, decisión del dueño del
+2026-08-23: va después de las tres olas).
 
 ## El resto de la lista (después del producto terminado)
 
