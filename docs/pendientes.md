@@ -162,6 +162,53 @@ frontend es toda de cálculo puro (no hay `@testing-library`, ni entorno jsdom m
 estas pantallas se verifican **en el navegador**, y con el backend tumbado a propósito para ver el
 camino del error. Montar pruebas de componentes es una decisión del dueño que sigue sin tomarse.
 
+## 🧪 La maceración: el sistema no sabe que producir son DOS momentos
+
+**Encontrado el 2026-08-23, con el dueño mirando sus datos en vivo.** No entra en las 3 olas de
+Productos y Accesorios — decisión suya, va después.
+
+Hoy `producir` = consumir esencia + diluyente + **un envase por unidad** y dejar N frascos
+armados de UNA talla fija. En perfumería de verdad son dos momentos separados por semanas, y el
+dueño ya está trabajando así:
+
+| El sistema cree | La realidad (lote de 212 VIP Black, 11/8) |
+|---|---|
+| 5 frascos de 100 ml listos | ~500 ml en un frasco de 1 litro **macerando** |
+| Se gastaron 5 envases de 100 ml | Los 5 envases siguen **vacíos en la repisa** |
+
+No fue un error del dueño: **hizo lo único que el sistema le dejaba hacer.** Textual: *"hice una
+cosa rara"*.
+
+**Modelo propuesto — dos pasos:**
+
+1. **Macerar**: consume esencia + diluyente, **no consume envases**, y produce X ml de granel de
+   esa fragancia con su fecha de inicio y su fecha estimada de listo. El granel lleva costo por ml.
+2. **Envasar**: toma ml del granel + N envases de la talla que sea → N frascos armados. Se puede
+   hacer en varias tandas y **en tallas distintas** (3 × 30 ml + 2 × 50 ml + 3 × 100 ml del mismo
+   granel). El costo del frasco = ml × costo del granel + envase + accesorios.
+
+**Por qué importa cada vez más**: el dueño va a pasar de una maceración suelta a **macerar las 10
+referencias más vendidas** (dicho el 2026-08-23). Con 10 graneles en curso, aproximar cada uno como
+"N frascos de 100 ml" deja el inventario y los costos inservibles.
+
+**Qué NO hacer mientras tanto**: borrar el lote del 212 VIP Black. Devolvería la esencia al
+inventario, y esa esencia sí se gastó — está en el frasco de 1 litro. Si se quiere cuadrar el
+conteo físico, ajustar **+5 el Envase 100 ml** y dejar el lote quieto. Al construir la maceración,
+ese lote se migra.
+
+## 🐛 Los envases en 0 se siguen ofreciendo al registrar una producción
+
+**Encontrado el 2026-08-23 por el dueño.** Los 5 envases 1.1 están en 0 (cada producción se llevó
+el suyo, que es correcto) y aun así aparecen en el desplegable de envases al registrar un uso.
+
+Ya costó algo parecido: **el Perfumero Recargable está en −5.000 unidades** porque salieron 5 que
+nunca entraron.
+
+**Arreglo decidido**: NO esconderlos del todo. Los que tienen existencias van arriba; los que están
+en 0 van al final, en gris, con "sin existencias", y elegir uno avisa que el stock quedará
+negativo. Esconderlos por completo bloquearía el caso legítimo de registrar una producción de hace
+una semana, cuando sí había envase.
+
 ## El resto de la lista (después del producto terminado)
 
 1. **Ola 2 de los regalos: el kit del combo** — configurar en Combos qué accesorios trae por

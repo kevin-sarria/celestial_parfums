@@ -195,6 +195,54 @@ MENÚ:   Inicio    Perfumes    Accesorios    Combos    Blog
 Un producto solo se ve en la tienda si el dueño lo publicó. Los creados desde un lote nacen
 apagados.
 
+## Medido contra los datos reales (2026-08-23)
+
+La base local del dueño (`perfumes_db`) estaba atrasada; los números buenos salen de sus capturas
+de la tienda en vivo y de la base local para lo que sí coincide.
+
+| Medición | Valor | Qué implica |
+|---|---|---|
+| Perfumes por tipo | **222, TODOS `fabricado`** | Ninguno `solo_armado`, ninguno `es_accesorio` |
+| Insumos tipo accesorio | 2 (Perfumero Recargable, Bolsa Organza) | Existen como material, **sin ficha de producto** |
+| Envases 1.1 (en vivo) | 5, todos en **0 unidades** | Cada producción se llevó el suyo. Correcto |
+| Producciones (en vivo) | **6 lotes** (5 de 1.1 + 1 de 212 VIP Black ×5) | Uno más que los 5 de `pendientes.md`: Khamrah, 21/8 |
+| Categorías | 1.1, Contratipo, Original | La categoría 1.1 ya existe |
+| Stock de Perfumero Recargable | **−5.000 unidades** | Salieron 5 que nunca entraron: el problema de los regalos, en números |
+
+### Consecuencia de diseño: la pestaña Productos NACE VACÍA
+
+Con 222 fabricados y cero de todo lo demás, el día que se publique la pestaña muestra **0 filas**.
+Una tabla en blanco no enseña nada. Aplica la skill `arranque-guiado`, y sus reglas se respetan
+tal cual:
+
+```
+PRODUCTOS                                              0 de 3
+
+Aquí van las cosas que ya existen antes de venderlas: los 1.1 que
+armas, los splash que compras hechos y los accesorios.
+
+○ 1. Pon a la venta un accesorio que ya tienes
+     Tienes 2 sin ficha: Perfumero Recargable, Bolsa Organza    [Empezar]
+○ 2. Dale su ficha a un 1.1 que ya armaste
+     Tienes 5 lotes de 1.1 apuntando al perfume normal          [Empezar]
+○ 3. Muéstralos en tu tienda
+     Nacen apagados; tú decides cuáles se ven                   [Empezar]
+```
+
+- **El progreso se deduce de los datos**, nunca de una bandera: `¿hay algún es_accesorio?`,
+  `¿algún solo_armado?`, `¿alguno publicado?`. Quien ya trabajó nunca ve la lista.
+- **Cada paso abre la pantalla real**, no un formulario paralelo.
+- **Ningún paso bloquea nada.** La lista desaparece sola cuando los tres están hechos.
+- Los conteos del texto ("Tienes 2 sin ficha") **se calculan**, no se escriben a mano.
+
+## Pendiente que salió de esta sesión y NO entra aquí
+
+**La maceración.** El sistema asume que producir = llenar frascos, y en la realidad son dos
+momentos separados por semanas. El lote de 212 VIP Black (11/8, 5 × 100 ml) hoy miente: el líquido
+está en un frasco de 1 litro macerando y los 5 envases siguen vacíos en la repisa. Decisión del
+dueño (2026-08-23): **va después de estas 3 olas**. Detalle y modelo propuesto en
+[`pendientes.md`](../../pendientes.md).
+
 ## Implementación en 3 olas
 
 El orden lo fija el riesgo de cara al cliente, no la dificultad:
