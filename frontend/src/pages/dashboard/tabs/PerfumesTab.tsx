@@ -1,31 +1,18 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { SelectSimple } from '@/components/ui/select-simple';
-import { cn } from '@/lib/utils';
-import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
 import { AccionesPerfume } from './perfumes/AccionesPerfume';
 import ExportButton from '../../../components/ExportButton';
 import DescargarCatalogoButton from '../../../components/DescargarCatalogoButton';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
-import { toast } from 'sonner';
-import { esEsencia } from '../../../domain/entities/insumo';
 import { SmartTable } from '../../../components/table/SmartTable';
 import type { FiltersState } from '../../../components/table/tableTypes';
-import BuscadorSelect from '../../../components/BuscadorSelect';
-import { http } from '../../../infrastructure/api/http';
-import { urls } from '../../../infrastructure/api/urls';
-import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { perfumesColumns } from '../columns';
-import { formatPrice, subirImagenAdmin } from '../helpers';
-import { CheckGroup } from './perfumes/CheckGroup';
-import { TallasDelPerfume } from './perfumes/TallasDelPerfume';
-import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
-import type { Lookup, PerfumeForm, PrecioLista } from '../types';
-import { emptyPerfumeForm } from '../types';
+import { FichaPerfumeModal } from './perfumes/FichaPerfumeModal';
+import { useFichaPerfume } from './perfumes/useFichaPerfume';
+import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
+import type { Lookup } from '../types';
 
 interface PerfumesTabProps {
   perfumes: Perfume[];
@@ -51,147 +38,9 @@ export function PerfumesTab({
   perfumes, page, total, pageSize, aromas, ocasiones, categorias, presentaciones,
   onPageChange, onPageSizeChange, onSearch, onFilter, onClearAll, onMutate,
 }: PerfumesTabProps) {
-  const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
-  const [form, setForm] = useState<PerfumeForm>(emptyPerfumeForm());
-  const [formLoading, setFormLoading] = useState(false);
-  // Esencias disponibles: una por fragancia, cada una con su costo real por ml
-  const [esencias, setEsencias] = useState<Insumo[]>([]);
-  const [insumosProducto, setInsumosProducto] = useState<Insumo[]>([]);
-  const [envases, setEnvases] = useState<Insumo[]>([]);
-  useEffect(() => {
-    (async () => {
-      const r = await http.get<{ data: Insumo[] }>(urls.costeo.insumos);
-      if (!r.ok) return;
-      const todos = r.cuerpo?.data ?? [];
-      // Se reconocen por su GAMA, no por el nombre: ver `esEsencia`. Colgarlo de
-      // la palabra "esencia" dejaba fuera a las que se llaman como su fragancia.
-      setEsencias(todos.filter(esEsencia));
-      // Para comprados/fraccionados: cualquier insumo puede SER el producto
-      setInsumosProducto(todos);
-      setEnvases(todos.filter((i: Insumo) => i.tipo === 'envase'));
-    })();
-  }, []);
-  const [formError, setFormError] = useState('');
-  const [imgMode, setImgMode] = useState<'url' | 'file'>('url');
-  const [uploading, setUploading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
-  const [precios, setPrecios] = useState<PrecioLista[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // La lista de precios se usa para mostrar qué cobra cada talla por defecto
-  const cargarPrecios = async () => {
-    try {
-      const res = await http.get<{ data: PrecioLista[] }>(urls.perfumes.precios);
-      if (res.ok) setPrecios(res.cuerpo?.data ?? []);
-    } catch { /* sin lista, el form pide precio propio */ }
-  };
-  useEffect(() => { cargarPrecios(); }, []);
-
-  /** Precio estándar de una presentación para la categoría elegida en el form. */
-  const precioDeLista = (presentacionId: number) => {
-    if (form.categoria_id === '') return null;
-    return precios.find(
-      p => p.categoria_id === form.categoria_id && p.presentacion_id === presentacionId,
-    )?.precio ?? null;
-  };
-
-  const openCreate = () => { setForm(emptyPerfumeForm()); setFormError(''); setImgMode('url'); setModal({ open: true, editId: null }); };
-  const openEdit = (p: Perfume) => {
-    const aromaIds = aromas.filter(a => p.tipos_aroma.includes(a.nombre)).map(a => a.id);
-    const ocasionIds = ocasiones.filter(o => p.ocasiones.includes(o.nombre)).map(o => o.id);
-    const presentacionIds = presentaciones.filter(pr => p.presentaciones.includes(pr.nombre)).map(pr => pr.id);
-    // Solo los precios marcados como propios vuelven al formulario: los demás
-    // se dejan vacíos para que sigan heredando de la lista.
-    const propios: Record<number, string> = {};
-    for (const pp of p.precios ?? []) {
-      if (!pp.propio) continue;
-      const pres = presentaciones.find(pr => pr.nombre === pp.presentacion);
-      if (pres) propios[pres.id] = String(pp.precio);
-    }
-    setForm({
-      nombre: p.nombre, descripcion: p.descripcion ?? '', precio: String(p.precio),
-      duracion: p.duracion ?? '', proyeccion: p.proyeccion ?? '', imagen_url: p.imagen_url ?? '',
-      genero: p.genero ?? '', categoria_id: p.categoria_id ?? '',
-      tipos_aroma: aromaIds, ocasiones: ocasionIds, presentaciones: presentacionIds,
-      esencia_premium: p.esencia_premium ?? false, precios_propios: propios,
-      insumo_esencia_id: p.insumo_esencia_id ?? '',
-      tipo_producto: p.tipo_producto ?? 'fabricado',
-      insumo_producto_id: p.insumo_producto_id ?? '',
-      ml_utiles: p.ml_utiles ? String(p.ml_utiles) : '',
-      solo_armado: p.solo_armado ?? false,
-      es_accesorio: p.es_accesorio ?? false,
-      envases_talla: Object.fromEntries(
-        (p.precios ?? []).filter(pr => pr.envase_insumo_id)
-          .map(pr => [pr.presentacion_id, pr.envase_insumo_id as number]),
-      ),
-    });
-    setFormError(''); setImgMode('url'); setModal({ open: true, editId: p.id });
-  };
-  const closeModal = () => setModal({ open: false, editId: null });
-
-  const toggleId = (ids: number[], id: number) => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id];
-  const setF = (field: keyof PerfumeForm) => (e: { target: { value: string } }) => setForm(f => ({ ...f, [field]: e.target.value }));
-
-  const handleFileUpload = async (e: { target: { files: FileList | null } }) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      const url = await subirImagenAdmin(file);
-      setForm(f => ({ ...f, imagen_url: url }));
-    } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Error al subir imagen');
-    } finally { setUploading(false); }
-  };
-
-  const handleSubmit = async (e: { preventDefault(): void }) => {
-    e.preventDefault();
-    if (!form.nombre.trim() || !form.precio) { setFormError('Nombre y precio son obligatorios'); return; }
-    setFormLoading(true); setFormError('');
-    // Solo viajan los precios propios de las presentaciones marcadas
-    const precios_propios = form.presentaciones
-      .filter(id => Number(form.precios_propios[id]) > 0)
-      .map(id => ({ presentacion_id: id, precio: Number(form.precios_propios[id]) }));
-    const body = {
-      nombre: form.nombre, descripcion: form.descripcion || null, precio: Number(form.precio),
-      duracion: form.duracion || null, proyeccion: form.proyeccion || null,
-      imagen_url: form.imagen_url || null, genero: form.genero || null,
-      categoria_id: form.categoria_id !== '' ? Number(form.categoria_id) : null,
-      tipos_aroma: form.tipos_aroma, ocasiones: form.ocasiones, presentaciones: form.presentaciones,
-      esencia_premium: form.esencia_premium, precios_propios,
-      insumo_esencia_id: form.insumo_esencia_id === '' ? null : form.insumo_esencia_id,
-      tipo_producto: form.tipo_producto,
-      insumo_producto_id: form.insumo_producto_id === '' ? null : form.insumo_producto_id,
-      ml_utiles: Number(form.ml_utiles) || null,
-      // Solo tiene sentido en lo que se fabrica: un comprado ya viene armado.
-      solo_armado: form.tipo_producto === 'fabricado' && form.solo_armado,
-      // Solo tiene sentido en lo comprado: si cambió de tipo después de marcarla,
-      // la casilla se apaga sola en vez de que el servidor rechace el guardado.
-      es_accesorio: form.tipo_producto === 'comprado' && form.es_accesorio,
-      envases_talla: form.presentaciones.map(id => ({
-        presentacion_id: id,
-        envase_insumo_id: form.envases_talla[id] || null,
-        accesorios: [],
-      })),
-    };
-    try {
-      const res = modal.editId
-        ? await http.patch(urls.perfumes.actualizar(modal.editId), body)
-        : await http.post(urls.perfumes.crear, body);
-      if (!res.ok) { setFormError(res.error); return; }
-      closeModal(); onMutate();
-    } catch { setFormError('No se pudo conectar con el servidor'); }
-    finally { setFormLoading(false); }
-  };
-
-  const handleDelete = async (id: number) => {
-    if (!window.confirm('¿Eliminar este perfume? Esta acción no se puede deshacer.')) return;
-    const res = await http.borrar(urls.perfumes.borrar(id));
-    // Antes se ignoraba la respuesta: si el servidor lo rechazaba, la fila
-    // seguía ahí y nadie sabía por qué.
-    if (!res.ok) { toast.error(res.error, { id: 'perfume-del' }); return; }
-    onMutate();
-  };
+  // La ficha (crear/editar/borrar) vive aparte: la pestaña de Productos usa la misma.
+  const ficha = useFichaPerfume({ aromas, ocasiones, categorias, presentaciones, onMutate });
 
   return (
     <>
@@ -204,7 +53,7 @@ export function PerfumesTab({
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Upload className="size-4" /> Importar
             </Button>
-            <Button size="sm" onClick={openCreate}>+ Nuevo perfume</Button>
+            <Button size="sm" onClick={ficha.abrirNuevo}>+ Nuevo perfume</Button>
           </ToolbarActions>
         </Toolbar>
 
@@ -223,8 +72,8 @@ export function PerfumesTab({
               <AccionesPerfume
                 perfume={p}
                 onCambiado={onMutate}
-                onEditar={() => openEdit(p)}
-                onEliminar={() => handleDelete(p.id)}
+                onEditar={() => ficha.abrirEdicion(p)}
+                onEliminar={() => ficha.eliminar(p.id)}
               />
             </>
           )}
@@ -238,231 +87,14 @@ export function PerfumesTab({
         onImported={onMutate}
       />
 
-      <Modal
-        open={modal.open}
-        onClose={closeModal}
-        title={modal.editId ? 'Editar perfume' : 'Nuevo perfume'}
-        onSubmit={handleSubmit}
-        submitLabel={formLoading ? 'Guardando...' : modal.editId ? 'Guardar cambios' : 'Crear perfume'}
-        loading={formLoading}
-        maxWidth={620}
-      >
-        <FieldRow>
-          <Field label="Nombre *">
-            <Input value={form.nombre} onChange={setF('nombre')} required maxLength={100} />
-          </Field>
-          <Field label="Precio de respaldo (COP) *">
-            <Input type="number" min="0" value={form.precio} onChange={setF('precio')} required />
-            <p className="mt-1 text-[12px] text-muted-foreground">
-              Solo se usa si la talla no tiene precio abajo ni en la lista.
-            </p>
-          </Field>
-        </FieldRow>
-        <Field label="Descripción">
-          <Textarea value={form.descripcion} onChange={setF('descripcion')} rows={2} maxLength={500} />
-        </Field>
-        <FieldRow>
-          <Field label="Duración">
-            <Input placeholder="ej: 6-8 horas" value={form.duracion} onChange={setF('duracion')} maxLength={50} />
-          </Field>
-          <Field label="Proyección">
-            <Input placeholder="ej: Moderada" value={form.proyeccion} onChange={setF('proyeccion')} maxLength={50} />
-          </Field>
-        </FieldRow>
-        <FieldRow>
-          <Field label="Género">
-            <SelectSimple value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value as PerfumeForm['genero'] }))}>
-              <option value="">— Sin especificar —</option>
-              <option value="dama">Dama</option>
-              <option value="caballero">Caballero</option>
-              <option value="unisex">Unisex</option>
-            </SelectSimple>
-          </Field>
-          <Field label="Categoría">
-            <SelectSimple value={form.categoria_id}
-              onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value === '' ? '' : Number(e.target.value) }))}>
-              <option value="">— Sin especificar —</option>
-              {categorias.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-            </SelectSimple>
-          </Field>
-        </FieldRow>
-
-        <Field label="Imagen">
-          <div className="mb-2 inline-flex rounded-lg border border-border p-0.5">
-            <button
-              type="button"
-              className={cn('rounded-md px-3 py-1 text-xs font-medium transition-colors', imgMode === 'url' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
-              onClick={() => setImgMode('url')}
-            >
-              URL
-            </button>
-            <button
-              type="button"
-              className={cn('rounded-md px-3 py-1 text-xs font-medium transition-colors', imgMode === 'file' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground')}
-              onClick={() => { setImgMode('file'); fileInputRef.current?.click(); }}
-            >
-              Subir archivo
-            </button>
-          </div>
-          {imgMode === 'url' ? (
-            <Input placeholder="https://..." value={form.imagen_url} onChange={setF('imagen_url')} maxLength={500} />
-          ) : (
-            <div
-              className="flex min-h-20 cursor-pointer items-center justify-center gap-3 rounded-xl border border-dashed border-border p-4 text-center text-[13px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              {uploading ? 'Subiendo...' : form.imagen_url
-                ? <><img src={form.imagen_url} alt="preview" className="h-16 rounded-lg object-cover" /> <span>Cambiar</span></>
-                : '📁 Haz clic para seleccionar una imagen'}
-            </div>
-          )}
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-          {form.imagen_url && imgMode === 'url' && (
-            <img src={form.imagen_url} alt="preview" className="mt-2 h-20 rounded-lg border border-border object-cover" />
-          )}
-        </Field>
-
-        <FieldRow>
-          <Field label="Tipos de aroma">
-            <CheckGroup items={aromas} selected={form.tipos_aroma}
-              onToggle={id => setForm(f => ({ ...f, tipos_aroma: toggleId(f.tipos_aroma, id) }))} />
-          </Field>
-          <Field label="Ocasiones">
-            <CheckGroup items={ocasiones} selected={form.ocasiones}
-              onToggle={id => setForm(f => ({ ...f, ocasiones: toggleId(f.ocasiones, id) }))} />
-          </Field>
-        </FieldRow>
-
-        <TallasDelPerfume
-          form={form}
-          setForm={setForm}
-          presentaciones={presentaciones}
-          envases={envases}
-          precioDeLista={precioDeLista}
-        />
-
-        {/* Cómo se abastece: define con qué motor se costea */}
-        <Field label="¿Cómo consigues este producto?">
-          <SelectSimple value={form.tipo_producto}
-            onChange={e => setForm(f => ({ ...f, tipo_producto: e.target.value as PerfumeForm['tipo_producto'] }))}>
-            <option value="fabricado">Lo fabrico yo (contratipo, 1.1)</option>
-            <option value="comprado">Lo compro hecho y lo revendo (splash, gorra, perfumero vacío)</option>
-            <option value="fraccionado">Compro una botella y saco decants</option>
-          </SelectSimple>
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            {form.tipo_producto === 'fabricado'
-              ? 'Se costea con la receta del tamaño: esencia, diluyente, sellador, feromonas y envase.'
-              : form.tipo_producto === 'comprado'
-                ? 'No tiene receta: cuesta lo que pagaste por él. No necesita talla.'
-                : 'El costo sale de la botella: (lo que pagaste ÷ ml aprovechables) × ml del decant.'}
-          </p>
-        </Field>
-
-        {/* Los 1.1 no se arman contra pedido, así que no basta con tener el
-            material: mientras no haya frascos hechos, la tienda los da agotados. */}
-        {form.tipo_producto === 'fabricado' && (
-          <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 text-[13px] text-foreground">
-            <input
-              type="checkbox" className="mt-0.5 size-4 accent-primary"
-              checked={form.solo_armado}
-              onChange={e => setForm(f => ({ ...f, solo_armado: e.target.checked }))}
-            />
-            <span>
-              Solo se vende si ya está armado (los 1.1)
-              <span className="block text-[12px] font-normal text-muted-foreground">
-                Se arma por adelantado, no cuando lo piden. Sale agotado en la tienda
-                mientras no tengas frascos hechos, aunque te sobre esencia y tengas su
-                envase especial en bodega. Los frascos entran al registrar la producción.
-              </span>
-            </span>
-          </label>
-        )}
-
-        {form.tipo_producto !== 'fabricado' && (
-          <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3">
-            {/* Solo en "comprado": un accesorio se compra hecho y se revende, no
-                tiene receta ni talla. Mostrarla también en "fraccionado" dejaría
-                marcar algo que el servidor rechaza al guardar. */}
-            {form.tipo_producto === 'comprado' && (
-              <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-card p-2.5 text-[13px] text-foreground">
-                <input
-                  type="checkbox" className="mt-0.5 size-4 accent-primary"
-                  checked={form.es_accesorio}
-                  onChange={e => setForm(f => ({ ...f, es_accesorio: e.target.checked }))}
-                />
-                <span>
-                  Es un accesorio, no una fragancia (perfumero, bolsa, tarjeta…)
-                  <span className="block text-[12px] font-normal text-muted-foreground">
-                    Aparece en su propio buscador dentro de Registrar venta, aparte de los
-                    perfumes, para agregarlo como extra o como regalo en cualquier venta.
-                  </span>
-                </span>
-              </label>
-            )}
-
-            <Field label={form.tipo_producto === 'comprado' ? '¿Qué insumo ES este producto?' : '¿De qué botella sale?'}>
-              <BuscadorSelect
-                value={form.insumo_producto_id}
-                placeholder="— Elige el insumo —"
-                opciones={[
-                  { id: '', nombre: '— Sin asignar —' },
-                  ...insumosProducto.map(i => ({ id: i.id, nombre: `${i.nombre} · ${formatPrice(i.precio)}` })),
-                ]}
-                onSelect={id => setForm(f => ({ ...f, insumo_producto_id: id === '' ? '' : Number(id) }))}
-              />
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                Ahí vive su stock y su costo real. Créalo primero en Insumos y precios.
-              </p>
-            </Field>
-
-            {form.tipo_producto === 'fraccionado' && (
-              <Field label="¿Cuántos ml aprovechas de la botella?">
-                <Input type="number" min="1" value={form.ml_utiles} placeholder="Ej: 95 de una de 100"
-                  onChange={e => setForm(f => ({ ...f, ml_utiles: e.target.value }))} />
-                <p className="mt-1 text-[12px] text-muted-foreground">
-                  Menos que el volumen nominal: al trasvasar siempre queda producto en el frasco
-                  y en la jeringa. Si pones el nominal, cada decant te saldrá más barato de lo real.
-                </p>
-              </Field>
-            )}
-          </div>
-        )}
-
-        {/* Esencia concreta: cada fragancia tiene su propio costo por ml */}
-        <Field label="¿Con qué esencia se hace? (para el costeo)">
-          <BuscadorSelect
-            value={form.insumo_esencia_id}
-            placeholder="— Sin asignar —"
-            opciones={[
-              { id: '', nombre: '— Sin asignar —' },
-              ...esencias.map(e => ({ id: e.id, nombre: `${e.nombre} · ${formatPrice(e.precio)}/ml` })),
-            ]}
-            onSelect={id => setForm(f => ({ ...f, insumo_esencia_id: id === '' ? '' : Number(id) }))}
-          />
-          <p className="mt-1 text-[12px] text-muted-foreground">
-            Cada fragancia cuesta distinto por ml, así que el costo de producirla depende de
-            esto. Si lo dejas sin asignar, se usa la esencia por defecto del tamaño y el
-            costo será aproximado.
-          </p>
-        </Field>
-
-        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 text-[13px] text-foreground">
-          <input
-            type="checkbox" className="mt-0.5 size-4 accent-primary"
-            checked={form.esencia_premium}
-            onChange={e => setForm(f => ({ ...f, esencia_premium: e.target.checked }))}
-          />
-          <span>
-            Esencia premium
-            <span className="block text-[12px] font-normal text-muted-foreground">
-              La esencia de mayor calidad del laboratorio. Lleva su distintivo en el
-              catálogo y NUNCA entra en el precio de combo (no se puede colar en un
-              combo por cantidad).
-            </span>
-          </span>
-        </label>
-        <FormError>{formError}</FormError>
-      </Modal>
+      <FichaPerfumeModal
+        ficha={ficha}
+        aromas={aromas}
+        ocasiones={ocasiones}
+        categorias={categorias}
+        presentaciones={presentaciones}
+        sustantivo="perfume"
+      />
     </>
   );
 }
