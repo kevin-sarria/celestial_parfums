@@ -2,6 +2,8 @@ import { prisma } from '../../config/prisma';
 import { clampPct, fmtDate, lowerMap, splitList, toBool, toNullNum, toNullStr, toNum, toStr, Celda, FilaExcel } from './core';
 import type { EntityImportResult } from './core';
 import { textoDeError } from '../../utils/errorSeguro';
+// La regla que separa Perfumes de Productos vive en un solo sitio.
+import { WHERE_FAMILIA, type FamiliaProducto } from '../../repositories/perfume.familia';
 
 /**
  * Importación/exportación del catálogo: perfumes, precios, combos y descuentos.
@@ -10,10 +12,17 @@ import { textoDeError } from '../../utils/errorSeguro';
  * Cada función recibe las filas ya leídas y acumula el resultado.
  */
 
-/** Filas de exportación por entidad del catálogo (null = no es de este módulo). */
-export const exportarCatalogo = async (entity: string): Promise<FilaExcel[] | null> => {
+/**
+ * Filas de exportación por entidad del catálogo (null = no es de este módulo).
+ *
+ * `familia` acota "perfumes" a una de las dos pestañas del dashboard. Sin ella
+ * se exporta la tabla entera, que es lo correcto para el resto de la aplicación
+ * (Excel de todo el catálogo, plantillas, respaldos).
+ */
+export const exportarCatalogo = async (entity: string, familia?: FamiliaProducto): Promise<FilaExcel[] | null> => {
   if (entity === 'perfumes') {
     const perfumes = await prisma.perfume.findMany({
+      where: familia ? WHERE_FAMILIA[familia] : undefined,
       orderBy: { nombre: 'asc' },
       include: {
         categoria: true,

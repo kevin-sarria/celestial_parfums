@@ -1,4 +1,5 @@
 import * as perfumeRepository from '../repositories/perfume.repository';
+import type { FamiliaProducto } from '../repositories/perfume.familia';
 import * as emparejar from '../repositories/emparejarEsencias.repository';
 import * as clasificacion from '../repositories/clasificacion.repository';
 import * as precios from '../repositories/precio.repository';
@@ -51,7 +52,7 @@ export const allPerfumesPaginated = async (
   filtros?: perfumeRepository.CatalogoFiltros,
   todos = false,
   columnasAnd?: object[],
-  familia?: perfumeRepository.FamiliaProducto,
+  familia?: FamiliaProducto,
 ) => {
   // `todos` va DENTRO de la clave: sin eso, la página que pide el dashboard
   // (con los ocultos) se le serviría al siguiente visitante de la tienda.

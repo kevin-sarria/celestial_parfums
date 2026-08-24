@@ -27,7 +27,12 @@ interface Paso {
   titulo: string;
   hecho: boolean;
   detalle: ReactNode;
-  accion: ReactNode;
+  /**
+   * Opcional a propósito: publicar no es una pantalla a la que llevar, sino una
+   * acción dentro del menú ⋯ de cada fila. Un botón "Empezar" que abriera otra
+   * cosa enseñaría el camino equivocado, así que ese paso solo explica dónde está.
+   */
+  accion?: ReactNode;
 }
 
 /**
@@ -79,9 +84,8 @@ export function PrimerosPasosProductos({ onNuevoProducto, recargar = 0 }: Primer
       titulo: 'Muéstralos en tu tienda',
       hecho: p.productos_publicados > 0,
       detalle: p.productos > 0
-        ? `${p.productos_publicados} de ${p.productos} se ven en la tienda. Los demás solo se pueden vender por aquí.`
-        : 'Nacen apagados a propósito: nadie ve una ficha a medio llenar.',
-      accion: <Button size="sm" variant="outline" onClick={onNuevoProducto}>Empezar</Button>,
+        ? `${p.productos_publicados} de ${p.productos} se ven en la tienda. Para mostrar uno: menú ⋯ de su fila → «Devolver a la tienda».`
+        : 'Nacen apagados a propósito: nadie ve una ficha a medio llenar. Cuando tengas el primero, lo enciendes desde el menú ⋯ de su fila.',
     },
   ];
 
@@ -137,7 +141,7 @@ export function PrimerosPasosProductos({ onNuevoProducto, recargar = 0 }: Primer
                 <span className="mt-0.5 block text-[12px] text-muted-foreground">{s.detalle}</span>
               </span>
 
-              {!s.hecho && <span className="shrink-0">{s.accion}</span>}
+              {!s.hecho && s.accion && <span className="shrink-0">{s.accion}</span>}
             </li>
           ))}
         </ol>

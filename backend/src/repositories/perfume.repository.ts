@@ -10,6 +10,9 @@ import { filtroEnum, filtroNumero, filtroTexto, type MapaFiltros } from '../util
 // Cómo se lee un perfume (precio efectivo, agotado, frascos armados) vive en su
 // propio archivo: aquí solo se consulta y se escribe.
 import { mapPerfume, perfumeInclude, NUEVO_DIAS } from './perfume.mapeo';
+// Las dos familias del dashboard (y la pregunta gemela para una ficha nueva)
+// viven en su propio archivo: no cabían aquí sin pasar las ~500 líneas.
+import { WHERE_FAMILIA, naceComoProducto, type FamiliaProducto } from './perfume.familia';
 
 /**
  * Este archivo es SOLO el perfume: consultarlo, crearlo y editarlo. Lo que colgaba de él y no era eso ya se fue a su sitio:
@@ -44,38 +47,6 @@ export const conRatings = async <T extends { id: number }>(perfumes: T[]): Promi
  * apagados, y para eso tiene que pedirlos explícitamente (`todos`).
  */
 export const SOLO_PUBLICADOS = { publicado: true } as const;
-
-/**
- * LAS DOS FAMILIAS DEL DASHBOARD.
- *
- * Una sola pregunta decide de qué lado cae cada ficha: ¿existe ANTES de que lo
- * vendas, o se fabrica en el momento de venderlo? Es una regla que el sistema
- * evalúa solo, no una lista que el dueño mantenga a mano — el día que se marque
- * un producto mal, la lista no avisa; la regla sí.
- *
- * Ojo: el 212 VIP Black con frascos armados NO es "productos". Es un fabricado
- * que casualmente tiene stock, y se queda en Perfumes. Se descartó a propósito
- * el criterio "lo que tenga unidades hoy": un producto que entra y sale de una
- * pantalla según el stock es de lo que más confunde con el tiempo.
- */
-export type FamiliaProducto = 'fabricadas' | 'productos';
-
-const ES_PRODUCTO: Prisma.PerfumeWhereInput = {
-  OR: [{ solo_armado: true }, { tipo_producto: 'comprado' }],
-};
-
-export const WHERE_FAMILIA: Record<FamiliaProducto, Prisma.PerfumeWhereInput> = {
-  productos: ES_PRODUCTO,
-  // Perfumes es el COMPLEMENTO EXACTO, no una segunda lista: dos listas paralelas
-  // se desincronizan el día que el enum crezca, y lo que caiga en el hueco
-  // desaparece de las dos pestañas sin avisar. Pasó en la primera versión con
-  // `fraccionado`. Un decant va aquí porque no existe antes de venderse: se corta
-  // de la botella grande en el momento de la venta (ver inventario.consumoVenta.ts).
-  fabricadas: { NOT: ES_PRODUCTO },
-};
-
-export const esFamilia = (v: string): v is FamiliaProducto =>
-  Object.prototype.hasOwnProperty.call(WHERE_FAMILIA, v);
 
 /**
  * Columnas filtrables de la tabla de Perfumes del dashboard. "Estado" no está:
@@ -221,8 +192,10 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       categoria_id: data.categoria_id ?? null,
       descuento:    data.descuento ?? 0,
       agotado:      data.agotado ?? false,
-      // Nace publicado salvo que se pida lo contrario (ficha a medio llenar).
-      publicado:    data.publicado ?? true,
+      // Un PRODUCTO (1.1, comprado, accesorio) nace APAGADO: su ficha se llena
+      // después y nadie debe ver una a medio llenar. Un fabricado sigue naciendo
+      // publicado — los 222 del dueño cuentan con eso.
+      publicado:    data.publicado ?? !naceComoProducto(data),
       esencia_premium:  data.esencia_premium ?? false,
       insumo_esencia_id: data.insumo_esencia_id ?? null,
       tipo_producto: data.tipo_producto ?? 'fabricado',

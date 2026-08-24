@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../config/prisma';
 import { limpiarBase } from '../test/baseDePrueba';
-import { selectParfumsPaginated } from './perfume.repository';
+import { createPerfume, selectParfumsPaginated } from './perfume.repository';
+import { exportarCatalogo } from '../services/import/catalogo';
 
 /**
  * DOS VISTAS DE LA MISMA TABLA.
@@ -61,5 +62,84 @@ describe('familia de producto', () => {
     });
     const partes = [...(await nombres('fabricadas')), ...(await nombres('productos'))].sort();
     expect(partes).toEqual(await nombres());
+  });
+});
+
+/**
+ * LA MISMA PREGUNTA, APLICADA A UNA FICHA QUE NACE.
+ *
+ * Un producto (1.1, comprado, accesorio) nace apagado: la ficha se llena
+ * después y nadie debe ver una a medio llenar en la tienda. Un fabricado
+ * sigue naciendo publicado, como siempre — Hallazgo 2 de la revisión final
+ * de la Ola 1 de Productos (2026-08-23).
+ */
+describe('publicado al nacer (naceComoProducto)', () => {
+  beforeEach(limpiarBase);
+
+  const base = { precio: 60000, tipos_aroma: [], ocasiones: [], presentaciones: [] };
+
+  const publicadoDe = async (id: number) => {
+    const p = await prisma.perfume.findUniqueOrThrow({ where: { id }, select: { publicado: true } });
+    return p.publicado;
+  };
+
+  it('un fabricado nace publicado', async () => {
+    const { id } = await createPerfume({ ...base, nombre: 'Eternity', tipo_producto: 'fabricado' });
+    expect(await publicadoDe(id)).toBe(true);
+  });
+
+  it('un comprado nace sin publicar', async () => {
+    const { id } = await createPerfume({ ...base, nombre: 'Splash comprado', tipo_producto: 'comprado' });
+    expect(await publicadoDe(id)).toBe(false);
+  });
+
+  it('un solo_armado (1.1) nace sin publicar', async () => {
+    const { id } = await createPerfume({
+      ...base, nombre: 'Bon Bon 1.1', tipo_producto: 'fabricado', solo_armado: true,
+    });
+    expect(await publicadoDe(id)).toBe(false);
+  });
+
+  it('un `publicado` explícito sigue mandando sobre la regla', async () => {
+    const { id } = await createPerfume({
+      ...base, nombre: 'Perfumero forzado', tipo_producto: 'comprado', publicado: true,
+    });
+    expect(await publicadoDe(id)).toBe(true);
+  });
+});
+
+/**
+ * LA MISMA REGLA, EN LA DESCARGA DE EXCEL.
+ *
+ * El botón Exportar de cada pestaña tiene que traer lo que esa pestaña enseña.
+ * Antes traía la tabla entera: desde Productos —una pestaña de 4 filas— se
+ * descargaban los 222 perfumes del dueño, y el archivo no servía para nada.
+ * Hallazgo 3 de la revisión final de la Ola 1 (2026-08-23).
+ */
+describe('exportar a Excel respeta la familia', () => {
+  beforeEach(async () => {
+    await limpiarBase();
+    await prisma.perfume.createMany({
+      data: [
+        { nombre: 'Fabricado normal', precio: 60000, tipo_producto: 'fabricado', solo_armado: false },
+        { nombre: 'Armado 1.1', precio: 120000, tipo_producto: 'fabricado', solo_armado: true },
+        { nombre: 'Splash comprado', precio: 45000, tipo_producto: 'comprado', solo_armado: false },
+      ],
+    });
+  });
+
+  const exportados = async (familia?: 'fabricadas' | 'productos') =>
+    ((await exportarCatalogo('perfumes', familia)) ?? []).map(f => f.nombre).sort();
+
+  it('desde Productos baja solo lo que se ve en Productos', async () => {
+    expect(await exportados('productos')).toEqual(['Armado 1.1', 'Splash comprado']);
+  });
+
+  it('desde Perfumes baja solo las fragancias', async () => {
+    expect(await exportados('fabricadas')).toEqual(['Fabricado normal']);
+  });
+
+  it('sin familia sigue bajando el catálogo entero (respaldos, plantillas)', async () => {
+    expect(await exportados()).toHaveLength(3);
   });
 });

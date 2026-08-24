@@ -42,6 +42,16 @@ describe('un producto que solo se vende armado', () => {
     await campo(pagina, 'Nombre *').fill(NOMBRE);
     await campo(pagina, 'Precio de respaldo (COP) *').fill('150000');
 
+    // "+ Nuevo producto" arranca en "comprado" (Hallazgo 1 de la revisión final
+    // de la Ola 1, 2026-08-23): sin esto el producto se iba a Perfumes. Un 1.1
+    // sigue siendo "fabricado" por dentro (solo_armado es lo que lo manda a la
+    // familia Productos), así que hay que pasarlo a mano ANTES de tocar la
+    // esencia: en "comprado" también se ve "¿Qué insumo ES este producto?",
+    // con su propio placeholder "— Sin asignar —", y con las dos casillas a la
+    // vez el selector de la esencia deja de ser único.
+    await pagina.getByRole('button', { name: /Lo compro hecho y lo revendo/ }).click();
+    await pagina.getByRole('option', { name: /Lo fabrico yo \(contratipo, 1\.1\)/ }).click();
+
     // Su esencia, con 500 ml en bodega: de sobra para armar uno de 30 ml.
     await pagina.getByRole('button', { name: /Sin asignar/ }).click();
     await pagina.getByRole('option', { name: /Herod by Parfums de Marly/ }).click();
@@ -57,6 +67,18 @@ describe('un producto que solo se vende armado', () => {
     expect(await fila.innerText()).toContain('Sin armar');
 
     await pagina.screenshot({ path: foto('tabla-sin-armar') });
+
+    // Un producto nace APAGADO (Hallazgo 2 de la revisión final de la Ola 1,
+    // 2026-08-23: la ficha se llena después y nadie debe ver una a medio
+    // llenar). Antes de este recorrido publicarlo era automático; ahora hay
+    // que devolverlo a la tienda a mano, como haría el dueño.
+    expect(await fila.innerText()).toContain('Fuera de la tienda');
+    await pagina.getByRole('button', { name: `Acciones de ${NOMBRE}` }).click();
+    await pagina.getByRole('menuitem', { name: /Devolver a la tienda/ }).click();
+    await pagina.getByRole('button', { name: 'Sí, devolverlo' }).click();
+    // El badge "Fuera de la tienda" desaparece de la fila cuando la tabla se
+    // refresca con la respuesta: esperarlo confirma que el guardado terminó.
+    await fila.getByText('Fuera de la tienda').waitFor({ state: 'detached' });
 
     // 3. Y el catálogo público lo da agotado, que es lo que de verdad importa:
     //    con esencia de sobra, la regla vieja lo habría puesto a la venta.

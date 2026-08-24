@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import * as perfumeService from '../services/perfume.service';
-import { esFamilia, esOrdenCatalogo, mapaFiltrosPerfumes } from '../repositories/perfume.repository';
+import { esOrdenCatalogo, mapaFiltrosPerfumes } from '../repositories/perfume.repository';
+import { esFamilia } from '../repositories/perfume.familia';
 import { parsePagination, parseSearch } from '../utils/pagination';
 import { parseFiltros } from '../utils/filtros';
 import { mensajeSeguro } from '../utils/errorSeguro';

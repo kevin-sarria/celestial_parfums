@@ -42,8 +42,14 @@ export function ProductosTab({
   const [recargarPasos, setRecargarPasos] = useState(0);
   const onMutateConPasos = () => { onMutate(); setRecargarPasos(v => v + 1); };
 
-  // La ficha (crear/editar/borrar) es la misma que usa Perfumes.
-  const ficha = useFichaPerfume({ aromas, ocasiones, categorias, presentaciones, onMutate: onMutateConPasos });
+  // La ficha (crear/editar/borrar) es la misma que usa Perfumes. Se le da un
+  // punto de partida distinto: sin esto, "+ Nuevo producto" heredaba
+  // `tipo_producto: 'fabricado'` del formulario en blanco y el producto se
+  // iba a la pestaña de Perfumes sin que nada lo avisara.
+  const ficha = useFichaPerfume({
+    aromas, ocasiones, presentaciones, onMutate: onMutateConPasos,
+    valoresIniciales: { tipo_producto: 'comprado' },
+  });
 
   return (
     <div className="space-y-4">
@@ -53,7 +59,8 @@ export function ProductosTab({
         <Toolbar>
           <SectionTitle count={productos.length}>Productos</SectionTitle>
           <ToolbarActions>
-            <ExportButton entity="perfumes" />
+            {/* Solo los productos: el Excel de Perfumes se descarga en su pestaña. */}
+            <ExportButton entity="perfumes" familia="productos" archivo="productos" />
             <Button size="sm" onClick={ficha.abrirNuevo}>+ Nuevo producto</Button>
           </ToolbarActions>
         </Toolbar>

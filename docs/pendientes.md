@@ -1,9 +1,10 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 24 de agosto de 2026.** Todo compila, **287 pruebas en verde** (166 backend +
+**Última sesión: 24 de agosto de 2026.** Todo compila, **294 pruebas en verde** (173 backend +
 77 frontend + 44 recorridos, más 1 saltada a propósito). Todo lo de antes sigue en `main`; la
 **Ola 1 de Productos** (punto 8 de abajo — no confundir con la Ola 1 de regalos del punto 1)
-vive en la rama `ola1-productos`, terminada y verificada, a la espera de mergearse.
+vive en la rama `ola1-productos`, terminada, con sus tres hallazgos ya arreglados y verificados
+en pantalla, a la espera de mergearse.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
 
@@ -42,22 +43,25 @@ vive en la rama `ola1-productos`, terminada y verificada, a la espera de mergear
    que la pestaña Productos nace vacía y trae su propia caja de "primeros pasos". El porqué
    completo, con la regla que parte las dos familias, en
    [`arquitectura.md`](arquitectura.md#catálogo-perfumes-y-productos-son-la-misma-tabla-partida-en-dos-2026-08-23-ola-1).
-   **Tres cosas menores, encontradas al verificar y NO arregladas** (ninguna bloquea el merge):
-   - El botón **Exportar** de la pestaña Productos descarga el catálogo ENTERO (perfumes y
-     productos juntos), no solo los productos — usa `entity="perfumes"` sin distinguir familia
-     (confirmado en `backend/src/services/import/catalogo.ts:15-25`).
-   - El botón del **paso 3** de la caja de primeros pasos ("Muéstralos en tu tienda") abre una
-     ficha en blanco — publicar de verdad se hace desde el menú `⋯` de la fila, no desde ahí.
-   - **Un producto nuevo nace PUBLICADO, no apagado**, aunque el texto del paso 3 diga "Nacen
-     apagados a propósito: nadie ve una ficha a medio llenar". `useFichaPerfume.ts` nunca manda
-     `publicado` en el body al crear, así que el servidor aplica su default de siempre
-     (`perfume.repository.ts:225`, `data.publicado ?? true`) — pensado para un perfume normal,
-     que SÍ conviene publicar apenas se llena. Efecto práctico: el paso 3 queda "hecho" en cuanto
-     se crea el primer producto, junto con el paso 1 o el 2, y la caja de arranque casi nunca
-     llega a mostrarse a medio camino (se vio en la verificación: con un solo accesorio creado ya
-     marcaba "2 de 3"). No es grave —el dueño puede despublicarlo a mano— pero si se quiere que
-     Productos SÍ nazca apagado habría que decidirlo y que `guardar()` mande `publicado: false`
-     al crear (nunca al editar, para no despublicar por accidente algo que el dueño ya activó).
+   **Los tres hallazgos de la verificación, ya ARREGLADOS (2026-08-24)** — los tres salieron de
+   mirar la pantalla, no de leer el código:
+   - **Exportar bajaba el catálogo entero desde Productos.** Ahora cada pestaña descarga lo que
+     enseña: el endpoint acepta `?familia=`, el archivo se llama `export_productos.xlsx` o
+     `export_perfumes.xlsx`, y **sin familia sigue bajando todo** (respaldos y plantillas no
+     cambian). El filtro reutiliza `WHERE_FAMILIA`, la misma regla que parte las dos pestañas: no
+     hay una segunda copia que se pueda desincronizar. 3 pruebas en `perfume.familia.bd.test.ts`.
+   - **El paso 3 de primeros pasos abría una ficha en blanco.** Publicar no es una pantalla a la
+     que llevar, sino una acción del menú `⋯` de cada fila, así que ese paso **ya no lleva botón**:
+     dice dónde está («menú ⋯ de su fila → *Devolver a la tienda*») en vez de mandar al sitio
+     equivocado. Los pasos 1 y 2 conservan el suyo, que sí lleva a alguna parte.
+   - **Un producto nacía PUBLICADO.** Ahora un producto (1.1, comprado o accesorio) **nace
+     apagado** y un perfume normal sigue naciendo publicado — los 222 del dueño cuentan con eso.
+     La regla se decide en el servidor (`naceComoProducto`, en `perfume.familia.ts`), que es donde
+     ya vivía el default: hacerlo en el formulario habría dejado el alta por Excel y por API con
+     el comportamiento viejo. Un `publicado` explícito sigue mandando. 4 pruebas.
+   **Y de paso**, `+ Nuevo producto` arranca en "lo compro hecho": antes heredaba el formulario en
+   blanco de Perfumes (`tipo_producto: 'fabricado'`) y **lo creado desde Productos se iba a la
+   pestaña de Perfumes** sin avisar. Sigue siendo un punto de partida editable, no un candado.
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -245,6 +249,18 @@ Quedan dos olas más, decididas de antemano y fuera de esta (diseño completo en
   - **Alta del 1.1 desde el lote**: hoy un 1.1 se crea desde *+ Nuevo producto* y LUEGO hay que
     armarlo aparte en Inventario; la idea es poder darlo de alta directamente al registrar el
     lote de producción, sin pasar por dos pantallas.
+    - **Al construirla, quitar la casilla "Solo se vende si ya está armado" de *+ Nuevo
+      producto*** (`FichaPerfumeModal.tsx`). El diseño manda que un 1.1 nazca SOLO del lote —
+      puerta única, para no acabar con "Bon Bon 1.1" y "Bon bon 1.1" como dos fichas distintas.
+      Hoy la rama la ofrece ahí a propósito (revisión final de la Ola 1, 2026-08-23: quitarla
+      antes de tener el alta-desde-lote habría dejado al dueño sin ninguna forma de crear un
+      1.1), pero es deuda intencional: en cuanto exista el alta desde el lote, esa puerta
+      trasera se cierra.
+    - **Y reescribir `backend/e2e/disponibilidad.e2e.test.ts`** (Recorrido 6, primer `it`): hoy
+      crea el 1.1 marcando esa misma casilla desde *+ Nuevo producto* (incluso cambiando a mano
+      "¿Cómo consigues este producto?" a "Lo fabrico yo", porque desde el Hallazgo 1 el
+      formulario arranca en "comprado"). Sin la casilla ahí, el recorrido tiene que crear el 1.1
+      pasando por el alta-desde-lote nueva.
   - **Columna STOCK** en la tabla de Productos: no entró en la Ola 1 a propósito — el listado no
     trae hoy las unidades armadas ni el stock del insumo enlazado, y traerlas es una consulta más
     en el camino caliente del catálogo. Va junto a Producciones, que es donde el dueño mira las

@@ -40,7 +40,7 @@ export function PerfumesTab({
 }: PerfumesTabProps) {
   const [importOpen, setImportOpen] = useState(false);
   // La ficha (crear/editar/borrar) vive aparte: la pestaña de Productos usa la misma.
-  const ficha = useFichaPerfume({ aromas, ocasiones, categorias, presentaciones, onMutate });
+  const ficha = useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate });
 
   return (
     <>
@@ -49,7 +49,8 @@ export function PerfumesTab({
           <SectionTitle count={perfumes.length}>Perfumes</SectionTitle>
           <ToolbarActions>
             <DescargarCatalogoButton />
-            <ExportButton entity="perfumes" />
+            {/* Solo las fragancias: los productos se exportan desde su pestaña. */}
+            <ExportButton entity="perfumes" familia="fabricadas" />
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Upload className="size-4" /> Importar
             </Button>

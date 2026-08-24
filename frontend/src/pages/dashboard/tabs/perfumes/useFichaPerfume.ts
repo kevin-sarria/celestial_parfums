@@ -12,9 +12,16 @@ import { emptyPerfumeForm } from '../../types';
 export interface UsarFichaArgs {
   aromas: Lookup[];
   ocasiones: Lookup[];
-  categorias: Lookup[];
   presentaciones: Lookup[];
   onMutate: () => void;
+  /**
+   * Con qué arranca el formulario en `abrirNuevo` (se mezcla sobre
+   * `emptyPerfumeForm()`). Sigue siendo editable: es un punto de partida,
+   * no un candado. Sin esto, Productos y Perfumes abrían el mismo formulario
+   * "en blanco" que en realidad ya traía `tipo_producto: 'fabricado'` —
+   * y todo lo creado desde Productos se iba a la pestaña de Perfumes.
+   */
+  valoresIniciales?: Partial<PerfumeForm>;
 }
 
 /** Todo lo que la ficha necesita para vivir: estado, catálogos y acciones. */
@@ -46,7 +53,7 @@ export interface FichaPerfume {
  * la misma lógica en vez de copiarla: una regla vive en un solo sitio. La
  * pestaña se queda con la barra y la tabla; aquí vive el formulario.
  */
-export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate }: UsarFichaArgs): FichaPerfume {
+export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, valoresIniciales }: UsarFichaArgs): FichaPerfume {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<PerfumeForm>(emptyPerfumeForm());
   const [formLoading, setFormLoading] = useState(false);
@@ -89,7 +96,7 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate }:
     )?.precio ?? null;
   };
 
-  const abrirNuevo = () => { setForm(emptyPerfumeForm()); setFormError(''); setImgMode('url'); setModal({ open: true, editId: null }); };
+  const abrirNuevo = () => { setForm({ ...emptyPerfumeForm(), ...valoresIniciales }); setFormError(''); setImgMode('url'); setModal({ open: true, editId: null }); };
   const abrirEdicion = (p: Perfume) => {
     const aromaIds = aromas.filter(a => p.tipos_aroma.includes(a.nombre)).map(a => a.id);
     const ocasionIds = ocasiones.filter(o => p.ocasiones.includes(o.nombre)).map(o => o.id);

@@ -371,7 +371,12 @@ export const urls = {
     /** Qué columnas espera el archivo, para pintarlas en el modal. */
     spec: `/import/${entidad}/spec`,
     plantilla: `/import/${entidad}/template`,
-    exportar: `/import/${entidad}/export`,
+    /**
+     * `familia` solo la usa el Catálogo, que son dos pestañas sobre la misma
+     * tabla: sin ella, Exportar desde Productos se traía los 222 perfumes.
+     */
+    exportar: (familia?: string) =>
+      familia ? `/import/${entidad}/export?familia=${familia}` : `/import/${entidad}/export`,
     importar: `/import/${entidad}`,
   }),
 } as const;

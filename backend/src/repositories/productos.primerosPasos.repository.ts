@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
-import { SOLO_PUBLICADOS, WHERE_FAMILIA } from './perfume.repository';
+import { SOLO_PUBLICADOS } from './perfume.repository';
+import { WHERE_FAMILIA } from './perfume.familia';
 
 /**
  * Los contadores del arranque de la pestaña Productos.

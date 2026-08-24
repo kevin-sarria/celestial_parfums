@@ -314,7 +314,9 @@ endpoint con un filtro distinto.
 
 - **`GET /parfums?familia=fabricadas|productos`**. Sin el parámetro, devuelve TODO (lo que
   siguen usando Ventas, Créditos y la tienda pública — ver el gotcha de abajo). La partición
-  vive en UN solo sitio, `WHERE_FAMILIA` en `perfume.repository.ts`:
+  vive en UN solo sitio, `WHERE_FAMILIA` en `perfume.familia.ts` (salió de
+  `perfume.repository.ts` el 2026-08-24: ese archivo ya rozaba las 500 líneas, y ahora la regla
+  la comparten el listado, la exportación a Excel y el alta):
   ```ts
   const ES_PRODUCTO = { OR: [{ solo_armado: true }, { tipo_producto: 'comprado' }] };
   WHERE_FAMILIA = {
@@ -344,6 +346,24 @@ endpoint con un filtro distinto.
   `fabricado`, 0 productos) y muestra una caja de "primeros pasos" con 3 tareas en vez de una
   tabla en blanco (`PrimerosPasosProductos.tsx`, `GET /parfums/primeros-pasos`, solo admin).
   Los 3 contadores se recalculan de los datos en cada visita, nunca de una bandera guardada.
+- **Un producto nace APAGADO; un perfume, publicado** (2026-08-24). La decisión la toma el
+  servidor —`naceComoProducto()`, la misma pregunta de `WHERE_FAMILIA` aplicada a la ficha que
+  se está creando— y no el formulario, porque es ahí donde ya vivía el default `publicado ?? true`:
+  ponerla en el frontend habría dejado el alta por Excel y por API con la regla vieja, y a los
+  dos días nadie sabría cuál manda. El porqué de cada lado: un perfume normal se llena de una
+  sentada y conviene que salga a la tienda; un producto se crea a medias (falta su foto, su
+  insumo, su precio de talla) y una ficha a medio llenar en la tienda es peor que no tenerla. Un
+  `publicado` explícito en el body sigue mandando sobre la regla — importar un Excel que dice
+  "publicado: sí" hace lo que dice.
+- **Cada pestaña exporta lo que enseña** (2026-08-24): `GET /import/perfumes/export?familia=…`
+  filtra con el mismo `WHERE_FAMILIA`, y el archivo baja como `export_productos.xlsx` o
+  `export_perfumes.xlsx` para que no se confundan en la carpeta de Descargas. **Sin `familia` se
+  sigue exportando la tabla entera**, que es lo correcto para un respaldo; una familia
+  desconocida se ignora en vez de reventar la descarga.
+- **El paso 3 de "primeros pasos" no tiene botón, a propósito.** Publicar no es una pantalla a la
+  que llevar: es una acción del menú `⋯` de cada fila. El botón que tenía abría una ficha nueva
+  en blanco —el camino equivocado—, así que ahora el paso explica dónde está la acción. Un paso
+  de arranque sin destino claro es mejor mudo que apuntando a otro sitio.
 
 #### El gotcha que alguien va a deshacer por error: el dashboard y la tienda agrupan DISTINTO
 
