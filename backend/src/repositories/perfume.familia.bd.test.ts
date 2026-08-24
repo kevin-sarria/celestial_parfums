@@ -46,4 +46,20 @@ describe('familia de producto', () => {
     const partes = [...(await nombres('fabricadas')), ...(await nombres('productos'))].sort();
     expect(partes).toEqual(await nombres());
   });
+
+  it('un decant va con los perfumes: no existe hasta que alguien lo compra', async () => {
+    await prisma.perfume.create({
+      data: { nombre: 'Decant 10 ml', precio: 20000, tipo_producto: 'fraccionado' },
+    });
+    expect(await nombres('fabricadas')).toContain('Decant 10 ml');
+    expect(await nombres('productos')).not.toContain('Decant 10 ml');
+  });
+
+  it('ningún tipo de producto se queda fuera de las dos familias', async () => {
+    await prisma.perfume.create({
+      data: { nombre: 'Decant 10 ml', precio: 20000, tipo_producto: 'fraccionado' },
+    });
+    const partes = [...(await nombres('fabricadas')), ...(await nombres('productos'))].sort();
+    expect(partes).toEqual(await nombres());
+  });
 });

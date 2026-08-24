@@ -60,9 +60,18 @@ export const SOLO_PUBLICADOS = { publicado: true } as const;
  */
 export type FamiliaProducto = 'fabricadas' | 'productos';
 
+const ES_PRODUCTO: Prisma.PerfumeWhereInput = {
+  OR: [{ solo_armado: true }, { tipo_producto: 'comprado' }],
+};
+
 export const WHERE_FAMILIA: Record<FamiliaProducto, Prisma.PerfumeWhereInput> = {
-  fabricadas: { tipo_producto: 'fabricado', solo_armado: false },
-  productos: { OR: [{ solo_armado: true }, { tipo_producto: 'comprado' }] },
+  productos: ES_PRODUCTO,
+  // Perfumes es el COMPLEMENTO EXACTO, no una segunda lista: dos listas paralelas
+  // se desincronizan el día que el enum crezca, y lo que caiga en el hueco
+  // desaparece de las dos pestañas sin avisar. Pasó en la primera versión con
+  // `fraccionado`. Un decant va aquí porque no existe antes de venderse: se corta
+  // de la botella grande en el momento de la venta (ver inventario.consumoVenta.ts).
+  fabricadas: { NOT: ES_PRODUCTO },
 };
 
 export const esFamilia = (v: string): v is FamiliaProducto =>
