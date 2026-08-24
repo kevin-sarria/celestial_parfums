@@ -50,13 +50,14 @@ export const allPerfumesPaginated = async (
   filtros?: perfumeRepository.CatalogoFiltros,
   todos = false,
   columnasAnd?: object[],
+  familia?: perfumeRepository.FamiliaProducto,
 ) => {
   // `todos` va DENTRO de la clave: sin eso, la página que pide el dashboard
   // (con los ocultos) se le serviría al siguiente visitante de la tienda.
-  const key = `parfums:page:${JSON.stringify([page, limit, search ?? '', filtros ?? null, todos, columnasAnd ?? null])}`;
+  const key = `parfums:page:${JSON.stringify([page, limit, search ?? '', filtros ?? null, todos, columnasAnd ?? null, familia ?? null])}`;
   const hit = cacheGet<Awaited<ReturnType<typeof perfumeRepository.selectParfumsPaginated>>>(key);
   if (hit) return hit;
-  const data = await perfumeRepository.selectParfumsPaginated(page, limit, search, filtros, todos, columnasAnd);
+  const data = await perfumeRepository.selectParfumsPaginated(page, limit, search, filtros, todos, columnasAnd, familia);
   cacheSet(key, data, 5 * 60_000);
   return data;
 };

@@ -46,6 +46,29 @@ export const conRatings = async <T extends { id: number }>(perfumes: T[]): Promi
 export const SOLO_PUBLICADOS = { publicado: true } as const;
 
 /**
+ * LAS DOS FAMILIAS DEL DASHBOARD.
+ *
+ * Una sola pregunta decide de qué lado cae cada ficha: ¿existe ANTES de que lo
+ * vendas, o se fabrica en el momento de venderlo? Es una regla que el sistema
+ * evalúa solo, no una lista que el dueño mantenga a mano — el día que se marque
+ * un producto mal, la lista no avisa; la regla sí.
+ *
+ * Ojo: el 212 VIP Black con frascos armados NO es "productos". Es un fabricado
+ * que casualmente tiene stock, y se queda en Perfumes. Se descartó a propósito
+ * el criterio "lo que tenga unidades hoy": un producto que entra y sale de una
+ * pantalla según el stock es de lo que más confunde con el tiempo.
+ */
+export type FamiliaProducto = 'fabricadas' | 'productos';
+
+export const WHERE_FAMILIA: Record<FamiliaProducto, Prisma.PerfumeWhereInput> = {
+  fabricadas: { tipo_producto: 'fabricado', solo_armado: false },
+  productos: { OR: [{ solo_armado: true }, { tipo_producto: 'comprado' }] },
+};
+
+export const esFamilia = (v: string): v is FamiliaProducto =>
+  Object.prototype.hasOwnProperty.call(WHERE_FAMILIA, v);
+
+/**
  * Columnas filtrables de la tabla de Perfumes del dashboard. "Estado" no está:
  * combina publicado/agotado/`faltaParaVender` en el navegador (`columns.tsx`),
  * y esa regla no tiene traducción directa a un `WHERE` — queda `filterable:
@@ -112,6 +135,8 @@ export const selectParfumsPaginated = async (
   todos = false,
   /** Filtros de columna de la tabla del dashboard (ver `mapaFiltrosPerfumes`). */
   columnasAnd?: object[],
+  /** Solo el dashboard: parte el catálogo en Perfumes / Productos. */
+  familia?: FamiliaProducto,
 ) => {
   const skip = (page - 1) * limit;
   const and: Prisma.PerfumeWhereInput[] = todos ? [] : [SOLO_PUBLICADOS];
@@ -131,6 +156,7 @@ export const selectParfumsPaginated = async (
   if (filtros?.ocasiones?.length)
     and.push({ ocasiones: { some: { ocasion: { nombre: { in: filtros.ocasiones } } } } });
   if (columnasAnd?.length) and.push(...(columnasAnd as Prisma.PerfumeWhereInput[]));
+  if (familia) and.push(WHERE_FAMILIA[familia]);
   const where: Prisma.PerfumeWhereInput | undefined = and.length ? { AND: and } : undefined;
   const orderBy = ORDEN_CATALOGO[filtros?.orden ?? 'destacados'];
   const [rows, total] = await Promise.all([
