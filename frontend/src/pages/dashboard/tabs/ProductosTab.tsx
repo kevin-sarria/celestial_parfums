@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { AccionesPerfume } from './perfumes/AccionesPerfume';
 import ExportButton from '../../../components/ExportButton';
@@ -7,6 +8,7 @@ import type { FiltersState } from '../../../components/table/tableTypes';
 import { productosColumns } from '../columns';
 import { FichaPerfumeModal } from './perfumes/FichaPerfumeModal';
 import { useFichaPerfume } from './perfumes/useFichaPerfume';
+import { PrimerosPasosProductos } from './productos/PrimerosPasosProductos';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import type { Lookup } from '../types';
 
@@ -34,11 +36,19 @@ export function ProductosTab({
   productos, page, total, pageSize, aromas, ocasiones, categorias, presentaciones,
   onPageChange, onPageSizeChange, onSearch, onFilter, onClearAll, onMutate,
 }: ProductosTabProps) {
+  // Sube cada vez que se guarda o borra algo, para que la caja de primeros
+  // pasos se refresque sin recargar la página (el contador solo se entera
+  // por props: no escucha `onMutate` por su cuenta).
+  const [recargarPasos, setRecargarPasos] = useState(0);
+  const onMutateConPasos = () => { onMutate(); setRecargarPasos(v => v + 1); };
+
   // La ficha (crear/editar/borrar) es la misma que usa Perfumes.
-  const ficha = useFichaPerfume({ aromas, ocasiones, categorias, presentaciones, onMutate });
+  const ficha = useFichaPerfume({ aromas, ocasiones, categorias, presentaciones, onMutate: onMutateConPasos });
 
   return (
-    <>
+    <div className="space-y-4">
+      <PrimerosPasosProductos onNuevoProducto={ficha.abrirNuevo} recargar={recargarPasos} />
+
       <Section>
         <Toolbar>
           <SectionTitle count={productos.length}>Productos</SectionTitle>
@@ -60,7 +70,7 @@ export function ProductosTab({
           renderActions={p => (
             <AccionesPerfume
               perfume={p}
-              onCambiado={onMutate}
+              onCambiado={onMutateConPasos}
               onEditar={() => ficha.abrirEdicion(p)}
               onEliminar={() => ficha.eliminar(p.id)}
             />
@@ -70,6 +80,6 @@ export function ProductosTab({
 
       <FichaPerfumeModal ficha={ficha} aromas={aromas} ocasiones={ocasiones}
         categorias={categorias} presentaciones={presentaciones} sustantivo="producto" />
-    </>
+    </div>
   );
 }
