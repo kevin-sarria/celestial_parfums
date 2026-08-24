@@ -119,6 +119,8 @@ export const urls = {
       /** Esencias que aún no tienen su perfume en el catálogo (GET propone, POST crea). */
       emparejar: '/parfums/esencia/emparejar',
     },
+    /** Contadores del arranque de la pestaña Productos. Solo admin. */
+    primerosPasosProductos: '/parfums/primeros-pasos',
   },
 
   ventas: {

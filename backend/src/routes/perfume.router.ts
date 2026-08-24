@@ -17,6 +17,7 @@ import {
   patchAgotadoPerfume,
   patchPublicadoPerfume,
   getResumenPublicacion,
+  getPrimerosPasosProductos,
   getImagenProxy,
   getAromas,
   addAroma,
@@ -68,6 +69,8 @@ perfumeRouter.patch('/:id/agotado', requireAdmin, validate(patchAgotadoSchema), 
 // Sacar de la tienda / devolver a la tienda (distinto de agotado: desaparece)
 perfumeRouter.patch('/:id/publicado', requireAdmin, validate(patchPublicadoSchema), patchPublicadoPerfume);
 perfumeRouter.get('/resumen-publicacion', requireAdmin, getResumenPublicacion);
+// Contadores del arranque de la pestaña Productos. Ruta fija: va antes de cualquier /:id.
+perfumeRouter.get('/primeros-pasos', requireAdmin, getPrimerosPasosProductos);
 // Trae una foto alojada en otro sitio para que el PDF pueda imprimirla
 perfumeRouter.get('/imagen-proxy', requireAdmin, getImagenProxy);
 

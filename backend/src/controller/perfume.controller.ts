@@ -226,6 +226,15 @@ export const getResumenPublicacion = async (_req: Request, res: Response) => {
   }
 };
 
+/** Contadores del arranque de la pestaña Productos (ver `primerosPasosProductos`). */
+export const getPrimerosPasosProductos = async (_req: Request, res: Response) => {
+  try {
+    res.json({ data: await perfumeService.primerosPasosProductos() });
+  } catch (error) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
 export const getAromas = async (_req: Request, res: Response) => {
   try {
     const data = await perfumeService.getAllAromas();

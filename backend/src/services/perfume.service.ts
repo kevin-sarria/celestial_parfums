@@ -2,6 +2,7 @@ import * as perfumeRepository from '../repositories/perfume.repository';
 import * as emparejar from '../repositories/emparejarEsencias.repository';
 import * as clasificacion from '../repositories/clasificacion.repository';
 import * as precios from '../repositories/precio.repository';
+import * as productosPrimerosPasos from '../repositories/productos.primerosPasos.repository';
 import { CreatePerfumeDTO } from '../types/perfume.type';
 import { cacheClear, cacheGet, cacheSet } from '../utils/cache';
 
@@ -140,6 +141,9 @@ export const patchPublicadoPerfume = async (id: string, publicado: boolean) => {
 };
 
 export const resumenPublicacion = () => perfumeRepository.resumenPublicacion();
+
+/** Contadores del arranque de la pestaña Productos. */
+export const primerosPasosProductos = () => productosPrimerosPasos.primerosPasosProductos();
 
 export const getPrecios = () => precios.selectPrecios();
 
