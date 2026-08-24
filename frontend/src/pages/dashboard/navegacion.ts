@@ -1,5 +1,5 @@
 import {
-  SprayCan, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
+  SprayCan, PackageCheck, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText,
   BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX,
   ChartColumn, Layers, Coins, type LucideIcon,
@@ -17,6 +17,7 @@ import type { Tab } from './types';
 
 export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   perfumes: { label: 'Perfumes', icon: SprayCan },
+  productos: { label: 'Productos', icon: PackageCheck },
   aromas: { label: 'Aromas', icon: Flower2 },
   ocasiones: { label: 'Ocasiones', icon: CalendarDays },
   categorias: { label: 'Categorias', icon: Tags },
@@ -51,7 +52,7 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
 
 // Menú del dashboard agrupado en secciones colapsables (drawer con burger)
 export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
-  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'combos', 'precios', 'descuentos'] },
+  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'productos', 'combos', 'precios', 'descuentos'] },
   { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones', 'gamas'] },
   /**
    * DOS grupos, no uno. Lo señaló el dueño cuando "Ventas y créditos" llegó a

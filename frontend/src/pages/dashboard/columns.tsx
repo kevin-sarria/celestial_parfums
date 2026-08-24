@@ -288,6 +288,36 @@ export const perfumesColumns: ColumnDef<Perfume>[] = [
     noTruncate: true, filterable: false },
 ];
 
+/**
+ * PRODUCTOS: lo que existe antes de venderse.
+ *
+ * Sin aromas ni duración: un accesorio no los tiene y un 1.1 los hereda de su
+ * fragancia. A cambio entran las dos que aquí sí se miran a diario — de qué
+ * clase es y cuántas unidades quedan.
+ */
+export const productosColumns: ColumnDef<Perfume>[] = [
+  columnaImagen<Perfume>(p => p.imagen_url, p => p.nombre),
+  { key: 'nombre', header: 'Nombre', type: 'string', getValue: p => p.nombre, className: cellName },
+  // El TIPO se deduce, no se guarda. El orden importa: un accesorio SIEMPRE es
+  // comprado, así que preguntar por `es_accesorio` primero es lo que evita que
+  // se pierda lo único que lo distingue.
+  { key: 'tipo', header: 'Tipo', type: 'string',
+    getValue: p => (p.solo_armado ? '1.1' : p.es_accesorio ? 'Accesorio' : 'Comprado'),
+    className: cellMeta, noTruncate: true, filterable: false },
+  { key: 'precio', header: 'Precio', type: 'currency', getValue: p => p.precio,
+    render: p => formatPrice(p.precio), className: cellPrice, noTruncate: true },
+  { key: 'categoria', header: 'Categoria', type: 'string', getValue: p => p.categoria ?? '',
+    render: p => p.categoria ?? '—', className: cellMeta, noTruncate: true },
+  { key: 'estado', header: 'Estado', type: 'string',
+    getValue: p => [
+      p.publicado ? '' : 'Fuera de la tienda',
+      p.agotado_manual ? 'Agotado' : '',
+      faltaParaVender(p)?.etiqueta ?? '',
+    ].filter(Boolean).join(', ') || 'En la tienda',
+    render: p => <EstadoPerfume perfume={p} />,
+    noTruncate: true, filterable: false },
+];
+
 export const combosColumns: ColumnDef<Combo>[] = [
   columnaImagen<Combo>(c => c.imagen_url, c => c.nombre),
   { key: 'nombre', header: 'Nombre', type: 'string', getValue: c => c.nombre,

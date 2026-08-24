@@ -31,12 +31,14 @@ const foto = (nombre: string) => path.join(os.tmpdir(), `celestial-${nombre}.png
 
 describe('un producto que solo se vende armado', () => {
   it('sale agotado en la tienda aunque le sobre esencia', async () => {
+    // Un 1.1 es un PRODUCTO (se arma antes de venderse), así que su ficha se
+    // crea desde la pestaña Productos, no desde Perfumes.
     const { contexto, pagina } = await abrirDashboard();
-    await irA(pagina, '/dashboard/perfumes');
-    await pagina.waitForSelector('text=+ Nuevo perfume');
+    await irA(pagina, '/dashboard/productos');
+    await pagina.waitForSelector('text=+ Nuevo producto');
 
     // 1. Se crea la ficha marcando la casilla del 1.1.
-    await pagina.getByRole('button', { name: '+ Nuevo perfume' }).click();
+    await pagina.getByRole('button', { name: '+ Nuevo producto' }).click();
     await campo(pagina, 'Nombre *').fill(NOMBRE);
     await campo(pagina, 'Precio de respaldo (COP) *').fill('150000');
 
@@ -47,7 +49,7 @@ describe('un producto que solo se vende armado', () => {
     await pagina.getByRole('checkbox', { name: /Solo se vende si ya está armado/ }).check();
     await pagina.getByRole('checkbox', { name: '30ml' }).check();
     await pagina.screenshot({ path: foto('form-1punto1') });
-    await pagina.getByRole('button', { name: 'Crear perfume' }).click();
+    await pagina.getByRole('button', { name: 'Crear producto' }).click();
 
     // 2. La tabla lo dice, y dice POR QUÉ.
     const fila = pagina.getByRole('row', { name: new RegExp(NOMBRE) });

@@ -14,6 +14,7 @@ import { MenuLateral } from './MenuLateral';
 import { TAB_META, TAB_POR_DEFECTO, esTabValido } from './navegacion';
 import CentroNotificaciones from './CentroNotificaciones';
 import { PerfumesTab } from './tabs/PerfumesTab';
+import { ProductosTab } from './tabs/ProductosTab';
 import { CombosTab } from './tabs/CombosTab';
 import { PreciosTab } from './tabs/PreciosTab';
 import { DescuentosTab } from './tabs/DescuentosTab';
@@ -63,6 +64,13 @@ export default function DashboardPage() {
   const [perfumesSearch, setPerfumesSearch] = useState('');
   const [perfumesFiltros, setPerfumesFiltros] = useState<FiltersState>({});
 
+  const [productos, setProductos] = useState<Perfume[]>([]);
+  const [productosPage, setProductosPage] = useState(1);
+  const [productosTotal, setProductosTotal] = useState(0);
+  const [productosPageSize, setProductosPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [productosSearch, setProductosSearch] = useState('');
+  const [productosFiltros, setProductosFiltros] = useState<FiltersState>({});
+
   const [combos, setCombos] = useState<Combo[]>([]);
   const [combosPage, setCombosPage] = useState(1);
   const [combosTotal, setCombosTotal] = useState(0);
@@ -103,7 +111,7 @@ export default function DashboardPage() {
     // no habría forma de devolverlos. El servidor solo lo acepta si eres admin.
     const res = await http.get<{ data: Perfume[]; total: number }>(urls.perfumes.todos, {
       params: {
-        page, limit: size, todos: 1,
+        page, limit: size, todos: 1, familia: 'fabricadas',
         ...(search ? { search } : {}),
         ...(Object.keys(filtros).length ? { filtros: JSON.stringify(filtros) } : {}),
       },
@@ -112,6 +120,24 @@ export default function DashboardPage() {
     setPerfumesTotal(res.cuerpo?.total ?? 0);
     setPerfumesPage(page);
     setPerfumesFiltros(filtros);
+  };
+
+  const loadProductos = async (
+    page = productosPage, size = productosPageSize, search = productosSearch, filtros = productosFiltros,
+  ) => {
+    // `todos=1`: el dashboard ve TAMBIÉN los que están fuera de la tienda; si no,
+    // no habría forma de devolverlos. El servidor solo lo acepta si eres admin.
+    const res = await http.get<{ data: Perfume[]; total: number }>(urls.perfumes.todos, {
+      params: {
+        page, limit: size, todos: 1, familia: 'productos',
+        ...(search ? { search } : {}),
+        ...(Object.keys(filtros).length ? { filtros: JSON.stringify(filtros) } : {}),
+      },
+    });
+    setProductos(res.cuerpo?.data ?? []);
+    setProductosTotal(res.cuerpo?.total ?? 0);
+    setProductosPage(page);
+    setProductosFiltros(filtros);
   };
 
   const loadCombos = async (
@@ -130,7 +156,7 @@ export default function DashboardPage() {
     setCombosFiltros(filtros);
   };
 
-  const refreshAll = () => { loadLookups(); loadPerfumes(); loadCombos(); };
+  const refreshAll = () => { loadLookups(); loadPerfumes(); loadProductos(); loadCombos(); };
 
   /**
    * Carga inicial. Llama a las MISMAS funciones que usa el resto de la
@@ -138,7 +164,7 @@ export default function DashboardPage() {
    * lo mismo, y la que se olvidara de actualizar quedaba mintiendo.
    */
   useEffect(() => {
-    Promise.all([loadLookups(), loadPerfumes(1), loadCombos(1)])
+    Promise.all([loadLookups(), loadPerfumes(1), loadProductos(1), loadCombos(1)])
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -151,6 +177,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (primerRender.current) { primerRender.current = false; return; }
     if (tab === 'perfumes') loadPerfumes(1);
+    if (tab === 'productos') loadProductos(1);
     if (tab === 'combos') loadCombos(1);
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -259,6 +286,18 @@ export default function DashboardPage() {
                 onSearch={t => { setPerfumesSearch(t); loadPerfumes(1, perfumesPageSize, t); }}
                 onFilter={f => loadPerfumes(1, perfumesPageSize, perfumesSearch, f)}
                 onClearAll={() => loadPerfumes(1, perfumesPageSize, '', {})}
+                onMutate={refreshAll}
+              />
+            )}
+            {tab === 'productos' && (
+              <ProductosTab
+                productos={productos} page={productosPage} total={productosTotal} pageSize={productosPageSize}
+                aromas={aromas} ocasiones={ocasiones} categorias={categorias} presentaciones={presentaciones}
+                onPageChange={p => loadProductos(p, productosPageSize)}
+                onPageSizeChange={s => { setProductosPageSize(s); loadProductos(1, s); }}
+                onSearch={t => { setProductosSearch(t); loadProductos(1, productosPageSize, t); }}
+                onFilter={f => loadProductos(1, productosPageSize, productosSearch, f)}
+                onClearAll={() => loadProductos(1, productosPageSize, '', {})}
                 onMutate={refreshAll}
               />
             )}
