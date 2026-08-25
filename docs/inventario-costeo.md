@@ -346,6 +346,38 @@ gramo de material**. Detalles con su porqué:
   la bodega, entra algo que ya existía. El aviso amarillo del modal explica esa diferencia con
   "Armé perfumes" en el idioma del dueño, porque es la única forma de no equivocarse de puerta.
 
+## Los envases en cero dejan de disfrazarse de disponibles (2026-08-25)
+
+**Lo encontró el dueño el 2026-08-23 registrando una producción.** Sus 5 envases 1.1 estaban en
+cero —cada lote se llevó el suyo, que es correcto— y aun así aparecían mezclados con los demás en
+el desplegable de "Envase usado", igual que los que sí tenía. Más de la mitad del desplegable eran
+opciones muertas: 7 de los 12 envases en cero, medido contra el respaldo del 2026-08-24.
+
+No es cosmético: el mismo descuido ya había dejado el **Perfumero Recargable en −25 unidades**,
+por unidades que salieron y nunca entraron.
+
+**Qué se hizo** (`opcionesPorExistencias`, en `frontend/src/domain/entities/insumo.ts`, con 7
+pruebas y el recorrido `envaseSinExistencias.e2e.test.ts`):
+
+- Los que hay van **arriba**, con "quedan 24" en letra pequeña — el número que antes obligaba a
+  salirse de la pantalla a mirarlo.
+- Los que están **en cero o en negativo** caen al final, en gris y con "sin existencias". Un
+  negativo dice eso mismo y no "quedan −25", que se lee como si hubiera.
+- Los **jubilados** (`activo = false`) no se ofrecen, aquí ni al comprar.
+
+**Y NO se esconden**, que era la otra opción sobre la mesa: registrar hoy una producción de la
+semana pasada —cuando sí había envase— es un caso legítimo, y esconderlos lo bloquearía. El aviso
+de que el stock quedará en negativo lo sigue dando el panel ámbar al pie del modal, que ya existía
+y cubre **todos** los insumos del lote, no solo el envase.
+
+El orden de entrada se respeta entre los que sí hay: ordenarlos por cantidad les movería el sitio
+cada vez que el dueño compra, y él los busca por nombre.
+
+Se aplica donde la elección va a **consumir** existencias: el modal de producción y el alta rápida
+del 1.1. **No** en la ficha del perfume ni en *Tamaños y fórmulas*: ahí se está configurando qué
+envase lleva una talla, y elegir uno que todavía no has comprado es lo normal — pintarlo en gris
+diría que algo va mal cuando no va mal nada.
+
 ## La venta consume inventario
 
 `consumirPorVenta` descuenta esencia (la DEL PERFUME), diluyente, sellador, feromonas, envase y

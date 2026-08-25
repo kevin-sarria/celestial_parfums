@@ -41,6 +41,17 @@ abrirlos desplegaban la lista del SISTEMA OPERATIVO en medio de una pantalla mar
   se quedaba abierta y tapaba el formulario que acababa de aparecer debajo. El modo "agregar"
   mantiene el panel abierto a propósito para encadenar elecciones, pero una opción que ABRE
   otra cosa no es una elección más.
+- **`nota` y `atenuada`** (opcionales en cada opción de `BuscadorSelect`): letra pequeña a la
+  derecha y opción en gris. Van **separadas del nombre** a propósito — pegadas al texto, el
+  buscador las encontraría al filtrar (escribir "24" sacaría envases) y el campo cerrado se
+  llevaría la nota dentro del valor elegido. Ver la regla de abajo, que es de donde salieron.
+- **Un desplegable que va a CONSUMIR existencias dice cuántas quedan** (2026-08-25):
+  `opcionesPorExistencias` (en `domain/entities/insumo.ts`) pone arriba lo que hay —con
+  "quedan 24"— y manda al final, en gris y con "sin existencias", lo que está en cero o en
+  negativo. **No los esconde**: registrar hoy un lote de la semana pasada, cuando sí había
+  envase, es un caso legítimo, y esconderlos lo bloquearía. El aviso de que el stock quedará
+  negativo lo sigue dando el panel ámbar del modal, al pie. Lo pide el dueño desde el
+  2026-08-23; el detalle del porqué, en [`inventario-costeo.md`](inventario-costeo.md).
 - Al revisar una pantalla, comprobarlo: es el fallo que más se repite y se cuela porque con
   3 datos de prueba el select nativo se ve bien.
 - **Excepción**: un `<select>` solo sirve si el dato guardado SIEMPRE está entre sus

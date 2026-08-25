@@ -8,11 +8,13 @@ cd backend  && npm run test:e2e      # recorridos en navegador (~35 s)
 cd frontend && npm test
 ```
 
-**215 pruebas** al 2026-08-15 (contadas corriéndolas): **68 en el frontend**, **115 en el
-backend** (1 marcada como discrepancia) y **32 recorridos** en navegador repartidos en 16 archivos
-(`arranque`, `combo`, `compra`, `cupon`, `desplegable`, `disponibilidad`, `esenciaEnPerfume`,
-`listaPrecios`, `mayoreo`, `menuLateral`, `modal`, `paginaPublica`, `pedidoSugerido`,
-`promociones`, `tallas`, `venta`).
+**326 pruebas** al 2026-08-25 (contadas corriéndolas): **84 en el frontend**, **194 en el
+backend** (1 marcada como discrepancia) y **48 recorridos** en navegador repartidos en 27 archivos
+(`accesorioVendible`, `altaArmado`, `altaPorTipo`, `arranque`, `cargaInicial`, `combo`, `compra`,
+`creditoPlazo`, `cupon`, `desplegable`, `disponibilidad`, `envaseSinExistencias`,
+`esenciaEnPerfume`, `etiquetas`, `filtroServidor`, `filtroServidorPerfumes`, `listaPrecios`,
+`mayoreo`, `menuLateral`, `modal`, `paginaPublica`, `pedidoSugerido`, `portalCliente`,
+`promociones`, `regaloDeLinea`, `tallas`, `venta`).
 
 ## Por qué estas herramientas
 
@@ -150,6 +152,12 @@ pasan, y ningún recorrido escribe en `perfumes_db`.
   —que comprueba un costo exacto— fallaba **según el orden de los archivos**, o sea a veces sí y a
   veces no. Ahora crea su propio material. Misma regla que las categorías: cada recorrido con lo
   suyo, y el orden deja de importar.
+- **Un orden se comprueba por su regla, no por posiciones fijas.** El recorrido de los envases sin
+  existencias no dice "el agotado es el tercero": comprueba que **en cuanto empieza la zona de
+  "sin existencias" ya no vuelve a aparecer un "quedan …"**. Es la misma lección que la de los
+  totales: otros recorridos siembran sus propios envases en la misma base, así que cualquier
+  posición fija se rompería el día que alguien añada uno — y por un motivo que no tiene nada que
+  ver con lo que la prueba vigila.
 - **Un refactor de red se comprueba guardando y volviendo a leer.** `paginaPublica` no mira el
   diseño: crea una entrada de blog y la busca en la lista, y guarda el nombre de Contáctame,
   **recarga** y comprueba que sigue ahí. Es el fallo típico al mover una pantalla de librería —se

@@ -1,10 +1,8 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 24 de agosto de 2026.** Todo compila, **294 pruebas en verde** (173 backend +
-77 frontend + 44 recorridos, más 1 saltada a propósito). Todo lo de antes sigue en `main`; la
-**Ola 1 de Productos** (punto 8 de abajo — no confundir con la Ola 1 de regalos del punto 1)
-vive en la rama `ola1-productos`, terminada, con sus tres hallazgos ya arreglados y verificados
-en pantalla, a la espera de mergearse.
+**Última sesión: 25 de agosto de 2026.** Todo compila, **326 pruebas en verde** (194 backend +
+84 frontend + 48 recorridos, más 1 saltada a propósito). Todo está en `main`, incluida la Ola 1
+de Productos, que ya se mergeó.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
 
@@ -62,6 +60,24 @@ en pantalla, a la espera de mergearse.
    **Y de paso**, `+ Nuevo producto` arranca en "lo compro hecho": antes heredaba el formulario en
    blanco de Perfumes (`tipo_producto: 'fabricado'`) y **lo creado desde Productos se iba a la
    pestaña de Perfumes** sin avisar. Sigue siendo un punto de partida editable, no un candado.
+9. **El alta de productos, sus tres partes (2026-08-25).** Sin migración, solo código. Es lo que
+   **desbloquea los 5 frascos 1.1** que el dueño no podía registrar:
+   - **Carga inicial de frascos ya armados**: entran con su costo y **sin descontar ni un gramo**
+     de esencia ni un envase. Queda anotada como `ajuste`, nunca como producción. Vive en
+     *Materiales*, no en *Registrar uso*.
+   - **Alta rápida del 1.1 desde el lote**: el buscador de "¿qué fragancia armaste?" ofrece
+     "+ Crear producto nuevo" como primera opción y el alta cabe dentro del propio modal, con
+     "crear y añadir otro". Nace apagado; un nombre repetido avisa y no se toca. El Excel de
+     perfumes también sabe cargar un 1.1.
+   - **Un formulario por tipo**: el alta pregunta primero qué es —fragancia, 1.1, comprado,
+     decants— y cada puerta enseña solo lo suyo. **Medido, no a ojo**: un accesorio pide 5
+     casillas y una fragancia 8, donde antes eran ~16 para todos. El porqué, en
+     [`diseno-ux.md`](diseno-ux.md) y [`inventario-costeo.md`](inventario-costeo.md).
+10. **Los envases en cero dejan de parecer disponibles (2026-08-25).** Solo frontend, sin
+    migración. En los desplegables que van a CONSUMIR existencias, lo que hay va arriba con
+    "quedan 24" y lo que está en cero cae al final, en gris y con "sin existencias". No se
+    esconden a propósito. Detalle y porqué en
+    [`inventario-costeo.md`](inventario-costeo.md#los-envases-en-cero-dejan-de-disfrazarse-de-disponibles-2026-08-25).
 
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
@@ -258,34 +274,31 @@ inventario, y esa esencia sí se gastó — está en el frasco de 1 litro. Si se
 conteo físico, ajustar **+5 el Envase 100 ml** y dejar el lote quieto. Al construir la maceración,
 ese lote se migra.
 
-## 🐛 Los envases en 0 se siguen ofreciendo al registrar una producción
+## ✅ El alta de productos y los envases en cero — HECHO (2026-08-25)
 
-**Encontrado el 2026-08-23 por el dueño.** Los 5 envases 1.1 están en 0 (cada producción se llevó
-el suyo, que es correcto) y aun así aparecen en el desplegable de envases al registrar un uso.
+Las tres partes del diseño
+([`superpowers/specs/2026-08-25-alta-de-productos-por-tipo-design.md`](superpowers/specs/2026-08-25-alta-de-productos-por-tipo-design.md))
+están construidas y verificadas en pantalla; son los puntos **9 y 10** de la lista de arriba, a la
+espera del próximo deploy. Con la carga inicial, **el dueño ya puede meter sus frascos 1.1 al
+sistema sin descontar esencia**, que era la barrera.
 
-Ya costó algo parecido: **el Perfumero Recargable está en −5.000 unidades** porque salieron 5 que
-nunca entraron.
+**Ojo con el runbook de los 9 frascos: ahora hay dos caminos y NO son intercambiables.** Antes de
+que el dueño lo corra, hay que decidir cuál va en cada lote, porque equivocarse descuadra el
+material:
 
-**Arreglo decidido**: NO esconderlos del todo. Los que tienen existencias van arriba; los que están
-en 0 van al final, en gris, con "sin existencias", y elegir uno avisa que el stock quedará
-negativo. Esconderlos por completo bloquearía el caso legítimo de registrar una producción de hace
-una semana, cuando sí había envase.
+- **Los 5 lotes del 11 al 14 de agosto** (212 VIP Black, Mandarin Sky, Bon Bon, Yum Yum, Asad) se
+  registraron ANTES de que existiera la tabla del terminado: **el material ya se descontó** y lo
+  único que falta son los frascos. Ese es exactamente el caso de la **carga inicial** — se suman
+  los frascos a su ficha 1.1 y no se toca el lote viejo. Borrarlos y rehacerlos también cuadra,
+  pero da más vueltas.
+- **El lote 6 de Khamrah (21 de agosto)** SÍ entró al sistema, y entró en la ficha del perfume
+  corriente. Ahí la carga inicial **no sirve**: el frasco ya existe, solo que colgado del sitio
+  equivocado. Ese se borra y se vuelve a registrar apuntando a la ficha 1.1, como decía el
+  runbook.
+- **El 212 VIP Black sigue siendo la excepción** de siempre: esos 500 ml están macerando, no son
+  5 frascos. No se rehace ni se carga hasta que exista la maceración.
 
-## 🚧 Lo siguiente decidido con el dueño (2026-08-25): el alta de productos
-
-Diseño completo en
-[`superpowers/specs/2026-08-25-alta-de-productos-por-tipo-design.md`](superpowers/specs/2026-08-25-alta-de-productos-por-tipo-design.md).
-Sale de una queja suya sobre el formulario del catálogo y de una barrera real: **tiene 5 frascos
-1.1 que no puede registrar**. Sin migración. En este orden:
-
-1. **Carga inicial de frascos ya armados** — lo que lo desbloquea hoy. Entra stock de producto
-   terminado SIN descontar esencia ni envases (esa esencia ya se gastó y él no la contó en el
-   inventario). El motor ya lo soporta (`movimientos_terminado` acepta `ajuste`); falta el
-   endpoint y la pantalla.
-2. **Alta rápida del 1.1 desde el lote**, con "crear y añadir otro" y columnas nuevas en el Excel
-   de perfumes. Nace apagado, como el pre-registro de esencias desde la factura.
-3. **Un formulario por tipo de producto**: la pregunta "¿qué vas a dar de alta?" decide el modal.
-   Un perfumero pasa de 16 campos a 5. Y un 1.1 puede ser **preparado o comprado hecho**.
+De paso quedó cerrado el defecto de los envases en cero que él encontró el 2026-08-23.
 
 ## Sigue de Productos y Accesorios: Ola 2 y Ola 3
 
@@ -294,27 +307,24 @@ Quedan dos olas más, decididas de antemano y fuera de esta (diseño completo en
 `docs/superpowers/specs/2026-08-23-productos-y-accesorios-design.md`):
 
 - **Ola 2 — Producciones y la ficha completa.**
-  - **Alta del 1.1 desde el lote**: hoy un 1.1 se crea desde *+ Nuevo producto* y LUEGO hay que
-    armarlo aparte en Inventario; la idea es poder darlo de alta directamente al registrar el
-    lote de producción, sin pasar por dos pantallas.
-    - **Al construirla, quitar la casilla "Solo se vende si ya está armado" de *+ Nuevo
-      producto*** (`FichaPerfumeModal.tsx`). El diseño manda que un 1.1 nazca SOLO del lote —
-      puerta única, para no acabar con "Bon Bon 1.1" y "Bon bon 1.1" como dos fichas distintas.
-      Hoy la rama la ofrece ahí a propósito (revisión final de la Ola 1, 2026-08-23: quitarla
-      antes de tener el alta-desde-lote habría dejado al dueño sin ninguna forma de crear un
-      1.1), pero es deuda intencional: en cuanto exista el alta desde el lote, esa puerta
-      trasera se cierra.
-    - **Y reescribir `backend/e2e/disponibilidad.e2e.test.ts`** (Recorrido 6, primer `it`): hoy
-      crea el 1.1 marcando esa misma casilla desde *+ Nuevo producto* (incluso cambiando a mano
-      "¿Cómo consigues este producto?" a "Lo fabrico yo", porque desde el Hallazgo 1 el
-      formulario arranca en "comprado"). Sin la casilla ahí, el recorrido tiene que crear el 1.1
-      pasando por el alta-desde-lote nueva.
+  - ~~**Alta del 1.1 desde el lote**~~ **HECHA el 2026-08-25** (punto 9 de la lista de arriba),
+    junto con su recorrido y la reescritura del de disponibilidad.
+    - **La deuda de la casilla "Solo se vende si ya está armado" quedó cerrada, pero al revés
+      de como decía este plan.** La idea era puerta ÚNICA (un 1.1 solo nace del lote) para no
+      acabar con "Bon Bon 1.1" y "Bon bon 1.1" como dos fichas. El dueño decidió el 2026-08-25
+      que sean **varias puertas**, y lo que impide los duplicados es otra cosa: un nombre
+      parecido —con tildes o mayúsculas distintas— **avisa cuál ya existe y no crea nada**, en
+      el servidor, así que da igual por dónde se entre. La casilla ya no existe: el tipo se
+      elige al empezar y `solo_armado` sale de ahí (`tipoDeProducto.ts`). El porqué del cambio
+      de criterio está en el diseño del 2026-08-25, sección *"Tres puertas, no una"*.
   - **Columna STOCK** en la tabla de Productos: no entró en la Ola 1 a propósito — el listado no
     trae hoy las unidades armadas ni el stock del insumo enlazado, y traerlas es una consulta más
     en el camino caliente del catálogo. Va junto a Producciones, que es donde el dueño mira las
     unidades de verdad.
-  - Completar el resto de la ficha por familia (hoy el modal es el mismo para las tres, con
-    textos que siguen hablando de "esencia" y "receta" aunque el producto no las tenga).
+  - ~~Completar el resto de la ficha por familia~~ **HECHO el 2026-08-25**: el cuerpo del modal
+    ya es el de cada tipo, también al EDITAR (el tipo se deduce de los datos que la ficha ya
+    tiene, no de una columna nueva que se podría desincronizar). Queda solo repasar los textos
+    de ayuda que aún hablan de "esencia" y "receta" en pantallas de fuera del alta.
 - **Ola 3 — La tienda pública.** Hoy `/perfumes` sigue mostrando fragancias Y accesorios
   juntos (la tienda no se tocó en la Ola 1 — ver el gotcha del dashboard-vs-tienda en
   `arquitectura.md`). Falta:

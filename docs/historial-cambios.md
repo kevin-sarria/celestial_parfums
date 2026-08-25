@@ -265,6 +265,44 @@ a favor de dejar el linter en cero: **avisó al instante**.
 lectura-y-reescritura de texto en Windows se lleva por delante las tildes o los saltos de línea, y
 este proyecto ya se quemó ahí antes.
 
+## Sesión del 2026-08-25: el alta de productos deja de ser un formulario para todo
+
+Sale de dos cosas del dueño el mismo día: una captura del formulario del catálogo con la pregunta
+de por qué seguía igual, y una barrera concreta — *"es una barrera grande"*, textual — tenía **5
+frascos 1.1 armados y ninguna forma de registrarlos**. Diseño completo en
+`docs/superpowers/specs/2026-08-25-alta-de-productos-por-tipo-design.md`. Sin migración: todo es
+código.
+
+**1. La carga inicial de frascos ya armados.** El único camino para que un frasco armado existiera
+era producirlo, y producir descuenta la receta — pero esa esencia se gastó hace semanas y él, al
+inventariar, contó solo el líquido suelto. Descontarla otra vez le habría dejado las esencias en
+negativo por un gasto ya restado. **La barrera no era una regla, era un camino que faltaba.** El
+motor ya sabía hacerlo (`movimientos_terminado` acepta `ajuste` desde el 2026-08-14); faltaban el
+endpoint y la pantalla. Queda anotada como ajuste y **nunca** como producción: un lote que no
+ocurrió no puede aparecer en Producciones ni sumar al costo del mes.
+
+**2. El alta del 1.1 desde donde se arma.** Es el tercer hermano de un patrón que ya funcionaba
+dos veces (crear el perfume de una esencia, crear el accesorio de un material) y hereda sus dos
+reglas: nace fuera de la tienda, y **un nombre que ya existe no se toca — se avisa cuál es**. Eso
+último se comprueba con tildes y mayúsculas distintas, que es como acabarían naciendo "Bon Bon
+1.1" y "bon bón 1.1" con el stock partido en dos fichas.
+
+**3. Cuatro puertas en vez de un formulario de ~16 campos.** La pregunta que decide qué campos
+aplican vivía en la casilla once, así que dar de alta una bolsa de organza obligaba a pasar por su
+duración y su proyección. **Medido con una prueba que cuenta las casillas en pantalla, no a ojo**:
+un accesorio pide 5 y una fragancia 8. Los cuatro tipos se **deducen** de los datos que ya
+existían (`tipo_producto`, `solo_armado`, `es_accesorio`) en vez de guardarse en una columna
+nueva: una copia se desincronizaría el día que el producto se edite por el Excel o por el alta
+desde el lote, y entonces la ficha mostraría los campos equivocados.
+
+**Y el defecto de los envases en cero**, que el dueño había encontrado dos días antes: 7 de sus 12
+envases están en cero y todos aparecían mezclados con los demás, como si hubiera. Ahora lo que hay
+va arriba con "quedan 24" y lo que está en cero cae al final, en gris y diciéndolo. **No se
+esconden**: registrar hoy un lote de la semana pasada es legítimo. La regla vive en una sola
+función pura (`opcionesPorExistencias`) que usan las dos pantallas que consumen envases, y el
+desplegable ganó dos campos opcionales (`nota`, `atenuada`) **separados del nombre**, para que el
+buscador no filtre por ellos ni se cuelen dentro del valor elegido.
+
 ## Cosas que se probaron y se descartaron
 
 - **Three.js para la tarjeta de recompensas**: pesaba mucho para el público de gama baja y el
