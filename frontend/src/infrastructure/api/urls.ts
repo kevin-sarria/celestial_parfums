@@ -43,6 +43,8 @@ export const urls = {
     /** Los puntos de pedido de todas las gamas, de una vez. */
     minimosGama: '/inventario/minimos-gama',
     producciones: '/inventario/producciones',
+    /** Lotes por enlazar a su ficha 1.1. Solo lee. */
+    produccionesPorEnlazar: '/inventario/producciones/por-enlazar',
     produccion: (id: number) => `/inventario/producciones/${id}`,
   },
 

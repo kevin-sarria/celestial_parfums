@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import * as repo from '../repositories/inventario.repository';
 import * as producciones from '../repositories/inventario.producciones';
+import { lotesPorEnlazar } from '../repositories/producciones.enlazar';
 import * as reposicion from '../repositories/reposicion.repository';
 import { cargaInicialArmados, listarTerminado } from '../repositories/inventario.terminado';
 import { requireAdmin } from '../middleware/auth.middleware';
@@ -105,6 +106,14 @@ inventarioRouter.post('/salidas', validate(salidaSchema), h(async (req, res) => 
 
 inventarioRouter.get('/producciones', h(async (_req, res) => {
   res.json({ data: await producciones.listarProducciones() });
+}));
+
+/**
+ * Lotes cuyos frascos quedaron en la ficha equivocada, o no quedaron. Solo lee:
+ * las acciones son la carga inicial y el PATCH del lote, que ya existen.
+ */
+inventarioRouter.get('/producciones/por-enlazar', h(async (_req, res) => {
+  res.json({ data: await lotesPorEnlazar() });
 }));
 
 /** Registra un lote armado y descuenta sus insumos. */
