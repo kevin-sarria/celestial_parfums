@@ -20,6 +20,8 @@ interface Props {
   envases: InventarioInsumo[];
   /** Esencias, para costear los que él prepara. */
   esencias: InventarioInsumo[];
+  /** El catálogo, para decir de qué perfume corriente es este 1.1. */
+  perfumes: { id: number; nombre: string }[];
   onCerrar: () => void;
   /** `seguir` = quedarse aquí para dar de alta otro. */
   onCreado: (creado: ArmadoCreado, seguir: boolean) => void;
@@ -39,7 +41,7 @@ interface Props {
  * mientras tanto no se ve en la tienda: nace apagado.
  */
 export function AltaProductoArmado({
-  nombreInicial, presentaciones, envases, esencias, onCerrar, onCreado,
+  nombreInicial, presentaciones, envases, esencias, perfumes, onCerrar, onCreado,
 }: Props) {
   const [nombre, setNombre] = useState(nombreInicial);
   const [comprado, setComprado] = useState(false);
@@ -47,6 +49,7 @@ export function AltaProductoArmado({
   const [envaseId, setEnvaseId] = useState<number | ''>('');
   const [esenciaId, setEsenciaId] = useState<number | ''>('');
   const [precio, setPrecio] = useState('');
+  const [copiarDe, setCopiarDe] = useState<number | ''>('');
   const [guardando, setGuardando] = useState(false);
 
   const crear = async (seguir: boolean) => {
@@ -63,6 +66,7 @@ export function AltaProductoArmado({
         envase_insumo_id: envaseId || null,
         insumo_esencia_id: comprado ? null : (esenciaId || null),
         comprado,
+        copiar_de_perfume_id: copiarDe || null,
       });
       if (!res.ok || !res.cuerpo?.data) { toast.error(res.error, { id: 'armado' }); return; }
       // El mensaje lo escribe el servidor: distingue "lo creé" de "ya lo tenías",
@@ -73,7 +77,7 @@ export function AltaProductoArmado({
         // Se limpia solo lo que cambia de un producto a otro: la talla y el
         // envase suelen repetirse en la misma tanda, y volver a elegirlos cinco
         // veces es justo la fricción que esta pantalla viene a quitar.
-        setNombre(''); setPrecio(''); setEsenciaId('');
+        setNombre(''); setPrecio(''); setEsenciaId(''); setCopiarDe('');
       }
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'armado' }); }
     finally { setGuardando(false); }
@@ -139,6 +143,26 @@ export function AltaProductoArmado({
         )}
       </FieldRow>
 
+      {/* Un 1.1 y su corriente son el mismo jugo: lo que comparten se copia y el
+          dueño solo pone lo que de verdad cambia (foto, precio y envase). */}
+      <Field label="¿Es el 1.1 de un perfume que ya tienes?">
+        <BuscadorSelect
+          value={copiarDe}
+          placeholder="— No, es uno nuevo —"
+          opciones={[
+            { id: '', nombre: '— No, es uno nuevo —' },
+            ...perfumes.map((p) => ({ id: p.id as number | string, nombre: p.nombre })),
+          ]}
+          onSelect={(id) => setCopiarDe(id === '' ? '' : Number(id))}
+        />
+        {copiarDe !== '' && (
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Se copiarán su descripción, notas, ocasiones, género, duración y proyección. Tú pones
+            la foto, el precio y el envase.
+          </p>
+        )}
+      </Field>
+
       <p className="mt-1.5 text-[12px] text-muted-foreground">
         Nace <strong>fuera de la tienda</strong>. Le pones foto y descripción cuando quieras, y lo
         enciendes desde Productos.
@@ -155,6 +179,7 @@ export function AltaProductoArmado({
           Cancelar
         </Button>
       </div>
+
     </div>
   );
 }

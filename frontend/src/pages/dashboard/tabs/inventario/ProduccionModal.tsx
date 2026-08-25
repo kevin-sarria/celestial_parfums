@@ -13,7 +13,8 @@ import { mlDiluyente } from '../../../../application/costeoCotizacion';
 import { opcionesPorExistencias } from '../../../../domain/entities/insumo';
 import type { InventarioInsumo, Produccion } from '../../types';
 import type { FormulaVolumen, Insumo } from '../../../../domain/entities/cotizacion.types';
-import { AltaProductoArmado } from './AltaProductoArmado';
+import { AltaProductoArmado, type ArmadoCreado } from './AltaProductoArmado';
+import { PublicarRecienCreado } from './PublicarRecienCreado';
 
 /** Lo mínimo que hace falta del catálogo para elegir qué fragancia se armó. */
 export interface PerfumeLite { id: number; nombre: string; insumo_esencia_id: number | null }
@@ -67,6 +68,8 @@ export function ProduccionModal({
   const [presentaciones, setPresentaciones] = useState<{ id: number; nombre: string }[]>([]);
   /** Sube al crear un producto: refresca la lista sin recargar la página. */
   const [creados, setCreados] = useState<PerfumeLite[]>([]);
+  /** El último creado, para poder encenderlo sin irse a Productos. */
+  const [recienCreado, setRecienCreado] = useState<ArmadoCreado | null>(null);
 
   useEffect(() => {
     // Las tallas solo hacen falta para el alta rápida; si la petición falla, el
@@ -202,17 +205,23 @@ export function ProduccionModal({
               presentaciones={presentaciones}
               envases={insumos.filter((i) => i.tipo === 'envase')}
               esencias={insumos.filter((i) => i.tipo === 'materia_prima')}
+              perfumes={catalogoPerfumes}
               onCerrar={() => setAltaNombre(null)}
               onCreado={(creado, seguir) => {
                 // Entra a la lista y queda elegido: el dueño sigue con su lote
                 // sin buscarlo de nuevo.
                 setCreados((prev) => [{ id: creado.id, nombre: creado.nombre, insumo_esencia_id: null }, ...prev]);
                 setPerfumeId(creado.id);
+                setRecienCreado(creado);
                 if (!seguir) setAltaNombre(null);
               }}
             />
           </div>
         )}
+        {recienCreado && (
+          <PublicarRecienCreado producto={recienCreado} onListo={() => setRecienCreado(null)} />
+        )}
+
         {perfumeElegido && !perfumeElegido.insumo_esencia_id && (
           <p className="mt-1 text-[12px] font-medium text-amber-700">
             Este perfume no tiene esencia asignada: se descontará la del tamaño y el costo
