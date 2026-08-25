@@ -168,3 +168,44 @@ describe('deshacer', () => {
     expect((await estadoDe(s.frasco.id)).stock).toBe(1000);
   });
 });
+
+/**
+ * El costo promedio de una ficha es una PROYECCIÓN del libro, igual que el
+ * stock. Hasta el 2026-08-25 solo se tocaba al ENTRAR frascos: revertir un lote
+ * restaba las unidades y dejaba el costo del lote borrado mintiendo. Era
+ * invisible mientras borrar un lote era raro; deja de serlo desde que el lote se
+ * puede editar.
+ */
+describe('el costo promedio se reconstruye del libro', () => {
+  beforeEach(limpiarBase);
+
+  it('borrar el lote caro devuelve el promedio al del lote barato', async () => {
+    const s = await sembrarFabricacion30ml({ stock: 2000 });
+
+    await armar(s, 1);
+    // Se encarece la esencia entre un lote y otro: el segundo cuesta más.
+    await prisma.insumoCosto.update({ where: { id: s.esencia.id }, data: { precio: 4000 } });
+    const caro = await armar(s, 1);
+
+    const conLosDos = await armados(s.perfume.id, s.presentacion.id);
+    expect(conLosDos.costo).toBeGreaterThan(COSTO_RECETA);
+
+    await eliminarProduccion(caro.id);
+
+    const soloElBarato = await armados(s.perfume.id, s.presentacion.id);
+    expect(soloElBarato.stock).toBe(1);
+    // Sin recalcular, aquí seguiría el promedio inflado de los dos lotes.
+    expect(soloElBarato.costo).toBeCloseTo(COSTO_RECETA, 0);
+  });
+
+  it('sin frascos vivos el promedio queda en cero, no en el último costo', async () => {
+    const s = await sembrarFabricacion30ml({ stock: 2000 });
+    const lote = await armar(s, 3);
+
+    await eliminarProduccion(lote.id);
+
+    const vacio = await armados(s.perfume.id, s.presentacion.id);
+    expect(vacio.stock).toBe(0);
+    expect(vacio.costo).toBe(0);
+  });
+});

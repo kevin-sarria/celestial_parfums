@@ -151,6 +151,39 @@ export const cargaInicialArmados = async (datos: {
   }));
 };
 
+/**
+ * Rehace el costo promedio de una ficha×talla desde el libro.
+ *
+ * El promedio es una PROYECCIÓN de `movimientos_terminado`, igual que el stock:
+ * se pondera lo que entró y sigue vivo. Antes solo se tocaba al entrar frascos,
+ * así que revertir un lote restaba las unidades y dejaba el costo del lote
+ * borrado mintiendo — invisible mientras borrar era raro, y rutina desde que un
+ * lote se puede editar (2026-08-25).
+ */
+export const recalcularPromedioTerminado = async (
+  tx: Prisma.TransactionClient, perfume_id: number, presentacion_id: number,
+) => {
+  const movs = await tx.movimientoTerminado.findMany({
+    where: { perfume_id, presentacion_id },
+    select: { cantidad: true, costo_unitario: true },
+  });
+
+  let unidades = 0;
+  let plata = 0;
+  for (const m of movs) {
+    const cantidad = num(m.cantidad);
+    // Solo las ENTRADAS forman el promedio: una salida se valora al promedio
+    // vigente y no lo mueve. Es la misma regla que rige los materiales.
+    if (cantidad > 0) { unidades += cantidad; plata += cantidad * num(m.costo_unitario); }
+  }
+
+  const promedio = unidades > 0 ? r4(plata / unidades) : 0;
+  await tx.perfumePresentacion.updateMany({
+    where: { perfume_id, presentacion_id }, data: { costo_promedio: promedio },
+  });
+  return promedio;
+};
+
 /** Deshace los movimientos de terminado de una producción o de una venta. */
 export const revertirTerminado = async (
   tx: Prisma.TransactionClient,
@@ -174,6 +207,12 @@ export const revertirTerminado = async (
     });
   }
   await tx.movimientoTerminado.deleteMany({ where: { tipo, referencia_id: referenciaId } });
+
+  // El promedio se rehace del libro: restarlo "a ojo" lo iría torciendo.
+  const fichas = new Map(movs.map((m) => [`${m.perfume_id}|${m.presentacion_id}`, m]));
+  for (const f of fichas.values()) {
+    await recalcularPromedioTerminado(tx, f.perfume_id, f.presentacion_id);
+  }
 };
 
 /**
