@@ -1,5 +1,5 @@
 import { hoy } from '../../../../utils/fechas';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { SelectSimple } from '@/components/ui/select-simple';
@@ -12,6 +12,7 @@ import { Field, FieldRow } from '../../ui';
 import { mlDiluyente } from '../../../../application/costeoCotizacion';
 import type { InventarioInsumo } from '../../types';
 import type { FormulaVolumen, Insumo } from '../../../../domain/entities/cotizacion.types';
+import { AltaProductoArmado } from './AltaProductoArmado';
 
 /** Lo mínimo que hace falta del catálogo para elegir qué fragancia se armó. */
 export interface PerfumeLite { id: number; nombre: string; insumo_esencia_id: number | null }
@@ -47,6 +48,20 @@ export function ProduccionModal({
   const [perfumeId, setPerfumeId] = useState<number | ''>('');
   const [envaseId, setEnvaseId] = useState<number | ''>('');
   const [guardando, setGuardando] = useState(false);
+  /** Nombre tecleado cuando se elige "+ Crear …": el alta arranca con él escrito. */
+  const [altaNombre, setAltaNombre] = useState<string | null>(null);
+  const [presentaciones, setPresentaciones] = useState<{ id: number; nombre: string }[]>([]);
+  /** Sube al crear un producto: refresca la lista sin recargar la página. */
+  const [creados, setCreados] = useState<PerfumeLite[]>([]);
+
+  useEffect(() => {
+    // Las tallas solo hacen falta para el alta rápida; si la petición falla, el
+    // registro del lote sigue funcionando igual y no tiene sentido alarmar.
+    http.get<{ data: { id: number; nombre: string }[] }>(urls.clasificaciones('presentaciones').lista)
+      .then((r) => { if (r.ok && r.cuerpo?.data) setPresentaciones(r.cuerpo.data); });
+  }, []);
+
+  const catalogoPerfumes = [...creados, ...perfumes];
 
   const perfumeElegido = perfumes.find((p) => p.id === perfumeId) ?? null;
   /** El mismo tamaño puede llevar el envase normal o el luxury. */
@@ -128,14 +143,42 @@ export function ProduccionModal({
           value={perfumeId}
           placeholder="— Elige el perfume —"
           opciones={[
+            // "Crear nuevo" va PRIMERO: al final de una lista larga hay que hacer
+            // scroll para encontrarlo y nadie descubre que la opción existe. Misma
+            // decisión que en el alta de insumos desde la factura.
+            { id: 'nuevo', nombre: '+ Crear producto nuevo (un 1.1 que armas)' },
             { id: '', nombre: '— Sin especificar (usa la esencia del tamaño) —' },
-            ...perfumes.map((p) => ({
-              id: p.id,
+            ...catalogoPerfumes.map((p) => ({
+              id: p.id as number | string,
               nombre: p.insumo_esencia_id ? p.nombre : `${p.nombre} · sin esencia asignada`,
             })),
           ]}
-          onSelect={(id) => setPerfumeId(id === '' ? '' : Number(id))}
+          onSelect={(id) => {
+            if (id === 'nuevo') { setAltaNombre(''); return; }
+            setPerfumeId(id === '' ? '' : Number(id));
+          }}
+          // Sin esto la lista tapa el formulario de alta que aparece debajo.
+          cierranPanel={['nuevo']}
         />
+
+        {altaNombre !== null && (
+          <div className="mt-2">
+            <AltaProductoArmado
+              nombreInicial={altaNombre}
+              presentaciones={presentaciones}
+              envases={insumos.filter((i) => i.tipo === 'envase')}
+              esencias={insumos.filter((i) => i.tipo === 'materia_prima')}
+              onCerrar={() => setAltaNombre(null)}
+              onCreado={(creado, seguir) => {
+                // Entra a la lista y queda elegido: el dueño sigue con su lote
+                // sin buscarlo de nuevo.
+                setCreados((prev) => [{ id: creado.id, nombre: creado.nombre, insumo_esencia_id: null }, ...prev]);
+                setPerfumeId(creado.id);
+                if (!seguir) setAltaNombre(null);
+              }}
+            />
+          </div>
+        )}
         {perfumeElegido && !perfumeElegido.insumo_esencia_id && (
           <p className="mt-1 text-[12px] font-medium text-amber-700">
             Este perfume no tiene esencia asignada: se descontará la del tamaño y el costo

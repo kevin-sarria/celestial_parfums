@@ -13,6 +13,7 @@ import {
   getSugerenciasEsencia,
   getEmparejarEsencias,
   postEmparejarEsencias,
+  postProductoArmado,
   patchEnlacesEsencia,
   patchAgotadoPerfume,
   patchPublicadoPerfume,
@@ -40,7 +41,7 @@ import {
 } from '../controller/perfume.controller';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { createPerfumeSchema, patchDescuentoSchema, patchDescuentoCategoriaSchema, asignarEsenciaMasivaSchema, enlacesEsenciaSchema, emparejarEsenciasSchema, patchAgotadoSchema, patchPublicadoSchema, nombreSchema, precioListaSchema } from '../schemas/perfume.schema';
+import { productoArmadoSchema, createPerfumeSchema, patchDescuentoSchema, patchDescuentoCategoriaSchema, asignarEsenciaMasivaSchema, enlacesEsenciaSchema, emparejarEsenciasSchema, patchAgotadoSchema, patchPublicadoSchema, nombreSchema, precioListaSchema } from '../schemas/perfume.schema';
 
 export const perfumeRouter = Router();
 
@@ -63,6 +64,8 @@ perfumeRouter.get('/esencia/sugerencias', requireAdmin, getSugerenciasEsencia);
 // Puesta al día: las esencias que todavía no tienen su perfume en el catálogo
 perfumeRouter.get('/esencia/emparejar', requireAdmin, getEmparejarEsencias);
 perfumeRouter.post('/esencia/emparejar', requireAdmin, validate(emparejarEsenciasSchema), postEmparejarEsencias);
+// Alta de un 1.1 desde el lote (Inventario → Armé perfumes), sin salir de ahí.
+perfumeRouter.post('/armado', requireAdmin, validate(productoArmadoSchema), postProductoArmado);
 perfumeRouter.patch('/esencia/enlaces', requireAdmin, validate(enlacesEsenciaSchema), patchEnlacesEsencia);
 perfumeRouter.patch('/esencia/masiva', requireAdmin, validate(asignarEsenciaMasivaSchema), patchEsenciaMasiva);
 perfumeRouter.patch('/:id/agotado', requireAdmin, validate(patchAgotadoSchema), patchAgotadoPerfume);

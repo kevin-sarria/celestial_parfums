@@ -94,6 +94,21 @@ export const enlacesEsenciaSchema = z.object({
  * Puesta al día de esencias: por cada una, o se enlaza con un perfume que ya
  * existe o se crea un borrador con ese nombre. Nunca las dos cosas.
  */
+/**
+ * Alta de un 1.1 desde el lote: lo MÍNIMO para que el frasco tenga costo y se
+ * pueda vender. El resto de la ficha se llena después, desde Productos.
+ */
+export const productoArmadoSchema = z.object({
+  nombre: z.string().trim().min(1, 'Ponle un nombre al producto').max(150),
+  precio: z.number().positive('Ponle el precio al que lo vendes'),
+  presentacion_id: z.number().int().positive('Elige la talla que armas'),
+  envase_insumo_id: z.number().int().positive().nullish(),
+  insumo_esencia_id: z.number().int().positive().nullish(),
+  /** true = lo compra ya hecho, así que no gasta esencia suya. */
+  comprado: z.boolean().optional(),
+  categoria_id: z.number().int().positive().nullish(),
+});
+
 export const emparejarEsenciasSchema = z.object({
   acciones: z.array(z.object({
     insumo_id: z.number().int().positive(),

@@ -1,0 +1,123 @@
+import { beforeEach, describe, expect, it } from 'vitest';
+import { prisma } from '../config/prisma';
+import { crearInsumo, limpiarBase, sembrarFabricacion30ml } from '../test/baseDePrueba';
+import { crearProductoArmado } from './emparejarEsencias.repository';
+import { selectParfumsPaginated } from './perfume.repository';
+
+/**
+ * DAR DE ALTA UN 1.1 SIN SALIR DE DONDE SE ESTÁ ARMANDO.
+ *
+ * Es el tercer hermano de un patrón que ya existía dos veces: `enlazarOCrearPerfume`
+ * (desde una esencia) y `enlazarOCrearAccesorio` (desde un accesorio). Nace de una
+ * barrera medida: el dueño tenía 5 frascos 1.1 sin ficha porque darlos de alta
+ * obligaba a salir a otra pantalla y llenar 16 campos, doce de los cuales no
+ * aplican. Textual (2026-08-25): *"es una barrera grande"*.
+ *
+ * Las dos reglas que hereda de sus hermanos, y que este archivo vigila:
+ * nace APAGADO (nadie ve una ficha a medio llenar) y un nombre que ya existe
+ * NO se toca: se avisa y decide el dueño.
+ */
+
+describe('crear un 1.1 desde el lote', () => {
+  beforeEach(limpiarBase);
+
+  const envasePremium = () => crearInsumo('Envase Bon Bon 1.1 100ml', {
+    tipo: 'envase', precio: 59498, stock: 5,
+  });
+
+  it('nace apagado, solo_armado y con su talla y su envase', async () => {
+    const s = await sembrarFabricacion30ml();
+    const envase = await envasePremium();
+
+    const res = await crearProductoArmado({
+      nombre: 'Bon Bon 1.1',
+      precio: 150000,
+      presentacion_id: s.presentacion.id,
+      envase_insumo_id: envase.id,
+      insumo_esencia_id: s.esencia.id,
+    });
+
+    expect(res.accion).toBe('creado');
+    const p = await prisma.perfume.findUniqueOrThrow({
+      where: { id: res.id },
+      include: { presentaciones: true },
+    });
+    expect(p.publicado).toBe(false);
+    expect(p.solo_armado).toBe(true);
+    expect(p.tipo_producto).toBe('fabricado');
+    expect(p.insumo_esencia_id).toBe(s.esencia.id);
+    expect(p.presentaciones).toHaveLength(1);
+    expect(p.presentaciones[0].presentacion_id).toBe(s.presentacion.id);
+    // El envase premium es lo que hace que un 1.1 cueste el doble: si no queda
+    // enganchado a SU talla, el costo sale con el frasco corriente.
+    expect(p.presentaciones[0].envase_insumo_id).toBe(envase.id);
+  });
+
+  it('uno comprado hecho no pide esencia y queda como comprado', async () => {
+    const s = await sembrarFabricacion30ml();
+    const envase = await envasePremium();
+
+    const res = await crearProductoArmado({
+      nombre: 'Splash Yara 1.1',
+      precio: 120000,
+      presentacion_id: s.presentacion.id,
+      envase_insumo_id: envase.id,
+      comprado: true,
+    });
+
+    const p = await prisma.perfume.findUniqueOrThrow({ where: { id: res.id } });
+    expect(p.tipo_producto).toBe('comprado');
+    expect(p.solo_armado).toBe(true);
+    expect(p.insumo_esencia_id).toBeNull();
+  });
+
+  it('aparece en la pestaña Productos, no en Perfumes', async () => {
+    const s = await sembrarFabricacion30ml();
+
+    await crearProductoArmado({
+      nombre: 'Khamrah 1.1',
+      precio: 150000,
+      presentacion_id: s.presentacion.id,
+      insumo_esencia_id: s.esencia.id,
+    });
+
+    const productos = await selectParfumsPaginated(1, 50, undefined, undefined, true, undefined, 'productos');
+    const fabricadas = await selectParfumsPaginated(1, 50, undefined, undefined, true, undefined, 'fabricadas');
+    expect(productos.data.map((p) => p.nombre)).toContain('Khamrah 1.1');
+    expect(fabricadas.data.map((p) => p.nombre)).not.toContain('Khamrah 1.1');
+  });
+
+  it('un nombre que ya existe avisa y NO crea otra ficha', async () => {
+    const s = await sembrarFabricacion30ml();
+    const primero = await crearProductoArmado({
+      nombre: 'Bon Bon 1.1',
+      precio: 150000,
+      presentacion_id: s.presentacion.id,
+      insumo_esencia_id: s.esencia.id,
+    });
+
+    // Mismo nombre escrito distinto: tildes, mayúsculas y espacios de más. Sin
+    // esto acabaríamos con "Bon Bon 1.1" y "bon bón  1.1" como dos fichas, con
+    // el stock partido entre las dos.
+    const segundo = await crearProductoArmado({
+      nombre: '  bon bón  1.1 ',
+      precio: 150000,
+      presentacion_id: s.presentacion.id,
+      insumo_esencia_id: s.esencia.id,
+    });
+
+    expect(segundo.accion).toBe('ya_existe');
+    expect(segundo.id).toBe(primero.id);
+    expect(await prisma.perfume.count({ where: { solo_armado: true } })).toBe(1);
+  });
+
+  it('exige nombre y precio, que es lo mínimo para que el frasco tenga costo y se pueda vender', async () => {
+    const s = await sembrarFabricacion30ml();
+    const base = { presentacion_id: s.presentacion.id, insumo_esencia_id: s.esencia.id };
+
+    await expect(crearProductoArmado({ ...base, nombre: '   ', precio: 150000 }))
+      .rejects.toThrow(/nombre/i);
+    await expect(crearProductoArmado({ ...base, nombre: 'Sin precio 1.1', precio: 0 }))
+      .rejects.toThrow(/precio/i);
+  });
+});

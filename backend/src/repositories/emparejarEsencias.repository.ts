@@ -251,6 +251,68 @@ export const enlazarOCrearAccesorio = async (
   return { id: creado.id, nombre: creado.nombre, accion: 'creado' as const };
 };
 
+/**
+ * EL TERCER HERMANO: dar de alta un 1.1 sin salir de donde se está armando.
+ *
+ * Los otros dos crean el producto que sale de una esencia (`enlazarOCrearPerfume`)
+ * y el que se revende tal cual (`enlazarOCrearAccesorio`). Este crea el que se
+ * arma antes de venderse. Nace de una barrera medida: el dueño tenía 5 frascos
+ * 1.1 sin ficha porque darlos de alta obligaba a salir a otra pantalla y llenar
+ * 16 campos, doce de los cuales no le aplican a un 1.1.
+ *
+ * Pide lo mínimo para que el frasco tenga costo y se pueda vender —nombre,
+ * precio, su talla y su envase—; el resto de la ficha (foto, notas, descripción)
+ * se llena después desde Productos, y mientras tanto **nadie lo ve**: nace
+ * apagado, como sus dos hermanos.
+ *
+ * Un 1.1 puede ser preparado por el dueño (gasta su esencia) o comprado ya hecho
+ * (`comprado: true`). Los dos son 1.1 —envase premium, precio propio y solo se
+ * venden si hay unidades—; lo único que cambia es de dónde sale su costo.
+ */
+export const crearProductoArmado = async (datos: {
+  nombre: string;
+  precio: number;
+  /** La talla que se arma. Su envase se engancha AQUÍ, no en la receta del tamaño. */
+  presentacion_id: number;
+  envase_insumo_id?: number | null;
+  /** Solo si lo prepara el dueño: la esencia con la que se cuesta. */
+  insumo_esencia_id?: number | null;
+  /** true = lo compra ya hecho, así que no gasta esencia suya. */
+  comprado?: boolean;
+  categoria_id?: number | null;
+}) => {
+  const nombre = datos.nombre.trim();
+  if (!nombre) throw badRequest('Ponle un nombre al producto (por ejemplo "Bon Bon 1.1")');
+  if (!(datos.precio > 0)) throw badRequest('Ponle el precio al que lo vendes');
+
+  const clave = palabras(nombre).join(' ');
+  const existentes = await prisma.perfume.findMany({ select: { id: true, nombre: true } });
+  const yaEsta = existentes.find((p) => palabras(p.nombre).join(' ') === clave);
+  // No se toca lo que ya existe: se avisa y decide el dueño. Es la misma regla
+  // de los otros dos hermanos, y lo que evita acabar con "Bon Bon 1.1" y
+  // "bon bón 1.1" como dos fichas con el stock partido.
+  if (yaEsta) return { id: yaEsta.id, nombre: yaEsta.nombre, accion: 'ya_existe' as const };
+
+  const creado = await prisma.perfume.create({
+    data: {
+      nombre,
+      precio: datos.precio,
+      publicado: false,
+      solo_armado: true,
+      tipo_producto: datos.comprado ? 'comprado' : 'fabricado',
+      categoria_id: datos.categoria_id ?? null,
+      insumo_esencia_id: datos.comprado ? null : (datos.insumo_esencia_id ?? null),
+      presentaciones: {
+        create: {
+          presentacion_id: datos.presentacion_id,
+          envase_insumo_id: datos.envase_insumo_id ?? null,
+        },
+      },
+    },
+  });
+  return { id: creado.id, nombre: creado.nombre, accion: 'creado' as const };
+};
+
 export interface AccionEmparejar {
   insumo_id: number;
   /** Enlazar con este perfume que ya existe. */

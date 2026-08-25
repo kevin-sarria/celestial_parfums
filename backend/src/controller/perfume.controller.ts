@@ -163,6 +163,25 @@ export const getEmparejarEsencias = async (_req: Request, res: Response) => {
   }
 };
 
+/**
+ * Da de alta un 1.1 desde donde se está armando. Si ya existe uno con ese
+ * nombre NO se toca: se responde cuál es y decide el dueño, que es la misma
+ * regla del emparejado de esencias.
+ */
+export const postProductoArmado = async (req: Request, res: Response) => {
+  try {
+    const r = await perfumeService.crearProductoArmado(req.body);
+    res.status(r.accion === 'creado' ? 201 : 200).json({
+      message: r.accion === 'creado'
+        ? `"${r.nombre}" quedó creado, fuera de la tienda. Enciéndelo cuando su ficha esté lista.`
+        : `Ya tienes "${r.nombre}" en tu catálogo: se usó ese en vez de crear otro.`,
+      data: r,
+    });
+  } catch (error) {
+    res.status(400).json({ error: mensajeSeguro(error) });
+  }
+};
+
 export const postEmparejarEsencias = async (req: Request, res: Response) => {
   try {
     const r = await perfumeService.aplicarEmparejamientos(req.body.acciones);

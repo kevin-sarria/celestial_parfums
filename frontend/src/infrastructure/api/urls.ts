@@ -123,6 +123,8 @@ export const urls = {
     },
     /** Contadores del arranque de la pestaña Productos. Solo admin. */
     primerosPasosProductos: '/parfums/primeros-pasos',
+    /** Alta de un 1.1 desde el lote, con lo mínimo para costear y vender. */
+    armado: '/parfums/armado',
   },
 
   ventas: {

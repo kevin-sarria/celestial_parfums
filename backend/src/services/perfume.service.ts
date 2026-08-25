@@ -112,6 +112,13 @@ export const sugerirEsencias = () => emparejar.sugerirEsencias();
 /** Puesta al día: qué esencias no tienen perfume y con cuál podrían emparejarse. */
 export const proponerEmparejamientos = () => emparejar.proponerEmparejamientos();
 
+/** Alta de un 1.1 desde el lote. Limpia la caché: la venta tiene que verlo ya. */
+export const crearProductoArmado = async (datos: Parameters<typeof emparejar.crearProductoArmado>[0]) => {
+  const r = await emparejar.crearProductoArmado(datos);
+  bustCatalogoCache();
+  return r;
+};
+
 export const aplicarEmparejamientos = async (acciones: emparejar.AccionEmparejar[]) => {
   const r = await emparejar.aplicarEmparejamientos(acciones);
   // Se crean perfumes y se cambian enlaces: el catálogo cacheado quedaría viejo
