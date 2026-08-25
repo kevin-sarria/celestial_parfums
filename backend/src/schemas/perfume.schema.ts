@@ -107,6 +107,8 @@ export const productoArmadoSchema = z.object({
   /** true = lo compra ya hecho, así que no gasta esencia suya. */
   comprado: z.boolean().optional(),
   categoria_id: z.number().int().positive().nullish(),
+  /** "Es el 1.1 de este perfume": copia su ficha al crear. */
+  copiar_de_perfume_id: z.number().int().positive().nullish(),
 });
 
 export const emparejarEsenciasSchema = z.object({

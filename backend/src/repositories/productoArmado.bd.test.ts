@@ -121,3 +121,73 @@ describe('crear un 1.1 desde el lote', () => {
       .rejects.toThrow(/precio/i);
   });
 });
+
+/**
+ * LA FICHA SE COPIA DEL PERFUME CORRIENTE.
+ *
+ * Un 1.1 y su corriente son el mismo jugo: descripción, notas, ocasiones,
+ * género, duración y proyección son idénticas. Escribirlas otra vez es la
+ * fricción que tiene al dueño con 229 perfumes y CERO fichas 1.1.
+ *
+ * Copia y no enlace: son dos productos que se venden distinto (otro frasco,
+ * otro precio, otra foto), y un enlace vivo obligaría a decidir cuál manda el
+ * día que se separen.
+ */
+describe('el 1.1 hereda la ficha de su perfume corriente', () => {
+  beforeEach(limpiarBase);
+
+  it('copia lo que comparten y NO copia precio, foto ni publicado', async () => {
+    const s = await sembrarFabricacion30ml();
+    const aroma = await prisma.tipoAroma.create({ data: { nombre: 'Dulce' } });
+    const ocasion = await prisma.ocasion.create({ data: { nombre: 'Noche' } });
+    const corriente = await prisma.perfume.create({
+      data: {
+        nombre: 'Khamrah By Lattafa',
+        precio: 90000,
+        descripcion: 'Canela y vainilla',
+        duracion: '8 horas',
+        proyeccion: 'Alta',
+        genero: 'unisex',
+        imagen_url: '/uploads/khamrah.webp',
+        tipos_aroma: { create: { tipo_aroma_id: aroma.id } },
+        ocasiones: { create: { ocasion_id: ocasion.id } },
+      },
+    });
+
+    const res = await crearProductoArmado({
+      nombre: 'Khamrah 1.1',
+      precio: 150000,
+      presentacion_id: s.presentacion.id,
+      copiar_de_perfume_id: corriente.id,
+    });
+
+    const creado = await prisma.perfume.findUniqueOrThrow({
+      where: { id: res.id }, include: { tipos_aroma: true, ocasiones: true },
+    });
+    expect(res.accion).toBe('creado');
+    expect(creado.descripcion).toBe('Canela y vainilla');
+    expect(creado.duracion).toBe('8 horas');
+    expect(creado.proyeccion).toBe('Alta');
+    expect(creado.genero).toBe('unisex');
+    expect(creado.tipos_aroma).toHaveLength(1);
+    expect(creado.ocasiones).toHaveLength(1);
+
+    // Lo que NO se hereda: es otro producto, con otro frasco y otra foto.
+    expect(Number(creado.precio)).toBe(150000);
+    expect(creado.imagen_url).toBeNull();
+    expect(creado.publicado).toBe(false);
+    expect(creado.solo_armado).toBe(true);
+  });
+
+  it('sin perfume del que copiar, la ficha nace vacía y no revienta', async () => {
+    const s = await sembrarFabricacion30ml();
+
+    const res = await crearProductoArmado({
+      nombre: 'Un 1.1 sin padre', precio: 150000, presentacion_id: s.presentacion.id,
+    });
+
+    const creado = await prisma.perfume.findUniqueOrThrow({ where: { id: res.id } });
+    expect(creado.descripcion).toBeNull();
+    expect(creado.genero).toBeNull();
+  });
+});
