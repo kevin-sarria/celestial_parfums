@@ -1,8 +1,8 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 25 de agosto de 2026.** Todo compila, **326 pruebas en verde** (194 backend +
-84 frontend + 48 recorridos, más 1 saltada a propósito). Todo está en `main`, incluida la Ola 1
-de Productos, que ya se mergeó.
+**Última sesión: 25 de agosto de 2026.** Todo compila, **349 pruebas en verde** (214 backend +
+84 frontend + 51 recorridos, más 1 saltada a propósito). En `main` está todo lo anterior; **editar
+lotes y el enlazador viven en la rama `editar-lotes`**, terminados y a la espera de mergearse.
 
 **Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
 
@@ -300,27 +300,35 @@ material:
 
 De paso quedó cerrado el defecto de los envases en cero que él encontró el 2026-08-23.
 
-## 🚧 Lo siguiente decidido con el dueño (2026-08-25): editar lotes y enlazar los 1.1
+## ✅ Editar lotes, enlazar los 1.1 y publicarlos — HECHO (2026-08-25, rama `editar-lotes`)
+
+Construido y verificado en pantalla; **falta mergear y desplegar**. **Trae migración**
+(`20260825120000_editar_producciones`: `costo_manual` e `historial` en `producciones`), así que el
+deploy es `git pull` + `migrate deploy` + build. El porqué de cada decisión está en
+[`inventario-costeo.md`](inventario-costeo.md#corregir-un-lote-de-producción-2026-08-25) y en
+[`diseno-ux.md`](diseno-ux.md).
+
+**Lo que cambia para el dueño:**
+
+- **El lápiz en Producciones corrige un lote entero** —material, cantidad, ficha, envase, fecha y
+  costo— sin borrarlo. El costo se recalcula solo y se puede escribir a mano (queda marcado ✎), y
+  cada corrección deja su línea en la fila.
+- **El aviso "lotes por enlazar"** manda cada frasco colgado a su ficha 1.1 con un botón, y
+  desaparece cuando no queda ninguno.
+- **Un 1.1 se crea heredando la ficha de su perfume corriente** y se publica sin cambiar de
+  pantalla; sin foto avisa y deja seguir.
+- **Arreglado de paso**: borrar un lote dejaba el costo promedio del frasco mintiendo.
+
+**Esto reemplaza casi todo el runbook de los 9 frascos**: lo que eran ~20 minutos de borrar y
+volver a registrar es ahora un botón por lote. El 212 VIP Black sigue siendo la excepción (está
+macerando, no son 5 frascos).
 
 Diseño completo en
 [`superpowers/specs/2026-08-25-editar-lotes-y-enlazar-1.1-design.md`](superpowers/specs/2026-08-25-editar-lotes-y-enlazar-1.1-design.md).
 Sale de tres pedidos suyos en la misma frase: editar producciones para ajustar valores, un
 enlazador para los 1.1 que quedaron colgados de la ficha equivocada, y poder sacarlos rápido al
-catálogo público. **Trae migración** (dos columnas en `producciones`). En este orden:
-
-1. **Editar un lote** — el motor. Cambia material, cantidad, ficha, envase, fecha y costo en una
-   sola transacción que deshace y rehace. El costo se recalcula y se puede pisar a mano (queda
-   marcado); cada edición deja una línea de historial legible. De paso arregla un defecto latente:
-   revertir un lote restaba el stock pero **dejaba el costo promedio viejo**.
-2. **La ficha 1.1 heredada del perfume corriente** — copia descripción, notas, ocasiones, género,
-   duración y proyección; el dueño solo pone foto, precio y envase. Copia, no enlace. Publicar sin
-   foto **avisa, no bloquea**.
-3. **El enlazador** — sección en Producciones con dos reglas comprobables (el lote no dejó
-   frascos; el envase que gastó no es el de la ficha donde quedaron). Sin motor propio: llama a la
-   carga inicial y al editar de arriba.
-
-**Esto reemplaza buena parte del runbook de los 9 frascos**: lo que eran ~20 minutos de borrar y
-volver a registrar pasa a ser un botón por lote.
+catálogo público, y el plan tarea por tarea en
+[`superpowers/plans/2026-08-25-editar-lotes-y-enlazar-1.1.md`](superpowers/plans/2026-08-25-editar-lotes-y-enlazar-1.1.md).
 
 ## Sigue de Productos y Accesorios: Ola 2 y Ola 3
 

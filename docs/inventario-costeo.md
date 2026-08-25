@@ -761,3 +761,63 @@ Sigue vigente y **no se cambia sin volver a preguntarle al dueño**:
    - Comprobado contra la copia de producción del 2026-08-14: las 5 tallas reales (6, 30, 50, 75 y
      100 ml) estaban bien enlazadas, así que **no había daño vivo que reparar**. 12 pruebas en
      `presentacion.tallas.bd.test.ts`.
+
+## Corregir un lote de producción (2026-08-25)
+
+Un lote hace **tres cosas** al registrarse: descuenta el material, congela su costo y suma los
+frascos a una ficha×talla. Hasta hoy solo se podían deshacer **borrando el lote entero**, y era a
+propósito: mover frascos entre fichas a mano es donde se descuadran los costos.
+
+Ese criterio se revocó con su razón medida. El lote 6 de Khamrah (21 de agosto) gastó el *Envase
+Khamrah 1.1* ($48.680) y sus frascos quedaron colgados de la ficha del **perfume corriente**: quien
+comprara un Khamrah 100 ml normal se llevaba un frasco de $74.580 de costo al precio del corriente.
+El único arreglo eran veinte minutos de borrar y volver a registrar, que además recalculaba el
+costo al promedio de hoy y no dejaba rastro.
+
+**Editar es deshacer y rehacer en una sola transacción** (`editarProduccion`,
+`inventario.producciones.ts`): devuelve el material, quita los frascos, vuelve a descontar y vuelve
+a sumar. O pasan las cuatro o no pasa ninguna. El alta y la edición comparten `aplicarLote`, porque
+dos copias de "qué hace un lote" acabarían diciendo cosas distintas.
+
+**El costo se recalcula y se puede pisar.** Si el dueño escribe el suyo, manda el suyo y el lote
+queda con `costo_manual = true`, que se ve con un ✎ en la tabla. Se marca porque un número escrito
+a mano no cuadra con la receta ni ahora ni nunca: sin la marca, el sistema parecería estar
+calculando mal.
+
+**La marca se declara, no se deduce de que venga un número.** El enlazador reenvía el costo
+*congelado* del lote justo para que mudar un frasco de ficha no lo revalúe al promedio de hoy, y
+eso no es un costo escrito por una persona.
+
+**El promedio de la ficha se reconstruye del libro** (`recalcularPromedioTerminado`), tanto al
+editar como al borrar. Antes, revertir restaba las unidades y dejaba el costo del lote borrado
+mintiendo: con dos lotes, borrar el caro dejaba el frasco barato valorado al promedio de los dos, y
+borrar el último dejaba una ficha con cero frascos y costo distinto de cero. Era invisible mientras
+borrar un lote era raro.
+
+**Los dos avisos, que avisan y no bloquean**: si bajar la cantidad deja el conteo por debajo de lo
+ya vendido, se dice con el número exacto; si algún material queda bajo cero, también. El dato
+físico manda sobre el sistema — la misma regla que ya regía borrar un lote.
+
+Cada edición deja una línea de historial **ya redactada** (`producciones.historial.ts`), no ids:
+un historial de ids obliga a reconstruir nombres que quizá ya no existan y acaba mostrando
+"perfume #529 → perfume #612".
+
+## Lotes por enlazar (2026-08-25)
+
+En *Producciones*, arriba de la tabla. Marca un lote por **dos hechos comprobables**, nunca por el
+nombre del producto:
+
+| Regla | Qué pasó | Cómo se arregla | El material |
+|---|---|---|---|
+| `sin_frascos` | Descontó material y no dejó ni un frasco: registrado antes de que existiera el libro del terminado (los 5 lotes del 11 al 14 de agosto) | **Carga inicial**: los frascos entran a su ficha | **No se toca**: ya se descontó |
+| `envase_ajeno` | El envase que gastó no es el que declara la ficha donde quedaron sus frascos (el lote 6 de Khamrah) | **Editar el lote**: los frascos se mudan con su costo | **No se toca**: es el mismo lote |
+
+Adivinar por el nombre ("dice 1.1") se descartó: bastaría un "Set 1.1" o un 1.1 sin esas letras
+para que la lista mintiera, y una lista que miente en dinero se deja de mirar.
+
+El enlazador **no tiene motor propio**: llama a la carga inicial y al `PATCH` del lote. Por eso la
+consulta devuelve el lote completo —consumos, envase y costo congelado—: el `PATCH` valida el lote
+entero, y mandar solo la ficha nueva lo reharía sin material.
+
+La ficha propuesta va siempre en el desplegable aunque el catálogo cacheado todavía no la traiga:
+una ficha 1.1 recién creada es justo el destino más probable de un lote colgado.

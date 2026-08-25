@@ -382,3 +382,20 @@ fragancia 8.**
 - **Los decants tienen su propia puerta** aunque no estaban en el diseño inicial: sin ella, el tipo
   `fraccionado` habría quedado inalcanzable desde la pantalla.
 
+
+## Publicar lo recién creado no vive dentro del formulario que lo creó (2026-08-25)
+
+En el alta de un 1.1 desde el lote, el botón *Publicar en la tienda* está **fuera** del formulario
+de alta, en su propio componente (`PublicarRecienCreado.tsx`), bajo el buscador de fragancia.
+
+Se probó dentro y en pantalla se vio por qué no funciona: *"Crear y seguir"* cierra el formulario y
+devuelve al lote, así que el botón se iba con él y encender el producto volvía a obligar al viaje a
+*Productos* — justo el viaje que el dueño no hace, y la razón de que tuviera 229 perfumes y cero
+fichas 1.1.
+
+Al lado va **"Después"**, porque el caso normal es crear varios en una tanda y encenderlos cuando
+tengan foto.
+
+**Publicar sin foto avisa, no bloquea** (decisión del dueño, 2026-08-25): se dice que en la tienda
+se verá una tarjeta sin imagen y se publica igual si él confirma. Un producto recién creado nunca
+tiene foto, así que el aviso sale siempre la primera vez.

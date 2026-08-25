@@ -8,8 +8,8 @@ cd backend  && npm run test:e2e      # recorridos en navegador (~35 s)
 cd frontend && npm test
 ```
 
-**326 pruebas** al 2026-08-25 (contadas corriéndolas): **84 en el frontend**, **194 en el
-backend** (1 marcada como discrepancia) y **48 recorridos** en navegador repartidos en 27 archivos
+**349 pruebas** al 2026-08-25 (contadas corriéndolas): **84 en el frontend**, **214 en el
+backend** (1 marcada como discrepancia) y **51 recorridos** en navegador repartidos en 30 archivos
 (`accesorioVendible`, `altaArmado`, `altaPorTipo`, `arranque`, `cargaInicial`, `combo`, `compra`,
 `creditoPlazo`, `cupon`, `desplegable`, `disponibilidad`, `envaseSinExistencias`,
 `esenciaEnPerfume`, `etiquetas`, `filtroServidor`, `filtroServidorPerfumes`, `listaPrecios`,
@@ -179,3 +179,21 @@ pasan, y ningún recorrido escribe en `perfumes_db`.
   suelto, sin `htmlFor` y sin envolver el campo, así que el navegador no los relaciona. Es un hueco
   de accesibilidad real —un lector de pantalla tampoco los asocia— pendiente de hablar con el
   dueño. Mientras exista, los recorridos usan el ayudante `campo()`.
+
+## Lo que enseñaron los recorridos de editar lotes (2026-08-25)
+
+- **Una prueba de pantalla no puede fijar cifras que la pantalla recalcula.** El primer recorrido
+  de corregir un lote afirmaba "la esencia baja 40 ml", contando con que el navegador mandaría los
+  mismos consumos que se habían sembrado. La pantalla los recalcula con la fórmula, así que la
+  cifra era otra. Se cambió por la REGLA —del lote solo queda su gasto vigente, leído de su propio
+  libro—, que es lo que de verdad hay que garantizar y no depende de la receta que haya ese día.
+- **El catálogo del dashboard se sirve cacheado.** Un perfume insertado con Prisma justo antes del
+  recorrido NO aparece en los desplegables hasta que caduque el caché. Si un recorrido necesita
+  elegir un perfume, que use uno que ya exista (y lo actualice), o que lo cree por la pantalla,
+  que sí invalida el caché.
+- **El aviso de "lotes por enlazar" se busca en singular Y en plural** (`/lotes? por enlazar/`):
+  los recorridos comparten base y siembran sus propios lotes, así que el número cambia según el
+  orden en que corran. Mismo motivo por el que sus tarjetas se buscan por el número de lote y no
+  por su posición.
+- **`toBeVisible` no existe aquí.** Es matcher de Playwright Test y los recorridos corren con
+  Vitest: se espera al elemento con `waitFor()`.

@@ -319,3 +319,32 @@ buscador no filtre por ellos ni se cuelen dentro del valor elegido.
 - **`output` en el generator de Prisma**: funcionaba en local y rompía producción.
 - **Ordenar la lista de esencias por nombre en el selector**: se ordenan las esencias primero,
   porque diluyente/sellador/feromonas también son materia prima.
+
+## Editar lotes, enlazar los 1.1 y publicarlos (2026-08-25)
+
+Tres pedidos del dueño en la misma frase, construidos en este orden (diseño en
+`superpowers/specs/2026-08-25-editar-lotes-y-enlazar-1.1-design.md`, plan en
+`superpowers/plans/2026-08-25-editar-lotes-y-enlazar-1.1.md`):
+
+1. **El costo promedio del terminado se reconstruye del libro.** No estaba pedido: es el cimiento.
+   Revertir un lote restaba las unidades y dejaba el costo del lote borrado mintiendo, invisible
+   mientras borrar era raro y rutina desde que el lote se puede editar.
+2. **El rastro de las ediciones**, como frase ya redactada y no como ids.
+3. **`editarProduccion`**: deshacer y rehacer en una transacción, con `aplicarLote` compartida con
+   el alta. Trae la migración `20260825120000_editar_producciones` (`costo_manual`, `historial`).
+   De paso, las producciones salieron a `inventario.producciones.ts` (el repositorio de inventario
+   se iba a 599 líneas).
+4. **`PATCH /inventario/producciones/:id`** y **el lápiz en Producciones**, con el costo pisable y
+   el aviso de los frascos ya vendidos.
+5. **La ficha 1.1 hereda del perfume corriente** (copia, no enlace) y se publica sin cambiar de
+   pantalla.
+6. **El enlazador**: dos reglas comprobables, sin motor propio.
+
+**Qué se descartó por el camino**, con su razón:
+
+- *Editar solo la ficha del lote* (lo mínimo para arreglar el Khamrah): el dueño pidió poder
+  ajustar también material, cantidad y costo.
+- *Correcciones contables encima, sin borrar movimientos*: correcto para una contabilidad
+  auditada, ruido para una operación de una persona.
+- *Enlace vivo entre el 1.1 y su corriente*: obligaría a decidir cuál manda el día que se separen.
+- *Detectar los 1.1 por el nombre*: un "Set 1.1" bastaría para que la lista mintiera.
