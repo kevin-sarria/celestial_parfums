@@ -66,22 +66,50 @@ en pantalla, a la espera de mergearse.
 **El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
 tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
 
-## ⚠️ Lo primero
+## ⚠️ Lo primero (medido contra el respaldo de producción del 2026-08-24)
 
-**NINGUNO de los 9 frascos armados se puede vender todavía por el sistema** — ni los 4 de "1.1"
-ni los 5 de 212 VIP Black.
+### 1. Un frasco 1.1 de Khamrah está colgado de la ficha del perfume NORMAL
 
-El motivo es el mismo para los nueve, y **no es que falte código**: el producto terminado
-**arranca desde que se activa y nunca mira hacia atrás** (mismo criterio que el consumo por
-venta). Comprobado contra la copia de producción del 2026-08-14: hay **5 lotes registrados**
-(perfumes 424, 549, 651, 619 y 446) y **`movimientos_terminado` está vacío**, con cero
-presentaciones con stock. Esos lotes se registraron ANTES de que existiera la tabla, así que
-para el sistema esos frascos no existen y venderlos volvería a descontar la receta — el
-problema original.
+**Es lo único con riesgo de plata hoy mismo.** El lote 6 (21 de agosto, 1 unidad, $74.580) se
+registró **después** del despliegue del producto terminado, así que **sí entró al sistema**: hay 1
+frasco armado en `perfume_presentacion` del perfume 529, *Khamrah By Lattafa* — la ficha del
+corriente. Pero el envase que consumió es el **"Envase Khamrah 1.1 100ml"** ($48.680): es un 1.1.
 
-Se arregla con el **runbook** de abajo: hay que **rehacer los 5 lotes** (borrarlos y volverlos a
-registrar con el código nuevo ya desplegado), y de paso los 4 de 1.1 pasan a sus fichas nuevas.
-Son ~20 minutos en el dashboard.
+Consecuencia: **si alguien compra un Khamrah 100 ml corriente, el sistema le entrega ese frasco**
+—descuenta el armado, que es lo correcto— **y lo cobra al precio del corriente**. Se vende un
+frasco de $74.580 de costo a precio de fragancia normal.
+
+Mientras no exista la ficha 1.1 de Khamrah: **o no se vende Khamrah 100 ml, o se le pone su ficha
+propia y se rehace ese lote** (borrar y volver a registrar apuntando a la ficha 1.1).
+
+### 2. Los otros 5 lotes siguen sin entrar al sistema
+
+Los 5 lotes del 11 al 14 de agosto (212 VIP Black, Mandarin Sky, Bon Bon, Yum Yum, Asad) se
+registraron ANTES de que existiera la tabla, así que para el sistema esos frascos no existen y
+venderlos volvería a descontar la receta. **Aquí no hay riesgo de cobrar de menos**, solo de
+descontar material dos veces.
+
+Se arregla con el **runbook** de abajo (~20 minutos en el dashboard), con **una excepción nueva**:
+el lote del **212 VIP Black no se rehace, se convierte** — esos 500 ml están macerando, no son 5
+frascos. Ver [`la maceración`](superpowers/specs/2026-08-24-maceracion-y-envasado-design.md).
+
+### 3. Lo que el respaldo dice del catálogo
+
+- **229 perfumes** (eran 222 el 14 de agosto), **todos `fabricado`**: ni una ficha 1.1, ni un
+  accesorio con ficha. La pestaña Productos nace vacía también en producción, con su caja de
+  primeros pasos — tal como se diseñó.
+- **7 de los 12 envases están en CERO**: los 5 envases 1.1, la botella mini de 5 ml y el envase de
+  75 ml. Más de la mitad del desplegable son opciones muertas; es exactamente el problema que
+  arregla el diseño de la maceración.
+- **El Perfumero Recargable está en −25 unidades**, no en −5.000 como decía la nota vieja (esa
+  cifra estaba mal y queda corregida aquí). 20 de esos 25 salieron de los 5 lotes viejos, que
+  consumieron un perfumero por unidad.
+
+### 4. Los regalos YA están desplegados
+
+La migración `20260820120000_regalos_y_extras` figura aplicada en producción el **2026-08-23**, así
+que el punto 1 de la lista de arriba ya está en vivo. **Falta confirmar con el dueño** qué más
+entró en ese despliegue: los puntos 2 al 7 son solo código y no dejan rastro en la base.
 
 ## En qué estado quedó el producto terminado
 
@@ -152,8 +180,12 @@ mucho de la tabla de arriba, avisar antes de seguir.
 
 ## Estado del entorno local (importante para retomar)
 
-- **`celestial_prod_20260814`**: copia real del servidor del 2026-08-14 **con la migración ya
-  aplicada**. Es la base contra la que se prueban las migraciones. El respaldo original sigue en
+- **`celestial_prod_20260825`**: copia real del servidor del **2026-08-24** (el dueño la bajó ese
+  día; el archivo se llama `backup-celestial-2026-08-25.sql` y está en `Downloads`). Es la base
+  contra la que se mide de ahora en adelante. Carga limpia: 50 tablas, sin el `\-` del sandbox
+  —el exportador ya lo quita desde el 2026-08-17— y con `--default-character-set=utf8mb4`.
+- **`celestial_prod_20260814`**: la copia anterior, del 2026-08-14. Se queda porque es contra la
+  que se probaron las migraciones ya desplegadas. El respaldo original sigue en
   `Downloads/backup-celestial-2026-08-14.sql.gz`; para recargarla:
   `gunzip -c backup.sql.gz | tail -n +2 > limpio.sql` y cargarla con
   `mysql.exe --default-character-set=utf8mb4`.
