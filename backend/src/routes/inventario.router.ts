@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as repo from '../repositories/inventario.repository';
 import * as reposicion from '../repositories/reposicion.repository';
-import { listarTerminado } from '../repositories/inventario.terminado';
+import { cargaInicialArmados, listarTerminado } from '../repositories/inventario.terminado';
 import { requireAdmin } from '../middleware/auth.middleware';
 // Mover el stock de una esencia cambia qué perfumes se pueden armar hoy, y de
 // eso depende cuáles salen agotados en la tienda. Sin limpiar el caché, el
@@ -11,7 +11,7 @@ import { bustCatalogoCache } from '../services/perfume.service';
 import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
 import {
-  ajusteSchema, produccionSchema, salidaSchema, minimoSchema, minimosGamasSchema,
+  ajusteSchema, produccionSchema, cargaInicialArmadosSchema, salidaSchema, minimoSchema, minimosGamasSchema,
 } from '../schemas/inventario.schema';
 
 /** Inventario de insumos: 100% interno (lleva costos reales del negocio). */
@@ -111,6 +111,17 @@ inventarioRouter.post('/producciones', validate(produccionSchema), h(async (req,
   const data = await repo.registrarProduccion(req.body);
   bustCatalogoCache();
   res.status(201).json({ message: 'Producción registrada', data });
+}));
+
+/**
+ * Carga inicial: frascos que ya existían. NO descuenta material (ver el porqué
+ * en `inventario.terminado.ts`) y por eso NO es una producción: no crea lote.
+ */
+inventarioRouter.post('/terminado/carga-inicial', validate(cargaInicialArmadosSchema), h(async (req, res) => {
+  const { fecha, ...resto } = req.body;
+  const data = await cargaInicialArmados({ ...resto, fecha: new Date(fecha) });
+  bustCatalogoCache();
+  res.status(201).json({ message: 'Frascos agregados a tu inventario de armados', data });
 }));
 
 inventarioRouter.delete('/producciones/:id', h(async (req, res) => {

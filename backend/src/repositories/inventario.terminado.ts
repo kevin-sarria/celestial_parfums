@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import { badRequest } from '../utils/httpError';
 
 /**
  * Producto TERMINADO: los frascos que ya están armados.
@@ -106,6 +107,48 @@ export const aplicarMovimientoTerminado = async (
   }
 
   return { stock: nuevoStock, promedio: nuevoPromedio, costoAplicado };
+};
+
+/**
+ * FRASCOS QUE YA EXISTÍAN ANTES DEL SISTEMA (carga inicial).
+ *
+ * Producir descuenta material; esto no. Es para los frascos que el dueño armó
+ * hace semanas, cuya esencia ya salió de la bodega y —comprobado con él el
+ * 2026-08-25— **no está contada** en el inventario, porque al contar midió solo
+ * el líquido suelto. Volver a descontarla dejaría esas esencias en negativo por
+ * un gasto ya restado, y por eso esos 5 frascos llevaban semanas sin poder
+ * entrar al sistema por ningún camino.
+ *
+ * Queda como `ajuste`, nunca como `produccion`: un lote que no ocurrió no puede
+ * aparecer en Producciones ni sumar al costo del mes.
+ */
+export const cargaInicialArmados = async (datos: {
+  perfume_id: number;
+  presentacion_id: number;
+  cantidad: number;
+  /** Lo que costó CADA frasco. Se propone calculado en la pantalla y se puede corregir. */
+  costo_unitario: number;
+  fecha: Date;
+  nota?: string | null;
+}) => {
+  if (!Number.isFinite(datos.cantidad) || datos.cantidad <= 0) {
+    throw badRequest('Dinos cuántos frascos tienes armados (un número mayor que cero). Para sacar frascos, usa el ajuste de inventario.');
+  }
+  if (!Number.isFinite(datos.costo_unitario) || datos.costo_unitario < 0) {
+    throw badRequest('El costo de cada frasco no puede ser negativo.');
+  }
+
+  return prisma.$transaction((tx) => aplicarMovimientoTerminado(tx, {
+    perfume_id: datos.perfume_id,
+    presentacion_id: datos.presentacion_id,
+    tipo: 'ajuste',
+    cantidad: datos.cantidad,
+    costo_unitario: datos.costo_unitario,
+    fecha: datos.fecha,
+    nota: datos.nota?.trim()
+      ? `Carga inicial · ${datos.nota.trim()}`.slice(0, 255)
+      : 'Carga inicial (frascos que ya existían)',
+  }));
 };
 
 /** Deshace los movimientos de terminado de una producción o de una venta. */

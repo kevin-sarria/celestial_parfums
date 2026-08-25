@@ -45,6 +45,22 @@ export const produccionSchema = z.object({
 });
 
 /**
+ * Frascos que YA estaban armados antes de que el sistema existiera.
+ *
+ * No lleva `consumos` a propósito, y esa ausencia es toda la diferencia con
+ * `produccionSchema`: aquí no se descuenta material porque ya se gastó hace
+ * semanas y no está contado en el inventario (ver `inventario.terminado.ts`).
+ */
+export const cargaInicialArmadosSchema = z.object({
+  fecha,
+  perfume_id: z.number().int().positive('Elige de qué producto son los frascos'),
+  presentacion_id: z.number().int().positive('Elige la talla'),
+  cantidad: z.number().int().min(1, 'Al menos un frasco').max(10000),
+  costo_unitario: z.number().min(0, 'El costo no puede ser negativo').max(100_000_000),
+  nota: z.string().max(200).nullish(),
+});
+
+/**
  * Salida de material que NO es venta ni producción: rolones del mostrario,
  * minis de regalo, un frasco derramado. Se valora al costo promedio vigente.
  */

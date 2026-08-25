@@ -22,6 +22,7 @@ import { AsignarEsenciasModal } from './inventario/AsignarEsenciasModal';
 import { AvisoEsenciasSinPerfume } from './inventario/EmparejarEsenciasModal';
 import { MaterialModal } from './inventario/MaterialModal';
 import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
+import { CargaInicialArmados } from './inventario/CargaInicialArmados';
 import type {
   CatalogoItem, CatalogoRespuesta, FrascoArmado, InventarioInsumo, ResumenInventario,
 } from '../types';
@@ -52,6 +53,7 @@ export function InventarioTab() {
   const [minimoAjuste, setMinimoAjuste] = useState('');
   const [prodAbierta, setProdAbierta] = useState(false);
   const [perfumes, setPerfumes] = useState<PerfumeLite[]>([]);
+  const [cargaInicialAbierta, setCargaInicialAbierta] = useState(false);
   // Salidas sin venta: rolones del mostrario, minis de regalo, derrames
   const [salidaAbierta, setSalidaAbierta] = useState(false);
   const [salidasMes, setSalidasMes] = useState({ muestras: 0, mermas: 0, ajustes: 0 });
@@ -370,6 +372,13 @@ export function InventarioTab() {
                     nota: 'Enlazar varias fragancias de una vez',
                     onSelect: () => setEsenciasAbierto(true),
                   },
+                  {
+                    // Va en "dar de alta" y no en "registrar uso" a propósito:
+                    // aquí no sale nada de la bodega, entra algo que ya existía.
+                    label: 'Frascos ya armados', icon: FlaskConical,
+                    nota: 'Los que armaste antes, sin descontar material',
+                    onSelect: () => setCargaInicialAbierta(true),
+                  },
                 ]}
               />
               <MenuAcciones
@@ -459,6 +468,18 @@ export function InventarioTab() {
         <SalidaModal
           insumos={insumos}
           onClose={() => setSalidaAbierta(false)}
+          onGuardado={load}
+        />
+      )}
+
+      {/* Frascos que ya existían antes del sistema */}
+      {cargaInicialAbierta && (
+        <CargaInicialArmados
+          perfumes={perfumes}
+          formulas={formulas}
+          catalogo={catalogo}
+          insumos={insumos}
+          onClose={() => setCargaInicialAbierta(false)}
           onGuardado={load}
         />
       )}

@@ -301,6 +301,28 @@ lo que la hoja venía a evitar.
 - La hoja lleva también gama y género, así que se puede contar y clasificar en la misma pasada; y
   clasificar una existente **no mueve su stock**.
 
+## Frascos que ya existían: la carga inicial (2026-08-25)
+
+Hasta esta fecha, el ÚNICO camino para que un frasco armado existiera era **producirlo**, y
+producir descuenta la receta. Eso dejaba al dueño con **5 frascos 1.1 armados y ninguna forma de
+registrarlos**: esa esencia se gastó hace semanas y, al inventariar, él contó **solo el líquido
+suelto** — descontarla otra vez le habría dejado las esencias en negativo por un gasto ya restado.
+
+`cargaInicialArmados` (`inventario.terminado.ts`) suma los frascos con su costo y **no toca ni un
+gramo de material**. Detalles con su porqué:
+
+- Queda anotada como **`ajuste`**, nunca como `produccion`: un lote que no ocurrió no puede
+  aparecer en Producciones ni sumar al costo del mes. La distinción se comprueba en
+  `inventario.cargaInicial.bd.test.ts` y en el recorrido `cargaInicial.e2e.test.ts`.
+- **El costo se propone calculado** (receta de la talla + envase, a los promedios de hoy) y se
+  puede corregir: el dueño sabe lo que le costó de verdad, y un costo inventado envenena la
+  ganancia del mes. Si ya había frascos, se promedia como cualquier entrada.
+- **Solo suma.** Una cantidad cero o negativa se rechaza con un mensaje que manda al ajuste de
+  inventario: para SACAR frascos está esa pantalla, y aquí un negativo es siempre un dedazo.
+- **La pantalla vive en *Materiales* (dar de alta), no en *Registrar uso***: aquí no sale nada de
+  la bodega, entra algo que ya existía. El aviso amarillo del modal explica esa diferencia con
+  "Armé perfumes" en el idioma del dueño, porque es la única forma de no equivocarse de puerta.
+
 ## La venta consume inventario
 
 `consumirPorVenta` descuenta esencia (la DEL PERFUME), diluyente, sellador, feromonas, envase y

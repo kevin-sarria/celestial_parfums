@@ -36,6 +36,8 @@ export const urls = {
     ajustes: '/inventario/ajustes',
     /** Salida sin venta: muestra del mostrario, regalo o merma. */
     salidas: '/inventario/salidas',
+    /** Frascos que ya existían antes del sistema. NO descuenta material. */
+    cargaInicialArmados: '/inventario/terminado/carga-inicial',
     /** Punto de pedido de un material suelto. */
     minimo: (insumoId: number) => `/inventario/minimo/${insumoId}`,
     /** Los puntos de pedido de todas las gamas, de una vez. */
