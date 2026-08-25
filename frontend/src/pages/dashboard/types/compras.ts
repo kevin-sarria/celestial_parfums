@@ -93,6 +93,12 @@ export interface Produccion {
   id: number; fecha: string; formula_volumen_id: number; volumen_nombre: string;
   perfume_nombre: string | null;
   cantidad: number; costo_unitario: number; costo_total: number; nota: string | null;
+  /** Envase realmente usado: hace falta para reabrir el lote tal como se guardó. */
+  envase_insumo_id: number | null;
+  /** El costo lo escribió el dueño, no la receta. */
+  costo_manual: boolean;
+  /** Rastro de las correcciones, la más nueva primero. */
+  historial: { fecha: string; texto: string }[];
 }
 
 export interface PagoForm {

@@ -245,10 +245,23 @@ export const produccionesColumns: ColumnDef<Produccion>[] = [
     render: p => (
       <span>
         {p.cantidad} × {p.perfume_nombre ? `${p.perfume_nombre} ${p.volumen_nombre}` : p.volumen_nombre}
+        {/* La última corrección, dicha en la fila: sin esto, un lote corregido
+            se ve idéntico a uno que siempre dijo eso. */}
+        {p.historial.length > 0 && (
+          <span className="block max-w-[42ch] truncate text-[11.5px] font-normal text-muted-foreground"
+            title={p.historial.map(h => `${fmtDate(h.fecha)} · ${h.texto}`).join('\n')}>
+            ✎ editado el {fmtDate(p.historial[0].fecha)} · {p.historial[0].texto}
+          </span>
+        )}
       </span>
     ), className: cellName, movil: 'titulo' },
   { key: 'costo_unitario', header: 'Costo c/u', type: 'currency', getValue: p => p.costo_unitario,
-    render: p => formatPrice(p.costo_unitario), sortable: true,
+    render: p => (
+      <span>
+        {formatPrice(p.costo_unitario)}
+        {p.costo_manual && <span title="Costo puesto a mano" className="ml-1 text-primary">✎</span>}
+      </span>
+    ), sortable: true,
     className: 'whitespace-nowrap text-right tabular-nums text-muted-foreground', noTruncate: true },
   { key: 'costo_total', header: 'Costo total', type: 'currency', getValue: p => p.costo_total,
     render: p => formatPrice(p.costo_total), sortable: true,

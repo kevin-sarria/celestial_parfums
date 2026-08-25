@@ -1,7 +1,7 @@
 import { hoy } from '../../../utils/fechas';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
@@ -12,7 +12,10 @@ import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import { produccionesColumns } from '../columns';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
-import type { Produccion } from '../types';
+import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
+import type { FrascoArmado, InventarioInsumo, Produccion, ResumenInventario } from '../types';
+import type { CatalogoItem, CatalogoRespuesta } from '../types';
+import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
 
 
 /**
@@ -33,18 +36,48 @@ export function ProduccionesTab() {
   const [producciones, setProducciones] = useState<Produccion[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  /** El lote que se está corrigiendo; null = nadie. */
+  const [editando, setEditando] = useState<Produccion | null>(null);
+  // Lo que necesita el modal de corrección: es el MISMO de "Armé perfumes", así
+  // que pide los mismos datos.
+  const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
+  const [perfumes, setPerfumes] = useState<PerfumeLite[]>([]);
+  const [catalogo, setCatalogo] = useState<Insumo[]>([]);
+  const [insumos, setInsumos] = useState<InventarioInsumo[]>([]);
+  const [armados, setArmados] = useState<FrascoArmado[]>([]);
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await http.get<{ data: Produccion[] }>(urls.inventario.producciones);
-      if (!res.ok) throw new Error(res.error);
-      setProducciones(res.cuerpo?.data ?? []);
+      const [rp, rf, rc, ri, rpf] = await Promise.all([
+        http.get<{ data: Produccion[] }>(urls.inventario.producciones),
+        http.get<{ data: FormulaVolumen[] }>(urls.costeo.formulas),
+        http.get<{ data: Insumo[] }>(urls.costeo.insumos),
+        http.get<{ data: ResumenInventario }>(urls.inventario.resumen),
+        http.get<CatalogoRespuesta>(urls.perfumes.todos),
+      ]);
+      if (!rp.ok) throw new Error(rp.error);
+      setProducciones(rp.cuerpo?.data ?? []);
+      // Lo demás es para poder CORREGIR un lote. Si falla, la tabla se ve igual
+      // y solo se queda sin el lápiz: no tiene sentido tumbar la pantalla.
+      setFormulas(rf.cuerpo?.data ?? []);
+      setCatalogo(rc.cuerpo?.data ?? []);
+      setInsumos(ri.cuerpo?.data?.insumos ?? []);
+      setArmados(ri.cuerpo?.data?.terminado.filas ?? []);
+      const jp = rpf.cuerpo?.data;
+      const lista = Array.isArray(jp) ? jp : (jp?.data ?? []);
+      setPerfumes(lista.map((p: CatalogoItem) => ({
+        id: p.id, nombre: p.nombre, insumo_esencia_id: p.insumo_esencia_id ?? null,
+      })));
       setError('');
     } catch {
       setError('No se pudieron cargar las producciones. Revisa tu conexión y reintenta.');
     } finally { setLoading(false); }
   };
+
+  /** Frascos armados que hay hoy de la ficha de ese lote, para avisar antes de bajar la cantidad. */
+  const armadosDe = (p: Produccion) =>
+    armados.find((f) => f.perfume === p.perfume_nombre)?.cantidad ?? null;
   useEffect(() => { load(); }, []);
 
   const borrar = async (p: Produccion) => {
@@ -112,19 +145,45 @@ export function ProduccionesTab() {
           tarjetaMovil
           emptyText="Todavía no has registrado lotes."
           renderActions={p => (
-            <Button size="icon" variant="ghost" className="size-8 text-muted-foreground hover:text-destructive"
-              onClick={() => borrar(p)}>
-              <Trash2 className="size-4" />
-            </Button>
+            <>
+              <Button size="icon" variant="ghost" aria-label="Corregir lote" title="Corregir lote"
+                className="size-8 text-muted-foreground hover:text-primary"
+                onClick={() => setEditando(p)}>
+                <Pencil className="size-4" />
+              </Button>
+              <Button size="icon" variant="ghost" aria-label="Borrar lote"
+                className="size-8 text-muted-foreground hover:text-destructive"
+                onClick={() => borrar(p)}>
+                <Trash2 className="size-4" />
+              </Button>
+            </>
           )}
           accionesMovil={p => (
-            <Button size="sm" variant="outline" className="text-destructive" onClick={() => borrar(p)}>
-              <Trash2 className="size-4" /> Borrar lote
-            </Button>
+            <>
+              <Button size="sm" variant="outline" onClick={() => setEditando(p)}>
+                <Pencil className="size-4" /> Corregir lote
+              </Button>
+              <Button size="sm" variant="outline" className="text-destructive" onClick={() => borrar(p)}>
+                <Trash2 className="size-4" /> Borrar lote
+              </Button>
+            </>
           )}
           acciones={<ExportButton entity="producciones" />}
         />
       </Section>
+
+      {editando && (
+        <ProduccionModal
+          lote={editando}
+          armadosDeLaFicha={armadosDe(editando)}
+          formulas={formulas}
+          perfumes={perfumes}
+          catalogo={catalogo}
+          insumos={insumos}
+          onClose={() => setEditando(null)}
+          onGuardado={load}
+        />
+      )}
     </div>
   );
 }

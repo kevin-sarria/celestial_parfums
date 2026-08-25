@@ -11,7 +11,7 @@ import { formatPrice } from '../../helpers';
 import { Field, FieldRow } from '../../ui';
 import { mlDiluyente } from '../../../../application/costeoCotizacion';
 import { opcionesPorExistencias } from '../../../../domain/entities/insumo';
-import type { InventarioInsumo } from '../../types';
+import type { InventarioInsumo, Produccion } from '../../types';
 import type { FormulaVolumen, Insumo } from '../../../../domain/entities/cotizacion.types';
 import { AltaProductoArmado } from './AltaProductoArmado';
 
@@ -26,6 +26,15 @@ const porNombre = (insumos: Insumo[], clave: string) =>
 interface Props {
   formulas: FormulaVolumen[];
   perfumes: PerfumeLite[];
+  /** Lote existente: con él, el modal corrige en vez de registrar. */
+  lote?: Produccion;
+  /**
+   * Frascos armados que hay hoy de la ficha del lote. Sirve para avisar si la
+   * corrección deja el conteo en negativo. `null` = no se pudo saber, y
+   * entonces el aviso no se pinta: un aviso que no se puede calcular no se
+   * inventa.
+   */
+  armadosDeLaFicha?: number | null;
   /** Catálogo de insumos, para ubicar diluyente/sellador/feromonas por nombre. */
   catalogo: Insumo[];
   /** Existencias y costo, para calcular el costo del lote y avisar si no alcanza. */
@@ -42,12 +51,16 @@ interface Props {
  * reimplementa en dos lenguajes.
  */
 export function ProduccionModal({
-  formulas, perfumes, catalogo, insumos, onClose, onGuardado,
+  formulas, perfumes, catalogo, insumos, lote, armadosDeLaFicha = null, onClose, onGuardado,
 }: Props) {
-  const [formulaId, setFormulaId] = useState<number | ''>(formulas[0]?.id ?? '');
-  const [unidades, setUnidades] = useState('10');
-  const [perfumeId, setPerfumeId] = useState<number | ''>('');
-  const [envaseId, setEnvaseId] = useState<number | ''>('');
+  const [formulaId, setFormulaId] = useState<number | ''>(lote?.formula_volumen_id ?? formulas[0]?.id ?? '');
+  const [unidades, setUnidades] = useState(lote ? String(lote.cantidad) : '10');
+  const [perfumeId, setPerfumeId] = useState<number | ''>(
+    lote ? (perfumes.find((p) => p.nombre === lote.perfume_nombre)?.id ?? '') : '',
+  );
+  const [envaseId, setEnvaseId] = useState<number | ''>(lote?.envase_insumo_id ?? '');
+  /** Vacío = que lo calcule el sistema con los materiales de abajo. */
+  const [costoManual, setCostoManual] = useState(lote?.costo_manual ? String(lote.costo_unitario) : '');
   const [guardando, setGuardando] = useState(false);
   /** Nombre tecleado cuando se elige "+ Crear …": el alta arranca con él escrito. */
   const [altaNombre, setAltaNombre] = useState<string | null>(null);
@@ -116,13 +129,25 @@ export function ProduccionModal({
     }
     setGuardando(true);
     try {
-      const res = await http.post<{ data?: { costo_total?: number } }>(urls.inventario.producciones, {
-        fecha: hoy(),
+      const cuerpo = {
+        // Al corregir se respeta la fecha del lote: es el día en que se armó,
+        // no el día en que se cayó en cuenta del error.
+        fecha: lote?.fecha.slice(0, 10) ?? hoy(),
         formula_volumen_id: formulaElegida.id, cantidad: cant, consumos,
         perfume_id: perfumeId || null,
         envase_insumo_id: envaseId || formulaElegida.envase_insumo_id || null,
-      });
+        ...(costoManual.trim() ? { costo_unitario: Number(costoManual), costo_manual: true } : {}),
+      };
+      const res = lote
+        ? await http.patch<{ data?: { costo_total?: number } }>(urls.inventario.produccion(lote.id), cuerpo)
+        : await http.post<{ data?: { costo_total?: number } }>(urls.inventario.producciones, cuerpo);
       if (!res.ok) { toast.error(res.error, { id: 'prod' }); return; }
+      if (lote) {
+        toast.success('Lote corregido: el material y los frascos quedaron al día');
+        onGuardado();
+        onClose();
+        return;
+      }
       const json = res.cuerpo;
       // Se dice dónde quedó la plata Y dónde quedaron los frascos. Lo segundo
       // importa desde que el producto terminado existe: el material sale del
@@ -142,8 +167,10 @@ export function ProduccionModal({
   };
 
   return (
-    <Modal open onClose={onClose} title="Registrar producción"
-      onSubmit={guardar} submitLabel={guardando ? 'Guardando…' : 'Registrar lote'} loading={guardando}>
+    <Modal open onClose={onClose} title={lote ? 'Corregir lote' : 'Registrar producción'}
+      onSubmit={guardar}
+      submitLabel={guardando ? 'Guardando…' : (lote ? 'Guardar cambios' : 'Registrar lote')}
+      loading={guardando}>
       {/* La fragancia decide qué esencia se descuenta: cada una cuesta distinto */}
       <Field label="¿Qué fragancia armaste?">
         <BuscadorSelect
@@ -242,6 +269,30 @@ export function ProduccionModal({
             Costo del lote: <strong className="text-primary">{formatPrice(costoLote)}</strong>
           </p>
         </div>
+      )}
+
+      {lote && (
+        <Field label="¿Cuánto te costó cada frasco?">
+          <Input type="number" min="0" value={costoManual}
+            placeholder={`Calculado: ${formatPrice(costoLote / (cant || 1))}`}
+            onChange={(e) => setCostoManual(e.target.value)} />
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Déjalo vacío y lo calcula el sistema con los materiales de arriba. Si escribes el tuyo,
+            manda el tuyo y el lote queda marcado como <strong>costo puesto a mano</strong>.
+          </p>
+        </Field>
+      )}
+
+      {/* Bajar la cantidad de un lote cuyos frascos ya salieron deja el conteo
+          en negativo. Es legítimo —el dato físico manda— pero hay que decirlo
+          con el número exacto. */}
+      {lote && armadosDeLaFicha !== null && armadosDeLaFicha - (lote.cantidad - cant) < 0 && (
+        <p className="rounded-lg border border-amber-400/45 bg-amber-400/10 px-3 py-2 text-[12.5px] font-medium text-amber-700">
+          De este lote ya se vendieron frascos: si lo dejas en {cant}, quedarían{' '}
+          {armadosDeLaFicha - (lote.cantidad - cant)} frascos armados de {lote.perfume_nombre}{' '}
+          {lote.volumen_nombre}. Puedes guardarlo igual, pero el conteo quedará en negativo hasta
+          que lo ajustes.
+        </p>
       )}
 
       {faltantes.length > 0 && (
