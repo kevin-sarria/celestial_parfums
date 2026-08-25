@@ -1358,6 +1358,17 @@ model Produccion {
   costo_unitario     Decimal  @db.Decimal(12, 4)
   costo_total        Decimal  @db.Decimal(12, 2)
   nota               String?  @db.VarChar(255)
+  /// El costo lo escribió una PERSONA, no la receta. Un número puesto a mano no
+  /// cuadra con los materiales ni ahora ni nunca: sin esta marca, el sistema
+  /// parecería estar calculando mal. Lo declara quien guarda el lote, porque
+  /// también se reenvía el costo congelado al mudar frascos de ficha —y eso no
+  /// es un costo escrito a mano.
+  costo_manual       Boolean  @default(false)
+  /// Rastro de las correcciones, ya redactado y la más nueva primero
+  /// (`producciones.historial.ts`). JSON y no una tabla aparte porque solo se
+  /// lee CON su lote: una tabla obligaría a un join en una pantalla que ya
+  /// carga bien.
+  historial          Json?
   created_at         DateTime @default(now())
 
   formula FormulaVolumen @relation(fields: [formula_volumen_id], references: [id])

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as repo from '../repositories/inventario.repository';
+import * as producciones from '../repositories/inventario.producciones';
 import * as reposicion from '../repositories/reposicion.repository';
 import { cargaInicialArmados, listarTerminado } from '../repositories/inventario.terminado';
 import { requireAdmin } from '../middleware/auth.middleware';
@@ -103,12 +104,12 @@ inventarioRouter.post('/salidas', validate(salidaSchema), h(async (req, res) => 
 }));
 
 inventarioRouter.get('/producciones', h(async (_req, res) => {
-  res.json({ data: await repo.listarProducciones() });
+  res.json({ data: await producciones.listarProducciones() });
 }));
 
 /** Registra un lote armado y descuenta sus insumos. */
 inventarioRouter.post('/producciones', validate(produccionSchema), h(async (req, res) => {
-  const data = await repo.registrarProduccion(req.body);
+  const data = await producciones.registrarProduccion(req.body);
   bustCatalogoCache();
   res.status(201).json({ message: 'Producción registrada', data });
 }));
@@ -125,7 +126,7 @@ inventarioRouter.post('/terminado/carga-inicial', validate(cargaInicialArmadosSc
 }));
 
 inventarioRouter.delete('/producciones/:id', h(async (req, res) => {
-  await repo.eliminarProduccion(Number(req.params.id));
+  await producciones.eliminarProduccion(Number(req.params.id));
   bustCatalogoCache();
   res.json({ message: 'Producción eliminada; los insumos volvieron al inventario' });
 }));

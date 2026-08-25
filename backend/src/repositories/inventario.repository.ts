@@ -14,9 +14,6 @@ import { r3, r4 } from '../utils/redondeo';
 
 const num = (v: unknown) => Number(v);
 
-import {
-  aplicarMovimientoTerminado, revertirTerminado, sacarDeTerminado, tallaDeFormula,
-} from './inventario.terminado';
 import { aBase } from './inventario.compras';
 
 export type TipoMovimiento = 'compra' | 'produccion' | 'garantia' | 'ajuste' | 'merma' | 'muestra' | 'venta';
@@ -200,109 +197,6 @@ export const ajustarStock = async (data: {
   return { sinCambios: false, ...res, delta };
 });
 
-// ── Producción ──────────────────────────────────────────────────────────────
-
-/**
- * Registra un lote armado y descuenta sus insumos. El costo del lote se calcula
- * con el promedio VIGENTE de cada insumo y se congela: si mañana sube la
- * esencia, lo que costó este lote no cambia.
- */
-export const registrarProduccion = async (data: {
-  fecha: string; formula_volumen_id: number; cantidad: number;
-  perfume_id?: number | null; envase_insumo_id?: number | null;
-  consumos: { insumo_id: number; cantidad: number }[]; nota?: string | null;
-}) => prisma.$transaction(async (tx) => {
-  const fecha = new Date(data.fecha);
-  // Se crea primero para tener el id al que apuntan los movimientos
-  const prod = await tx.produccion.create({
-    data: {
-      fecha,
-      formula_volumen_id: data.formula_volumen_id,
-      perfume_id: data.perfume_id ?? null,
-      envase_insumo_id: data.envase_insumo_id ?? null,
-      cantidad: data.cantidad,
-      costo_unitario: 0,
-      costo_total: 0,
-      nota: data.nota ?? null,
-    },
-  });
-
-  let costoTotal = 0;
-  for (const c of data.consumos) {
-    const res = await aplicarMovimiento(tx, {
-      insumo_id: c.insumo_id,
-      tipo: 'produccion',
-      cantidad: -Math.abs(c.cantidad),
-      fecha,
-      referencia_id: prod.id,
-      nota: `Lote de ${data.cantidad} u`,
-    });
-    costoTotal += res.costoAplicado * Math.abs(c.cantidad);
-  }
-
-  const total = Math.round(costoTotal * 100) / 100;
-  const costoUnitario = r4(total / data.cantidad);
-
-  /**
-   * Los frascos armados ENTRAN al stock de producto terminado.
-   *
-   * Sin esto, producir solo restaba materiales y al vender se volvían a restar:
-   * el mismo frasco gastaba su esencia dos veces. Ver `inventario.terminado.ts`.
-   *
-   * Hace falta saber DE QUÉ perfume son: `perfume_id` es opcional (se puede
-   * registrar "armé 20 de 30 ml" sin decir la fragancia), y en ese caso el lote
-   * sigue descontando materiales pero no suma frascos — no se puede adivinar a
-   * qué producto atribuirlos.
-   */
-  if (data.perfume_id) {
-    const presentacion_id = await tallaDeFormula(data.formula_volumen_id);
-    if (presentacion_id) {
-      await aplicarMovimientoTerminado(tx, {
-        perfume_id: data.perfume_id,
-        presentacion_id,
-        tipo: 'produccion',
-        cantidad: data.cantidad,
-        costo_unitario: costoUnitario,
-        fecha,
-        referencia_id: prod.id,
-        nota: `Lote #${prod.id}`,
-      });
-    }
-  }
-
-  return tx.produccion.update({
-    where: { id: prod.id },
-    data: { costo_total: total, costo_unitario: costoUnitario },
-    include: { formula: { select: { nombre: true } } },
-  });
-});
-
-export const listarProducciones = async (limite = 60) => {
-  const rows = await prisma.produccion.findMany({
-    orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
-    take: limite,
-    include: { formula: { select: { nombre: true } }, perfume: { select: { nombre: true } } },
-  });
-  return rows.map((p) => ({
-    id: p.id,
-    fecha: p.fecha.toISOString().slice(0, 10),
-    formula_volumen_id: p.formula_volumen_id,
-    volumen_nombre: p.formula?.nombre ?? '',
-    perfume_nombre: p.perfume?.nombre ?? null,
-    cantidad: p.cantidad,
-    costo_unitario: num(p.costo_unitario),
-    costo_total: num(p.costo_total),
-    nota: p.nota,
-  }));
-};
-
-/** Borrar un lote devuelve sus insumos al inventario. */
-export const eliminarProduccion = (id: number) => prisma.$transaction(async (tx) => {
-  await revertirMovimientos(tx, 'produccion', id);
-  // Devuelve los materiales Y quita los frascos que ese lote había armado.
-  await revertirTerminado(tx, 'produccion', id);
-  return tx.produccion.delete({ where: { id } });
-});
 
 /** Foto del inventario para el dashboard: qué hay y cuánto vale. */
 /**
