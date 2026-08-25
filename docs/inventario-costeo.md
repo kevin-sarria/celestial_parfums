@@ -301,6 +301,29 @@ lo que la hoja venía a evitar.
 - La hoja lleva también gama y género, así que se puede contar y clasificar en la misma pasada; y
   clasificar una existente **no mueve su stock**.
 
+## Dar de alta un 1.1 (2026-08-25)
+
+Tres puertas, y ninguna obliga a llenar los 16 campos de la ficha completa:
+
+1. **Desde el lote** (*Inventario → Armé perfumes*): el buscador ofrece
+   **"+ Crear producto nuevo" como PRIMERA opción** y el alta cabe ahí mismo —nombre, precio,
+   talla y envase—. `crearProductoArmado` en `emparejarEsencias.repository.ts` es el **tercer
+   hermano** de `enlazarOCrearPerfume` (desde una esencia) y `enlazarOCrearAccesorio` (desde un
+   material), y hereda sus dos reglas: **nace apagado** y **un nombre que ya existe NO se toca**
+   (se avisa cuál es y decide el dueño, comparando sin tildes ni mayúsculas).
+2. **Por Excel**: la plantilla de `perfumes` acepta `solo_armado`, `envase` y `esencia`. Un envase
+   o una esencia que no existan **no tumban la fila**: la ficha entra y el aviso dice qué faltó.
+   En silencio, ese 1.1 costaría como uno corriente.
+3. **Desde el catálogo**, con la ficha completa de siempre.
+
+**Un 1.1 puede ser preparado o comprado hecho** (`tipo_producto` `fabricado` o `comprado`, con
+`solo_armado: true` en ambos). Los dos llevan envase premium, precio propio y la regla de "solo se
+vende si hay unidades"; lo único que cambia es de dónde sale su costo, y por eso el campo de la
+esencia solo aparece cuando lo prepara el dueño.
+
+**El envase premium se engancha a la TALLA** (`perfume_presentacion.envase_insumo_id`), no a la
+receta del tamaño: es lo que hace que un 1.1 cueste el doble que el corriente de los mismos ml.
+
 ## Frascos que ya existían: la carga inicial (2026-08-25)
 
 Hasta esta fecha, el ÚNICO camino para que un frasco armado existiera era **producirlo**, y

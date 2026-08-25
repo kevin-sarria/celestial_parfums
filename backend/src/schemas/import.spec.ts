@@ -29,8 +29,13 @@ export const IMPORT_SPECS: Record<string, ImportSpec> = {
       { key: 'precios_presentacion', required: false, descripcion: 'Precio propio por talla (solo si NO usa el de la lista)', ejemplo: '30ML=60000, 100ML=150000' },
       { key: 'esencia_premium', required: false, descripcion: 'si o no: esencia de mayor calidad (nunca entra en combos)', ejemplo: 'no' },
       { key: 'descuento', required: false, descripcion: 'Porcentaje de descuento (0 a 100)', ejemplo: 0 },
+      { key: 'solo_armado', required: false, descripcion: 'si o no: es un 1.1 (se arma antes de venderse)', ejemplo: 'no' },
+      { key: 'envase', required: false, descripcion: 'Nombre del envase que usa (para los 1.1)', ejemplo: 'Envase Bon Bon 1.1 100ml' },
+      { key: 'esencia', required: false, descripcion: 'Nombre de la esencia con la que se hace', ejemplo: 'Bon Bon - Esencia' },
     ],
     notas: [
+      'solo_armado = si convierte la ficha en un 1.1: entra APAGADA (no se ve en la tienda hasta que la enciendas) y solo se vende si tienes unidades armadas.',
+      'envase y esencia se buscan por nombre en tu inventario. Si no existen, la ficha se crea igual y se avisa cual falto.',
       'tipos_aroma, ocasiones y presentaciones se escriben separados por comas. Si un valor no existe en la base de datos, esa relacion simplemente se omite (el perfume se crea igual).',
       'categoria debe coincidir con una categoria existente; si no existe, el perfume queda sin categoria.',
       'image_url puede quedar vacia sin problema.',

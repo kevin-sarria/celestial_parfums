@@ -105,6 +105,12 @@ export const importarCatalogo = async (
     const aromaMap = lowerMap(aromas);
     const ocasionMap = lowerMap(ocasiones);
     const presMap = lowerMap(presentaciones);
+    /**
+     * Insumos por nombre, para las columnas `envase` y `esencia` de los 1.1.
+     * Sin ellas un 1.1 importado entraba como un perfume corriente: publicado,
+     * sin envase premium y sin la regla de "solo se vende si está armado".
+     */
+    const insumoMap = lowerMap(await prisma.insumoCosto.findMany({ select: { id: true, nombre: true } }));
     const catMap = lowerMap(categorias);
     const ids = (val: Celda, map: Map<string, number>) =>
       [...new Set(splitList(val).map(n => map.get(n.toLowerCase())).filter((x): x is number => x != null))];
@@ -127,6 +133,17 @@ export const importarCatalogo = async (
         const num = Number(valor);
         if (presId != null && !isNaN(num) && num > 0) propios.set(presId, num);
       }
+      // Un 1.1: se arma antes de venderse y lleva su envase propio.
+      const soloArmado = toBool(r['solo_armado'], false);
+      const nombreEnvase = toStr(r['envase']);
+      const nombreEsencia = toStr(r['esencia']);
+      const envaseId = nombreEnvase ? insumoMap.get(nombreEnvase.toLowerCase()) ?? null : null;
+      const esenciaId = nombreEsencia ? insumoMap.get(nombreEsencia.toLowerCase()) ?? null : null;
+      // Se avisa pero NO se tumba la fila: la ficha sirve igual y el dueño la
+      // completa después. En silencio, ese 1.1 costaría como uno corriente.
+      if (nombreEnvase && !envaseId) result.errores.push(`Fila ${fila} (${nombre}): no encontre el envase "${nombreEnvase}"; la ficha se creo sin el`);
+      if (nombreEsencia && !esenciaId) result.errores.push(`Fila ${fila} (${nombre}): no encontre la esencia "${nombreEsencia}"; la ficha se creo sin ella`);
+
       try {
         await prisma.perfume.create({
           data: {
@@ -140,12 +157,20 @@ export const importarCatalogo = async (
             categoria_id: catMap.get(toStr(r['categoria']).toLowerCase()) ?? null,
             descuento: clampPct(r['descuento']),
             esencia_premium: toBool(r['esencia_premium'], false),
+            solo_armado: soloArmado,
+            insumo_esencia_id: esenciaId,
+            // Un producto nace apagado; un perfume normal, publicado. Misma
+            // regla que el alta por pantalla (ver perfume.familia.ts).
+            publicado: !soloArmado,
             tipos_aroma: { create: ids(r['tipos_aroma'], aromaMap).map(id => ({ tipo_aroma_id: id })) },
             ocasiones: { create: ids(r['ocasiones'], ocasionMap).map(id => ({ ocasion_id: id })) },
             presentaciones: {
               create: ids(r['presentaciones'], presMap).map(id => ({
                 presentacion_id: id,
                 precio: propios.get(id) ?? null,
+                // El envase premium se engancha a la talla, que es donde manda
+                // sobre el de la receta del tamaño.
+                envase_insumo_id: envaseId,
               })),
             },
           },
@@ -203,6 +228,12 @@ export const importarCatalogo = async (
     ]);
     const catMap = lowerMap(categorias);
     const presMap = lowerMap(presentaciones);
+    /**
+     * Insumos por nombre, para las columnas `envase` y `esencia` de los 1.1.
+     * Sin ellas un 1.1 importado entraba como un perfume corriente: publicado,
+     * sin envase premium y sin la regla de "solo se vende si está armado".
+     */
+    const insumoMap = lowerMap(await prisma.insumoCosto.findMany({ select: { id: true, nombre: true } }));
 
     for (const [i, r] of rows.entries()) {
       const fila = i + 2;
