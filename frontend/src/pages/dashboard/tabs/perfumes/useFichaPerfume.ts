@@ -8,6 +8,7 @@ import type { Insumo } from '../../../../domain/entities/cotizacion.types';
 import { subirImagenAdmin } from '../../helpers';
 import type { Lookup, PerfumeForm, PrecioLista } from '../../types';
 import { emptyPerfumeForm } from '../../types';
+import type { TipoAlta } from './tipoDeProducto';
 
 export interface UsarFichaArgs {
   aromas: Lookup[];
@@ -36,6 +37,9 @@ export interface FichaPerfume {
   envases: Insumo[];
   imgMode: 'url' | 'file';
   setImgMode: (m: 'url' | 'file') => void;
+  /** Qué se está dando de alta. Null = el modal enseña las cuatro puertas. */
+  tipoElegido: TipoAlta | null;
+  setTipoElegido: (t: TipoAlta | null) => void;
   uploading: boolean;
   precioDeLista: (presentacionId: number) => number | null;
   abrirNuevo: () => void;
@@ -55,6 +59,12 @@ export interface FichaPerfume {
  */
 export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, valoresIniciales }: UsarFichaArgs): FichaPerfume {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
+  /**
+   * Qué se está dando de alta. Null = todavía no lo ha dicho, y entonces el
+   * modal enseña las cuatro puertas en vez del formulario. Al EDITAR no se usa:
+   * el tipo se deduce de la ficha guardada.
+   */
+  const [tipoElegido, setTipoElegido] = useState<TipoAlta | null>(null);
   const [form, setForm] = useState<PerfumeForm>(emptyPerfumeForm());
   const [formLoading, setFormLoading] = useState(false);
   // Esencias disponibles: una por fragancia, cada una con su costo real por ml
@@ -96,7 +106,11 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
     )?.precio ?? null;
   };
 
-  const abrirNuevo = () => { setForm({ ...emptyPerfumeForm(), ...valoresIniciales }); setFormError(''); setImgMode('url'); setModal({ open: true, editId: null }); };
+  const abrirNuevo = () => {
+    setForm({ ...emptyPerfumeForm(), ...valoresIniciales });
+    setTipoElegido(null);
+    setFormError(''); setImgMode('url'); setModal({ open: true, editId: null });
+  };
   const abrirEdicion = (p: Perfume) => {
     const aromaIds = aromas.filter(a => p.tipos_aroma.includes(a.nombre)).map(a => a.id);
     const ocasionIds = ocasiones.filter(o => p.ocasiones.includes(o.nombre)).map(o => o.id);
@@ -194,7 +208,8 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
   return {
     modal, form, setForm, formError, formLoading,
     esencias, insumosProducto, envases,
-    imgMode, setImgMode, uploading,
+    imgMode, setImgMode,
+    tipoElegido, setTipoElegido, uploading,
     precioDeLista, abrirNuevo, abrirEdicion, cerrar, guardar, eliminar, subirImagen,
   };
 }

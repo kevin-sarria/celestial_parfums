@@ -1,7 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { abrirDashboard, abrirTienda, cabeceraAdmin, cerrarPopup, cerrarNavegador, campo, irA } from './navegador';
+import { elegirTipoDeAlta, abrirDashboard, abrirTienda, cabeceraAdmin, cerrarPopup, cerrarNavegador, campo, irA } from './navegador';
 import { URL_API } from './arranque';
 
 /**
@@ -39,24 +39,16 @@ describe('un producto que solo se vende armado', () => {
 
     // 1. Se crea la ficha marcando la casilla del 1.1.
     await pagina.getByRole('button', { name: '+ Nuevo producto' }).click();
+    // Un 1.1 tiene su propia puerta desde el 2026-08-25: elegirla deja la ficha
+    // marcada como "solo se vende si está armado" sin buscar ninguna casilla.
+    await elegirTipoDeAlta(pagina, /Un 1\.1/);
     await campo(pagina, 'Nombre *').fill(NOMBRE);
     await campo(pagina, 'Precio de respaldo (COP) *').fill('150000');
-
-    // "+ Nuevo producto" arranca en "comprado" (Hallazgo 1 de la revisión final
-    // de la Ola 1, 2026-08-23): sin esto el producto se iba a Perfumes. Un 1.1
-    // sigue siendo "fabricado" por dentro (solo_armado es lo que lo manda a la
-    // familia Productos), así que hay que pasarlo a mano ANTES de tocar la
-    // esencia: en "comprado" también se ve "¿Qué insumo ES este producto?",
-    // con su propio placeholder "— Sin asignar —", y con las dos casillas a la
-    // vez el selector de la esencia deja de ser único.
-    await pagina.getByRole('button', { name: /Lo compro hecho y lo revendo/ }).click();
-    await pagina.getByRole('option', { name: /Lo fabrico yo \(contratipo, 1\.1\)/ }).click();
 
     // Su esencia, con 500 ml en bodega: de sobra para armar uno de 30 ml.
     await pagina.getByRole('button', { name: /Sin asignar/ }).click();
     await pagina.getByRole('option', { name: /Herod by Parfums de Marly/ }).click();
 
-    await pagina.getByRole('checkbox', { name: /Solo se vende si ya está armado/ }).check();
     await pagina.getByRole('checkbox', { name: '30ml' }).check();
     await pagina.screenshot({ path: foto('form-1punto1') });
     await pagina.getByRole('button', { name: 'Crear producto' }).click();

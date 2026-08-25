@@ -346,3 +346,28 @@ escritorio y celular). Lo que aporta y no se puede improvisar: **medir en vez de
 **Cerrado el 2026-08-23**: `Field` pintaba un `<label>` suelto y el navegador no lo relacionaba
 con su campo, así que `getByLabel` no servía en los recorridos. Ya se enlaza solo (ver
 *Formularios: etiquetas y ancho*, más arriba) y el ayudante `campo()` es hoy un `getByLabel`.
+
+## El alta de un producto pregunta PRIMERO qué es (2026-08-25)
+
+El formulario del catálogo era uno solo para las tres familias, con ~16 campos, y la pregunta que
+decide cuáles aplican —*¿cómo consigues este producto?*— estaba en la **casilla once**: para dar de
+alta una bolsa de organza había que pasar por su duración y su proyección. Lo señaló el dueño con
+una captura: *"en base a cómo se consigue el producto, desde esa pregunta fundamental es el tipo de
+modal que se debe renderizar"*.
+
+Ahora el alta abre con **cuatro puertas** —fragancia, 1.1, comprado, decants— y cada una muestra
+solo sus campos. **Medido con : un accesorio pide 5 casillas y una
+fragancia 8.**
+
+- **Los tipos se deducen de los datos** (), nunca de una bandera aparte: son
+  combinaciones de ,  y , que ya existían. Una columna
+  nueva se desincronizaría el día que el producto se edite por otra vía (el Excel, el alta desde el
+  lote).
+- **Al EDITAR no se vuelve a preguntar**: la ficha ya lo dice, y preguntarlo sería un clic de más en
+  la tarea que más se repite. El tipo se muestra arriba, con un "Cambiar" que solo aparece al crear.
+- **El 1.1 dejó de ser una casilla escondida** al final del formulario y pasó a ser una puerta. Ahí
+  vive la pregunta que el dueño añadió: *¿lo preparas tú o lo compras hecho?* — los dos son 1.1;
+  cambia de dónde sale su costo.
+- **Los decants tienen su propia puerta** aunque no estaban en el diseño inicial: sin ella,
+   habría quedado inalcanzable desde la pantalla.
+

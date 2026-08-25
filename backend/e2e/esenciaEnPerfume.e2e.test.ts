@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { abrirDashboard, cerrarNavegador, irA } from './navegador';
+import { elegirTipoDeAlta, abrirDashboard, cerrarNavegador, irA } from './navegador';
 
 /**
  * RECORRIDO 5 — el selector de esencia lista lo que está CLASIFICADO, no lo que
@@ -29,6 +29,9 @@ describe('con qué esencia se hace un perfume', () => {
     await pagina.waitForSelector('text=+ Nuevo perfume');
 
     await pagina.getByRole('button', { name: '+ Nuevo perfume' }).click();
+    // El alta pregunta primero qué es (2026-08-25): se elige la puerta y de ahí
+    // sale el formulario con los campos que aplican.
+    await elegirTipoDeAlta(pagina, /Una fragancia que fabrico/);
     await pagina.getByRole('button', { name: /Sin asignar/ }).click();
 
     const panel = pagina.getByRole('listbox');
@@ -45,6 +48,7 @@ describe('con qué esencia se hace un perfume', () => {
     await pagina.waitForSelector('text=+ Nuevo perfume');
 
     await pagina.getByRole('button', { name: '+ Nuevo perfume' }).click();
+    await elegirTipoDeAlta(pagina, /Una fragancia que fabrico/);
     await pagina.getByRole('button', { name: /Sin asignar/ }).click();
     await pagina.getByRole('listbox').waitFor();
 

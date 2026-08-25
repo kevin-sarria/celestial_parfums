@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { abrirDashboard, cerrarNavegador, irA } from './navegador';
+import { elegirTipoDeAlta, abrirDashboard, cerrarNavegador, irA } from './navegador';
 
 /**
  * RECORRIDO 6 — el desplegable respeta la caja que le da la pantalla.
@@ -39,6 +39,8 @@ const abrirFrascoDelTamano = async (ancho: number) => {
   await irA(pagina, '/dashboard/perfumes');
   await pagina.waitForSelector('text=+ Nuevo perfume');
   await pagina.getByRole('button', { name: '+ Nuevo perfume' }).click();
+  // El alta pregunta primero qué es (2026-08-25).
+  await elegirTipoDeAlta(pagina, /Una fragancia que fabrico/);
 
   // El selector de frasco solo aparece con la presentación marcada.
   const casilla = pagina.locator('input[type="checkbox"]').first();

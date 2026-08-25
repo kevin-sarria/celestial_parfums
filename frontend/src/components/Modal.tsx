@@ -19,6 +19,12 @@ interface ModalProps {
   cancelLabel?: string;
   loading?: boolean;
   maxWidth?: number;
+  /**
+   * Esconde el botón de guardar dejando el de cancelar. Para los modales que
+   * empiezan preguntando algo (el alta de un producto pregunta primero qué es):
+   * mientras no hay nada que guardar, un botón de guardar solo puede confundir.
+   */
+  ocultarSubmit?: boolean;
 }
 
 /**
@@ -49,15 +55,18 @@ export default function Modal({
   cancelLabel = 'Cancelar',
   loading = false,
   maxWidth,
+  ocultarSubmit = false,
 }: ModalProps) {
   const defaultFooter = (
     <DialogFooter className="gap-2">
       <Button type="button" variant="ghost" onClick={onClose}>
         {cancelLabel}
       </Button>
-      <Button type={onSubmit ? 'submit' : 'button'} disabled={loading}>
-        {submitLabel}
-      </Button>
+      {!ocultarSubmit && (
+        <Button type={onSubmit ? 'submit' : 'button'} disabled={loading}>
+          {submitLabel}
+        </Button>
+      )}
     </DialogFooter>
   );
 

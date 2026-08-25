@@ -163,6 +163,17 @@ export const irA = (pagina: Page, ruta: string) =>
   pagina.goto(`${URL_TIENDA}${ruta}`, { waitUntil: 'domcontentloaded' });
 
 /**
+ * Elige la puerta del alta del catálogo.
+ *
+ * Desde el 2026-08-25 el alta de un producto pregunta PRIMERO qué es —una
+ * fragancia, un 1.1, algo comprado o decants— y solo entonces muestra los
+ * campos que aplican. Antes esa pregunta vivía en la casilla once y todos los
+ * recorridos entraban directos al formulario.
+ */
+export const elegirTipoDeAlta = (pagina: Page, tipo: RegExp) =>
+  pagina.getByRole('button', { name: tipo }).click();
+
+/**
  * Cierra el popup de anuncios si aparece. En la tienda real sale encima de
  * todo y tapa justo los botones que el recorrido necesita tocar.
  */

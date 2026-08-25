@@ -9,6 +9,8 @@ import { formatPrice } from '../../helpers';
 import { Field, FieldRow, FormError } from '../../ui';
 import type { Lookup, PerfumeForm } from '../../types';
 import { CheckGroup } from './CheckGroup';
+import { SelectorTipoProducto } from './SelectorTipoProducto';
+import { CAMPOS_POR_TIPO, TIPOS_ALTA, tipoDeForm, valoresDeTipo } from './tipoDeProducto';
 import { TallasDelPerfume } from './TallasDelPerfume';
 import type { FichaPerfume } from './useFichaPerfume';
 
@@ -37,6 +39,14 @@ export function FichaPerfumeModal({
 }: FichaPerfumeModalProps) {
   const { form, setForm } = ficha;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  /**
+   * Al crear se empieza por elegir qué es; al editar no, porque la ficha ya lo
+   * dice y volver a preguntarlo sería un clic de más en la tarea que más se
+   * repite.
+   */
+  const tipo = tipoDeForm(form);
+  const campos = CAMPOS_POR_TIPO[tipo];
+  const eligiendo = !ficha.modal.editId && !ficha.tipoElegido;
   const setF = (field: keyof PerfumeForm) => (e: { target: { value: string } }) => setForm(f => ({ ...f, [field]: e.target.value }));
 
   return (
@@ -48,7 +58,30 @@ export function FichaPerfumeModal({
       submitLabel={ficha.formLoading ? 'Guardando...' : ficha.modal.editId ? 'Guardar cambios' : `Crear ${sustantivo}`}
       loading={ficha.formLoading}
       maxWidth={620}
+      // Sin tipo elegido todavía no hay nada que guardar: el botón sobra.
+      ocultarSubmit={eligiendo}
     >
+      {eligiendo ? (
+        <SelectorTipoProducto onElegir={(t) => {
+          setForm(f => ({ ...f, ...valoresDeTipo(t) }));
+          ficha.setTipoElegido(t);
+        }} />
+      ) : (
+      <>
+      {/* Qué se está creando, siempre visible y siempre cambiable. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2">
+        <span className="text-[13px] text-foreground">
+          {TIPOS_ALTA.find(t => t.id === tipo)?.emoji}{' '}
+          <strong>{TIPOS_ALTA.find(t => t.id === tipo)?.titulo}</strong>
+        </span>
+        {!ficha.modal.editId && (
+          <button type="button" className="text-[12.5px] font-medium text-primary underline-offset-2 hover:underline"
+            onClick={() => ficha.setTipoElegido(null)}>
+            Cambiar
+          </button>
+        )}
+      </div>
+
       <FieldRow>
         <Field label="Nombre *">
           <Input value={form.nombre} onChange={setF('nombre')} required maxLength={100} />
@@ -63,6 +96,7 @@ export function FichaPerfumeModal({
       <Field label="Descripción">
         <Textarea value={form.descripcion} onChange={setF('descripcion')} rows={2} maxLength={500} />
       </Field>
+      {campos.atributosDeFragancia && (
       <FieldRow>
         <Field label="Duración">
           <Input placeholder="ej: 6-8 horas" value={form.duracion} onChange={setF('duracion')} maxLength={50} />
@@ -71,7 +105,9 @@ export function FichaPerfumeModal({
           <Input placeholder="ej: Moderada" value={form.proyeccion} onChange={setF('proyeccion')} maxLength={50} />
         </Field>
       </FieldRow>
+      )}
       <FieldRow>
+        {campos.atributosDeFragancia && (
         <Field label="Género">
           <SelectSimple value={form.genero} onChange={e => setForm(f => ({ ...f, genero: e.target.value as PerfumeForm['genero'] }))}>
             <option value="">— Sin especificar —</option>
@@ -80,6 +116,7 @@ export function FichaPerfumeModal({
             <option value="unisex">Unisex</option>
           </SelectSimple>
         </Field>
+        )}
         <Field label="Categoría">
           <SelectSimple value={form.categoria_id}
             onChange={e => setForm(f => ({ ...f, categoria_id: e.target.value === '' ? '' : Number(e.target.value) }))}>
@@ -124,6 +161,7 @@ export function FichaPerfumeModal({
         )}
       </Field>
 
+      {campos.atributosDeFragancia && (
       <FieldRow>
         <Field label="Tipos de aroma">
           <CheckGroup items={aromas} selected={form.tipos_aroma}
@@ -134,58 +172,40 @@ export function FichaPerfumeModal({
             onToggle={id => setForm(f => ({ ...f, ocasiones: toggleId(f.ocasiones, id) }))} />
         </Field>
       </FieldRow>
-
-      <TallasDelPerfume
-        form={form}
-        setForm={setForm}
-        presentaciones={presentaciones}
-        envases={ficha.envases}
-        precioDeLista={ficha.precioDeLista}
-      />
-
-      {/* Cómo se abastece: define con qué motor se costea */}
-      <Field label="¿Cómo consigues este producto?">
-        <SelectSimple value={form.tipo_producto}
-          onChange={e => setForm(f => ({ ...f, tipo_producto: e.target.value as PerfumeForm['tipo_producto'] }))}>
-          <option value="fabricado">Lo fabrico yo (contratipo, 1.1)</option>
-          <option value="comprado">Lo compro hecho y lo revendo (splash, gorra, perfumero vacío)</option>
-          <option value="fraccionado">Compro una botella y saco decants</option>
-        </SelectSimple>
-        <p className="mt-1 text-[12px] text-muted-foreground">
-          {form.tipo_producto === 'fabricado'
-            ? 'Se costea con la receta del tamaño: esencia, diluyente, sellador, feromonas y envase.'
-            : form.tipo_producto === 'comprado'
-              ? 'No tiene receta: cuesta lo que pagaste por él. No necesita talla.'
-              : 'El costo sale de la botella: (lo que pagaste ÷ ml aprovechables) × ml del decant.'}
-        </p>
-      </Field>
-
-      {/* Los 1.1 no se arman contra pedido, así que no basta con tener el
-          material: mientras no haya frascos hechos, la tienda los da agotados. */}
-      {form.tipo_producto === 'fabricado' && (
-        <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 text-[13px] text-foreground">
-          <input
-            type="checkbox" className="mt-0.5 size-4 accent-primary"
-            checked={form.solo_armado}
-            onChange={e => setForm(f => ({ ...f, solo_armado: e.target.checked }))}
-          />
-          <span>
-            Solo se vende si ya está armado (los 1.1)
-            <span className="block text-[12px] font-normal text-muted-foreground">
-              Se arma por adelantado, no cuando lo piden. Sale agotado en la tienda
-              mientras no tengas frascos hechos, aunque te sobre esencia y tengas su
-              envase especial en bodega. Los frascos entran al registrar la producción.
-            </span>
-          </span>
-        </label>
       )}
 
-      {form.tipo_producto !== 'fabricado' && (
+      {campos.tallas && (
+        <TallasDelPerfume
+          form={form}
+          setForm={setForm}
+          presentaciones={presentaciones}
+          envases={ficha.envases}
+          precioDeLista={ficha.precioDeLista}
+        />
+      )}
+
+      {/* Un 1.1 puede prepararlo el dueño con su esencia o comprarlo ya hecho.
+          Los dos son 1.1 —envase premium, precio propio y solo se venden si hay
+          unidades—; lo único que cambia es de dónde sale su costo. */}
+      {campos.preparadoOComprado && (
+        <Field label="¿Este 1.1 lo preparas tú o lo compras hecho?">
+          <SelectSimple value={form.tipo_producto}
+            onChange={e => setForm(f => ({ ...f, tipo_producto: e.target.value as PerfumeForm['tipo_producto'] }))}>
+            <option value="fabricado">Lo preparo yo (gasta mi esencia)</option>
+            <option value="comprado">Lo compro ya hecho</option>
+          </SelectSimple>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            En los dos casos se vende solo si tienes frascos armados. Cambia de dónde sale su costo.
+          </p>
+        </Field>
+      )}
+
+      {(campos.insumoOrigen || campos.accesorio) && (
         <div className="space-y-3 rounded-lg border border-border bg-secondary/40 p-3">
           {/* Solo en "comprado": un accesorio se compra hecho y se revende, no
               tiene receta ni talla. Mostrarla también en "fraccionado" dejaría
               marcar algo que el servidor rechaza al guardar. */}
-          {form.tipo_producto === 'comprado' && (
+          {campos.accesorio && (
             <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-card p-2.5 text-[13px] text-foreground">
               <input
                 type="checkbox" className="mt-0.5 size-4 accent-primary"
@@ -202,7 +222,7 @@ export function FichaPerfumeModal({
             </label>
           )}
 
-          <Field label={form.tipo_producto === 'comprado' ? '¿Qué insumo ES este producto?' : '¿De qué botella sale?'}>
+          <Field label={tipo === 'decant' ? '¿De qué botella sale?' : '¿Qué insumo ES este producto?'}>
             <BuscadorSelect
               value={form.insumo_producto_id}
               placeholder="— Elige el insumo —"
@@ -217,7 +237,7 @@ export function FichaPerfumeModal({
             </p>
           </Field>
 
-          {form.tipo_producto === 'fraccionado' && (
+          {campos.mlUtiles && (
             <Field label="¿Cuántos ml aprovechas de la botella?">
               <Input type="number" min="1" value={form.ml_utiles} placeholder="Ej: 95 de una de 100"
                 onChange={e => setForm(f => ({ ...f, ml_utiles: e.target.value }))} />
@@ -230,7 +250,9 @@ export function FichaPerfumeModal({
         </div>
       )}
 
-      {/* Esencia concreta: cada fragancia tiene su propio costo por ml */}
+      {/* Esencia concreta: cada fragancia tiene su propio costo por ml. Un 1.1
+          comprado hecho no gasta esencia del negocio, así que tampoco la pide. */}
+      {campos.esencia && form.tipo_producto !== 'comprado' && (
       <Field label="¿Con qué esencia se hace? (para el costeo)">
         <BuscadorSelect
           value={form.insumo_esencia_id}
@@ -247,7 +269,9 @@ export function FichaPerfumeModal({
           costo será aproximado.
         </p>
       </Field>
+      )}
 
+      {campos.esencia && (
       <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 p-2.5 text-[13px] text-foreground">
         <input
           type="checkbox" className="mt-0.5 size-4 accent-primary"
@@ -263,7 +287,10 @@ export function FichaPerfumeModal({
           </span>
         </span>
       </label>
+      )}
       <FormError>{ficha.formError}</FormError>
+      </>
+      )}
     </Modal>
   );
 }
