@@ -356,11 +356,11 @@ una captura: *"en base a cómo se consigue el producto, desde esa pregunta funda
 modal que se debe renderizar"*.
 
 Ahora el alta abre con **cuatro puertas** —fragancia, 1.1, comprado, decants— y cada una muestra
-solo sus campos. **Medido con : un accesorio pide 5 casillas y una
+solo sus campos. **Medido con `altaPorTipo.e2e.test.ts`: un accesorio pide 5 casillas y una
 fragancia 8.**
 
-- **Los tipos se deducen de los datos** (), nunca de una bandera aparte: son
-  combinaciones de ,  y , que ya existían. Una columna
+- **Los tipos se deducen de los datos** (`tipoDeProducto.ts`), nunca de una bandera aparte: son
+  combinaciones de `tipo_producto`, `solo_armado` y `es_accesorio`, que ya existían. Una columna
   nueva se desincronizaría el día que el producto se edite por otra vía (el Excel, el alta desde el
   lote).
 - **Al EDITAR no se vuelve a preguntar**: la ficha ya lo dice, y preguntarlo sería un clic de más en
@@ -368,6 +368,6 @@ fragancia 8.**
 - **El 1.1 dejó de ser una casilla escondida** al final del formulario y pasó a ser una puerta. Ahí
   vive la pregunta que el dueño añadió: *¿lo preparas tú o lo compras hecho?* — los dos son 1.1;
   cambia de dónde sale su costo.
-- **Los decants tienen su propia puerta** aunque no estaban en el diseño inicial: sin ella,
-   habría quedado inalcanzable desde la pantalla.
+- **Los decants tienen su propia puerta** aunque no estaban en el diseño inicial: sin ella, el tipo
+  `fraccionado` habría quedado inalcanzable desde la pantalla.
 
