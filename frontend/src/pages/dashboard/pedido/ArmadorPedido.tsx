@@ -15,9 +15,9 @@ interface ArmadorPedidoProps {
   /** Solo Créditos: check por línea para quitar el descuento de la página. */
   permitirSinDescuento?: boolean;
   /**
-   * Solo Ventas: agrega el buscador de accesorios y el campo "Regalo" por línea.
-   * Créditos no la enciende porque su backend no guarda ninguno de los dos
-   * todavía — mostrarlos ahí dejaría escribir algo que se descarta en silencio.
+   * Agrega el buscador de accesorios y el campo "Regalo" por línea. La usan
+   * Ventas y Créditos: desde el 2026-08-24 el crédito guarda las dos cosas,
+   * porque su venta pasa por el mismo camino que una venta normal.
    */
   permitirExtras?: boolean;
   /** Solo Ventas: da de alta un producto que no está en el catálogo. */
@@ -43,7 +43,7 @@ export function ArmadorPedido({
   /**
    * Sin `permitirExtras` el buscador de siempre sigue mostrando TODO el
    * catálogo: separar los accesorios solo tiene sentido cuando hay un segundo
-   * buscador que los recoja. Sin él quedarían invisibles para Créditos.
+   * buscador que los recoja. Sin él quedarían invisibles.
    */
   const fragancias = permitirExtras ? catalogo.filter(p => !p.es_accesorio) : catalogo;
   const accesorios = permitirExtras ? catalogo.filter(p => p.es_accesorio) : [];

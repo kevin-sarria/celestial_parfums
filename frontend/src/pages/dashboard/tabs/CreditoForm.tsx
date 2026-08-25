@@ -92,8 +92,17 @@ export function CreditoForm({
     const lineas: LineaPedido[] = credito.productos.map((prod, i) => {
       const p = porId.get(prod.perfume_id);
       const tallas = p?.precios ?? [];
-      // Si el resumen del crédito nombra una talla conocida se usa; si no, la primera
-      const elegida = tallas.find(t => t.presentacion === credito.presentacion) ?? tallas[0];
+      /**
+       * La talla sale de la LÍNEA guardada. Antes se adivinaba del resumen de
+       * texto del crédito y, si no coincidía, se cogía la primera del catálogo:
+       * un crédito con dos tallas distintas volvía con las dos iguales, y al
+       * guardar se descontaba del inventario algo que el cliente no se llevó.
+       * Los créditos viejos no tienen `ml` y siguen cayendo en ese apaño, que
+       * para ellos es lo único disponible.
+       */
+      const elegida = (prod.ml ? tallas.find(t => t.ml === prod.ml) : undefined)
+        ?? tallas.find(t => t.presentacion === credito.presentacion)
+        ?? tallas[0];
       return {
         key: `${prod.perfume_id}-${i}-${Date.now()}`,
         perfume_id: prod.perfume_id,
@@ -101,9 +110,7 @@ export function CreditoForm({
         presentacion: elegida?.presentacion ?? null,
         ml: elegida?.ml ?? null,
         cantidad: prod.cantidad,
-        // Créditos no maneja regalos todavía: su backend no los guarda, y por
-        // eso su <ArmadorPedido> tampoco enciende `permitirExtras`.
-        regalo: 0,
+        regalo: prod.regalo ?? 0,
         sin_descuento: false,
       };
     });
@@ -192,8 +199,12 @@ export function CreditoForm({
         fecha: form.fecha,
         user_id: userId,
         articulos,
-        // ids REPETIDOS por cantidad (el backend los agrupa)
-        perfume_ids: form.lineas.flatMap(l => Array(l.cantidad).fill(l.perfume_id) as number[]),
+        // Líneas con su talla: es lo que deja al crédito descontar inventario.
+        // Antes iban ids repetidos y sin talla, así que la mercancía salía por la
+        // puerta y el sistema seguía contándola en bodega.
+        lineas: form.lineas.map(l => ({
+          perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad, regalo: l.regalo,
+        })),
         presentacion: presentacionResumen(form.lineas) || null,
         // Valor FINAL: las líneas, el combo y el cupón ya están aplicados aquí
         deuda_inicial: Number(form.deuda_inicial),
@@ -286,6 +297,7 @@ export function CreditoForm({
           catalogo={catalogo}
           porId={porId}
           permitirSinDescuento
+          permitirExtras
           placeholder="Buscar y agregar perfume…"
         />
 

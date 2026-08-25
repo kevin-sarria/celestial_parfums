@@ -1,5 +1,21 @@
 import { z } from 'zod/v4';
 
+/**
+ * Una línea de pedido. Vive fuera del esquema de la venta porque los CRÉDITOS
+ * usan exactamente la misma: son la misma mercancía saliendo por la puerta, y
+ * dos copias de esta regla acabarían diciendo cosas distintas sobre el regalo.
+ */
+export const lineaVentaSchema = z.object({
+  perfume_id: z.number().int().positive(),
+  ml: z.number().int().positive().nullish(),
+  cantidad: z.number().int().min(1).max(999).default(1),
+  /** Cuántas de esa cantidad van sin cobrar. Nunca mayor que la cantidad. */
+  regalo: z.number().int().min(0).max(999).default(0),
+}).refine((l) => l.regalo <= l.cantidad, {
+  message: 'El regalo no puede ser mayor que la cantidad',
+  path: ['regalo'],
+});
+
 export const createVentaSchema = z.object({
   dia: z.string().min(1, 'El día es obligatorio'),
   persona: z.string().min(1, 'La persona es obligatoria').max(150),
@@ -23,16 +39,7 @@ export const createVentaSchema = z.object({
    * talla (una gorra) o venta histórica; esas no descuentan inventario porque
    * no se sabe qué receta aplicar.
    */
-  lineas: z.array(z.object({
-    perfume_id: z.number().int().positive(),
-    ml: z.number().int().positive().nullish(),
-    cantidad: z.number().int().min(1).max(999).default(1),
-    /** Cuántas de esa cantidad van sin cobrar. Nunca mayor que la cantidad. */
-    regalo: z.number().int().min(0).max(999).default(0),
-  }).refine((l) => l.regalo <= l.cantidad, {
-    message: 'El regalo no puede ser mayor que la cantidad',
-    path: ['regalo'],
-  })).optional(),
+  lineas: z.array(lineaVentaSchema).optional(),
   valor_venta: z.number().positive('El valor debe ser mayor a 0'),
   // Es un dato EXTRA: se acepta texto, null o ausente
   datos_adicionales: z.string().max(5000).nullish(),
@@ -52,9 +59,16 @@ export const createVentaSchema = z.object({
   });
 
 export type CreateVentaInput = z.infer<typeof createVentaSchema>;
+type LineaEntrada = z.infer<typeof lineaVentaSchema>;
 
-/** Normaliza las dos formas de entrada a una sola lista de líneas. */
-export const lineasDeVenta = (v: CreateVentaInput) => {
+/**
+ * Normaliza las dos formas de entrada a una sola lista de líneas.
+ *
+ * Acepta cualquier cosa con `lineas` o `perfume_ids` —ventas y créditos— porque
+ * las dos entran por los mismos dos caminos: el formulario manda líneas, el
+ * importador de Excel manda ids sueltos.
+ */
+export const lineasDeVenta = (v: { lineas?: LineaEntrada[]; perfume_ids?: number[] }) => {
   if (v.lineas?.length) {
     // Se agrupa por producto+talla: dos Khamrah de 30 ml son UNA línea de 2.
     // El regalo se suma aparte: agrupar no puede romper `regalo <= cantidad`,

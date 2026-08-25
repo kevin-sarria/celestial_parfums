@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
-import { crearInsumo } from '../src/test/baseDePrueba';
+import { crearCliente, crearInsumo } from '../src/test/baseDePrueba';
 import { abrirDashboard, cabeceraAdmin, campo, cerrarNavegador, irA } from './navegador';
 import { URL_API } from './arranque';
 
@@ -18,8 +18,8 @@ afterAll(cerrarNavegador);
 
 /**
  * Los dos recorridos miran el MISMO accesorio: uno comprueba que en Ventas
- * tiene su buscador aparte y su campo Regalo, y el otro que en Créditos no
- * aparece ninguna de las dos cosas. Por eso se crea una sola vez.
+ * tiene su buscador aparte y su campo Regalo, y el otro que en Créditos pasa
+ * exactamente lo mismo. Por eso se crea una sola vez.
  */
 let insumoId = 0;
 let perfumeroId = 0;
@@ -93,31 +93,46 @@ describe('el campo Regalo de una línea', () => {
   });
 
   /**
-   * NO REGRESIÓN — Créditos se quedó exactamente como estaba.
+   * VENDER FIADO ES VENDER — y desde el 2026-08-24, también por dentro.
    *
-   * Su backend no guarda el regalo, así que su `<ArmadorPedido>` no enciende
-   * `permitirExtras`: sin campo "Regalo" y sin buscador de accesorios. Si
-   * alguien lo encendiera por error, la pantalla dejaría escribir un regalo
-   * que el servidor descarta en silencio — el defecto que esa prop evita.
-   * Antes esto era un paso manual del plan; aquí queda comprobado solo.
+   * Este recorrido comprobaba lo contrario: que Créditos NO tuviera ni campo
+   * "Regalo" ni buscador de accesorios, porque su backend no guardaba ninguno
+   * de los dos. Eso no era una regla, era una carencia — y le costaba plata al
+   * dueño: la mercancía salía por la puerta y el sistema seguía contándola en
+   * bodega (4 de sus 5 créditos no movieron un gramo). Ahora el crédito arma su
+   * venta por el mismo camino que una venta, así que se comprueba lo de verdad:
+   * que lo que se escribe aquí SALE del inventario.
    */
-  it('no se asoma en Créditos: ni campo Regalo ni buscador de accesorios', async () => {
+  it('un perfumero vendido a crédito sale de la bodega, como en una venta', async () => {
+    await crearCliente(`fiado-${Date.now()}@ejemplo.com`);
     const { contexto, pagina } = await abrirDashboard();
+    const antes = await prisma.insumoCosto.findUniqueOrThrow({ where: { id: insumoId } });
+
     await irA(pagina, '/dashboard/creditos');
     await pagina.waitForSelector('text=Nuevo crédito');
     await pagina.getByRole('button', { name: /nuevo crédito/i }).click();
 
-    // Sin `permitirExtras`, el buscador de siempre muestra TODO el catálogo,
-    // accesorios incluidos: es el único sitio donde se pueden agregar.
-    await pagina.getByRole('button', { name: /buscar y agregar perfume/i }).click();
+    // Un cliente que ya existe: dar de alta uno nuevo es otro recorrido, y
+    // mezclarlo aquí haría que un fallo suyo pareciera un fallo del inventario.
+    await campo(pagina, 'Cliente *').click();
+    await pagina.getByRole('option', { name: /Cliente De Prueba/i }).first().click();
+
+    // El buscador de accesorios ya existe aquí: es el que estaba apagado.
+    await pagina.getByRole('button', { name: /buscar y agregar accesorio/i }).click();
     await pagina.getByRole('option', { name: 'Perfumero Recargable', exact: true }).click();
+    await pagina.getByLabel('Cantidad').fill('2');
 
-    // La línea existe (tiene su Cantidad), pero no lo nuevo de Ventas.
-    await pagina.getByLabel('Cantidad').waitFor();
-    expect(await pagina.getByLabel('Regalo').count()).toBe(0);
-    expect(await pagina.getByRole('button', { name: /buscar y agregar accesorio/i }).count()).toBe(0);
+    await pagina.getByRole('button', { name: /^Registrar crédito$/ }).click();
+    // El modal se cierra cuando el servidor respondió: esperar el texto del
+    // cliente no sirve, porque ese nombre también está dentro del formulario.
+    await pagina.locator('[role=dialog]').waitFor({ state: 'detached', timeout: 30_000 });
 
-    // Se cierra sin guardar: el recorrido mira la pantalla, no crea deudas.
+    // Lo que de verdad importa: los dos perfumeros salieron del inventario.
+    await expect.poll(async () => {
+      const i = await prisma.insumoCosto.findUniqueOrThrow({ where: { id: insumoId } });
+      return Number(antes.stock) - Number(i.stock);
+    }, { timeout: 15_000 }).toBe(2);
+
     await contexto.close();
   });
 });

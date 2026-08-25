@@ -322,6 +322,23 @@ costo. Editar o borrar una venta revierte el consumo (`revertirVenta`).
   su costo entra en cero → la ganancia del mes sale inflada. Por eso importa el enlace.
 - **El consumo NO es retroactivo, por diseño**: las ventas históricas sin talla por línea no
   mueven inventario.
+- **VENDER FIADO ES VENDER (2026-08-24).** El crédito no descontaba nada: armaba su venta a mano
+  en vez de pasar por `createVenta`, y en esa copia se había quedado fuera el consumo. Medido
+  contra el respaldo de producción del 2026-08-24: **de 5 créditos con venta enlazada, 4 no
+  movieron un gramo** (el único que sí fue porque el dueño editó esa venta después desde Ventas).
+  La mercancía salía por la puerta, el sistema la seguía contando en bodega y la ganancia del mes
+  salía inflada cada vez que se fiaba. Ahora Ventas y Créditos entran por
+  `escribirVentaConConsumo` (`venta.repository.ts`), el ÚNICO sitio donde se escribe una venta y
+  se gasta lo que salió.
+  - **Lo que NO comparte esa función, a propósito: los cupones.** Las políticas son distintas y
+    decididas: en Créditos quitar el código lo libera, en Ventas un cupón canjeado queda amarrado
+    a su venta. Cada módulo pone la suya alrededor.
+  - **El crédito guarda ahora la talla por línea** (`venta_perfume.ml`) y el regalo. Sin la talla
+    no había forma de meter un 1.1 ni un perfumero, y por eso el crédito del 24 de julio dice
+    "Thank U Next 1.1, Emeer 1.1, Gorra Equin…" escrito a mano.
+  - **Los créditos viejos no se tocan**: sus líneas siguen sin talla y siguen sin descontar, igual
+    que las ventas históricas. Se corrigen uno a uno abriéndolos, poniéndoles la talla y
+    guardando — ahí el consumo se aplica con las reglas nuevas.
 
 ### Recetas confirmadas por el dueño
 

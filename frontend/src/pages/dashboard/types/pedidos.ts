@@ -77,7 +77,8 @@ export interface Credito {
   /** Resumen de presentaciones de la venta enlazada (para reconstruir el editor). */
   presentacion: string;
   /** Perfumes enlazados con su cantidad (para reconstruir las líneas al editar). */
-  productos: { perfume_id: number; cantidad: number }[];
+  /** Las líneas guardadas, con su talla y su regalo: el editor las reconstruye tal cual. */
+  productos: { perfume_id: number; cantidad: number; ml: number | null; regalo: number }[];
   /** Venta enlazada: nace pendiente con el crédito y se paga al saldarlo. */
   venta: { id: number; pagada: boolean } | null;
 }

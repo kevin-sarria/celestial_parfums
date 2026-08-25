@@ -26,8 +26,34 @@ export const mapaFiltrosCreditos: MapaFiltros = {
   telefono: (f) => (f.type === 'string' && f.value.trim()
     ? { user: { telefono: { contains: f.value.trim() } } } : null),
 };
-import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
+import { buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
 import { canjearCodigoEnCredito, liberarCodigoDeVenta } from '../services/anuncio.service';
+import { escribirVentaConConsumo } from './venta.repository';
+import { lineasDeVenta } from '../schemas/venta.schema';
+
+/**
+ * Qué se llevó el cliente, en la misma forma que una venta.
+ *
+ * Tres caminos, y el tercero es el que había: el formulario manda `lineas` (con
+ * su talla, sus accesorios y sus regalos); un crédito viejo o importado de Excel
+ * manda ids sueltos; y si no manda nada, los perfumes se deducen del texto libre
+ * como se hizo siempre. Los dos últimos entran SIN talla, así que no descuentan
+ * inventario — igual que las ventas históricas, y por el mismo motivo: sin talla
+ * no se sabe qué receta aplicar.
+ */
+const lineasDelCredito = (
+  data: CreateCreditoDTO,
+  catalogo: { id: number; nombre: string }[],
+) => lineasDeVenta({
+  lineas: data.lineas,
+  perfume_ids: data.perfume_ids?.length
+    ? data.perfume_ids
+    : matchPerfumes(data.articulos, buildPerfumeIndex(catalogo)),
+});
+
+/** Unidades del pedido, para el contador heredado `ventas.cantidad_perfumes`. */
+const unidadesDe = (lineas: { cantidad: number }[]) =>
+  Math.max(1, lineas.reduce((s, l) => s + l.cantidad, 0));
 
 const includeAll = {
   user: { select: { id: true, nombre: true, apellido: true, telefono: true, email: true, direccion: true, sin_cuenta: true } },
@@ -37,8 +63,11 @@ const includeAll = {
       id: true,
       pagada: true,
       presentacion: true,
-      // Productos enlazados: para reconstruir las líneas al editar
-      perfumes: { select: { perfume_id: true, cantidad: true } },
+      // Productos enlazados: para reconstruir las líneas al editar. Van con su
+      // TALLA: sin ella el editor la adivinaba del resumen de texto, y dos
+      // tallas distintas en el mismo crédito se aplastaban en una — al guardar
+      // se descontaba del inventario algo que el cliente nunca se llevó.
+      perfumes: { select: { perfume_id: true, cantidad: true, ml: true, regalo: true } },
       codigo: { select: { codigo: true, estado: true, anuncio: { select: { titulo: true, descuento_pct: true, max_descuento: true } } } },
     },
   },
@@ -101,7 +130,9 @@ const mapCredito = (c: CreditoRow) => {
       : null,
     // Presentación y productos de la venta enlazada (para reconstruir el editor)
     presentacion: c.venta?.presentacion ?? '',
-    productos: (c.venta?.perfumes ?? []).map((p) => ({ perfume_id: p.perfume_id, cantidad: p.cantidad })),
+    productos: (c.venta?.perfumes ?? []).map((p) => ({
+      perfume_id: p.perfume_id, cantidad: p.cantidad, ml: p.ml, regalo: p.regalo,
+    })),
     venta:          c.venta ? { id: c.venta.id, pagada: c.venta.pagada } : null,
     created_at:     c.created_at,
   };
@@ -173,11 +204,7 @@ export const createCredito = async (data: CreateCreditoDTO) => {
   ]);
   if (!user) throw new Error('La persona del crédito no existe');
 
-  // Con productos elegidos (formulario nuevo) se usan directo; sin ellos
-  // (importador de Excel) se infieren del texto libre de artículos.
-  const perfumeIds = data.perfume_ids?.length
-    ? data.perfume_ids
-    : matchPerfumes(data.articulos, buildPerfumeIndex(catalogo));
+  const lineas = lineasDelCredito(data, catalogo);
   const presentacion = (data.presentacion?.trim() || '—').slice(0, 100);
   const codigo = data.codigo_descuento?.trim() || null;
   // `deuda_inicial` ya viene con el cupón aplicado (lo calcula el formulario);
@@ -186,20 +213,21 @@ export const createCredito = async (data: CreateCreditoDTO) => {
   const deuda = data.deuda_inicial;
 
   const row = await prisma.$transaction(async (tx) => {
-    const venta = await tx.venta.create({
-      data: {
-        dia:                new Date(data.fecha),
-        persona:            `${user.nombre} ${user.apellido}`.trim(),
-        user_id:            data.user_id,
-        cantidad_perfumes:  Math.max(1, perfumeIds.length),
-        presentacion,
-        referencia_perfume: data.articulos,
-        perfumes:           { create: agruparEnlaces(perfumeIds) },
-        valor_venta:        deuda,
-        datos_adicionales:  'Venta a crédito (se marca pagada al saldar el crédito)',
-        pagada:             false,
-      },
+    const ventaId = await escribirVentaConConsumo(tx, null, {
+      dia:               new Date(data.fecha),
+      persona:           `${user.nombre} ${user.apellido}`.trim(),
+      user_id:           data.user_id,
+      cantidad_perfumes: unidadesDe(lineas),
+      presentacion,
+      // El texto lo escribe el dueño y puede nombrar cosas que no están en el
+      // catálogo ("Gorra Equipo"), así que manda sobre el resumen derivado.
+      referencia:        data.articulos,
+      valor_venta:       deuda,
+      datos_adicionales: 'Venta a crédito (se marca pagada al saldar el crédito)',
+      pagada:            false,
+      lineas,
     });
+    const venta = { id: ventaId };
     return tx.credito.create({
       data: {
         fecha:         new Date(data.fecha),
@@ -239,9 +267,7 @@ export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
   ]);
   if (!user) throw new Error('La persona del crédito no existe');
 
-  const perfumeIds = data.perfume_ids?.length
-    ? data.perfume_ids
-    : matchPerfumes(data.articulos, buildPerfumeIndex(catalogo));
+  const lineas = lineasDelCredito(data, catalogo);
   const presentacion = (data.presentacion?.trim() || '—').slice(0, 100);
   const codigo = data.codigo_descuento?.trim() || null;
   const deuda = data.deuda_inicial;
@@ -251,19 +277,19 @@ export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
 
   await prisma.$transaction(async (tx) => {
     if (ventaId) {
-      await tx.venta.update({
-        where: { id: ventaId },
-        data: {
-          dia:                new Date(data.fecha),
-          persona:            `${user.nombre} ${user.apellido}`.trim(),
-          user_id:            data.user_id,
-          cantidad_perfumes:  Math.max(1, perfumeIds.length),
-          presentacion,
-          referencia_perfume: data.articulos,
-          perfumes:           { deleteMany: {}, create: agruparEnlaces(perfumeIds) },
-          valor_venta:        deuda,
-          pagada,
-        },
+      // Devuelve al inventario lo de antes y descuenta lo de ahora, igual que
+      // editar una venta: si no, corregir un crédito contaría la mercancía dos
+      // veces.
+      await escribirVentaConConsumo(tx, ventaId, {
+        dia:               new Date(data.fecha),
+        persona:           `${user.nombre} ${user.apellido}`.trim(),
+        user_id:           data.user_id,
+        cantidad_perfumes: unidadesDe(lineas),
+        presentacion,
+        referencia:        data.articulos,
+        valor_venta:       deuda,
+        pagada,
+        lineas,
       });
     }
     await tx.credito.update({
