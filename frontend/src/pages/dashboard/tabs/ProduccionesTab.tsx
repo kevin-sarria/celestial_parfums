@@ -13,6 +13,7 @@ import { formatPrice } from '../helpers';
 import { produccionesColumns } from '../columns';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
+import { LotesPorEnlazar } from './producciones/LotesPorEnlazar';
 import type { FrascoArmado, InventarioInsumo, Produccion, ResumenInventario } from '../types';
 import type { CatalogoItem, CatalogoRespuesta } from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
@@ -124,6 +125,8 @@ export function ProduccionesTab() {
         <StatCard label="Lotes registrados" value={String(producciones.length)}
           nota="Todo el historial" />
       </FranjaMetricas>
+
+      <LotesPorEnlazar perfumes={perfumes} onResuelto={load} />
 
       <Section>
         <p className="text-[12.5px] text-muted-foreground">
