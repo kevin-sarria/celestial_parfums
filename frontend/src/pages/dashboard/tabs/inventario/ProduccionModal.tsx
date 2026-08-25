@@ -10,6 +10,7 @@ import { urls } from '../../../../infrastructure/api/urls';
 import { formatPrice } from '../../helpers';
 import { Field, FieldRow } from '../../ui';
 import { mlDiluyente } from '../../../../application/costeoCotizacion';
+import { opcionesPorExistencias } from '../../../../domain/entities/insumo';
 import type { InventarioInsumo } from '../../types';
 import type { FormulaVolumen, Insumo } from '../../../../domain/entities/cotizacion.types';
 import { AltaProductoArmado } from './AltaProductoArmado';
@@ -64,8 +65,14 @@ export function ProduccionModal({
   const catalogoPerfumes = [...creados, ...perfumes];
 
   const perfumeElegido = perfumes.find((p) => p.id === perfumeId) ?? null;
-  /** El mismo tamaño puede llevar el envase normal o el luxury. */
-  const envases = catalogo.filter((i) => i.tipo === 'envase');
+  /**
+   * El mismo tamaño puede llevar el envase normal o el luxury.
+   *
+   * Salen del INVENTARIO y no del catálogo de costeo porque aquí se van a
+   * consumir: hace falta saber cuántos quedan para no ofrecer como disponible
+   * uno que está en cero.
+   */
+  const envases = opcionesPorExistencias(insumos.filter((i) => i.tipo === 'envase'));
 
   /**
    * Qué consume un lote. La esencia sale del PERFUME elegido (cada fragancia
@@ -199,13 +206,16 @@ export function ProduccionModal({
       </FieldRow>
 
       <Field label="Envase usado">
-        <SelectSimple value={envaseId || formulaElegida?.envase_insumo_id || ''}
-          onChange={(e) => setEnvaseId(Number(e.target.value) || '')}>
-          <option value="">— El del tamaño —</option>
-          {envases.map((v) => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-        </SelectSimple>
+        <BuscadorSelect
+          value={envaseId || formulaElegida?.envase_insumo_id || ''}
+          placeholder="— El del tamaño —"
+          opciones={[{ id: '', nombre: '— El del tamaño —' }, ...envases]}
+          onSelect={(id) => setEnvaseId(Number(id) || '')}
+        />
         <p className="mt-1 text-[12px] text-muted-foreground">
           El mismo tamaño puede llevar el envase normal o el luxury; cámbialo si usaste otro.
+          Los que están en cero salen al final: se pueden elegir igual —para registrar un lote de
+          hace días— pero el stock quedará en negativo.
         </p>
       </Field>
 

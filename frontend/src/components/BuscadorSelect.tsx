@@ -7,6 +7,16 @@ import { cn } from '@/lib/utils';
 export interface OpcionBuscador {
   id: number | string;
   nombre: string;
+  /**
+   * Letra pequeña a la derecha de la opción ("quedan 24", "sin existencias").
+   *
+   * Va SEPARADA del nombre a propósito: pegada al texto, el buscador la
+   * encontraría al filtrar —escribir "24" sacaría envases— y el campo cerrado
+   * la arrastraría dentro del valor elegido.
+   */
+  nota?: string;
+  /** En gris: se puede elegir igual, pero algo no cuadra (no hay existencias). */
+  atenuada?: boolean;
 }
 
 interface Props {
@@ -348,7 +358,8 @@ export default function BuscadorSelect({
                   role="option"
                   aria-selected={esSelector && String(o.id) === String(value ?? '')}
                   className={cn(
-                    'block w-full rounded py-1.5 pr-2.5 text-left text-sm text-foreground transition-colors',
+                    'flex w-full items-baseline gap-2 rounded py-1.5 pr-2.5 text-left text-sm transition-colors',
+                    o.atenuada ? 'text-muted-foreground' : 'text-foreground',
                     i === resaltada ? 'bg-brand-soft text-primary' : 'hover:bg-brand-soft hover:text-primary',
                     esSelector && String(o.id) === String(value ?? '') && 'font-medium text-primary',
                   )}
@@ -358,7 +369,10 @@ export default function BuscadorSelect({
                   onMouseDown={(e) => { e.preventDefault(); elegir(o.id); }}
                   onMouseEnter={() => setResaltada(i)}
                 >
-                  {o.nombre}
+                  <span className="min-w-0 flex-1 truncate">{o.nombre}</span>
+                  {o.nota && (
+                    <span className="shrink-0 text-[11.5px] text-muted-foreground">{o.nota}</span>
+                  )}
                 </button>
               ))
             )}

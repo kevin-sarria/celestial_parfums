@@ -6,6 +6,7 @@ import BuscadorSelect from '../../../../components/BuscadorSelect';
 import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
 import { Field, FieldRow } from '../../ui';
+import { opcionesPorExistencias } from '../../../../domain/entities/insumo';
 import type { InventarioInsumo } from '../../types';
 
 export interface ArmadoCreado { id: number; nombre: string }
@@ -122,7 +123,7 @@ export function AltaProductoArmado({
           <BuscadorSelect
             value={envaseId}
             placeholder="— El de siempre —"
-            opciones={envases.map((v) => ({ id: v.id, nombre: `${v.nombre} (${v.stock})` }))}
+            opciones={opcionesPorExistencias(envases)}
             onSelect={(id) => setEnvaseId(id === '' ? '' : Number(id))}
           />
         </Field>
