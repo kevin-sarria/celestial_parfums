@@ -188,13 +188,15 @@ Es el **tercer hermano** de un patrón que ya existe dos veces en `emparejarEsen
 Reglas heredadas, no reinventadas:
 - **Nace apagado** (`publicado: false`), como ya nacen todos los productos desde el 2026-08-24.
 - **Si ya existe un producto con ese nombre, no se toca**: se avisa y decide el dueño.
-- **Puerta única**: al existir esta, se quita la casilla "Solo se vende si ya está armado" de
-  *+ Nuevo producto* (`FichaPerfumeModal.tsx`), que hoy está ahí como deuda intencional. Dos
-  puertas acaban en "Bon Bon 1.1" y "Bon bon 1.1" como dos fichas, stock partido y costos que no
-  cuadran.
-- **Y hay que reescribir `backend/e2e/disponibilidad.e2e.test.ts`** (Recorrido 6, primer `it`):
-  hoy crea el 1.1 marcando esa casilla. Sin ella, el recorrido tiene que crear el 1.1 pasando por
-  el envasado.
+- ~~**Puerta única**: al existir esta, se quita la casilla "Solo se vende si ya está armado" de
+  *+ Nuevo producto*.~~ **REVOCADO el 2026-08-25.** Cerrar puertas no evita duplicados, solo
+  esconde el alta —y el alta escondida es justo lo que tenía al dueño con 5 frascos sin
+  registrar—. Lo que sí los evita es avisar del parecido al guardar. Ahora son TRES puertas
+  (catálogo, lote y Excel) y el 1.1 tiene su propia tarjeta en el alta: ver
+  [`2026-08-25-alta-de-productos-por-tipo-design.md`](2026-08-25-alta-de-productos-por-tipo-design.md).
+- **El recorrido `backend/e2e/disponibilidad.e2e.test.ts`** (Recorrido 6, primer `it`) crea hoy el
+  1.1 desde *+ Nuevo producto*. Sigue siendo válido —esa puerta se queda—, pero pasará a elegir la
+  tarjeta "Un 1.1" en vez de marcar una casilla escondida al final del formulario.
 
 **Por qué el envasado y no la maceración**: un 1.1 se define por su **envase premium**, y el
 envase se elige justo ahí. Un granel no es todavía un 1.1: de la misma tanda pueden salir tres

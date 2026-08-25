@@ -271,6 +271,22 @@ en 0 van al final, en gris, con "sin existencias", y elegir uno avisa que el sto
 negativo. Esconderlos por completo bloquearía el caso legítimo de registrar una producción de hace
 una semana, cuando sí había envase.
 
+## 🚧 Lo siguiente decidido con el dueño (2026-08-25): el alta de productos
+
+Diseño completo en
+[`superpowers/specs/2026-08-25-alta-de-productos-por-tipo-design.md`](superpowers/specs/2026-08-25-alta-de-productos-por-tipo-design.md).
+Sale de una queja suya sobre el formulario del catálogo y de una barrera real: **tiene 5 frascos
+1.1 que no puede registrar**. Sin migración. En este orden:
+
+1. **Carga inicial de frascos ya armados** — lo que lo desbloquea hoy. Entra stock de producto
+   terminado SIN descontar esencia ni envases (esa esencia ya se gastó y él no la contó en el
+   inventario). El motor ya lo soporta (`movimientos_terminado` acepta `ajuste`); falta el
+   endpoint y la pantalla.
+2. **Alta rápida del 1.1 desde el lote**, con "crear y añadir otro" y columnas nuevas en el Excel
+   de perfumes. Nace apagado, como el pre-registro de esencias desde la factura.
+3. **Un formulario por tipo de producto**: la pregunta "¿qué vas a dar de alta?" decide el modal.
+   Un perfumero pasa de 16 campos a 5. Y un 1.1 puede ser **preparado o comprado hecho**.
+
 ## Sigue de Productos y Accesorios: Ola 2 y Ola 3
 
 La Ola 1 (punto 8 de la lista de arriba) partió el CATÁLOGO del dashboard en dos pestañas.
