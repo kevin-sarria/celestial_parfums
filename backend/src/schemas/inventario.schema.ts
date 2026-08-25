@@ -98,4 +98,16 @@ export const minimosGamasSchema = z.object({
 
 export type SalidaInput = z.infer<typeof salidaSchema>;
 export type AjusteInput = z.infer<typeof ajusteSchema>;
+/**
+ * Editar un lote pide lo mismo que crearlo, más el costo si hace falta.
+ *
+ * `costo_manual` se declara y no se deduce: el enlazador reenvía el costo
+ * CONGELADO del lote —para no revaluar los frascos al promedio de hoy— y eso no
+ * es un costo escrito por una persona.
+ */
+export const produccionEdicionSchema = produccionSchema.extend({
+  costo_unitario: z.number().min(0, 'El costo no puede ser negativo').max(100_000_000).nullish(),
+  costo_manual: z.boolean().optional(),
+});
+
 export type ProduccionInput = z.infer<typeof produccionSchema>;

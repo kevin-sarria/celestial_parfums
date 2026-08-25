@@ -12,7 +12,7 @@ import { bustCatalogoCache } from '../services/perfume.service';
 import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
 import {
-  ajusteSchema, produccionSchema, cargaInicialArmadosSchema, salidaSchema, minimoSchema, minimosGamasSchema,
+  ajusteSchema, produccionSchema, produccionEdicionSchema, cargaInicialArmadosSchema, salidaSchema, minimoSchema, minimosGamasSchema,
 } from '../schemas/inventario.schema';
 
 /** Inventario de insumos: 100% interno (lleva costos reales del negocio). */
@@ -123,6 +123,16 @@ inventarioRouter.post('/terminado/carga-inicial', validate(cargaInicialArmadosSc
   const data = await cargaInicialArmados({ ...resto, fecha: new Date(fecha) });
   bustCatalogoCache();
   res.status(201).json({ message: 'Frascos agregados a tu inventario de armados', data });
+}));
+
+/**
+ * Corrige un lote ya registrado: deshace y rehace material, frascos y costo.
+ * PATCH y no PUT: el CORS del proyecto solo permite GET/POST/PATCH/DELETE.
+ */
+inventarioRouter.patch('/producciones/:id', validate(produccionEdicionSchema), h(async (req, res) => {
+  const data = await producciones.editarProduccion(Number(req.params.id), req.body);
+  bustCatalogoCache();
+  res.json({ message: 'Lote corregido: el material y los frascos quedaron al día', data });
 }));
 
 inventarioRouter.delete('/producciones/:id', h(async (req, res) => {
