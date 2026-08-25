@@ -300,6 +300,28 @@ material:
 
 De paso quedó cerrado el defecto de los envases en cero que él encontró el 2026-08-23.
 
+## 🚧 Lo siguiente decidido con el dueño (2026-08-25): editar lotes y enlazar los 1.1
+
+Diseño completo en
+[`superpowers/specs/2026-08-25-editar-lotes-y-enlazar-1.1-design.md`](superpowers/specs/2026-08-25-editar-lotes-y-enlazar-1.1-design.md).
+Sale de tres pedidos suyos en la misma frase: editar producciones para ajustar valores, un
+enlazador para los 1.1 que quedaron colgados de la ficha equivocada, y poder sacarlos rápido al
+catálogo público. **Trae migración** (dos columnas en `producciones`). En este orden:
+
+1. **Editar un lote** — el motor. Cambia material, cantidad, ficha, envase, fecha y costo en una
+   sola transacción que deshace y rehace. El costo se recalcula y se puede pisar a mano (queda
+   marcado); cada edición deja una línea de historial legible. De paso arregla un defecto latente:
+   revertir un lote restaba el stock pero **dejaba el costo promedio viejo**.
+2. **La ficha 1.1 heredada del perfume corriente** — copia descripción, notas, ocasiones, género,
+   duración y proyección; el dueño solo pone foto, precio y envase. Copia, no enlace. Publicar sin
+   foto **avisa, no bloquea**.
+3. **El enlazador** — sección en Producciones con dos reglas comprobables (el lote no dejó
+   frascos; el envase que gastó no es el de la ficha donde quedaron). Sin motor propio: llama a la
+   carga inicial y al editar de arriba.
+
+**Esto reemplaza buena parte del runbook de los 9 frascos**: lo que eran ~20 minutos de borrar y
+volver a registrar pasa a ser un botón por lote.
+
 ## Sigue de Productos y Accesorios: Ola 2 y Ola 3
 
 La Ola 1 (punto 8 de la lista de arriba) partió el CATÁLOGO del dashboard en dos pestañas.
