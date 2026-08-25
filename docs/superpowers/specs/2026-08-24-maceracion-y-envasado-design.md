@@ -134,19 +134,20 @@ Registrar uso ▾
 ### Puse a macerar
 
 ```
-¿Qué fragancia?         [ 212 VIP Black                    ▾ ]
+¿Qué fragancia?         [ 212 VIP Black                        ▾ ]
 ¿Cuántos ml preparaste? [ 500 ]
-Proporción de           [ 100 ML (30 ml esencia / 70 diluyente) ▾ ]
+Proporción de           [ 100 ml (50 esencia / 48,9 diluyente)  ▾ ]
 ¿Cuándo estará lista?   [ __/__/____ ]  (opcional)
-Nota                    [ ................................. ]
+Nota                    [ ..................................... ]
 
-Se descontará: Esencia 212 VIP Black 150 ml · Diluyente 350 ml
-Costo de la tanda: $60.470  →  $120,94 por ml
+Se descontará: Esencia 212 Vip Black 250 ml · Diluyente 244,5 ml
+               Sellador 4 ml · Feromonas 1,5 ml
+Costo de la tanda: $83.939,78  →  $167,88 por ml
 ```
 
-> Los números de esta maqueta y de la siguiente son **inventados para ilustrar la pantalla**. El
-> único dato real y comprobado es el costo del frasco de 212 VIP Black ($24.188, medido el
-> 2026-08-14): ese es el que la implementación tiene que reproducir.
+> **Los números son los REALES**, medidos contra el respaldo de producción del 2026-08-24 (lote
+> `producciones.id = 1`, movimientos 287-293). La receta del dueño es **mitad esencia**, no un
+> tercio: 100 ml = 50 esencia + 48,9 diluyente + 0,8 sellador + 0,3 feromonas.
 
 La proporción sale de una receta existente (`formulas_volumen`) **escalada** a los ml que se
 maceran: es el mismo motor de costeo de las cotizaciones, sin reimplementar nada. Escalar en vez
@@ -235,8 +236,22 @@ cómo quedaron 9 frascos sin ficha.
 - **El costo del granel se congela** el día de la mezcla, al promedio vigente de cada insumo. Si
   la esencia sube mañana, esa tanda no cambia. Misma regla que ya usan los lotes y las compras.
 - **Costo de cada frasco** = ml de la talla × `costo_ml` + envase + accesorios, congelado al
-  envasar. **Macerar + envasar tiene que dar lo mismo que armar directo** con los mismos insumos:
-  es la prueba que cierra el diseño (los $24.188 del 212 VIP Black).
+  envasar. **Macerar + envasar tiene que dar lo mismo que armar directo.** Ya está comprobado
+  contra los datos reales (respaldo del 2026-08-24), y esta cadena es la prueba que cierra el
+  diseño:
+
+  | | |
+  |---|---|
+  | Granel: esencia 250 ml + diluyente 244,5 + sellador 4 + feromonas 1,5 | **$83.939,78** (500 ml → **$167,879 56/ml**) |
+  | Envasado: 5 envases 100 ml + 5 bolsas organza + 5 perfumeros | **$37.000,00** |
+  | Total | **$120.939,78** → **$24.187,956 por frasco** |
+
+  Es exactamente el `costo_unitario` que hoy tiene `producciones.id = 1`. Si la implementación no
+  reproduce ese número, está mal.
+
+- **El envasado consume también los accesorios de la receta** (bolsa organza, perfumero…), no solo
+  el envase: en el lote real son $11.400 de los $37.000. Se descubrió midiendo, y es la diferencia
+  entre devolver bien o mal el inventario al convertir el lote viejo.
 - **Cerrar tanda** anota los ml que quedaron como pérdida, con su plata (`ml_merma`). No genera
   movimiento de inventario: el granel no es un insumo y no hay a quién restarle. Sale en el
   reporte como merma de maceración.
@@ -264,7 +279,10 @@ macerando"**. Aparece solo si **sus frascos siguen completos en stock**: si ya s
 hay nada que convertir sin descuadrar el terminado, y el botón no se ofrece (con un "ya vendiste
 frascos de este lote" al pasar por encima). Al confirmar:
 
-1. Devuelve los envases del lote a la bodega (5 × Frasco 100 ml).
+1. Devuelve a la bodega **los envases Y los accesorios** del lote: en el lote real son 5 × Envase
+   100 ml, 5 × Bolsa Organza y **5 × Perfumero Recargable**. Lo de los accesorios se descubrió
+   midiendo el respaldo del 2026-08-24, y no es un detalle: el Perfumero Recargable está hoy en
+   **−25 unidades** en producción, y estos 5 son parte de ese agujero.
 2. Quita los frascos que el sistema cree que existen (5 × 212 VIP Black 100 ML).
 3. Crea la tanda: `ml_iniciales = unidades × ml de la talla` (5 × 100 = 500 ml), con la **fecha
    original** (11 ago) y el **costo original del lote** (no el promedio de hoy).
