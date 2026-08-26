@@ -807,17 +807,40 @@ un historial de ids obliga a reconstruir nombres que quizá ya no existan y acab
 En *Producciones*, arriba de la tabla. Marca un lote por **dos hechos comprobables**, nunca por el
 nombre del producto:
 
-| Regla | Qué pasó | Cómo se arregla | El material |
-|---|---|---|---|
-| `sin_frascos` | Descontó material y no dejó ni un frasco: registrado antes de que existiera el libro del terminado (los 5 lotes del 11 al 14 de agosto) | **Carga inicial**: los frascos entran a su ficha | **No se toca**: ya se descontó |
-| `envase_ajeno` | El envase que gastó no es el que declara la ficha donde quedaron sus frascos (el lote 6 de Khamrah) | **Editar el lote**: los frascos se mudan con su costo | **No se toca**: es el mismo lote |
+| Regla | Qué pasó | Ejemplo real |
+|---|---|---|
+| `sin_frascos` | Armado con su envase propio, descontó material y no dejó ni un frasco: es anterior al libro del terminado | Los 4 lotes 1.1 del 13 y 14 de agosto |
+| `envase_ajeno` | El envase que gastó no es el que declara la ficha donde quedaron sus frascos | El lote 6 de Khamrah, del 21 de agosto |
+
+**Las dos exigen que el lote se haya armado con un envase distinto al del tamaño.** Es lo que
+separa un 1.1 de un lote corriente sin adivinar por el nombre: un 1.1 lleva su propio frasco
+premium y el lote lo dice al registrarse. Decisión del dueño (2026-08-25, viendo los 6 avisos en
+producción): el lote del **212 VIP Black** usó el envase normal —esos 500 ml están macerando, no
+son 5 frascos— y no tiene por qué salir en la lista. El precio de esconderlo: un lote viejo de
+perfume corriente cuyos frascos tampoco entraron tampoco se marca.
+
+**Una ficha sin envase propio no está indefinida: significa "usa el del tamaño"** (ver
+`PerfumePresentacion.envase_insumo_id`). Leerlo como "envase distinto" marcaba como sospechoso a
+casi cualquier lote, porque casi ninguna ficha declara envase.
 
 Adivinar por el nombre ("dice 1.1") se descartó: bastaría un "Set 1.1" o un 1.1 sin esas letras
 para que la lista mintiera, y una lista que miente en dinero se deja de mirar.
 
-El enlazador **no tiene motor propio**: llama a la carga inicial y al `PATCH` del lote. Por eso la
-consulta devuelve el lote completo —consumos, envase y costo congelado—: el `PATCH` valida el lote
-entero, y mandar solo la ficha nueva lo reharía sin material.
+### El botón crea la ficha que falta (2026-08-25, tras verlo en producción)
 
-La ficha propuesta va siempre en el desplegable aunque el catálogo cacheado todavía no la traiga:
-una ficha 1.1 recién creada es justo el destino más probable de un lote colgado.
+La primera versión pedía **elegir** la ficha 1.1 de destino. En producción el dueño se encontró
+seis avisos con el desplegable **vacío**: tiene 229 perfumes y cero fichas 1.1, así que no había
+nada que elegir y el aviso no servía para nada.
+
+Ahora el botón principal **crea la ficha** copiando la del perfume corriente —**foto incluida**—,
+marcada como 1.1 (categoría 1.1 si existe, solo se vende armado, con el envase que gastó el lote),
+**apagada** y en la pestaña *Productos*, y le mete los frascos. El nombre se propone
+(`<perfume> 1.1`) y **se puede corregir antes de crear**: decisión suya. Mandar los frascos a una
+ficha que ya existe sigue estando, plegado debajo.
+
+**Las dos rutas acaban en lo mismo: corregir el lote apuntándolo a su ficha** (el `PATCH` del
+lápiz). Se probó resolver los `sin_frascos` con la carga inicial —el material ya estaba
+descontado— y una prueba lo tumbó: la carga inicial **no deja rastro en el lote**, así que el aviso
+lo seguiría marcando para siempre y una lista que no se vacía se deja de mirar. Corregir el lote
+entra los frascos y además lo saca del aviso, sin mover ni un ml: se le devuelven sus consumos y se
+le vuelven a descontar los mismos.

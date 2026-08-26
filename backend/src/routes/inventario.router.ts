@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import * as repo from '../repositories/inventario.repository';
 import * as producciones from '../repositories/inventario.producciones';
-import { lotesPorEnlazar } from '../repositories/producciones.enlazar';
+import { crearFicha11YEnlazar, lotesPorEnlazar, mandarFrascosAlaFicha } from '../repositories/producciones.enlazar';
 import * as reposicion from '../repositories/reposicion.repository';
 import { cargaInicialArmados, listarTerminado } from '../repositories/inventario.terminado';
 import { requireAdmin } from '../middleware/auth.middleware';
@@ -13,7 +13,8 @@ import { bustCatalogoCache } from '../services/perfume.service';
 import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
 import {
-  ajusteSchema, produccionSchema, produccionEdicionSchema, cargaInicialArmadosSchema, salidaSchema, minimoSchema, minimosGamasSchema,
+  ajusteSchema, produccionSchema, produccionEdicionSchema, cargaInicialArmadosSchema,
+  fichaDeLoteSchema, enlazarLoteSchema, salidaSchema, minimoSchema, minimosGamasSchema,
 } from '../schemas/inventario.schema';
 
 /** Inventario de insumos: 100% interno (lleva costos reales del negocio). */
@@ -114,6 +115,28 @@ inventarioRouter.get('/producciones', h(async (_req, res) => {
  */
 inventarioRouter.get('/producciones/por-enlazar', h(async (_req, res) => {
   res.json({ data: await lotesPorEnlazar() });
+}));
+
+/**
+ * Crea la ficha 1.1 que le falta a un lote y le manda sus frascos.
+ *
+ * Nace apagada y en la pestaña Productos: el dueño le pone foto propia, precio
+ * y notas cuando quiera, sin que ningún cliente la vea a medio llenar.
+ */
+inventarioRouter.post('/producciones/:id/ficha-1-1', validate(fichaDeLoteSchema), h(async (req, res) => {
+  const data = await crearFicha11YEnlazar(Number(req.params.id), req.body.nombre);
+  bustCatalogoCache();
+  res.status(201).json({
+    message: `"${data.nombre}" quedó creado en Productos, fuera de la tienda, con sus frascos`,
+    data,
+  });
+}));
+
+/** Manda los frascos de un lote a una ficha que ya existe. */
+inventarioRouter.post('/producciones/:id/enlazar', validate(enlazarLoteSchema), h(async (req, res) => {
+  await mandarFrascosAlaFicha(Number(req.params.id), req.body.perfume_id);
+  bustCatalogoCache();
+  res.json({ message: 'Listo: esos frascos ya están en su ficha, con su costo' });
 }));
 
 /** Registra un lote armado y descuenta sus insumos. */

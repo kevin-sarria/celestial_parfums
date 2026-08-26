@@ -313,15 +313,17 @@ deploy es `git pull` + `migrate deploy` + build. El porqué de cada decisión es
 - **El lápiz en Producciones corrige un lote entero** —material, cantidad, ficha, envase, fecha y
   costo— sin borrarlo. El costo se recalcula solo y se puede escribir a mano (queda marcado ✎), y
   cada corrección deja su línea en la fila.
-- **El aviso "lotes por enlazar"** manda cada frasco colgado a su ficha 1.1 con un botón, y
-  desaparece cuando no queda ninguno.
+- **El aviso "lotes por enlazar"** le CREA a cada lote su ficha 1.1 —copiada del perfume
+  corriente, foto incluida, apagada y en Productos— y le mete los frascos, con un botón. El
+  nombre se propone y se puede corregir antes de crear. Desaparece cuando no queda ninguno.
 - **Un 1.1 se crea heredando la ficha de su perfume corriente** y se publica sin cambiar de
   pantalla; sin foto avisa y deja seguir.
 - **Arreglado de paso**: borrar un lote dejaba el costo promedio del frasco mintiendo.
 
 **Esto reemplaza casi todo el runbook de los 9 frascos**: lo que eran ~20 minutos de borrar y
-volver a registrar es ahora un botón por lote. El 212 VIP Black sigue siendo la excepción (está
-macerando, no son 5 frascos).
+volver a registrar es ahora un botón por lote, y ni siquiera hace falta crear las fichas 1.1 a
+mano. El **212 VIP Black ya no sale en el aviso**: su lote usó el envase normal —esos 500 ml están
+macerando, no son 5 frascos— y el aviso solo marca lo armado con envase propio.
 
 Diseño completo en
 [`superpowers/specs/2026-08-25-editar-lotes-y-enlazar-1.1-design.md`](superpowers/specs/2026-08-25-editar-lotes-y-enlazar-1.1-design.md).

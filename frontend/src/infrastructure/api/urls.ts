@@ -45,6 +45,10 @@ export const urls = {
     producciones: '/inventario/producciones',
     /** Lotes por enlazar a su ficha 1.1. Solo lee. */
     produccionesPorEnlazar: '/inventario/producciones/por-enlazar',
+    /** Crea la ficha 1.1 que le falta a un lote y le manda sus frascos. */
+    fichaDeLote: (id: number) => `/inventario/producciones/${id}/ficha-1-1`,
+    /** Manda los frascos de un lote a una ficha que ya existe. */
+    enlazarLote: (id: number) => `/inventario/producciones/${id}/enlazar`,
     produccion: (id: number) => `/inventario/producciones/${id}`,
   },
 

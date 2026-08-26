@@ -172,9 +172,12 @@ describe('el 1.1 hereda la ficha de su perfume corriente', () => {
     expect(creado.tipos_aroma).toHaveLength(1);
     expect(creado.ocasiones).toHaveLength(1);
 
-    // Lo que NO se hereda: es otro producto, con otro frasco y otra foto.
+    // La foto SÍ se hereda: es el mismo jugo y el mismo frasco de referencia, y
+    // una ficha sin imagen se ve rota en la tienda (decisión del dueño,
+    // 2026-08-25, al ver los 6 lotes por enlazar en producción).
+    expect(creado.imagen_url).toBe('/uploads/khamrah.webp');
+    // Lo que NO se hereda: el precio, porque un 1.1 vale otra cosa.
     expect(Number(creado.precio)).toBe(150000);
-    expect(creado.imagen_url).toBeNull();
     expect(creado.publicado).toBe(false);
     expect(creado.solo_armado).toBe(true);
   });

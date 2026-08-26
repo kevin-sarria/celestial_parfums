@@ -110,4 +110,14 @@ export const produccionEdicionSchema = produccionSchema.extend({
   costo_manual: z.boolean().optional(),
 });
 
+/** Crear la ficha 1.1 que le falta a un lote: solo el nombre, que él puede corregir. */
+export const fichaDeLoteSchema = z.object({
+  nombre: z.string().trim().min(1, 'Ponle un nombre a la ficha').max(150),
+});
+
+/** Mandar los frascos de un lote a una ficha que ya existe. */
+export const enlazarLoteSchema = z.object({
+  perfume_id: z.number().int().positive('Elige a qué ficha van estos frascos'),
+});
+
 export type ProduccionInput = z.infer<typeof produccionSchema>;

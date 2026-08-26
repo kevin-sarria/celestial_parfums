@@ -333,6 +333,11 @@ export const crearProductoArmado = async (datos: {
       duracion: origen?.duracion ?? null,
       proyeccion: origen?.proyeccion ?? null,
       genero: origen?.genero ?? null,
+      // La FOTO también se hereda (decisión del dueño, 2026-08-25): es el mismo
+      // jugo y el mismo frasco de referencia, así que una ficha 1.1 sin imagen
+      // se vería rota en la tienda por una diferencia que al cliente no le
+      // importa. Se cambia luego si él le toma una foto propia.
+      imagen_url: origen?.imagen_url ?? null,
       ...(origen?.tipos_aroma.length
         ? { tipos_aroma: { create: origen.tipos_aroma.map((t) => ({ tipo_aroma_id: t.tipo_aroma_id })) } }
         : {}),
