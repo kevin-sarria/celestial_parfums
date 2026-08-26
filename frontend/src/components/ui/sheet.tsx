@@ -58,7 +58,12 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500",
+          /* Abrir 200 ms y cerrar 150, no los 500/300 que trae shadcn por
+             defecto. Medido el 2026-08-25 en el menú del dashboard: del clic a
+             que el cajón terminaba de deslizarse pasaban 531 ms, con CERO
+             bloqueo del hilo. Nada iba lento; era la animación, y el dueño la
+             notó justo porque el resto responde al instante. */
+          "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:duration-200",
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
           side === "left" &&

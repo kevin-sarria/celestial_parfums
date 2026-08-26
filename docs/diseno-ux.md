@@ -417,3 +417,25 @@ es un caso donde la captura automática NO sustituye a mirarlo.
 **La regla**: los bordes de las etiquetas van en color OPACO (`border-amber-300`,
 `border-border`…), nunca con `/30` o `/50`. El resto del dashboard —Blog, Cotizaciones,
 Entregas— ya lo hacía así; eran las columnas de Estado las que se habían salido del patrón.
+
+## El cajón (Sheet) abre en 200 ms, no en 500 (2026-08-25)
+
+El dueño dijo que la app se sentía **"ultra lenta al abrir el drawer"**, en cualquier pantalla y
+también en producción. Medido con los recorridos, cinco vueltas por pantalla:
+
+| | Antes | Después |
+|---|---|---|
+| Del clic a que termina de deslizarse | **531 ms** | ~230 ms |
+| Trabajo bloqueando el hilo | **0 ms** | 0 ms |
+
+**Los 0 ms son la clave del diagnóstico**: no había nada pesado calculándose —esa causa ya se
+había arreglado el 2026-08-14 moviendo el estado a `MenuLateral`— sino la animación, que venía en
+`duration-500` desde que se instaló el componente de shadcn. Nunca la tocó nadie; se notó ahora
+porque el resto de la aplicación responde al instante y medio segundo destaca.
+
+Queda en **200 ms al abrir y 150 al cerrar**, y lo vigila `e2e/menuLateral.e2e.test.ts`, que mide
+las dos cosas: que la animación no se alargue y que no vuelva a haber trabajo bloqueando (los dos
+fallos se sienten igual y se arreglan distinto).
+
+Afecta a los tres cajones de la casa: el menú del dashboard, **el carrito de la tienda** y los
+filtros del catálogo en móvil — los tres abrían en medio segundo.
