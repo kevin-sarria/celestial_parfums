@@ -399,3 +399,21 @@ tengan foto.
 **Publicar sin foto avisa, no bloquea** (decisión del dueño, 2026-08-25): se dice que en la tienda
 se verá una tarjeta sin imagen y se publica igual si él confirma. Un producto recién creado nunca
 tiene foto, así que el aviso sale siempre la primera vez.
+
+## Los bordes de 1 píxel NO llevan transparencia (2026-08-25)
+
+En las etiquetas de las columnas *Estado* el borde iba al 50% (`border-amber-400/50`,
+`border-primary/30`). En la pantalla del dueño el filo se veía **verde**, y se arreglaba solo al
+pasar el mouse por la fila.
+
+**Por qué**: un borde de 1 píxel sobre una pastilla curva no cae justo en la rejilla de píxeles;
+el navegador lo compensa mezclando subpíxeles de colores, y con transparencia el efecto se dispara
+—el verde es el complementario del ámbar—. El hover repinta la fila y por eso ahí se veía limpio.
+
+**Por qué no salió en las capturas**: el navegador sin ventana (el de los recorridos y las
+capturas de verificación) no usa antialiasing por subpíxeles. Esto solo se ve en una pantalla real:
+es un caso donde la captura automática NO sustituye a mirarlo.
+
+**La regla**: los bordes de las etiquetas van en color OPACO (`border-amber-300`,
+`border-border`…), nunca con `/30` o `/50`. El resto del dashboard —Blog, Cotizaciones,
+Entregas— ya lo hacía así; eran las columnas de Estado las que se habían salido del patrón.

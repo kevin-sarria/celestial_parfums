@@ -59,7 +59,7 @@ export const ventasColumns: ColumnDef<Venta>[] = [
   { key: 'cantidad_perfumes', header: 'Cant.', type: 'number', getValue: v => v.cantidad_perfumes, className: cellMeta, noTruncate: true },
   { key: 'presentacion', header: 'Presentacion', type: 'enum', enumOptions: ['10ML', '20ML', '30ML', '60ML', '100ML', '200ML'],
     getValue: v => v.presentacion,
-    render: v => <Badge variant="outline" className="border-primary/30 bg-brand-soft text-primary">{v.presentacion}</Badge>,
+    render: v => <Badge variant="outline" className="border-border bg-brand-soft text-primary">{v.presentacion}</Badge>,
     className: cellMeta, noTruncate: true },
   { key: 'referencia_perfume', header: 'Referencia', type: 'string', getValue: v => v.referencia_perfume,
     render: v => (
@@ -362,7 +362,7 @@ export const combosColumns: ColumnDef<Combo>[] = [
   { key: 'activo', header: 'Estado', type: 'enum', enumOptions: ['Activo', 'Inactivo'],
     getValue: c => c.activo ? 'Activo' : 'Inactivo',
     render: c => c.activo
-      ? <Badge variant="outline" className="border-primary/30 bg-brand-soft text-primary">Activo</Badge>
+      ? <Badge variant="outline" className="border-border bg-brand-soft text-primary">Activo</Badge>
       : <Badge variant="secondary" className="text-muted-foreground">Inactivo</Badge>,
     noTruncate: true },
 ];

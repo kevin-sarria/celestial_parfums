@@ -67,6 +67,13 @@ export const faltaParaVender = (p: Perfume): { etiqueta: string; explicacion: st
  *  - **Fuera de la tienda**: desapareció del catálogo como si no existiera.
  *  - **Agotado (marca manual)**: se sigue viendo, marcado, y el cliente puede
  *    pedir que le avisen cuando vuelva.
+ * **Los bordes van OPACOS, sin transparencia** (2026-08-25). Un borde de 1 píxel
+ * al 50% sobre una pastilla curva no cae justo en la rejilla de píxeles, y el
+ * navegador lo compensa mezclando subpíxeles de colores: al dueño se le veía
+ * VERDE en el filo —el complementario del ámbar— y se arreglaba solo al pasar
+ * el mouse, porque el hover repinta la fila. No se ve en las capturas
+ * automáticas: el navegador sin ventana no usa subpíxeles.
+ *
  *  - **Le falta algo para venderse**: lo CALCULA el servidor, y qué le falta
  *    depende de cómo se consiga ese producto — esencia el contratipo, frascos
  *    armados el 1.1, unidades en bodega el original. No se desmarca con un
@@ -83,7 +90,7 @@ export function EstadoPerfume({ perfume }: { perfume: Perfume }) {
           en las excepciones. Cuál es el estado se ve igual al abrir el menú. */}
       {!perfume.publicado && (
         <Badge variant="outline"
-          className="border-amber-400/50 bg-amber-400/10 text-[10px] font-medium text-amber-700"
+          className="border-amber-300 bg-amber-400/10 text-[10px] font-medium text-amber-700"
           title="No aparece en el catálogo, ni en la búsqueda, ni en su página">
           Fuera de la tienda
         </Badge>
@@ -100,7 +107,7 @@ export function EstadoPerfume({ perfume }: { perfume: Perfume }) {
         <Badge
           variant="outline"
           title={falta.explicacion}
-          className="cursor-help border-amber-400/50 bg-amber-400/10 text-[10px] text-amber-700"
+          className="cursor-help border-amber-300 bg-amber-400/10 text-[10px] text-amber-700"
         >
           {falta.etiqueta}
         </Badge>
