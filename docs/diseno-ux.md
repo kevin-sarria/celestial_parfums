@@ -439,3 +439,50 @@ fallos se sienten igual y se arreglan distinto).
 
 Afecta a los tres cajones de la casa: el menú del dashboard, **el carrito de la tienda** y los
 filtros del catálogo en móvil — los tres abrían en medio segundo.
+
+## Una acción destructiva enseña la cuenta medida, no una promesa (2026-08-29)
+
+El modal de **fusionar materiales** (Inventario → icono *Fusionar* de cada fila) no se puede
+deshacer, así que antes de confirmar enseña **tres cosas, en este orden**:
+
+1. **Qué se va a mover, contado por el servidor**: *"Se muda a su nombre: 3 movimientos · 2
+   recetas"*. No es una estimación del frontend — lo trae un `GET` que cuenta lo mismo que después
+   se mueve. Y solo se listan los renglones con número: enseñar ocho ceros no informa, distrae.
+2. **En verde, la respuesta a lo que el dueño preguntó**, con su número delante: *"Tus existencias
+   no se mueven: «X» sigue con 30"*. El aviso verde no es decoración; es la duda concreta que
+   trajo (*"que no me descuente lo que esté antes"*) contestada donde va a tomar la decisión.
+3. **En ámbar, lo que no tiene vuelta**: qué se borra, y cuál es la alternativa menos drástica
+   (apagarlo con el interruptor).
+
+**La regla que queda**: cuando una pantalla vaya a hacer algo irreversible, lo que enseña antes
+tiene que ser **medido contra los datos de verdad**, no redactado. Un texto que dice "se moverán
+tus registros" no deja decidir; "3 movimientos, 2 recetas, 1 perfume" sí.
+
+De paso, las acciones de fila de Inventario salieron a `inventario/AccionesMaterial.tsx`
+(escritorio y móvil): `InventarioTab.tsx` estaba justo en 500 líneas y había que meterle un botón
+más.
+
+## El aviso de inventario del dashboard (2026-08-29)
+
+Pedido así por el dueño: *"una súper alerta que salga en medio de todo, solo visible para el
+dashboard, así como la parte que tengo de anuncios para los clientes"*. Se resolvió como una
+**pantalla de configuración** (Alertas de inventario) más un aviso que él decide cómo se ve.
+
+Las reglas que quedan, y su porqué:
+
+- **El aviso va arriba de todo y en CUALQUIER pestaña.** Si solo saliera en Inventario, avisaría
+  justo a quien ya está mirando el inventario.
+- **Él elige la forma por familia**: franja discreta o ventana en medio. No se decide desde el
+  código qué merece interrumpirlo.
+- **Solo UNA ventana a la vez**, aunque dos familias pidan ventana. Dos modales encadenados al
+  entrar convierten el aviso en un trámite que se cierra sin leer.
+- **Se cierra por el día, y vuelve antes si cambia la lista que lo disparó.** Se guarda una firma
+  con los ids de los materiales: si cambian, es otra alerta. Una alerta que se calla mientras se
+  acaban tres cosas más es igual a no tener alerta.
+- **La pantalla de configuración enseña lo que cada regla marca AHORA**, traído del servidor.
+  Teclear un mínimo sin ver a cuántos materiales alcanza es adivinar; con la vista previa, el
+  número se ajusta en la misma pantalla.
+
+Y una que aplica a todo el dashboard: **cuando dos pantallas configuran lo mismo, cada una nombra a
+la otra.** Los mínimos por gama siguen en *Pedido sugerido → ¿Cuándo te aviso?* y mandan sobre los
+de familia; la pantalla de Alertas lo dice en su cabecera, o el dueño los buscaría ahí.

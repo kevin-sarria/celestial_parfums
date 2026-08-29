@@ -1,88 +1,105 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 25 de agosto de 2026.** Todo compila, **349 pruebas en verde** (214 backend +
-84 frontend + 51 recorridos, más 1 saltada a propósito). En `main` está todo lo anterior; **editar
-lotes y el enlazador viven en la rama `editar-lotes`**, terminados y a la espera de mergearse.
+**Última sesión: 29 de agosto de 2026.** Todo compila, **371 pruebas en verde** (235 backend +
+84 frontend + 52 recorridos, más 1 saltada a propósito) y el linter en cero.
 
-**Listo en código y esperando el próximo deploy** (nada de esto está en vivo todavía):
+## 🔴 LO PRIMERO: el deploy del 29 quedó a medias
 
-1. **Los regalos en la venta (Ola 1).** Cualquier línea puede llevar parte gratis y parte cobrada,
-   y los accesorios tienen su buscador aparte. Trae migración
-   (`20260820120000_regalos_y_extras`), así que el deploy es `git pull` + `migrate deploy` +
-   build, como siempre — ver [`deploy-migraciones.md`](deploy-migraciones.md). La **Ola 2 (el kit
-   del combo)** queda a la espera de que el dueño use esta unos días y opine.
-2. **El arreglo de los anuncios que se apagaban un día antes.** Sin migración: es solo código.
-   **Va con prisa razonable** — hasta que se despliegue, los 4 popups del dueño siguen apagados en
-   producción desde su último día de vigencia. Mientras tanto, el parche manual es correrles la
-   fecha de fin desde el dashboard. Detalle en [`gotchas.md`](gotchas.md).
-3. **Las etiquetas de los formularios y 10 tildes que faltaban.** Solo frontend, sin migración y
-   sin prisa: hacer clic en el nombre de un campo lleva el cursor a su casilla, y el dashboard
-   deja de decir "Descripcion" o "Genero". Entra con el mismo `npm run build` del frontend.
-4. **Los precios al mayoreo salieron de *Tamaños y fórmulas*** y ahora son su propia pantalla en
-   *Mayoreo B2B*. Solo frontend, sin migración: no cambia ni un precio ni una receta, solo dónde
-   se editan. **Ojo al abrirlo**: los rangos que ya tenías siguen ahí, pero en el sitio nuevo.
-5. **El backend se quedó sin `any` (215 → 0).** Solo código, sin migración. Casi todo es
-   invisible para el dueño, pero **dos arreglos sí se notan**: marcar una cotización como
-   "enviada" ya no la devuelve sin sus productos, y guardar una venta o un crédito ya no puede
-   responder con un error 500. Detalle en la sección de deuda técnica, más abajo.
-6. **El plazo por defecto de un crédito son 30 días de calendario.** Solo código, sin migración.
-   Los créditos ya guardados **no cambian** (su fecha límite está escrita en la base); solo cambia
-   la que se propone de aquí en adelante. Antes, un crédito de un 29, 30 o 31 se desbordaba al mes
-   siguiente y daba 2-3 días de más.
-7. **Una receta nueva engancha sola las tallas de ese tamaño.** Solo código, sin migración. Hace
-   falta ANTES de separar "200/250ML" (punto 6 de la lista de abajo): sin esto, esas dos tallas se
-   quedarían sin costear y sus ventas entrarían con costo cero. De paso, cambiarle los mililitros
-   a una receta que ya usa alguna talla **ahora se rechaza** con un mensaje que dice cuáles.
-8. **Catálogo: Perfumes y Productos, en dos pestañas (Ola 1 de Productos).** Solo código, sin migración. El
-   dashboard partió la tabla de perfumes en dos pestañas del grupo *Catálogo* — **Perfumes**
-   (lo que se fabrica al vender) y **Productos** (1.1, comprados y accesorios) — para que cada
-   ficha muestre solo los campos que le aplican. Verificado contra los datos reales: hoy da
-   **222 en Perfumes y 0 en Productos** (los 222 perfumes del dueño son todos `fabricado`), así
-   que la pestaña Productos nace vacía y trae su propia caja de "primeros pasos". El porqué
-   completo, con la regla que parte las dos familias, en
-   [`arquitectura.md`](arquitectura.md#catálogo-perfumes-y-productos-son-la-misma-tabla-partida-en-dos-2026-08-23-ola-1).
-   **Los tres hallazgos de la verificación, ya ARREGLADOS (2026-08-24)** — los tres salieron de
-   mirar la pantalla, no de leer el código:
-   - **Exportar bajaba el catálogo entero desde Productos.** Ahora cada pestaña descarga lo que
-     enseña: el endpoint acepta `?familia=`, el archivo se llama `export_productos.xlsx` o
-     `export_perfumes.xlsx`, y **sin familia sigue bajando todo** (respaldos y plantillas no
-     cambian). El filtro reutiliza `WHERE_FAMILIA`, la misma regla que parte las dos pestañas: no
-     hay una segunda copia que se pueda desincronizar. 3 pruebas en `perfume.familia.bd.test.ts`.
-   - **El paso 3 de primeros pasos abría una ficha en blanco.** Publicar no es una pantalla a la
-     que llevar, sino una acción del menú `⋯` de cada fila, así que ese paso **ya no lleva botón**:
-     dice dónde está («menú ⋯ de su fila → *Devolver a la tienda*») en vez de mandar al sitio
-     equivocado. Los pasos 1 y 2 conservan el suyo, que sí lleva a alguna parte.
-   - **Un producto nacía PUBLICADO.** Ahora un producto (1.1, comprado o accesorio) **nace
-     apagado** y un perfume normal sigue naciendo publicado — los 222 del dueño cuentan con eso.
-     La regla se decide en el servidor (`naceComoProducto`, en `perfume.familia.ts`), que es donde
-     ya vivía el default: hacerlo en el formulario habría dejado el alta por Excel y por API con
-     el comportamiento viejo. Un `publicado` explícito sigue mandando. 4 pruebas.
-   **Y de paso**, `+ Nuevo producto` arranca en "lo compro hecho": antes heredaba el formulario en
-   blanco de Perfumes (`tipo_producto: 'fabricado'`) y **lo creado desde Productos se iba a la
-   pestaña de Perfumes** sin avisar. Sigue siendo un punto de partida editable, no un candado.
-9. **El alta de productos, sus tres partes (2026-08-25).** Sin migración, solo código. Es lo que
-   **desbloquea los 5 frascos 1.1** que el dueño no podía registrar:
-   - **Carga inicial de frascos ya armados**: entran con su costo y **sin descontar ni un gramo**
-     de esencia ni un envase. Queda anotada como `ajuste`, nunca como producción. Vive en
-     *Materiales*, no en *Registrar uso*.
-   - **Alta rápida del 1.1 desde el lote**: el buscador de "¿qué fragancia armaste?" ofrece
-     "+ Crear producto nuevo" como primera opción y el alta cabe dentro del propio modal, con
-     "crear y añadir otro". Nace apagado; un nombre repetido avisa y no se toca. El Excel de
-     perfumes también sabe cargar un 1.1.
-   - **Un formulario por tipo**: el alta pregunta primero qué es —fragancia, 1.1, comprado,
-     decants— y cada puerta enseña solo lo suyo. **Medido, no a ojo**: un accesorio pide 5
-     casillas y una fragancia 8, donde antes eran ~16 para todos. El porqué, en
-     [`diseno-ux.md`](diseno-ux.md) y [`inventario-costeo.md`](inventario-costeo.md).
-10. **Los envases en cero dejan de parecer disponibles (2026-08-25).** Solo frontend, sin
-    migración. En los desplegables que van a CONSUMIR existencias, lo que hay va arriba con
-    "quedan 24" y lo que está en cero cae al final, en gris y con "sin existencias". No se
-    esconden a propósito. Detalle y porqué en
-    [`inventario-costeo.md`](inventario-costeo.md#los-envases-en-cero-dejan-de-disfrazarse-de-disponibles-2026-08-25).
+**La migración `20260825120000_editar_producciones` NO se aplicó en producción** (la base va hasta
+la del 23 de agosto). Comprobado corriendo el código contra una copia del respaldo del 29:
+*"The column producciones.costo_manual does not exist"*.
 
-**El producto terminado está TERMINADO en código.** Lo único que queda es data entry en la
-tienda en vivo, y son decisiones y fotos del dueño: el runbook está más abajo.
+**Consecuencia:** Producciones y el aviso de *lotes por enlazar* están muertos en producción, así
+que el dueño **no pudo crear ni una ficha 1.1** (hay 0 en su base) y creyó que la función estaba
+mal hecha. Los comandos:
 
-## ⚠️ Lo primero (medido contra el respaldo de producción del 2026-08-24)
+```bash
+cd /var/www/celestial-parfums && git pull
+cd backend && npx prisma migrate deploy && npm run build && pm2 restart celestial-backend
+cd ../frontend && npm run build
+```
+
+**Verificado contra su respaldo (con la migración aplicada a la copia local): el aviso mostrará 5
+lotes** — Khamrah (envase ajeno, $74.580), Asad, Yum Yum, Bon Bon y Mandarin Sky (sin frascos). El
+212 VIP Black queda fuera, que es lo correcto: está macerando.
+
+## 🔴 Plata sin costear: los créditos guardan la línea SIN TALLA
+
+Encontrado el 2026-08-29 midiendo el respaldo. **Sin talla, el sistema no sabe qué receta descontar
+y la venta queda con `costo_mercancia = 0`.**
+
+| Crédito | Venta | Fecha | Valor | Qué pasó |
+|---|---|---|---|---|
+| 7 (David Sánchez) | 1281 | 23-ago | $140.000 | Althaïr + Khamrah 100ML, **las dos líneas sin talla**. El frasco 1.1 de Khamrah sigue figurando en inventario aunque se entregara |
+| 8 (Santy Tabares) | 1289 | 26-ago | $90.000 | Mandarin Sky 100ML, sin talla, costo $0 |
+
+De las 4 ventas de agosto con líneas sin talla, **3 son créditos**. `createCredito` solo pone la
+talla si el formulario manda `lineas`; si no, la deduce del texto y la deja en null.
+**PENDIENTE: investigar por qué el formulario no las manda** (pregunté y quedó sin responder).
+
+## 🟠 El aviso de "lotes por enlazar" se esconde solo cuando falla
+
+`LotesPorEnlazar.tsx` traga el error a propósito (*"es información de apoyo: si no carga, la
+pantalla principal sigue sirviendo"*) y devuelve `null`. Suena razonable, pero es lo que hizo
+**invisible durante días** el deploy a medias del 29: el endpoint respondía error por la columna
+que faltaba, y el dueño no veía ni el aviso ni una explicación — solo una pantalla normal sin
+botón, y concluyó que la función de los 1.1 estaba mal hecha.
+
+**La regla que hay que aplicar aquí**: una sección puede esconderse cuando **no hay nada que
+mostrar**, nunca cuando **no pudo preguntarlo**. Son dos estados distintos y hoy se pintan igual.
+Falta distinguirlos: si la consulta falla, un renglón discreto que diga que no se pudo cargar, con
+"Reintentar".
+
+Revisar de paso si hay más secciones con el mismo `catch` mudo (`FrascosArmados`, `PrimerosPasos`,
+`AvisoEsenciasSinPerfume`, `AvisoAlertas` — este último lo escribí igual el 2026-08-29, así que
+entra en la misma corrección).
+
+## Listo en código y esperando el PRÓXIMO deploy
+
+1. **Fusionar dos registros del mismo material (2026-08-29).** Sin migración. Botón *Fusionar* por
+   fila en Inventario: muda los ocho sitios donde cuelga un insumo al registro bueno y **no toca
+   las existencias**. Su primer uso es el perfumero duplicado (ids 9 y 11 en producción).
+   **Sigue SIN COMMITEAR**: falta que el dueño diga si va a `main` o a una rama.
+2. **Alertas de inventario y materiales "en prueba" (2026-08-29).** **TRAE MIGRACIÓN**
+   (`20260829120000_alertas_inventario`), así que el deploy es `git pull` + `migrate deploy` +
+   build. Pantalla nueva *Alertas de inventario*, mínimo por familia en cascada
+   (material → gama → familia) y el aviso en el dashboard, en franja o en ventana.
+
+## Lo siguiente, ya decidido y sin empezar: los 3 arreglos de los 1.1
+
+Salieron de auditar la lógica 1.1 entera el 2026-08-29, con el código y sus datos delante.
+**Aprobados por él ese mismo día**; no se ha escrito ni una línea todavía.
+
+1. **Vender un 1.1 sin frascos armados lo FABRICA.** 🔴 `consumirPorVenta` nunca pregunta si la
+   ficha es 1.1: si no hay frasco armado, descuenta esencia + envase 1.1 como si lo hubiera
+   armado. La tienda lo esconde (sale "Sin armar"), pero **una venta cargada a mano en el
+   dashboard no lo revisa**. **Decisión suya:** dejar pasar la venta y avisar — no se fabrica, el
+   frasco queda en −1 y la respuesta dice *"vendiste 1 sin frascos armados"*. Es la misma regla
+   que ya rige el inventario de materiales.
+2. **El 1.1 recién creado puede nacer con el precio del corriente.** 🔴 La ficha nace sin precio
+   propio; si la categoría "1.1" no existe o no tiene precio para esa talla, cae al precio
+   heredado del perfume normal **sin avisar**. Es el susto de Khamrah por la puerta de al lado.
+   **Arreglo:** el enlazador busca el precio de la lista de los 1.1 para esa talla y lo enseña en
+   el mismo modal donde se corrige el nombre; si esa lista no existe, enseña el heredado marcado
+   en rojo. **Regla nueva aprobada:** si acepta el precio de la lista, la ficha **no** guarda
+   precio propio (así subir la lista los sube a todos); solo si escribe otro queda amarrado.
+3. **Disponible por una talla, se vende por otra.** 🟠 "Hay armados" suma TODAS las tallas, pero el
+   descuento busca la talla exacta: un frasco de 50 ml hace que el de 100 ml se vea disponible.
+   **Arreglo:** cada talla dice cuántos frascos tiene ella.
+
+**Fuera de esos tres, encontrados en la misma auditoría y NO aprobados todavía:**
+
+- **Una devolución no devuelve el frasco al stock** (`devolucion.repository.ts` no toca
+  inventario). Aplica a todo el catálogo, no solo a los 1.1; por eso quedó fuera.
+- **La pestaña Productos no dice cuántas unidades quedan** (la columna Stock de la Ola 2).
+
+## El estado de los datos de producción (medido contra el respaldo del 2026-08-29)
+
+> **Confirmado con el respaldo nuevo:** todo lo de abajo **sigue igual que el 24 de agosto**. Hay
+> **0 fichas 1.1**, el frasco de Khamrah sigue colgado de la ficha corriente y los otros 4 lotes
+> siguen sin frascos. No es que el dueño no haya querido: **el enlazador no funciona en producción
+> porque falta la migración** (ver arriba). En cuanto la corra, esto se arregla con un botón por
+> lote.
 
 ### 1. Un frasco 1.1 de Khamrah está colgado de la ficha del perfume NORMAL
 
@@ -196,6 +213,14 @@ mucho de la tabla de arriba, avisar antes de seguir.
 
 ## Estado del entorno local (importante para retomar)
 
+- **`celestial_prod_20260829`**: copia real del servidor del **2026-08-29**, la más reciente
+  (`Downloads/backup-celestial-2026-08-29.sql`). Es contra la que se mide de ahora en adelante.
+  **Ojo: se le aplicó a mano la migración `20260825120000_editar_producciones`** para comprobar que
+  arreglaba el enlazador, así que ya NO refleja el estado exacto del servidor en ese punto.
+- **Las dos bases de trabajo (`perfumes_db` y `perfumes_test`) tienen aplicada a mano
+  `20260829120000_alertas_inventario`** y registrada en `_prisma_migrations`, como manda el gotcha
+  del MySQL de XAMPP.
+
 - **`celestial_prod_20260825`**: copia real del servidor del **2026-08-24** (el dueño la bajó ese
   día; el archivo se llama `backup-celestial-2026-08-25.sql` y está en `Downloads`). Es la base
   contra la que se mide de ahora en adelante. Carga limpia: 50 tablas, sin el `\-` del sandbox
@@ -300,11 +325,11 @@ material:
 
 De paso quedó cerrado el defecto de los envases en cero que él encontró el 2026-08-23.
 
-## ✅ Editar lotes, enlazar los 1.1 y publicarlos — HECHO (2026-08-25, rama `editar-lotes`)
+## ✅ Editar lotes, enlazar los 1.1 y publicarlos — HECHO, pero NO EN VIVO (2026-08-25)
 
-Construido y verificado en pantalla; **falta mergear y desplegar**. **Trae migración**
-(`20260825120000_editar_producciones`: `costo_manual` e `historial` en `producciones`), así que el
-deploy es `git pull` + `migrate deploy` + build. El porqué de cada decisión está en
+Construido, verificado en pantalla y mergeado a `main`. **Su migración
+(`20260825120000_editar_producciones`) no llegó a producción en el deploy del 29**, y sin esas dos
+columnas la pestaña Producciones entera responde error. Ver la sección roja del principio. El porqué de cada decisión está en
 [`inventario-costeo.md`](inventario-costeo.md#corregir-un-lote-de-producción-2026-08-25) y en
 [`diseno-ux.md`](diseno-ux.md).
 

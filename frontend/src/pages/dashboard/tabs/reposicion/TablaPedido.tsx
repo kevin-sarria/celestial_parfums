@@ -1,4 +1,4 @@
-import { Check, ClipboardCopy, X } from 'lucide-react';
+import { Check, ClipboardCopy, FlaskConical, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Section } from '../../ui';
@@ -40,9 +40,17 @@ interface Props {
   ajustes: ReturnType<typeof useAjustesPedido>;
   copiado: boolean;
   onCopiar: (filas: Fila[]) => void;
+  /**
+   * Marcar el material como EN PRUEBA: deja de sugerirse hasta que el dueño lo
+   * desmarque. Es la versión PERMANENTE de "sacar del pedido" —que solo vale
+   * para esta vuelta y vive en el navegador—, y por eso son dos botones
+   * distintos y no uno: sacar es "hoy no", en prueba es "todavía no me
+   * interesa reponerlo".
+   */
+  onEnPrueba: (f: Fila) => void;
 }
 
-export function TablaPedido({ titulo, filas, nota, ajustes, copiado, onCopiar }: Props) {
+export function TablaPedido({ titulo, filas, nota, ajustes, copiado, onCopiar, onEnPrueba }: Props) {
   // Lo quitado sale de la tabla pero NO desaparece: se lista abajo para poder
   // devolverlo. Dejar caer algo en silencio es justo lo que no se hace aquí.
   const visibles = filas.filter((f) => !ajustes.estaQuitado(f.id));
@@ -77,7 +85,7 @@ export function TablaPedido({ titulo, filas, nota, ajustes, copiado, onCopiar }:
                 <th className="py-1.5 pr-3 text-right font-semibold">Mínimo</th>
                 <th className="py-1.5 pr-3 text-right font-semibold">Pide</th>
                 <th className="py-1.5 pr-2 text-right font-semibold">Te costará</th>
-                <th className="py-1.5 font-semibold"><span className="sr-only">Sacar</span></th>
+                <th className="py-1.5 font-semibold"><span className="sr-only">Acciones</span></th>
               </tr>
             </thead>
             <tbody>
@@ -123,6 +131,14 @@ export function TablaPedido({ titulo, filas, nota, ajustes, copiado, onCopiar }:
                     {formatPrice(Math.round(ajustes.cantidadDe(f.id, f.sugerido) * f.costo_promedio))}
                   </td>
                   <td className="py-1.5 text-right">
+                    <button
+                      onClick={() => onEnPrueba(f)}
+                      aria-label={`Marcar ${f.nombre} como en prueba`}
+                      title="En prueba: no me lo vuelvas a sugerir hasta que yo lo desmarque"
+                      className="rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary"
+                    >
+                      <FlaskConical className="size-4" />
+                    </button>
                     <button
                       onClick={() => ajustes.quitar(f.id)}
                       aria-label={`Sacar ${f.nombre} de este pedido`}

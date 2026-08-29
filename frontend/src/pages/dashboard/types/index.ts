@@ -17,4 +17,4 @@ export * from './clientes';
 export * from './publicidad';
 
 /** Cada pestaña del dashboard. Vive aquí porque las cruza todas. */
-export type Tab = 'perfumes' | 'productos' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'gamas' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'recompensas' | 'resenas' | 'avisos' | 'nosotros' | 'blog' | 'redes' | 'cotizaciones' | 'precios_mayoreo' | 'formulas' | 'costos' | 'devoluciones' | 'inventario' | 'producciones' | 'reposicion' | 'rep_ventas' | 'rep_compras' | 'rep_clientes';
+export type Tab = 'perfumes' | 'productos' | 'aromas' | 'ocasiones' | 'categorias' | 'presentaciones' | 'gamas' | 'combos' | 'precios' | 'descuentos' | 'ventas' | 'creditos' | 'pagos' | 'usuarios' | 'publicidad' | 'recompensas' | 'resenas' | 'avisos' | 'nosotros' | 'blog' | 'redes' | 'cotizaciones' | 'precios_mayoreo' | 'formulas' | 'costos' | 'devoluciones' | 'inventario' | 'producciones' | 'reposicion' | 'alertas' | 'rep_ventas' | 'rep_compras' | 'rep_clientes';

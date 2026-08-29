@@ -28,6 +28,25 @@ npm run build               # nginx sirve frontend/dist directamente
 **Antes de tocar producción: respaldo por SSH y verificar que el archivo pese cientos de KB, no
 20 bytes.**
 
+> ### ⚠️ El paso que se saltó una vez y costó una semana (2026-08-29)
+>
+> **`git pull` sin `migrate deploy` deja el sistema PEOR que sin desplegar.** El código nuevo pide
+> columnas que la base todavía no tiene, y Prisma las pide **en cada consulta de esa tabla**: no
+> falla la función nueva, falla la pantalla entera. Pasó con
+> `20260825120000_editar_producciones`: Producciones y el aviso de "lotes por enlazar" quedaron
+> muertos, y el dueño pasó días creyendo que la función de los 1.1 estaba mal hecha.
+>
+> **Cómo se detecta en un minuto**, sin adivinar:
+>
+> ```bash
+> cd /var/www/celestial-parfums/backend && npx prisma migrate status
+> ```
+>
+> O desde una copia del respaldo, en local:
+> `SELECT migration_name FROM _prisma_migrations ORDER BY finished_at DESC LIMIT 3;`
+> Si la última no es la última carpeta de `backend/prisma/migrations/`, **el deploy quedó a
+> medias**.
+
 Para despejar dudas sobre qué hay aplicado de verdad: `npx prisma migrate status` en el servidor.
 Vale la pena por el **histórico de `db push`** de este proyecto — puede pasar que el esquema esté
 bien pero `_prisma_migrations` no lo refleje, y entonces un `migrate deploy` falla por historial
@@ -100,6 +119,8 @@ Primeras (sin carpeta con nombre):
 | `20260814120000_producto_terminado` | Tabla `movimientos_terminado`, `perfume_presentacion.stock`/`.costo_promedio` y `perfumes.solo_armado`. **El catálogo lee esas columnas en CADA consulta: sin aplicarla la tienda entera responde error** |
 | `20260817120000_regalo_automatico` | `perfumes.regalo_automatico`. **Nunca llegó a producción**: la siguiente la borra. Se conserva para que aplicar en orden desde cero siga funcionando |
 | `20260820120000_regalos_y_extras` | Quita `perfumes.regalo_automatico` y agrega `perfumes.es_accesorio` + `venta_perfume.regalo` (default 0). Ninguna ficha ni venta existente cambia de significado |
+| `20260825120000_editar_producciones` | `producciones.costo_manual` e `historial` (JSON). **El código nuevo lee esas columnas al listar CUALQUIER lote: sin aplicarla, Producciones y el aviso de "lotes por enlazar" revientan enteros.** Se quedó sin aplicar en el deploy del 2026-08-29 y el dueño estuvo días sin poder crear una ficha 1.1 — ver el aviso del runbook |
+| `20260829120000_alertas_inventario` | `insumos_costo.en_prueba` (default false) y la tabla `alertas_inventario`. Sin ella, Inventario y el pedido sugerido responden error: el backend lee `en_prueba` en cada consulta de materiales |
 
 **Verificado el 2026-08-01**: la base local se reemplazó por el dump real de producción y las
 migraciones pendientes se aplicaron EN ORDEN sobre esos datos, sin perder una fila (212 perfumes,

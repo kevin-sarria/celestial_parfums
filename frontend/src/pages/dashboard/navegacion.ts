@@ -2,7 +2,7 @@ import {
   SprayCan, PackageCheck, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText,
   BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX,
-  ChartColumn, Layers, Coins, type LucideIcon,
+  ChartColumn, Layers, Coins, TriangleAlert, type LucideIcon,
 } from 'lucide-react';
 import type { Tab } from './types';
 
@@ -32,6 +32,7 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   pagos: { label: 'Proveedores', icon: Factory },
   inventario: { label: 'Inventario', icon: Boxes },
   reposicion: { label: 'Pedido sugerido', icon: ShoppingCart },
+  alertas: { label: 'Alertas de inventario', icon: TriangleAlert },
   producciones: { label: 'Producciones', icon: FlaskConical },
   rep_ventas: { label: 'Reporte de ventas', icon: ChartColumn },
   rep_compras: { label: 'Reporte de compras', icon: ChartColumn },
@@ -70,7 +71,7 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
    * salen los materiales que descuenta cada venta y cada lote, así que las usa
    * todo el negocio. Mayoreo solo cotiza, y para eso las lee.
    */
-  { id: 'operacion', label: 'Producción e inventario', tabs: ['inventario', 'reposicion', 'producciones', 'formulas', 'costos'] },
+  { id: 'operacion', label: 'Producción e inventario', tabs: ['inventario', 'reposicion', 'alertas', 'producciones', 'formulas', 'costos'] },
   { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'precios_mayoreo'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },

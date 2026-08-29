@@ -12,6 +12,8 @@ import { MinimosModal, type Gama } from './reposicion/MinimosModal';
 
 interface Datos {
   esencias: Fila[]; implementos: Fila[];
+  /** Los que se dejaron fuera por estar EN PRUEBA (con nombre, para desmarcarlos). */
+  en_prueba: { id: number; nombre: string }[];
   sin_historial: boolean; dias_historial: number; dias_cobertura: number;
   costo_total: number;
 }
@@ -58,6 +60,27 @@ export function ReposicionTab() {
   }, []);
 
   useEffect(() => { cargar(); }, [cargar]);
+
+  /**
+   * "No me lo vuelvas a sugerir hasta que yo lo desmarque."
+   *
+   * Es la versión permanente de sacar del pedido, y por eso va al servidor: el
+   * dueño trajo 30 ml de una esencia para ver si sale y la lista se la pedía sin
+   * haber vendido una sola unidad.
+   */
+  const marcarEnPrueba = async (f: Fila) => {
+    const res = await http.patch<{ message: string }>(urls.inventario.enPrueba(f.id), { en_prueba: true });
+    if (!res.ok) { toast.error(res.error, { id: 'en-prueba' }); return; }
+    toast.success(res.cuerpo?.message ?? `"${f.nombre}" queda en prueba`);
+    cargar();
+  };
+
+  const quitarDePrueba = async (m: { id: number; nombre: string }) => {
+    const res = await http.patch<{ message: string }>(urls.inventario.enPrueba(m.id), { en_prueba: false });
+    if (!res.ok) { toast.error(res.error, { id: 'en-prueba' }); return; }
+    toast.success(res.cuerpo?.message ?? `"${m.nombre}" vuelve al pedido sugerido`);
+    cargar();
+  };
 
   /**
    * Los retoques del dueño sobre lo que el sistema propone. Viven en el
@@ -211,10 +234,34 @@ export function ReposicionTab() {
         </p>
       )}
 
-      <TablaPedido titulo="Esencias" filas={datos.esencias}
+      {/* Lo marcado en prueba NO desaparece en silencio: se ve, se cuenta y se
+          desmarca desde aquí. Una decisión temporal que cuesta deshacer se
+          vuelve permanente sola. */}
+      {datos.en_prueba.length > 0 && (
+        <div className="rounded-xl border border-border bg-secondary/40 px-3.5 py-3">
+          <p className="text-[12.5px] text-muted-foreground">
+            <strong className="text-foreground">{datos.en_prueba.length}</strong>{' '}
+            {datos.en_prueba.length === 1 ? 'material está en prueba' : 'materiales están en prueba'}
+            {' '}y no te los estoy sugiriendo. Toca uno para devolverlo a la lista.
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {datos.en_prueba.map((m) => (
+              <li key={m.id}>
+                <button type="button" onClick={() => quitarDePrueba(m)}
+                  title={`Devolver "${m.nombre}" al pedido sugerido`}
+                  className="rounded-full border border-border bg-card px-3 py-1 text-[12px] transition-colors hover:border-primary hover:text-primary">
+                  {m.nombre} ✕
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <TablaPedido titulo="Esencias" onEnPrueba={marcarEnPrueba} filas={datos.esencias}
         nota="Lo que hay que pedirle al laboratorio"
         ajustes={ajustes} copiado={copiado} onCopiar={copiar} />
-      <TablaPedido titulo="Envases, accesorios y demás" filas={datos.implementos}
+      <TablaPedido titulo="Envases, accesorios y demás" onEnPrueba={marcarEnPrueba} filas={datos.implementos}
         nota="Frascos, perfumeros, diluyente, sellador…"
         ajustes={ajustes} copiado={copiado} onCopiar={copiar} />
     </div>

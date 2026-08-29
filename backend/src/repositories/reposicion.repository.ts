@@ -1,5 +1,6 @@
 import type { MovimientoTipo } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import { minimoDe, minimosPorAmbito } from './alertas.repository';
 
 /**
  * Pedido sugerido: qué material hay que reponer y cuánto pedir.
@@ -12,6 +13,11 @@ import { prisma } from '../config/prisma';
  * cada esencia puede tener su excepción. Sin eso la alerta era inservible en la
  * práctica: se midió y solo 1 de 226 materiales tenía mínimo puesto, porque
  * ponerlo a mano en 219 esencias no lo hace nadie.
+ *
+ * Desde el 2026-08-29 la cascada tiene un tercer escalón —el mínimo de la
+ * FAMILIA (`alertas.repository.ts`)— y los materiales marcados **en prueba** se
+ * quedan fuera: el dueño trajo 30 ml de una esencia nueva para ver si sale y la
+ * lista se la pedía sin que hubiera vendido una sola unidad.
  */
 
 const num = (v: unknown) => Number(v);
@@ -63,6 +69,14 @@ export interface FilaReposicion {
 export interface Reposicion {
   esencias: FilaReposicion[];
   implementos: FilaReposicion[];
+  /**
+   * Los materiales que se dejaron fuera por estar EN PRUEBA.
+   *
+   * Va la LISTA y no un conteo porque desde aquí se desmarcan: un número suelto
+   * obligaría a ir a buscarlos a otra pantalla, y una decisión temporal que
+   * cuesta deshacer se vuelve permanente sola.
+   */
+  en_prueba: { id: number; nombre: string }[];
   /** true = todavía no hay salidas registradas con las que estimar consumo. */
   sin_historial: boolean;
   dias_historial: number;
@@ -74,7 +88,7 @@ export const calcularReposicion = async (): Promise<Reposicion> => {
   const desde = new Date();
   desde.setDate(desde.getDate() - DIAS_HISTORIAL);
 
-  const [insumos, salidas] = await Promise.all([
+  const [insumos, salidas, porAmbito] = await Promise.all([
     prisma.insumoCosto.findMany({
       where: { activo: true },
       include: { gama: true },
@@ -85,6 +99,7 @@ export const calcularReposicion = async (): Promise<Reposicion> => {
       where: { tipo: { in: TIPOS_CONSUMO }, fecha: { gte: desde } },
       _sum: { cantidad: true },
     }),
+    minimosPorAmbito(),
   ]);
 
   // Las salidas van en negativo: se le da la vuelta para leerlo como consumo
@@ -93,11 +108,20 @@ export const calcularReposicion = async (): Promise<Reposicion> => {
   );
 
   const filas: FilaReposicion[] = [];
+  const enPrueba: { id: number; nombre: string }[] = [];
   for (const i of insumos) {
+    /**
+     * En prueba = "todavía no me interesa reponerlo".
+     *
+     * No se esconde en silencio: se cuenta y la pantalla dice cuántos hay, para
+     * que una decisión temporal no se vuelva un olvido permanente.
+     */
+    if (i.en_prueba) { enPrueba.push({ id: i.id, nombre: i.nombre }); continue; }
+
     const stock = num(i.stock);
-    // El mínimo propio MANDA sobre el de la gama; null = "usa el de mi gama"
-    const propio = i.stock_minimo != null;
-    const minimo = propio ? num(i.stock_minimo) : num(i.gama?.stock_minimo ?? 0);
+    // Su mínimo → el de su gama → el de su familia. La cascada vive en un solo
+    // sitio porque este número lo miran dos pantallas y tienen que coincidir.
+    const { minimo, propio } = minimoDe(i, porAmbito);
     const consumoDiario = r3((consumoPorInsumo.get(i.id) ?? 0) / DIAS_HISTORIAL);
 
     // Sin mínimo configurado no se alerta: no todo material lo necesita, y
@@ -124,7 +148,7 @@ export const calcularReposicion = async (): Promise<Reposicion> => {
       gama: i.gama?.nombre ?? null,
       stock,
       minimo,
-      minimo_heredado: !propio && i.gama != null,
+      minimo_heredado: !propio,
       consumo_diario: consumoDiario,
       sugerido,
       base: porConsumo > porMinimo ? 'consumo' : 'minimo',
@@ -141,6 +165,7 @@ export const calcularReposicion = async (): Promise<Reposicion> => {
   return {
     esencias,
     implementos,
+    en_prueba: enPrueba,
     sin_historial: consumoPorInsumo.size === 0,
     dias_historial: DIAS_HISTORIAL,
     dias_cobertura: DIAS_COBERTURA,
@@ -197,3 +222,17 @@ export const fijarMinimosGamas = async (minimos: { id: number; minimo: number }[
   );
   return calcularReposicion();
 };
+
+/**
+ * Marca un material como EN PRUEBA (o lo devuelve al pedido sugerido).
+ *
+ * Vive aquí y no en el alta del material porque es una decisión sobre la
+ * REPOSICIÓN, no sobre el material: "todavía no me interesa reponerlo". El
+ * material sigue entero — se vende, se produce y suma al valor del inventario.
+ */
+export const marcarEnPrueba = (id: number, en_prueba: boolean) =>
+  prisma.insumoCosto.update({
+    where: { id },
+    data: { en_prueba },
+    select: { id: true, nombre: true, en_prueba: true },
+  });

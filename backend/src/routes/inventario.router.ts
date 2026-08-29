@@ -3,6 +3,7 @@ import * as repo from '../repositories/inventario.repository';
 import * as producciones from '../repositories/inventario.producciones';
 import { crearFicha11YEnlazar, lotesPorEnlazar, mandarFrascosAlaFicha } from '../repositories/producciones.enlazar';
 import * as reposicion from '../repositories/reposicion.repository';
+import { alertasDisparadas, borrarAlerta, guardarAlerta, listarAlertas } from '../repositories/alertas.repository';
 import { cargaInicialArmados, listarTerminado } from '../repositories/inventario.terminado';
 import { requireAdmin } from '../middleware/auth.middleware';
 // Mover el stock de una esencia cambia qué perfumes se pueden armar hoy, y de
@@ -15,6 +16,7 @@ import { h } from '../middleware/error.middleware';
 import {
   ajusteSchema, produccionSchema, produccionEdicionSchema, cargaInicialArmadosSchema,
   fichaDeLoteSchema, enlazarLoteSchema, salidaSchema, minimoSchema, minimosGamasSchema,
+  alertaSchema, enPruebaSchema,
 } from '../schemas/inventario.schema';
 
 /** Inventario de insumos: 100% interno (lleva costos reales del negocio). */
@@ -80,6 +82,44 @@ inventarioRouter.patch('/minimo/:id', validate(minimoSchema), h(async (req, res)
 inventarioRouter.patch('/minimos-gama', validate(minimosGamasSchema), h(async (req, res) => {
   const data = await reposicion.fijarMinimosGamas(req.body.minimos);
   res.json({ message: 'Listo: te avisaremos con esos mínimos', data });
+}));
+
+/**
+ * EN PRUEBA: material que se trajo para ver si sale y que todavía no se repone.
+ *
+ * Va aparte del PATCH del material (que es el alta/edición completa) por lo
+ * mismo que el mínimo: es un interruptor que se toca desde la lista, y obligar a
+ * abrir el formulario entero para moverlo es justo la fricción que hace que no
+ * se use.
+ */
+inventarioRouter.patch('/en-prueba/:id', validate(enPruebaSchema), h(async (req, res) => {
+  const dato = await reposicion.marcarEnPrueba(Number(req.params.id), req.body.en_prueba);
+  res.json({
+    message: req.body.en_prueba
+      ? `"${dato.nombre}" queda en prueba: no aparecerá en el pedido sugerido`
+      : `"${dato.nombre}" vuelve al pedido sugerido`,
+    data: dato,
+  });
+}));
+
+// ── Alertas de inventario (una regla por familia) ───────────────────────────
+inventarioRouter.get('/alertas', h(async (_req, res) => {
+  res.json({ data: await listarAlertas() });
+}));
+
+/** Las que están saltando AHORA, para el aviso del dashboard. Solo lee. */
+inventarioRouter.get('/alertas/activas', h(async (_req, res) => {
+  res.json({ data: await alertasDisparadas() });
+}));
+
+/** Crea o corrige la regla de una familia (upsert por `ambito`). */
+inventarioRouter.post('/alertas', validate(alertaSchema), h(async (req, res) => {
+  res.json({ message: 'Alerta guardada', data: await guardarAlerta(req.body) });
+}));
+
+inventarioRouter.delete('/alertas/:id', h(async (req, res) => {
+  await borrarAlerta(Number(req.params.id));
+  res.json({ message: 'Alerta eliminada' });
 }));
 
 inventarioRouter.get('/primeros-pasos', h(async (_req, res) => {

@@ -844,3 +844,112 @@ descontado— y una prueba lo tumbó: la carga inicial **no deja rastro en el lo
 lo seguiría marcando para siempre y una lista que no se vacía se deja de mirar. Corregir el lote
 entra los frascos y además lo saca del aviso, sin mover ni un ml: se le devuelven sus consumos y se
 le vuelven a descontar los mismos.
+
+## Fusionar dos registros del mismo material (2026-08-29)
+
+El dueño acabó con **dos fichas del mismo perfumero** —"Perfumero Recargable" (accesorio, apagado,
+sin una sola compra) y "Perfumero recargable 6 ml" (envase, con sus unidades contadas)— y las dos
+con movimientos, así que **no podía borrar ninguna**: `eliminarInsumo` las retiene, y hace bien
+(los movimientos se borran en cascada con su insumo). Apagar la vieja, que fue lo que hizo,
+esconde el problema pero deja el historial partido en dos para siempre: el pedido sugerido nunca
+vuelve a contar bien ese material y su costo se calcula sobre media vida.
+
+**Su miedo, textual:** *"al cambiarlo que no me descuente lo que esté antes de esa modificación,
+porque se vuelve peor… si modifico esos registros quedaría con −370 perfumeros"*.
+
+### Por qué ese miedo no se materializa
+
+`insumos_costo.stock` es una **columna guardada** que `aplicarMovimiento` actualiza en el momento
+de cada movimiento; **ninguna consulta la recalcula sumando el libro** (a diferencia del producto
+terminado, que sí tiene `recalcularPromedioTerminado`). Mover la columna `insumo_id` de un
+movimiento viejo **re-etiqueta la historia; no la vuelve a ejecutar**. De ahí la regla:
+
+> **Fusionar mueve el pasado y no toca el presente.** El registro que sobrevive conserva
+> exactamente el stock y el costo promedio que tenía.
+
+Y un dato que conviene no volver a perder: **las ~400 ventas viejas con perfumero no existen como
+movimientos.** El libro solo tenía 15 salidas, porque el consumo por venta **no es retroactivo**.
+La fusión no puede inventar un historial que nunca se escribió.
+
+### Cómo funciona
+
+La lista de **dónde cuelga un insumo** salió a `insumo.usos.ts` (`contarUsos`) y la comparten los
+dos que la necesitan: el borrado, para decir qué lo retiene, y la fusión, para mudar exactamente
+eso. Dos copias de esa lista se desincronizarían el día que se agregue una tabla, y lo que cayera
+en el hueco se borraría en silencio.
+
+Son **ocho** sitios: movimientos, compras, envase y esencia de las recetas, accesorios de receta,
+esencia y producto de los perfumes, envase de las tallas, y —el que el borrado no miraba—
+**la lista de accesorios dentro del JSON de cada talla**, que `inventario.consumoVenta.ts` lee
+**viva** en cada venta. Si ahí quedara el id del duplicado, la siguiente venta de esa talla
+reventaría con "El insumo no existe", en la caja.
+
+Todo en **una transacción**, y antes de borrar se vuelve a contar: si algo quedó apuntando al
+duplicado, se cancela la fusión entera en vez de borrarlo.
+
+### Decisiones del dueño
+
+- **Las unidades del que desaparece se descartan** (quedan escritas en la nota del rastro). El −25
+  del registro viejo es basura contable de una ficha sin una sola compra; sumárselo al bueno le
+  bajaría sus 30 reales a 5.
+- **Los costos históricos no se reescriben**: cada movimiento lleva congelado lo que costó ese día.
+  El costo bueno manda de aquí en adelante.
+- **Manda el registro que sobrevive**: tipo, unidad, costo, stock y estado son los suyos, aunque
+  uno sea `accesorio` y el otro `envase` (el caso real).
+- **No se puede deshacer.** Por eso la pantalla enseña la cuenta medida antes de aplicar.
+
+### Casos raros
+
+- **Los dos en la misma receta**: `formula_accesorios` tiene clave `(receta, insumo)`, así que
+  mudar a ciegas reventaría. La línea del duplicado **se borra**; el resultado es el mismo.
+- **Fusionar consigo mismo** o contra un registro que ya no existe: se rechaza. Los dos se
+  comprueban contra la base al aplicar, no al pintar la pantalla.
+- **El rastro** queda como un movimiento `ajuste` de **cantidad cero** en el historial del bueno
+  —el sitio donde el dueño lo va a buscar— con qué se movió y cuántas unidades se descartaron.
+  Cero a propósito: aparece sin mover el stock ni el costo, que es justo lo que la fusión promete
+  no tocar.
+
+Diseño completo en
+[`superpowers/specs/2026-08-29-fusionar-materiales-design.md`](superpowers/specs/2026-08-29-fusionar-materiales-design.md).
+
+## Alertas de inventario y materiales "en prueba" (2026-08-29)
+
+Dos quejas del dueño el mismo día que resultaron ser la misma pieza: el pedido sugerido le pedía
+reponer una esencia que trajo **para probar** (30 ml, 5 gastados en una muestra, cero ventas), y
+quería que el sistema le avisara en grande cuando algo se acaba, configurable por familia.
+
+**La decisión que las une:** el **mínimo de la familia y el umbral del aviso son el MISMO número**.
+En su cabeza lo son; guardarlo dos veces garantiza que un día digan cosas distintas.
+
+### La cascada de mínimos, ahora con tres escalones
+
+> **el del material → el de su gama → el de su familia**
+
+`minimoDe()` (en `alertas.repository.ts`) vive en un solo sitio porque este número lo miran dos
+pantallas —el pedido sugerido y el aviso del dashboard— y tienen que decir lo mismo. Lo ya
+configurado por gama no se toca: la familia es la red para todo lo que hoy no tiene mínimo (**1 de
+226** materiales tenía uno propio).
+
+**"Esencias" NO significa "materia prima"**: significa materia prima **con gama**. El diluyente, el
+sellador y las feromonas quedan fuera a propósito — se compran por litros y medirlos con la vara de
+una esencia llenaría la alerta de ruido. Siguen pudiendo llevar su mínimo propio.
+
+### En prueba
+
+`insumos_costo.en_prueba`. Mientras está marcado, el material **no se sugiere y no dispara
+alertas**; por lo demás es inventario normal (se vende, se produce, suma al valor).
+
+- **No se esconde**: el pedido sugerido devuelve la lista de lo marcado y la pantalla la enseña con
+  un clic para desmarcar. Una decisión temporal que cuesta deshacer se vuelve permanente sola.
+- **No se gradúa solo con la primera venta** (evaluado y descartado): el sistema decidiendo por él
+  escondería el cambio justo cuando importa.
+- **Es distinto de "sacar del pedido"**: sacar es *"hoy no"* y vive en el navegador; en prueba es
+  *"todavía no me interesa reponerlo"* y vive en la base — que es lo que pidió textualmente.
+
+### Una regla por familia
+
+`alertas_inventario` con `@@unique([ambito])` y guardado por upsert: dos reglas para "envases" con
+números distintos no tienen respuesta correcta, y la pantalla tendría que inventarse una.
+
+Diseño completo en
+[`superpowers/specs/2026-08-29-alertas-y-en-prueba-design.md`](superpowers/specs/2026-08-29-alertas-y-en-prueba-design.md).

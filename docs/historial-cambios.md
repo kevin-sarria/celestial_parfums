@@ -303,6 +303,47 @@ función pura (`opcionesPorExistencias`) que usan las dos pantallas que consumen
 desplegable ganó dos campos opcionales (`nota`, `atenuada`) **separados del nombre**, para que el
 buscador no filtre por ellos ni se cuelen dentro del valor elegido.
 
+## Sesión del 2026-08-29: la fusión de materiales duplicados
+
+**El despliegue.** El dueño desplegó todo lo acumulado desde el 2026-08-23: regalos, alta de
+productos por tipo, catálogo en dos pestañas, editar lotes, el enlazador que crea la ficha 1.1,
+envases en cero, anuncios, backend sin `any`, mayoreo aparte y etiquetas.
+
+**La auditoría de los 1.1.** Con el código y sus datos delante salieron cinco huecos, dos con
+plata encima: vender un 1.1 sin frascos armados lo fabrica de material, y una ficha 1.1 recién
+creada puede nacer con el precio del perfume corriente. Aprobó arreglar tres; están en
+`pendientes.md` sin empezar.
+
+**Alertas de inventario y materiales "en prueba".** Dos quejas suyas que resultaron ser la misma
+pieza: el pedido sugerido le pedía reponer una esencia que trajo para probar, y quería un aviso
+grande y configurable. La decisión que las une: **el mínimo de la familia y el umbral del aviso son
+el mismo número**. Pantalla propia, cascada de mínimos con tres escalones (material → gama →
+familia) y el aviso arriba de cualquier pestaña, en franja o en ventana según él elija. Trae
+migración.
+
+**El deploy a medias.** Se descubrió midiendo su respaldo: el `git pull` del 29 entró sin
+`migrate deploy`, y el código nuevo pedía dos columnas que no existían. No falló la función nueva
+—falló la pestaña Producciones entera—, y por eso llevaba días sin poder crear una ficha 1.1
+creyendo que la función estaba mal hecha. La lección quedó escrita en el runbook de
+`deploy-migraciones.md`, con el comando de un minuto que lo detecta.
+
+**Fusionar dos registros del mismo material.** Construido entero (pruebas de base, recorrido en
+navegador, pantalla). Lo que lo hizo posible fue un hecho del inventario que no estaba escrito en
+ningún sitio: **`stock` es una columna guardada, no una suma del libro**, así que re-apuntar 400
+movimientos viejos no descuenta 400 unidades. Ese era exactamente el miedo del dueño, y era
+infundado — pero nadie lo sabía hasta mirarlo.
+
+Tres cosas que aparecieron al construirlo, y que se quedan:
+
+- **La lista de dónde cuelga un insumo estaba escondida dentro del borrado.** Salió a
+  `insumo.usos.ts` y ahora la comparten el borrado (para bloquear) y la fusión (para mudar).
+- **Un octavo sitio que el borrado no miraba**: los accesorios guardados dentro del JSON de cada
+  talla, que la venta lee **viva**. Una fusión que no lo reescribiera dejaría ahí un id borrado y
+  la siguiente venta de esa talla reventaría en la caja.
+- **Las ~400 ventas con perfumero no existen como movimientos**: el consumo por venta no es
+  retroactivo, así que el libro solo tenía 15 salidas. La fusión no puede inventar historia que
+  nunca se escribió.
+
 ## Cosas que se probaron y se descartaron
 
 - **Three.js para la tarjeta de recompensas**: pesaba mucho para el público de gama baja y el

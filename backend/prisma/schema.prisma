@@ -916,6 +916,54 @@ model GamaEsencia {
   @@map("gamas_esencia")
 }
 
+/// A qué familia de materiales vigila una alerta. NO es `InsumoTipo` reusado a
+/// propósito: "esencias" aquí significa **materia prima CON gama**, y deja fuera
+/// al diluyente, el sellador y las feromonas. Decisión del dueño (2026-08-29):
+/// el diluyente se compra por litros y medirlo con la vara de una esencia
+/// llenaría la alerta de ruido el primer día.
+enum AlertaAmbito {
+  esencias
+  envases
+  implementos
+}
+
+/// Cómo se ve el aviso en el dashboard.
+enum AlertaForma {
+  /// Franja arriba de la pantalla. Se cierra por el día.
+  franja
+  /// Ventana en medio, como los anuncios a clientes. Para lo que no se puede pasar por alto.
+  ventana
+}
+
+/// ALERTAS DE INVENTARIO PARA EL ADMINISTRADOR.
+///
+/// Una fila por familia de materiales, y su número hace **las dos cosas**: es el
+/// punto de pedido de esa familia (lo que alimenta el pedido sugerido cuando el
+/// material no tiene mínimo propio ni de gama) y el que dispara el aviso.
+/// Separarlos en dos campos obligaría al dueño a mantener dos cifras que en su
+/// cabeza siempre son la misma.
+///
+/// `@@unique([ambito])`: una sola regla por familia. Dos reglas para "envases"
+/// con números distintos no tienen respuesta correcta, y la pantalla tendría que
+/// inventarse una.
+model AlertaInventario {
+  id         Int          @id @default(autoincrement())
+  ambito     AlertaAmbito
+  /// En la unidad de esa familia: ml para esencias, piezas para lo demás.
+  minimo     Decimal      @db.Decimal(12, 3)
+  forma      AlertaForma  @default(franja)
+  /// Texto propio del dueño. Vacío = el sistema redacta el aviso con la lista.
+  titulo     String?      @db.VarChar(150)
+  mensaje    String?      @db.Text
+  activo     Boolean      @default(true)
+  orden      Int          @default(0)
+  created_at DateTime     @default(now())
+  updated_at DateTime     @updatedAt
+
+  @@unique([ambito])
+  @@map("alertas_inventario")
+}
+
 model InsumoCosto {
   id                  Int                    @id @default(autoincrement())
   nombre              String                 @db.VarChar(120)
@@ -951,6 +999,13 @@ model InsumoCosto {
   /// del género equivocado al emparejar esencias con perfumes.
   genero              Genero?
   activo              Boolean                @default(true)
+  /// EN PRUEBA: material que se trajo para ver si sale, y que todavía no se ha
+  /// vendido. No aparece en el pedido sugerido —pedir más de algo que nadie ha
+  /// comprado no es prioridad—, pero SÍ cuenta como inventario y se puede
+  /// vender y producir con él con normalidad. Se apaga solo cuando el dueño lo
+  /// desmarca: que el sistema lo "gradúe" a la primera venta escondería la
+  /// decisión justo cuando importa.
+  en_prueba           Boolean                @default(false)
   created_at          DateTime               @default(now())
   updated_at          DateTime               @updatedAt
   /// Fórmulas que usan este insumo como envase (impide borrarlo si está en uso).

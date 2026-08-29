@@ -81,6 +81,27 @@ export const minimoSchema = z.object({
   minimo: z.number().min(0).max(9_999_999).nullish(),
 });
 
+/** Marcar o desmarcar un material como "en prueba". */
+export const enPruebaSchema = z.object({
+  en_prueba: z.boolean(),
+});
+
+/**
+ * La regla de alerta de UNA familia de materiales.
+ *
+ * `ambito` es la clave: se guarda por upsert, así que mandar dos veces
+ * "envases" corrige la regla en vez de crear una segunda que la contradiga.
+ */
+export const alertaSchema = z.object({
+  ambito: z.enum(['esencias', 'envases', 'implementos']),
+  minimo: z.number().min(0).max(9_999_999),
+  forma: z.enum(['franja', 'ventana']).default('franja'),
+  activo: z.boolean().default(true),
+  titulo: z.string().max(150).nullish(),
+  mensaje: z.string().max(2000).nullish(),
+  orden: z.number().int().min(0).max(99).optional(),
+});
+
 /**
  * Los puntos de pedido de VARIAS gamas de una sola vez.
  *

@@ -37,6 +37,8 @@ import { CostosProduccionTab } from './tabs/CostosProduccionTab';
 import { DevolucionesTab } from './tabs/DevolucionesTab';
 import { InventarioTab } from './tabs/InventarioTab';
 import { ReposicionTab } from './tabs/ReposicionTab';
+import { AlertasTab } from './tabs/AlertasTab';
+import { AvisoAlertas } from './tabs/alertas/AvisoAlertas';
 import { ProduccionesTab } from './tabs/ProduccionesTab';
 import { ReportesVentasTab } from './tabs/ReportesVentasTab';
 import { ReportesComprasTab } from './tabs/ReportesComprasTab';
@@ -273,6 +275,14 @@ export default function DashboardPage() {
 
       {/* ── Contenido ── */}
       <main className="min-h-0 flex-1 overflow-y-auto px-4 py-5 md:px-6">
+        {/* El aviso de inventario va ARRIBA de todo y en cualquier pestaña: si
+            solo saliera en Inventario, avisaría justo a quien ya está mirando el
+            inventario. Es el sitio que pidió el dueño. */}
+        {isAdmin && (
+          <div className="mb-4 empty:mb-0">
+            <AvisoAlertas recargarCon={tab} onVerPedido={() => navigate('/dashboard/reposicion')} />
+          </div>
+        )}
         {loading ? (
           <PerfumeSpinner />
         ) : (
@@ -372,6 +382,7 @@ export default function DashboardPage() {
             {tab === 'devoluciones' && <DevolucionesTab />}
             {tab === 'inventario' && <InventarioTab />}
             {tab === 'reposicion' && <ReposicionTab />}
+            {tab === 'alertas' && <AlertasTab />}
             {tab === 'producciones' && <ProduccionesTab />}
             {tab === 'redes' && <RedesTab />}
           </>
