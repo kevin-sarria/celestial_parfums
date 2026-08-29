@@ -12,7 +12,7 @@
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate": "node scripts/solo-base-local.cjs && prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
     "test:watch": "vitest",

@@ -3,25 +3,20 @@
 **Última sesión: 29 de agosto de 2026.** Todo compila, **371 pruebas en verde** (235 backend +
 84 frontend + 52 recorridos, más 1 saltada a propósito) y el linter en cero.
 
-## 🔴 LO PRIMERO: el deploy del 29 quedó a medias
+## ✅ Producción está al día (2026-08-29, tarde)
 
-**La migración `20260825120000_editar_producciones` NO se aplicó en producción** (la base va hasta
-la del 23 de agosto). Comprobado corriendo el código contra una copia del respaldo del 29:
-*"The column producciones.costo_manual does not exist"*.
+**Todo lo de `main` está en vivo y verificado desde fuera**: se descargó el paquete que sirve el
+servidor y contiene *Fusionar*, *Alertas de inventario* y *en prueba*. Las migraciones que faltaban
+(`20260825120000_editar_producciones` y `20260829120000_alertas_inventario`) quedaron aplicadas con
+`migrate deploy`.
 
-**Consecuencia:** Producciones y el aviso de *lotes por enlazar* están muertos en producción, así
-que el dueño **no pudo crear ni una ficha 1.1** (hay 0 en su base) y creyó que la función estaba
-mal hecha. Los comandos:
+Dos tropiezos del camino, ya documentados para que no se repitan (ver
+[`gotchas.md`](gotchas.md)): el frontend se quedó **seis minutos viejo** porque su `npm run build`
+no corrió —y la caché del navegador se llevó la culpa un rato—, y `migrate dev` en el servidor
+ofreció borrar la base. Contra lo segundo hay ya un freno de mano en `npm run prisma:migrate`.
 
-```bash
-cd /var/www/celestial-parfums && git pull
-cd backend && npx prisma migrate deploy && npm run build && pm2 restart celestial-backend
-cd ../frontend && npm run build
-```
-
-**Verificado contra su respaldo (con la migración aplicada a la copia local): el aviso mostrará 5
-lotes** — Khamrah (envase ajeno, $74.580), Asad, Yum Yum, Bon Bon y Mandarin Sky (sin frascos). El
-212 VIP Black queda fuera, que es lo correcto: está macerando.
+**Falta confirmar en pantalla**: que el aviso de *lotes por enlazar* aparece en Producciones con
+sus 5 lotes, y usar *Fusionar* con los dos perfumeros (ids 9 y 11).
 
 ## 🔴 Plata sin costear: los créditos guardan la línea SIN TALLA
 
@@ -54,17 +49,6 @@ Revisar de paso si hay más secciones con el mismo `catch` mudo (`FrascosArmados
 `AvisoEsenciasSinPerfume`, `AvisoAlertas` — este último lo escribí igual el 2026-08-29, así que
 entra en la misma corrección).
 
-## Listo en código y esperando el PRÓXIMO deploy
-
-1. **Fusionar dos registros del mismo material (2026-08-29).** Sin migración. Botón *Fusionar* por
-   fila en Inventario: muda los ocho sitios donde cuelga un insumo al registro bueno y **no toca
-   las existencias**. Su primer uso es el perfumero duplicado (ids 9 y 11 en producción).
-   **Sigue SIN COMMITEAR**: falta que el dueño diga si va a `main` o a una rama.
-2. **Alertas de inventario y materiales "en prueba" (2026-08-29).** **TRAE MIGRACIÓN**
-   (`20260829120000_alertas_inventario`), así que el deploy es `git pull` + `migrate deploy` +
-   build. Pantalla nueva *Alertas de inventario*, mínimo por familia en cascada
-   (material → gama → familia) y el aviso en el dashboard, en franja o en ventana.
-
 ## Lo siguiente, ya decidido y sin empezar: los 3 arreglos de los 1.1
 
 Salieron de auditar la lógica 1.1 entera el 2026-08-29, con el código y sus datos delante.
@@ -95,11 +79,11 @@ Salieron de auditar la lógica 1.1 entera el 2026-08-29, con el código y sus da
 
 ## El estado de los datos de producción (medido contra el respaldo del 2026-08-29)
 
-> **Confirmado con el respaldo nuevo:** todo lo de abajo **sigue igual que el 24 de agosto**. Hay
-> **0 fichas 1.1**, el frasco de Khamrah sigue colgado de la ficha corriente y los otros 4 lotes
-> siguen sin frascos. No es que el dueño no haya querido: **el enlazador no funciona en producción
-> porque falta la migración** (ver arriba). En cuanto la corra, esto se arregla con un botón por
-> lote.
+> **Medido contra el respaldo del 2026-08-29:** hay **0 fichas 1.1**, el frasco de Khamrah sigue
+> colgado de la ficha corriente y los otros 4 lotes siguen sin frascos. No era que el dueño no
+> quisiera: **el enlazador estaba muerto en producción por una migración que no se aplicó**. Ya está
+> aplicada (29 de agosto, tarde), así que esto se arregla con un botón por lote. **Sin hacer
+> todavía.**
 
 ### 1. Un frasco 1.1 de Khamrah está colgado de la ficha del perfume NORMAL
 
@@ -325,11 +309,10 @@ material:
 
 De paso quedó cerrado el defecto de los envases en cero que él encontró el 2026-08-23.
 
-## ✅ Editar lotes, enlazar los 1.1 y publicarlos — HECHO, pero NO EN VIVO (2026-08-25)
+## ✅ Editar lotes, enlazar los 1.1 y publicarlos — HECHO y EN VIVO (2026-08-25)
 
-Construido, verificado en pantalla y mergeado a `main`. **Su migración
-(`20260825120000_editar_producciones`) no llegó a producción en el deploy del 29**, y sin esas dos
-columnas la pestaña Producciones entera responde error. Ver la sección roja del principio. El porqué de cada decisión está en
+Construido, verificado en pantalla y desplegado el **2026-08-29 por la tarde**, con su migración
+(`20260825120000_editar_producciones`). El porqué de cada decisión está en
 [`inventario-costeo.md`](inventario-costeo.md#corregir-un-lote-de-producción-2026-08-25) y en
 [`diseno-ux.md`](diseno-ux.md).
 

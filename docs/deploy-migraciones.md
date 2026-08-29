@@ -1,15 +1,19 @@
 # Deploy, servidor y migraciones
 
-> ## ⚠️ La próxima subida NO es opcional en el orden
+> ## ⚠️ En el servidor: `migrate deploy`, NUNCA `migrate dev`
 >
-> El código de producto terminado **lee `perfume_presentacion.stock` y `perfumes.solo_armado` en
-> TODAS las consultas del catálogo**. Si sube el código sin la migración
-> `20260814120000_producto_terminado`, **la tienda entera responde error** (no una pantalla: el
-> catálogo, el home, el detalle y el dashboard). Ya pasó en local el 2026-08-14.
+> Se parecen y hacen cosas opuestas. **`migrate dev` propone borrar la base entera** cuando algo no
+> cuadra ("You may use prisma migrate reset… All data will be lost"). Pasó el 2026-08-29 en
+> producción; no se aceptó, pero faltó un enter. **`migrate deploy` solo aplica lo que falta y
+> nunca borra nada.**
 >
-> Orden obligatorio en el servidor: `git pull` → **`npx prisma migrate deploy`** → `npm run build`
-> → `pm2 restart`. En MariaDB 10.11 el `migrate deploy` funciona normal (el que revienta es el
-> MySQL de XAMPP en local).
+> Hay un freno de mano (`backend/scripts/solo-base-local.cjs`): `npm run prisma:migrate` se niega a
+> correr si la base es `celestial_db`. El detalle en [`gotchas.md`](gotchas.md).
+>
+> **El orden es obligatorio**: `git pull` → **`migrate deploy`** → `npm run build` → `pm2 restart`
+> → **build del frontend**. Subir código sin su migración deja el sistema PEOR que sin desplegar
+> (ver el recuadro de más abajo), y saltarse el build del frontend deja al dueño mirando la versión
+> vieja mientras todo parece correcto.
 
 ## Runbook
 
@@ -27,6 +31,16 @@ npm run build               # nginx sirve frontend/dist directamente
 
 **Antes de tocar producción: respaldo por SSH y verificar que el archivo pese cientos de KB, no
 20 bytes.**
+
+**Al terminar, comprobar que el frontend nuevo es el que se está sirviendo** — no fiarse de recargar
+el navegador, que enseña lo mismo tanto si la caché miente como si el `dist` está viejo:
+
+```bash
+curl -s -I https://celestialparfums.com/ | grep -i last-modified
+```
+
+Si esa hora no es la de hace un momento, **el `npm run build` del frontend no entró** (puede haber
+muerto por memoria sin decirlo). Ver [`gotchas.md`](gotchas.md).
 
 > ### ⚠️ El paso que se saltó una vez y costó una semana (2026-08-29)
 >

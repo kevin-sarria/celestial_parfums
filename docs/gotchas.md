@@ -195,6 +195,58 @@ tenía la línea) así que no hubo riesgo de datos — solo bloqueaba la termina
 error de "unknown variable" que no tiene nada que ver con lo que pediste, sospechar de un archivo
 de configuración suelto antes que de la base.
 
+## `migrate dev` en el servidor te ofrece BORRAR la base (2026-08-29)
+
+El dueño corrió `npx prisma migrate dev` en producción y la pantalla terminó en:
+
+```
+We need to reset the MySQL database "celestial_db" at "localhost:3306"
+You may use prisma migrate reset to drop the development database. All data will be lost.
+```
+
+No aceptó, así que no se perdió nada. Pero el camino estaba servido: **un comando más y la tienda
+entera se va.**
+
+- **`migrate dev`** compara la base con el historial y, si algo no cuadra, propone rehacerla desde
+  cero. Es para la máquina de pruebas.
+- **`migrate deploy`** solo aplica lo que falta. **Nunca borra, nunca pide reset.** Es el único que
+  se corre en el servidor.
+
+Se parecen demasiado para confiar en la memoria, así que hay un freno de mano:
+`backend/scripts/solo-base-local.cjs` corta `npm run prisma:migrate` cuando la `DATABASE_URL`
+apunta a `celestial_db`. Mira el **nombre de la base**, no `NODE_ENV`, porque en una sesión de SSH
+esa variable puede no venir puesta y el nombre sí es inequívoco.
+
+**El "Drift detected" que aparece de paso es cosmético y no hay que arreglarlo**: el default de
+`credito_abonos.fecha` está escrito `CURDATE()` en la migración y `NOW()` en la base (herencia de
+un `db push` viejo). En una columna `DATE` las dos dan el mismo día. `migrate deploy` lo ignora.
+
+## El frontend en producción se queda viejo sin avisar (2026-08-29)
+
+El botón *Fusionar* no aparecía en el servidor aunque el código estaba en `main` y el dueño ya había
+borrado la caché del navegador. **La construcción del frontend no había corrido**: `git pull` y el
+backend sí, `npm run build` del frontend no.
+
+**Cómo se diagnostica en 30 segundos y sin entrar al servidor** (así se resolvió):
+
+```bash
+curl -s -I https://celestialparfums.com/ | grep -i last-modified   # cuándo se construyó
+curl -s https://celestialparfums.com/ | grep -o 'assets/index-[A-Za-z0-9_-]*\.js'
+curl -s https://celestialparfums.com/assets/DashboardPage-XXXX.js | grep -c "Fusionar"
+```
+
+La fecha del `index.html` decía **02:24** y los commits eran de **02:30**: el `dist` se construyó
+seis minutos antes de que el código existiera. Medido, no supuesto — y descarta de una vez la
+caché, que es siempre la primera sospechosa y casi nunca la culpable.
+
+**Dos trampas que hacen que el build no entre:**
+
+- `npm run build` del frontend puede morir por memoria en el VPS (`Killed`, `heap out of memory`) y
+  dejar el `dist` viejo intacto, sin que nada se vea roto. Plan B:
+  `NODE_OPTIONS=--max-old-space-size=2048 npm run build`.
+- `git pull` puede responder *"Already up to date"* y estar todo bien: los commits ya bajaron y lo
+  que falta es la construcción.
+
 ## `prisma migrate diff` REVIENTA el MySQL de XAMPP (2026-08-14)
 
 Síntoma: `mysql.exe` conecta y responde perfecto, pero **Prisma no** (`P1001, Can't reach
