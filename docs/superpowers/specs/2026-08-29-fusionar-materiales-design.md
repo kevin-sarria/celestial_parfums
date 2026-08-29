@@ -149,3 +149,35 @@ Más la pantalla abierta en el navegador, con captura.
 - **Deshacer una fusión.** El costo de construirlo no se justifica contra una vista previa clara y
   un respaldo.
 - **Reescribir el costo histórico** (decisión de arriba).
+
+## Añadido tras la revisión de seguridad del commit (2026-08-29)
+
+Dos huecos reales que salieron al revisar el código ya escrito. Los dos estaban en el mismo sitio y
+los dos eran silenciosos, que es lo que los hacía peligrosos.
+
+### 1. Unidades distintas: el stock no se movía, pero el "cuánto pedir" sí
+
+Fusionar tipos distintos **se permite a propósito** — el caso del dueño es un `accesorio` y un
+`envase` que son el mismo perfumero, y unirlos es para lo que existe esto.
+
+La **unidad** es otra cosa. Mudar movimientos medidos en mililitros a un material que se cuenta por
+piezas deja el stock intacto (es una columna guardada, no una suma), pero mezcla ml con unidades en
+el historial de consumo — y de ahí sale el número del pedido sugerido. Habría quedado mal sin que
+nada avisara.
+
+**Ahora se rechaza** con un mensaje que dice qué unidad tiene cada uno y qué hacer: corregir primero
+la unidad del que esté mal. 2 pruebas: que lo rechaza sin dejar nada a medias, y que sigue
+permitiendo el caso del perfumero (dos tipos distintos, los dos por unidad).
+
+### 2. La ventana entre contar y borrar (TOCTOU)
+
+El recuento estaba **fuera** de la transacción, y el "cinturón" de dentro no cerraba el hueco: MySQL
+lee cada transacción en su propia foto, así que un movimiento creado por una venta o un lote en ese
+instante **no lo veía** el recuento de dentro. El borrado se lo habría llevado por cascada, en
+silencio, y con el visto bueno del cinturón.
+
+**Ahora la transacción abre cerrando la puerta**: `SELECT … FOR UPDATE` sobre la fila del duplicado,
+y el recuento se hace después, ya dentro. Ese candado alcanza porque `aplicarMovimiento` —el único
+camino que crea movimientos— actualiza `insumos_costo` de ese mismo insumo: se queda esperando, y
+cuando esta transacción termina el registro ya no existe, así que su operación **falla con un error
+en vez de perder el dato**.

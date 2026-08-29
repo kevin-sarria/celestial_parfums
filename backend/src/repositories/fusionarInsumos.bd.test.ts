@@ -175,6 +175,26 @@ describe('fusionar dos registros del mismo material', () => {
     await expect(fusionarInsumos(destino.id, destino.id)).rejects.toThrow(/mismo/i);
   });
 
+  it('no deja fusionar dos materiales que no se miden igual', async () => {
+    const { destino } = await sembrarDuplicados();
+    // Una esencia se mide en ml; el perfumero en piezas. El stock no se movería
+    // —es una columna guardada—, pero el historial de consumo mezclaría ml con
+    // unidades y el "cuánto pedir" saldría mal sin que nada avise.
+    const enMl = await crearInsumo('Esencia suelta', { precio: 400, stock: 100 });
+
+    await expect(fusionarInsumos(enMl.id, destino.id)).rejects.toThrow(/mide/i);
+    // Y no dejó nada a medias: el material sigue entero.
+    expect(await prisma.insumoCosto.findUnique({ where: { id: enMl.id } })).not.toBeNull();
+    expect(await prisma.movimientoInventario.count({ where: { insumo_id: enMl.id } })).toBe(1);
+  });
+
+  it('sí deja fusionar tipos distintos que se miden igual (el caso del perfumero)', async () => {
+    // accesorio + envase, los dos por unidad: es exactamente para esto que existe.
+    const { origen, destino } = await sembrarDuplicados();
+    await fusionarInsumos(origen.id, destino.id);
+    expect(await prisma.insumoCosto.findUnique({ where: { id: origen.id } })).toBeNull();
+  });
+
   it('no deja fusionar contra un registro que ya no existe', async () => {
     const { origen } = await sembrarDuplicados();
     await expect(fusionarInsumos(origen.id, 999999)).rejects.toThrow(/no existe/i);

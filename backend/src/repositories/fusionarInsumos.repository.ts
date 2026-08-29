@@ -106,10 +106,48 @@ export const fusionarInsumos = async (
   if (!origen) throw badRequest('El material que quieres fusionar ya no existe');
   if (!destino) throw badRequest('El material bueno ya no existe');
 
-  const movidos = await contarUsos(origenId);
+  /**
+   * NO se fusionan dos materiales que no se miden igual.
+   *
+   * El `tipo` distinto sí se permite —es justo el caso del dueño: un "accesorio"
+   * y un "envase" que son el mismo perfumero, y unir eso es para lo que existe
+   * esto—. La UNIDAD es otra cosa: mudar movimientos medidos en mililitros a un
+   * material que se cuenta por piezas deja el stock intacto (es una columna
+   * guardada) pero **mezcla ml con unidades en el historial de consumo**, y de
+   * ahí sale el "cuánto pedir" del pedido sugerido. El número saldría mal sin
+   * que nada avise, que es la peor forma de estar mal.
+   */
+  if (origen.unidad !== destino.unidad) {
+    throw badRequest(
+      `No se pueden fusionar: "${origen.nombre}" se mide en ${origen.unidad === 'ml' ? 'mililitros' : 'unidades'}`
+      + ` y "${destino.nombre}" en ${destino.unidad === 'ml' ? 'mililitros' : 'unidades'}.`
+      + ' Si de verdad son el mismo material, corrige primero la unidad del que esté mal.',
+    );
+  }
+
   const sobraban = Number(origen.stock);
+  let movidos!: UsosDeInsumo;
 
   await prisma.$transaction(async (tx) => {
+    /**
+     * Se cierra la puerta ANTES de contar.
+     *
+     * Sin esto había una ventana real: se contaba fuera de la transacción, y una
+     * venta o un lote registrado en ese instante creaba un movimiento del
+     * duplicado que el recuento de dentro **no llegaba a ver** (MySQL lee la
+     * transacción en su propia foto). El borrado se lo habría llevado por
+     * cascada, en silencio, y el "cinturón" de más abajo habría dado el visto
+     * bueno.
+     *
+     * `FOR UPDATE` sobre la fila del duplicado alcanza porque `aplicarMovimiento`
+     * —el único camino que crea movimientos— actualiza `insumos_costo` de ese
+     * mismo insumo: se queda esperando a que esta transacción termine, y cuando
+     * termina el registro ya no existe, así que su operación falla con un error
+     * en vez de perder el dato.
+     */
+    await tx.$queryRaw`SELECT id FROM insumos_costo WHERE id = ${origenId} FOR UPDATE`;
+    movidos = await contarUsos(origenId, tx);
+
     await tx.movimientoInventario.updateMany({
       where: { insumo_id: origenId }, data: { insumo_id: destinoId },
     });
