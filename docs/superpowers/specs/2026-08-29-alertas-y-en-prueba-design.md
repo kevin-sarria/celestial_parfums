@@ -69,6 +69,18 @@ saliera en Inventario, avisaría justo a quien ya está mirando el inventario.
 - Se vuelve a consultar al cambiar de pestaña, o seguiría nombrando algo que se acaba de marcar en
   prueba.
 
+### Corrección del mismo día: es un formulario, no autoguardado
+
+La primera versión guardaba al salir de cada campo y recargaba la pantalla entera. El dueño la usó y
+la cortó en la misma tarde: configurar es tantear —subir un número, ver a cuántos materiales
+alcanza, cambiar otro y recién ahí aceptar—, y con autoguardado no hay nada que aceptar.
+
+Ahora hay **borrador + guardado**, un botón `Guardar cambios`, un `Deshacer`, y al guardar el estado
+se rehace con lo que responde el servidor en vez de volver a pedirlo todo (era el `setCargando(true)`
+el que desmontaba el formulario y lo hacía parpadear). De paso, las tres tarjetas pasaron a una tabla
+de tres renglones: **913 px → 390 px**. El porqué completo, en
+[`diseno-ux.md`](../../diseno-ux.md).
+
 ## Qué se verifica
 
 Pruebas de base (`alertas.bd.test.ts`, 9): que un material en prueba no se sugiere ni dispara; que

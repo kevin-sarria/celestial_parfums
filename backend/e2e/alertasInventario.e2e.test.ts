@@ -35,12 +35,23 @@ describe('alertas de inventario', () => {
     // La pantalla dice qué marca AHORA con lo que hay configurado.
     await pagina.getByText(/Ahora mismo no marca nada/).first().waitFor({ timeout: 10_000 });
 
-    const casilla = pagina.getByLabel(/Avísame cuando queden menos de \(unidades\)/).first();
+    /**
+     * Es un FORMULARIO: se teclea y NO pasa nada hasta pulsar Guardar. Antes se
+     * guardaba al salir del campo y la pantalla se recargaba entera —el dueño lo
+     * pidió cambiar el 2026-08-29—, así que esta prueba vigila justo eso.
+     */
+    const casilla = pagina.getByLabel(/Avísame cuando queden menos de \(unidades\) — Envases/).first();
     await casilla.fill('50');
     await casilla.blur();
+    await pagina.getByText(/Cambios sin guardar/).first().waitFor({ timeout: 10_000 });
+    const antesDeGuardar = await prisma.alertaInventario.findFirst({ where: { ambito: 'envases' } });
+    expect(Number(antesDeGuardar?.minimo ?? 0)).not.toBe(50);
+
+    await pagina.getByRole('button', { name: 'Guardar cambios' }).click();
 
     // El servidor confirma, y la vista previa se rehace con lo que de verdad marca.
     await pagina.getByText(/Envase de recorrido 10 ml/).first().waitFor({ timeout: 15_000 });
+    await pagina.getByText(/Todo guardado/).first().waitFor({ timeout: 10_000 });
     await pagina.screenshot({ path: foto('alertas-config') });
 
     const guardada = await prisma.alertaInventario.findFirstOrThrow({ where: { ambito: 'envases' } });

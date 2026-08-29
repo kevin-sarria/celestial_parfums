@@ -36,9 +36,8 @@ export const FILAS_ALERTA: {
     ambito: 'esencias',
     titulo: 'Esencias',
     unidad: 'ml',
-    explicacion: 'Solo las esencias con gama. El diluyente, el sellador y las feromonas NO entran '
-      + 'aquí: se compran por litros y medirlos con esta vara llenaría la alerta de ruido. '
-      + 'Si quieres avisos de ellos, ponles su mínimo propio en Inventario.',
+    explicacion: 'Solo las que tienen gama. El diluyente, el sellador y las feromonas no entran '
+      + 'aquí: ponles su mínimo propio en Inventario.',
   },
   {
     ambito: 'envases',
@@ -50,7 +49,7 @@ export const FILAS_ALERTA: {
     ambito: 'implementos',
     titulo: 'Implementos',
     unidad: 'unidades',
-    explicacion: 'Perfumeros, bolsas, tarjetas y todo lo que acompaña al pedido.',
+    explicacion: 'Perfumeros, bolsas, tarjetas y lo que acompaña al pedido.',
   },
 ];
 

@@ -486,3 +486,41 @@ Las reglas que quedan, y su porqué:
 Y una que aplica a todo el dashboard: **cuando dos pantallas configuran lo mismo, cada una nombra a
 la otra.** Los mínimos por gama siguen en *Pedido sugerido → ¿Cuándo te aviso?* y mandan sobre los
 de familia; la pantalla de Alertas lo dice en su cabecera, o el dueño los buscaría ahí.
+
+## Una pantalla de CONFIGURACIÓN es un formulario con Guardar (2026-08-29)
+
+Las Alertas de inventario nacieron guardando solas: al salir de un campo se mandaba al servidor y
+después se volvía a pedir TODO, con spinner. El dueño lo cortó el mismo día que la usó:
+
+> *"me molesta que se actualice cada que hago un cambio… debería ser más como un formulario clásico
+> con el apartado de guardar para que ahí sí aplique los cambios, y según yo no debería porqué
+> recargarse la página o hacer esa acción molesta que hace que parpadee la pantalla; para eso se
+> hicieron los estados, las llamadas asíncronas y demás"*.
+
+Tiene razón por dos motivos distintos, y conviene separarlos porque se arreglan aparte:
+
+1. **Guardar solo le quita la decisión.** Configurar es tantear: subir un número, ver a cuántos
+   materiales alcanza, cambiar otro y recién entonces aceptar. Si cada tecla ya quedó guardada, no
+   hay nada que aceptar ni nada que deshacer.
+2. **Recargar la pantalla entera después de escribir es un fallo aparte.** El `setCargando(true)`
+   desmontaba el formulario y lo reemplazaba por un spinner: eso es el parpadeo. Aunque el guardado
+   fuera automático, volver a pedir lo que el servidor **acaba de responder** es trabajo de más
+   (ver la regla *"no vuelvas a pedir lo que el servidor ya te devolvió"* en `CLAUDE.md`).
+
+**La forma que queda:**
+
+- Dos estados: **lo guardado** y **el borrador**. Se edita el borrador; comparar los dos es lo que
+  dice qué cambió, sin llevar banderitas a mano.
+- **Un solo botón `Guardar cambios`**, apagado mientras no haya nada que guardar, con el texto de
+  al lado diciendo *"Cambios sin guardar en 2 familias"* o *"Todo guardado"*, y un **Deshacer** que
+  vuelve al último guardado.
+- Al guardar, **el estado se rehace con lo que responde el servidor**. Solo se vuelve a consultar
+  lo que de verdad depende de los números nuevos —la vista previa de a cuántos materiales alcanza
+  cada regla— y esa consulta **no desmonta nada**: no hay spinner, no hay parpadeo.
+- Cada fila que cambió se marca con una pastilla *"sin guardar"*: con tres familias en pantalla, el
+  botón solo no dice cuál tocaste.
+
+**Y de paso, la densidad.** Eran tres tarjetas de formulario completo, una por familia. Ahora es una
+sola tabla con un renglón por familia, encabezado de columnas y los campos en línea: **de 913 px a
+390 px** (medido en la misma pantalla, 1440 px de ancho), sin quitar ni un dato. En una herramienta
+interna la densidad es una virtud: quien la abre ya sabe qué es cada cosa y quiere verlo todo junto.
