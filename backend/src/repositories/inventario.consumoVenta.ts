@@ -111,6 +111,12 @@ export const recetaDe = async (perfumeId: number, ml: number | null) => {
  *  - Si no alcanza el stock NO se bloquea: la venta ya ocurrió; el stock queda
  *    en negativo y la pestaña lo muestra en ámbar.
  *  - Línea sin talla o perfume sin esencia: no se descuenta y se reporta.
+ *  - **Un 1.1 jamás se fabrica al vender** (ver `sacarDeTerminado`): sale de lo
+ *    armado o queda en negativo, pero no toca materiales.
+ *
+ * `avisos` es lo que hay que ENSEÑARLE al dueño después de guardar. Antes esto
+ * se devolvía y nadie lo leía, así que una venta que no descontó nada se veía
+ * igual de bien que una normal.
  */
 export const consumirPorVenta = async (
   tx: Prisma.TransactionClient,
@@ -120,6 +126,7 @@ export const consumirPorVenta = async (
 ) => {
   let costo = 0;
   const sinCostear: string[] = [];
+  const avisos: string[] = [];
 
   for (const l of lineas) {
     /**
@@ -134,9 +141,23 @@ export const consumirPorVenta = async (
       ventaId, fecha,
     });
     costo += armado.costo;
+
+    if (armado.faltaron > 0) {
+      avisos.push(`Vendiste ${armado.faltaron} × ${armado.nombre} sin tenerlo armado:`
+        + ' quedó en negativo y NO se descontó material (los 1.1 no se fabrican al vender).');
+    }
+
     const porArmar = l.cantidad - armado.unidades;
     // Si lo armado cubrió la línea entera, no se toca ni un material.
     if (porArmar <= 0) continue;
+
+    // Un 1.1 al que no se le pudo apuntar la talla: tampoco se fabrica. Sin
+    // esto, la única puerta que quedaba abierta seguiría descontando su receta.
+    if (armado.soloArmado) {
+      avisos.push(`No se descontó nada por ${armado.nombre}: es un 1.1 y su talla no está`
+        + ' en el catálogo, así que no se pudo apuntar a ningún frasco armado.');
+      continue;
+    }
 
     // Un producto COMPRADO (una gorra, un splash) no tiene talla y aun así se
     // descuenta: su costo es lo que se pagó por él.
@@ -156,7 +177,11 @@ export const consumirPorVenta = async (
       costo += res.costoAplicado * it.cantidad * porArmar;
     }
   }
-  return { costo: Math.round(costo * 100) / 100, sinCostear: [...new Set(sinCostear)] };
+  return {
+    costo: Math.round(costo * 100) / 100,
+    sinCostear: [...new Set(sinCostear)],
+    avisos: [...new Set(avisos)],
+  };
 };
 
 /**

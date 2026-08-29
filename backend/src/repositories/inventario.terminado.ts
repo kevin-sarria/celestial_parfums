@@ -236,36 +236,79 @@ export const tallaDeMl = async (ml: number) => {
   return p?.id ?? null;
 };
 
+export interface SalidaDeTerminado {
+  /** Unidades de la línea que salieron de lo armado (el resto se fabrica). */
+  unidades: number;
+  costo: number;
+  /** Unidades que salieron SIN haber estado armadas (solo los 1.1): el aviso. */
+  faltaron: number;
+  /** true = es un 1.1; quien llama NO puede fabricar lo que falte. */
+  soloArmado: boolean;
+  nombre: string;
+}
+
+const vacia = (soloArmado = false, nombre = ''): SalidaDeTerminado =>
+  ({ unidades: 0, costo: 0, faltaron: 0, soloArmado, nombre });
+
 /**
  * Saca de los frascos armados lo que se pueda para una línea de venta.
  *
  * Devuelve cuántas unidades salieron de ahí y lo que costaron, para que quien
- * llama arme el resto con materiales. **Nunca deja el stock en negativo**: lo
- * que no hay, no sale de aquí.
+ * llama arme el resto con materiales.
+ *
+ * ## Los 1.1 son la excepción, y es una regla de plata (2026-08-29)
+ *
+ * Un perfume corriente que no esté armado se fabrica al vender: se descuenta su
+ * receta. **Un 1.1 no se puede fabricar** — es una fragancia original envasada
+ * por el dueño, no un contratipo que salga de una esencia. Antes, vender uno sin
+ * frascos armados descontaba esencia + envase 1.1 como si lo hubiera armado: la
+ * tienda lo escondía (sale "Sin armar"), pero **una venta cargada a mano en el
+ * dashboard sí pasaba**, y dejaba materiales descontados por un frasco que nunca
+ * existió.
+ *
+ * **Decisión del dueño**: dejar pasar y avisar. La venta se registra —ya
+ * ocurrió—, el frasco queda en negativo, **no se toca ni un material** y la
+ * respuesta lo dice. Es la misma regla que ya rige el inventario de materiales:
+ * el sistema nunca bloquea algo que pasó en la vida real, pero tampoco lo tapa.
  */
 export const sacarDeTerminado = async (
   tx: Prisma.TransactionClient,
   opciones: { perfume_id: number; ml: number | null; cantidad: number; ventaId: number; fecha: Date },
-) => {
+): Promise<SalidaDeTerminado> => {
   const { perfume_id, ml, cantidad, ventaId, fecha } = opciones;
-  if (!ml || cantidad <= 0) return { unidades: 0, costo: 0 };
+  const perfume = await tx.perfume.findUnique({
+    where: { id: perfume_id }, select: { nombre: true, solo_armado: true },
+  });
+  const soloArmado = perfume?.solo_armado ?? false;
+  const nombre = perfume?.nombre ?? `perfume #${perfume_id}`;
+  if (cantidad <= 0) return vacia(soloArmado, nombre);
 
-  const presentacion_id = await tallaDeMl(ml);
-  if (!presentacion_id) return { unidades: 0, costo: 0 };
+  // Sin talla reconocible no hay dónde apuntar el frasco. Quien llama se entera
+  // por `soloArmado` de que tampoco puede fabricarlo con materiales.
+  const presentacion_id = ml ? await tallaDeMl(ml) : null;
+  if (!presentacion_id) return vacia(soloArmado, nombre);
 
   const fila = await tx.perfumePresentacion.findUnique({
     where: { perfume_id_presentacion_id: { perfume_id, presentacion_id } },
   });
-  const disponible = Math.floor(num(fila?.stock));
-  if (disponible <= 0) return { unidades: 0, costo: 0 };
+  const disponible = Math.max(0, Math.floor(num(fila?.stock)));
 
-  const unidades = Math.min(cantidad, disponible);
+  // El 1.1 sale entero aunque no haya: lo que falta queda en negativo y se avisa.
+  const unidades = soloArmado ? cantidad : Math.min(cantidad, disponible);
+  if (unidades <= 0) return vacia(soloArmado, nombre);
+
   const res = await aplicarMovimientoTerminado(tx, {
     perfume_id, presentacion_id, tipo: 'venta',
     cantidad: -unidades, fecha, referencia_id: ventaId,
     nota: `Venta #${ventaId}`,
   });
-  return { unidades, costo: res.costoAplicado * unidades };
+  return {
+    unidades,
+    costo: res.costoAplicado * unidades,
+    faltaron: Math.max(0, unidades - disponible),
+    soloArmado,
+    nombre,
+  };
 };
 
 /**

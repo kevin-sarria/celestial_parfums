@@ -1,6 +1,6 @@
 import type { PerfumeRow } from './perfume.mapeo';
 import { describe, it, expect } from 'vitest';
-import { motivoAgotado, sinExistenciasParaUno } from './perfume.mapeo';
+import { motivoAgotado, motivoAgotadoDeTalla, sinExistenciasParaUno } from './perfume.mapeo';
 
 /**
  * ¿Se puede vender HOY una unidad de este perfume?
@@ -107,5 +107,46 @@ describe('sinExistenciasParaUno — original (comprado)', () => {
     // La botella de la que salen los decants se gasta por ml, no por unidades:
     // el corte pide la merma de fraccionamiento, que el dueño aún no definió.
     expect(sinExistenciasParaUno(fila({ tipo_producto: 'fraccionado', productoStock: 0 }))).toBe(false);
+  });
+});
+
+/**
+ * DISPONIBILIDAD **POR TALLA** (2026-08-29).
+ *
+ * El fallo que arregla: "hay armados" sumaba TODAS las tallas, pero al vender se
+ * busca la talla exacta. Un 1.1 con un frasco de 50 ml enseñaba también el de
+ * 100 ml como disponible, y quien lo compraba recibía la promesa de un frasco
+ * que no existe.
+ *
+ * El perfume ENTERO sigue estando disponible mientras alguna talla lo esté: es
+ * lo que necesita la card del catálogo para no esconder la fragancia.
+ */
+describe('motivoAgotadoDeTalla — cada talla responde por sí misma', () => {
+  const cincuenta = talla(50, 25, 1);
+  const cien = talla(100, 50, 0);
+  const conDosTallas = fila({ esencia: 0, solo_armado: true, tallas: [cincuenta, cien] });
+
+  it('la talla que tiene frascos está disponible', () => {
+    expect(motivoAgotadoDeTalla(conDosTallas, cincuenta as never)).toBe(null);
+  });
+
+  it('la talla SIN frascos está agotada, aunque su hermana tenga', () => {
+    expect(motivoAgotadoDeTalla(conDosTallas, cien as never)).toBe('sin_armados');
+  });
+
+  it('el perfume entero sigue disponible: le basta con una talla', () => {
+    expect(motivoAgotado(conDosTallas)).toBe(null);
+  });
+
+  it('sin ninguna talla armada, el perfume queda agotado', () => {
+    const ninguna = fila({ esencia: 500, solo_armado: true, tallas: [talla(50, 25, 0), talla(100, 50, 0)] });
+    expect(motivoAgotado(ninguna)).toBe('sin_armados');
+  });
+
+  it('un contratipo no depende de los frascos: manda su esencia', () => {
+    // Sin esto, la corrección habría agotado talla por talla a todo el catálogo
+    // corriente, que se arma contra pedido y casi nunca tiene frascos hechos.
+    const contratipo = fila({ esencia: 500, tallas: [talla(30, 15, 0), talla(100, 50, 0)] });
+    expect(motivoAgotadoDeTalla(contratipo, talla(100, 50, 0) as never)).toBe(null);
   });
 });

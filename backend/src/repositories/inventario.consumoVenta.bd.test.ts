@@ -141,3 +141,122 @@ describe('venta de productos que no se fabrican', () => {
     expect(sinCostear).toEqual(['Sauvage decant (sin esencia asignada)']);
   });
 });
+
+/**
+ * LOS 1.1 NO SE FABRICAN AL VENDER (2026-08-29).
+ *
+ * Es el agujero más caro que salió de auditar la lógica 1.1 con los datos del
+ * dueño delante. `consumirPorVenta` no preguntaba si la ficha era 1.1: sin
+ * frascos armados, descontaba esencia + envase 1.1 **como si lo hubiera
+ * armado**. La tienda lo escondía (un 1.1 sin armar sale "Sin armar"), pero una
+ * venta cargada a mano en el dashboard —que es como el dueño registra casi
+ * todo— entraba sin que nada lo revisara.
+ *
+ * Regla decidida por él: **dejar pasar y avisar.** La venta se registra, el
+ * frasco queda en negativo, no se toca ni un material, y la respuesta lo dice.
+ */
+describe('venta de un 1.1 (solo_armado)', () => {
+  beforeEach(limpiarBase);
+
+  /** El mismo escenario del 30 ml, pero con la ficha marcada como 1.1. */
+  const sembrar11 = async () => {
+    const s = await sembrarFabricacion30ml({ stock: 1000 });
+    await prisma.perfume.update({ where: { id: s.perfume.id }, data: { solo_armado: true } });
+    return s;
+  };
+
+  it('sin frascos armados NO descuenta material y avisa', async () => {
+    const s = await sembrar11();
+
+    const { costo, avisos } = await vender([{ perfume_id: s.perfume.id, ml: 30, cantidad: 1 }]);
+
+    // Ni un ml de esencia, ni un frasco: lo que antes se iba en silencio.
+    for (const insumo of [s.esencia, s.diluyente, s.sellador, s.feromonas, s.frasco]) {
+      expect((await estadoDe(insumo.id)).stock).toBe(1000);
+    }
+    expect(costo).toBe(0);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]).toContain('sin tenerlo armado');
+  });
+
+  it('el frasco que no existía queda en −1, no en cero', async () => {
+    // Queda a la vista en Inventario → "Frascos ya armados", que sí muestra los
+    // negativos: esconderlo sería avisar a nadie.
+    const s = await sembrar11();
+
+    await vender([{ perfume_id: s.perfume.id, ml: 30, cantidad: 1 }]);
+
+    const fila = await prisma.perfumePresentacion.findUniqueOrThrow({
+      where: {
+        perfume_id_presentacion_id: {
+          perfume_id: s.perfume.id, presentacion_id: s.presentacion.id,
+        },
+      },
+    });
+    expect(Number(fila.stock)).toBe(-1);
+  });
+
+  it('con frascos armados sale de ahí, sin tocar material ni avisar', async () => {
+    const s = await sembrar11();
+    await prisma.perfumePresentacion.create({
+      data: {
+        perfume_id: s.perfume.id, presentacion_id: s.presentacion.id,
+        stock: 2, costo_promedio: 40000,
+      },
+    });
+
+    const { costo, avisos } = await vender([{ perfume_id: s.perfume.id, ml: 30, cantidad: 2 }]);
+
+    expect(costo).toBe(80000);
+    expect(avisos).toEqual([]);
+    expect((await estadoDe(s.esencia.id)).stock).toBe(1000);
+  });
+
+  it('si solo alcanza para uno, el otro queda en negativo y no se fabrica', async () => {
+    const s = await sembrar11();
+    await prisma.perfumePresentacion.create({
+      data: {
+        perfume_id: s.perfume.id, presentacion_id: s.presentacion.id,
+        stock: 1, costo_promedio: 40000,
+      },
+    });
+
+    const { avisos } = await vender([{ perfume_id: s.perfume.id, ml: 30, cantidad: 3 }]);
+
+    expect((await estadoDe(s.esencia.id)).stock).toBe(1000);
+    const fila = await prisma.perfumePresentacion.findUniqueOrThrow({
+      where: {
+        perfume_id_presentacion_id: {
+          perfume_id: s.perfume.id, presentacion_id: s.presentacion.id,
+        },
+      },
+    });
+    expect(Number(fila.stock)).toBe(-2);
+    expect(avisos[0]).toContain('2');
+  });
+
+  it('un perfume CORRIENTE sin frascos sí se fabrica: la regla es solo de los 1.1', async () => {
+    const s = await sembrarFabricacion30ml({ stock: 1000 });
+
+    const { avisos } = await vender([{ perfume_id: s.perfume.id, ml: 30, cantidad: 1 }]);
+
+    expect((await estadoDe(s.esencia.id)).stock).toBe(1000 - 15);
+    expect(avisos).toEqual([]);
+  });
+
+  it('devolver la venta de un 1.1 vuelve a dejar el frasco donde estaba', async () => {
+    const s = await sembrar11();
+    await vender([{ perfume_id: s.perfume.id, ml: 30, cantidad: 1 }]);
+
+    await prisma.$transaction((tx) => revertirVenta(tx, VENTA));
+
+    const fila = await prisma.perfumePresentacion.findUniqueOrThrow({
+      where: {
+        perfume_id_presentacion_id: {
+          perfume_id: s.perfume.id, presentacion_id: s.presentacion.id,
+        },
+      },
+    });
+    expect(Number(fila.stock)).toBe(0);
+  });
+});

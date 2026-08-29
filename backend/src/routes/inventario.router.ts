@@ -164,7 +164,7 @@ inventarioRouter.get('/producciones/por-enlazar', h(async (_req, res) => {
  * y notas cuando quiera, sin que ningún cliente la vea a medio llenar.
  */
 inventarioRouter.post('/producciones/:id/ficha-1-1', validate(fichaDeLoteSchema), h(async (req, res) => {
-  const data = await crearFicha11YEnlazar(Number(req.params.id), req.body.nombre);
+  const data = await crearFicha11YEnlazar(Number(req.params.id), req.body.nombre, req.body.precio);
   bustCatalogoCache();
   res.status(201).json({
     message: `"${data.nombre}" quedó creado en Productos, fuera de la tienda, con sus frascos`,

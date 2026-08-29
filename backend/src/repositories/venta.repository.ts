@@ -216,9 +216,9 @@ export const escribirVentaConConsumo = async (
     });
   }
 
-  const { costo } = await consumirPorVenta(tx, id, d.dia, d.lineas);
+  const { costo, sinCostear, avisos } = await consumirPorVenta(tx, id, d.dia, d.lineas);
   await tx.venta.update({ where: { id }, data: { costo_mercancia: costo } });
-  return id;
+  return { id, avisos: [...avisos, ...sinCostear.map((t) => `No se pudo costear: ${t}.`)] };
 };
 
 export const createVenta = async (data: CreateVentaDTO) => {
@@ -228,20 +228,23 @@ export const createVenta = async (data: CreateVentaDTO) => {
   const codigo = data.codigo_descuento?.trim() || null;
   // Validar el código ANTES de crear para no dejar una venta a medias
   if (codigo) await validarCodigoParaVenta(codigo, null);
-  const row = await prisma.$transaction(async (tx) => {
-    const id = await escribirVentaConConsumo(tx, null, {
+  const { row, avisos } = await prisma.$transaction(async (tx) => {
+    const escrita = await escribirVentaConConsumo(tx, null, {
       dia: new Date(data.dia), persona: data.persona, user_id: data.user_id,
       cantidad_perfumes: data.cantidad_perfumes, presentacion: data.presentacion,
       referencia, valor_venta: data.valor_venta,
       datos_adicionales: data.datos_adicionales, pagada, lineas,
     });
-    return tx.venta.findUniqueOrThrow({ where: { id }, include: includeRel });
+    return {
+      row: await tx.venta.findUniqueOrThrow({ where: { id: escrita.id }, include: includeRel }),
+      avisos: escrita.avisos,
+    };
   });
   if (codigo) {
     await aplicarCodigoAVenta(codigo, row.id, pagada);
-    return releerVenta(row.id);
+    return { ...(await releerVenta(row.id)), avisos };
   }
-  return mapVenta(row);
+  return { ...mapVenta(row), avisos };
 };
 
 export const updateVenta = async (id: string, data: CreateVentaDTO) => {
@@ -266,19 +269,17 @@ export const updateVenta = async (id: string, data: CreateVentaDTO) => {
   }
 
   if (codigo) await validarCodigoParaVenta(codigo, ventaId);
-  await prisma.$transaction(async (tx) => {
-    await escribirVentaConConsumo(tx, ventaId, {
-      dia: new Date(data.dia), persona: data.persona, user_id: data.user_id,
-      cantidad_perfumes: data.cantidad_perfumes, presentacion: data.presentacion,
-      referencia, valor_venta: data.valor_venta,
-      datos_adicionales: data.datos_adicionales, pagada, lineas,
-    });
-  });
+  const { avisos } = await prisma.$transaction(async (tx) => escribirVentaConConsumo(tx, ventaId, {
+    dia: new Date(data.dia), persona: data.persona, user_id: data.user_id,
+    cantidad_perfumes: data.cantidad_perfumes, presentacion: data.presentacion,
+    referencia, valor_venta: data.valor_venta,
+    datos_adicionales: data.datos_adicionales, pagada, lineas,
+  }));
   // Si el código cambió o se quitó, el anterior vuelve a quedar activo.
   // Los ya canjeados NO: esos solo se sueltan borrando la venta.
   await liberarCodigoDeVenta(ventaId, codigo, true);
   if (codigo) await aplicarCodigoAVenta(codigo, ventaId, pagada);
-  return releerVenta(ventaId);
+  return { ...(await releerVenta(ventaId)), avisos };
 };
 
 /**

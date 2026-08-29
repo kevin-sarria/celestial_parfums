@@ -11,6 +11,7 @@ import { detectarCombos } from '../../../application/hooks/useComboDetector';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
+import { mostrarAvisos, type Respuesta } from '../pedido/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
 import {
   descuentoDeCupon, itemsDeLineas, presentacionResumen, subtotalDeLineas, unidadesDeLineas,
@@ -230,9 +231,10 @@ export function VentaForm({
 
     try {
       const res = venta
-        ? await http.patch(urls.ventas.venta(venta.id), body)
-        : await http.post(urls.ventas.crear, body);
+        ? await http.patch<Respuesta>(urls.ventas.venta(venta.id), body)
+        : await http.post<Respuesta>(urls.ventas.crear, body);
       if (!res.ok) { setError(res.error); return; }
+      mostrarAvisos(res.cuerpo);
       onSaved(creoPersona || creoAlgo);
     } catch { setError('No se pudo conectar con el servidor'); }
     finally { setGuardando(false); }

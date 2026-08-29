@@ -37,12 +37,26 @@ export function TarjetaLotePorEnlazar({ lote, perfumes, onResuelto }: Props) {
   const [destino, setDestino] = useState<number | ''>(lote.ficha_sugerida?.id ?? '');
   const [enviando, setEnviando] = useState(false);
 
+  /**
+   * El precio con el que va a nacer, a la vista y editable.
+   *
+   * Arranca en el de la lista de los 1.1; si esa lista no cubre esta talla,
+   * arranca en el del perfume CORRIENTE y se pinta en rojo. Ese era el agujero:
+   * la ficha heredaba ese precio en silencio y un frasco que cuesta el doble
+   * salía a precio de contratipo.
+   */
+  const [precio, setPrecio] = useState(String(lote.precio_lista_11 ?? lote.precio_heredado));
+  const heredado = lote.precio_lista_11 == null;
+  const sinLista = Number(precio) === lote.precio_heredado && heredado;
+
   const crearFicha = async () => {
     if (!nombre.trim()) { toast.error('Ponle un nombre a la ficha', { id: 'enlazar' }); return; }
+    const valor = Number(precio);
+    if (!(valor > 0)) { toast.error('Ponle un precio mayor que cero', { id: 'enlazar' }); return; }
     setEnviando(true);
     try {
       const res = await http.post<{ message?: string }>(urls.inventario.fichaDeLote(lote.id), {
-        nombre: nombre.trim(),
+        nombre: nombre.trim(), precio: valor,
       });
       if (!res.ok) { toast.error(res.error, { id: 'enlazar' }); return; }
       toast.success(res.cuerpo?.message ?? 'Ficha creada con sus frascos');
@@ -81,10 +95,32 @@ export function TarjetaLotePorEnlazar({ lote, perfumes, onResuelto }: Props) {
         <Field label="Nombre de la ficha 1.1" className="w-64">
           <Input value={nombre} onChange={(e) => setNombre(e.target.value)} />
         </Field>
+        <Field label={`Precio ${lote.talla_nombre ?? ''}`.trim()} className="w-40">
+          <Input type="number" min={0} step={1000} value={precio}
+            className={sinLista ? 'border-destructive text-destructive' : undefined}
+            onChange={(e) => setPrecio(e.target.value)} />
+        </Field>
         <Button size="sm" className="mb-0.5" onClick={crearFicha} disabled={enviando}>
           Crear su ficha 1.1 y traer los frascos
         </Button>
       </div>
+
+      {heredado ? (
+        <p className="mt-1 text-[12px] font-medium text-destructive">
+          Ojo: {lote.categoria_11
+            ? `tu lista de precios "${lote.categoria_11}" no tiene precio para ${lote.talla_nombre ?? 'esta talla'}`
+            : 'todavía no tienes una categoría 1.1 con su lista de precios'}
+          , así que ese número está copiado del <strong>{lote.perfume_nombre}</strong> corriente.
+          Un 1.1 cuesta bastante más: corrígelo aquí o crea la lista antes.
+        </p>
+      ) : (
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          Ese es el precio de tu lista <strong>{lote.categoria_11}</strong> para{' '}
+          {lote.talla_nombre}. Si lo dejas así, la ficha <strong>no guarda precio propio</strong> y
+          sube sola el día que subas la lista. Si escribes otro, queda como excepción de esta ficha.
+        </p>
+      )}
+
       <p className="mt-1 text-[12px] text-muted-foreground">
         Se copia la ficha de <strong>{lote.perfume_nombre}</strong> —foto, descripción, notas,
         género y duración— marcada como 1.1 y con su envase. Nace{' '}

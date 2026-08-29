@@ -31,6 +31,16 @@ export const precioPresentacionSchema = z.object({
       presentacion_id: z.number().default(0),
       envase_insumo_id: z.number().nullable().default(null),
       accesorios: z.array(z.number()).default([]),
+  /** Frascos armados de ESTA talla (no la suma de todas). */
+  armados: z.number().default(0),
+  /**
+   * Por qué no se puede vender ESTA talla, o null si sí se puede.
+   *
+   * Existe desde el 2026-08-29: antes la disponibilidad se miraba sumando todas
+   * las tallas, así que un 1.1 con un frasco de 50 ml enseñaba el de 100 ml como
+   * disponible, y al vender —que sí busca la talla exacta— no había nada.
+   */
+  motivo_agotado: z.enum(['sin_esencia', 'sin_armados', 'sin_producto']).nullable().default(null),
 });
 
 export type PrecioPresentacion = z.infer<typeof precioPresentacionSchema>;

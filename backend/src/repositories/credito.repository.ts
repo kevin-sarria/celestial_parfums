@@ -213,7 +213,7 @@ export const createCredito = async (data: CreateCreditoDTO) => {
   const deuda = data.deuda_inicial;
 
   const row = await prisma.$transaction(async (tx) => {
-    const ventaId = await escribirVentaConConsumo(tx, null, {
+    const { id: ventaId, avisos } = await escribirVentaConConsumo(tx, null, {
       dia:               new Date(data.fecha),
       persona:           `${user.nombre} ${user.apellido}`.trim(),
       user_id:           data.user_id,
@@ -227,24 +227,26 @@ export const createCredito = async (data: CreateCreditoDTO) => {
       pagada:            false,
       lineas,
     });
-    const venta = { id: ventaId };
-    return tx.credito.create({
+    const credito = await tx.credito.create({
       data: {
         fecha:         new Date(data.fecha),
         fecha_limite:  calcularFechaLimite(data.fecha, data.fecha_limite),
         user_id:       data.user_id,
         articulos:     data.articulos,
         deuda_inicial: deuda,
-        venta_id:      venta.id,
+        venta_id:      ventaId,
       },
       include: includeAll,
     });
+    return { credito, avisos };
   });
 
   // El cupón de un crédito se consume YA (un solo uso, no espera a que pague todo).
-  if (codigo && row.venta_id) await canjearCodigoEnCredito(codigo, row.venta_id);
+  if (codigo && row.credito.venta_id) await canjearCodigoEnCredito(codigo, row.credito.venta_id);
 
-  return releerCredito(row.id);
+  // Los avisos del inventario viajan con el crédito: el caso que los estrenó fue
+  // justo un crédito (un 1.1 de Khamrah que no estaba armado).
+  return { ...(await releerCredito(row.credito.id)), avisos: row.avisos };
 };
 
 /**
@@ -275,12 +277,13 @@ export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
   const pagada = abonado >= deuda;
   const ventaId = existente.venta_id;
 
-  await prisma.$transaction(async (tx) => {
+  const avisos = await prisma.$transaction(async (tx) => {
+    let deInventario: string[] = [];
     if (ventaId) {
       // Devuelve al inventario lo de antes y descuenta lo de ahora, igual que
       // editar una venta: si no, corregir un crédito contaría la mercancía dos
       // veces.
-      await escribirVentaConConsumo(tx, ventaId, {
+      ({ avisos: deInventario } = await escribirVentaConConsumo(tx, ventaId, {
         dia:               new Date(data.fecha),
         persona:           `${user.nombre} ${user.apellido}`.trim(),
         user_id:           data.user_id,
@@ -290,7 +293,7 @@ export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
         valor_venta:       deuda,
         pagada,
         lineas,
-      });
+      }));
     }
     await tx.credito.update({
       where: { id: numId },
@@ -302,6 +305,7 @@ export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
         deuda_inicial: deuda,
       },
     });
+    return deInventario;
   });
 
   // Cupón: se libera el anterior (salvo que sea el mismo) y se re-canjea el nuevo.
@@ -311,7 +315,7 @@ export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
     if (codigo) await canjearCodigoEnCredito(codigo, ventaId);
   }
 
-  return releerCredito(numId);
+  return { ...(await releerCredito(numId)), avisos };
 };
 
 /** La venta enlazada refleja el estado real de la deuda: pagada ⇔ saldada. */

@@ -282,6 +282,14 @@ export const crearProductoArmado = async (datos: {
   categoria_id?: number | null;
   /** "Es el 1.1 de este perfume": se COPIA su ficha (no se enlaza). */
   copiar_de_perfume_id?: number | null;
+  /**
+   * Precio EXCEPCIÓN de esa talla, solo cuando hace falta.
+   *
+   * Null = la ficha no guarda precio propio y sigue la lista de su categoría,
+   * así que subir la lista la sube a ella también. Se manda un número solo para
+   * apartarse de la lista a propósito (ver `crearFicha11YEnlazar`).
+   */
+  precio_presentacion?: number | null;
 }) => {
   const nombre = datos.nombre.trim();
   if (!nombre) throw badRequest('Ponle un nombre al producto (por ejemplo "Bon Bon 1.1")');
@@ -348,6 +356,7 @@ export const crearProductoArmado = async (datos: {
         create: {
           presentacion_id: datos.presentacion_id,
           envase_insumo_id: datos.envase_insumo_id ?? null,
+          precio: datos.precio_presentacion ?? null,
         },
       },
     },

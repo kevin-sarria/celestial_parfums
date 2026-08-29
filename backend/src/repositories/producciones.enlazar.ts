@@ -37,13 +37,31 @@ export interface LotePorEnlazar {
   /** `sin_frascos`: nunca entraron. `envase_ajeno`: entraron en la ficha equivocada. */
   motivo: 'sin_frascos' | 'envase_ajeno';
   ficha_sugerida: { id: number; nombre: string } | null;
+  /** Cómo se llama la talla ("100ML"), para poder nombrar el precio en pantalla. */
+  talla_nombre: string | null;
+  /**
+   * Precio de la LISTA de los 1.1 para esa talla, o null si esa lista no existe.
+   *
+   * Es la mitad del arreglo del 2026-08-29: sin este número la ficha nueva nacía
+   * con el precio del perfume corriente **sin decírselo a nadie**, y un 1.1 que
+   * cuesta el doble se ponía a la venta a precio de contratipo.
+   */
+  precio_lista_11: number | null;
+  /** Lo que vale hoy el perfume CORRIENTE: lo que se heredaría si no hay lista. */
+  precio_heredado: number;
+  /** Nombre de la categoría 1.1, o null si el dueño todavía no la creó. */
+  categoria_11: string | null;
 }
 
 export const lotesPorEnlazar = async (): Promise<LotePorEnlazar[]> => {
   const lotes = await prisma.produccion.findMany({
     where: { perfume_id: { not: null } },
     orderBy: [{ fecha: 'desc' }, { id: 'desc' }],
-    include: { formula: { select: { nombre: true } }, perfume: { select: { id: true, nombre: true } } },
+    include: {
+      formula: { select: { nombre: true } },
+      // `precio` es lo que se heredaría si la lista de los 1.1 no cubre esa talla.
+      perfume: { select: { id: true, nombre: true, precio: true } },
+    },
   });
 
   // El envase por defecto de cada tamaño, de una vez: preguntarlo lote a lote
@@ -51,6 +69,21 @@ export const lotesPorEnlazar = async (): Promise<LotePorEnlazar[]> => {
   const formulaEnvase = new Map(
     (await prisma.formulaVolumen.findMany({ select: { id: true, envase_insumo_id: true } }))
       .map((f) => [f.id, f.envase_insumo_id]),
+  );
+
+  /**
+   * La lista de precios de los 1.1, una sola vez para todos los lotes.
+   *
+   * Se busca la categoría por su nombre porque es como el dueño la creó (no hay
+   * una columna "es 1.1"); si todavía no existe, `precio_lista_11` va en null y
+   * la pantalla lo dice en rojo en vez de callárselo.
+   */
+  const categoria11 = await prisma.categoria.findFirst({
+    where: { nombre: { contains: '1.1' } },
+    include: { precios: { select: { presentacion_id: true, precio: true } } },
+  });
+  const lista11 = new Map(
+    (categoria11?.precios ?? []).map((pr) => [pr.presentacion_id, Number(pr.precio)]),
   );
 
   const salida: LotePorEnlazar[] = [];
@@ -83,6 +116,12 @@ export const lotesPorEnlazar = async (): Promise<LotePorEnlazar[]> => {
       insumo_id: m.insumo_id, cantidad: Math.abs(Number(m.cantidad)),
     }));
 
+    const talla = presentacion_id
+      ? await prisma.presentacion.findUnique({
+        where: { id: presentacion_id }, select: { nombre: true },
+      })
+      : null;
+
     const comun = {
       id: lote.id,
       // Fecha de CALENDARIO: la columna es `@db.Date` y Prisma la lee a
@@ -98,6 +137,10 @@ export const lotesPorEnlazar = async (): Promise<LotePorEnlazar[]> => {
       envase_insumo_id: lote.envase_insumo_id,
       envase_nombre: envase?.nombre ?? null,
       consumos,
+      talla_nombre: talla?.nombre ?? null,
+      precio_lista_11: presentacion_id ? lista11.get(presentacion_id) ?? null : null,
+      precio_heredado: Number(lote.perfume.precio),
+      categoria_11: categoria11?.nombre ?? null,
     };
 
     /**
@@ -211,7 +254,7 @@ export const mandarFrascosAlaFicha = async (loteId: number, perfumeId: number) =
  * mismo camino que usa el botón de enlazar a una ficha que ya existe. Una regla,
  * un sitio.
  */
-export const crearFicha11YEnlazar = async (loteId: number, nombre: string) => {
+export const crearFicha11YEnlazar = async (loteId: number, nombre: string, precio?: number) => {
   const lote = await prisma.produccion.findUnique({
     where: { id: loteId },
     include: { perfume: { select: { id: true, precio: true, insumo_esencia_id: true } } },
@@ -224,13 +267,38 @@ export const crearFicha11YEnlazar = async (loteId: number, nombre: string) => {
   // La categoría "1.1" es la que hace que la ficha tome el precio de la lista de
   // los 1.1. Si el dueño todavía no la creó, la ficha nace sin categoría y él la
   // pone luego: mejor eso que inventar una categoría a sus espaldas.
-  const categoria = await prisma.categoria.findFirst({ where: { nombre: { contains: '1.1' } } });
+  const categoria = await prisma.categoria.findFirst({
+    where: { nombre: { contains: '1.1' } },
+    include: { precios: { where: { presentacion_id }, select: { precio: true } } },
+  });
+  const deLaLista = categoria?.precios[0] ? Number(categoria.precios[0].precio) : null;
+
+  /**
+   * EL PRECIO CON EL QUE NACE, Y POR QUÉ NO SIEMPRE SE GUARDA (2026-08-29).
+   *
+   * Antes se copiaba el precio del perfume corriente y ahí moría el asunto: si
+   * la lista de los 1.1 no cubría esa talla, un frasco que cuesta el doble salía
+   * a precio de contratipo **sin que nada lo dijera**. Ahora la pantalla enseña
+   * el número antes de crear y él puede cambiarlo.
+   *
+   * Y lo que se guarda depende de si se aparta de la lista o no:
+   *
+   * - **Acepta el de la lista** → la ficha NO guarda precio propio. Así, el día
+   *   que suba la lista de los 1.1, esta ficha sube con todas.
+   * - **Escribe otro** → ese número se guarda como excepción de esa talla, y la
+   *   lista deja de mandarle. Es lo que hace falta para los Bon Bon y Yum Yum,
+   *   que valen más que el resto de 1.1.
+   * - **No hay lista todavía** → tampoco se guarda precio propio: el número va al
+   *   precio de respaldo de la ficha, así que el día que él cree la lista, esta
+   *   ficha la sigue sola en vez de quedarse anclada para siempre.
+   */
+  const precioFinal = precio ?? deLaLista ?? Number(lote.perfume.precio);
+  const esExcepcion = deLaLista != null && precioFinal !== deLaLista;
 
   const ficha = await crearProductoArmado({
     nombre,
-    // Precio de arranque, para que la ficha exista: el de verdad sale de la
-    // lista de precios de la categoría 1.1, y él lo ajusta en su ficha.
-    precio: Number(lote.perfume.precio),
+    precio: precioFinal,
+    precio_presentacion: esExcepcion ? precioFinal : null,
     presentacion_id,
     envase_insumo_id: lote.envase_insumo_id,
     insumo_esencia_id: lote.perfume.insumo_esencia_id,

@@ -17,14 +17,20 @@ export const getVentas = h(async (req, res) => {
   ));
 });
 
+/**
+ * `avisos` viaja aparte del `data` y no dentro de la venta: no es un dato suyo,
+ * es lo que hay que contarle al dueño de ESTA operación ("vendiste un 1.1 sin
+ * tenerlo armado"). Guardarlo en la venta lo volvería historia; aquí muere con
+ * la respuesta, que es lo que es.
+ */
 export const addVenta = h(async (req, res) => {
-  const data = await ventaService.createVenta(req.body);
-  res.status(201).json({ message: 'Venta registrada', data });
+  const { avisos, ...data } = await ventaService.createVenta(req.body);
+  res.status(201).json({ message: 'Venta registrada', data, avisos });
 });
 
 export const editVenta = h(async (req, res) => {
-  const data = await ventaService.updateVenta(req.params.id as string, req.body);
-  res.json({ message: 'Venta actualizada', data });
+  const { avisos, ...data } = await ventaService.updateVenta(req.params.id as string, req.body);
+  res.json({ message: 'Venta actualizada', data, avisos });
 });
 
 export const removeVenta = h(async (req, res) => {

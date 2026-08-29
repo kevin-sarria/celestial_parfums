@@ -28,8 +28,8 @@ export const getTotales = async (_req: Request, res: Response) => {
 
 export const addCredito = async (req: Request, res: Response) => {
   try {
-    const data = await creditoService.createCredito(req.body);
-    res.status(201).json({ message: 'Crédito registrado', data });
+    const { avisos, ...data } = await creditoService.createCredito(req.body);
+    res.status(201).json({ message: 'Crédito registrado', data, avisos });
   } catch (error) {
     res.status(400).json({ error: mensajeSeguro(error) });
   }
@@ -37,8 +37,8 @@ export const addCredito = async (req: Request, res: Response) => {
 
 export const editCredito = async (req: Request, res: Response) => {
   try {
-    const data = await creditoService.updateCredito(req.params.id as string, req.body);
-    res.json({ message: 'Crédito actualizado', data });
+    const { avisos, ...data } = await creditoService.updateCredito(req.params.id as string, req.body);
+    res.json({ message: 'Crédito actualizado', data, avisos });
   } catch (error) {
     res.status(400).json({ error: mensajeSeguro(error) });
   }

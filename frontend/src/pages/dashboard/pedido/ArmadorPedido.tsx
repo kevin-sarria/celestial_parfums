@@ -163,8 +163,15 @@ export function ArmadorPedido({
                       });
                     }}
                   >
+                    {/* Un 1.1 sin frascos de ESA talla se puede vender igual
+                        —la venta ya ocurrió— pero se dice aquí y en la respuesta
+                        del servidor, en vez de dejar que el sistema fabrique uno
+                        con la esencia. */}
                     {tallas.map(t => (
-                      <option key={t.presentacion} value={t.presentacion}>{t.presentacion}</option>
+                      <option key={t.presentacion} value={t.presentacion}>
+                        {t.presentacion}
+                        {p?.solo_armado && t.armados <= 0 ? ' · sin armar' : ''}
+                      </option>
                     ))}
                   </SelectSimple>
                 )}

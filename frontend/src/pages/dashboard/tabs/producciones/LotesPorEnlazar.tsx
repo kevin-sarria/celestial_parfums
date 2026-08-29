@@ -12,6 +12,11 @@ export interface LotePorEnlazar {
   consumos: { insumo_id: number; cantidad: number }[];
   motivo: 'sin_frascos' | 'envase_ajeno';
   ficha_sugerida: { id: number; nombre: string } | null;
+  /** Talla y precios con los que nacería la ficha 1.1 (ver la tarjeta). */
+  talla_nombre: string | null;
+  precio_lista_11: number | null;
+  precio_heredado: number;
+  categoria_11: string | null;
 }
 
 interface Props {
@@ -31,6 +36,7 @@ interface Props {
 export function LotesPorEnlazar({ perfumes, onResuelto }: Props) {
   const [lotes, setLotes] = useState<LotePorEnlazar[]>([]);
   const [cargando, setCargando] = useState(true);
+  const [fallo, setFallo] = useState(false);
 
   const cargar = async () => {
     setCargando(true);
@@ -38,18 +44,44 @@ export function LotesPorEnlazar({ perfumes, onResuelto }: Props) {
       const res = await http.get<{ data: LotePorEnlazar[] }>(urls.inventario.produccionesPorEnlazar);
       if (!res.ok) throw new Error(res.error);
       setLotes(res.cuerpo?.data ?? []);
+      setFallo(false);
     } catch {
-      // Es información de apoyo: si no carga, la pantalla principal sigue
-      // sirviendo y no tiene sentido alarmar con un error.
       setLotes([]);
+      setFallo(true);
     } finally { setCargando(false); }
   };
   useEffect(() => { cargar(); }, []);
 
   const resuelto = () => { cargar(); onResuelto(); };
 
+  if (cargando) return null;
+
+  /**
+   * NO PODER PREGUNTAR NO ES LO MISMO QUE NO TENER NADA (2026-08-29).
+   *
+   * Antes esta sección se escondía igual en los dos casos, "porque es
+   * información de apoyo". Eso hizo invisible durante días un despliegue a
+   * medias: el servidor respondía error por una columna que faltaba, el dueño
+   * veía una pantalla normal sin aviso y concluyó que la función estaba mal
+   * hecha. Una sección puede callarse cuando no hay nada que decir; nunca
+   * cuando no pudo enterarse.
+   */
+  if (fallo) {
+    return (
+      <Section>
+        <p className="text-[12.5px] text-muted-foreground">
+          No se pudo comprobar si hay lotes por enlazar.{' '}
+          <button type="button" onClick={cargar}
+            className="font-medium text-foreground underline underline-offset-2">
+            Reintentar
+          </button>
+        </p>
+      </Section>
+    );
+  }
+
   // La sección desaparece sola cuando no queda ninguno, como "Frascos ya armados".
-  if (cargando || lotes.length === 0) return null;
+  if (lotes.length === 0) return null;
 
   return (
     <Section>

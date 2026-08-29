@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 29 de agosto de 2026.** Todo compila, **371 pruebas en verde** (235 backend +
-84 frontend + 52 recorridos, más 1 saltada a propósito) y el linter en cero.
+**Última sesión: 29 de agosto de 2026.** Todo compila, **391 pruebas en verde** (254 backend +
+84 frontend + 53 recorridos, más 1 saltada a propósito) y el linter del frontend en cero.
 
 ## ✅ Producción está al día (2026-08-29, tarde)
 
@@ -32,49 +32,42 @@ De las 4 ventas de agosto con líneas sin talla, **3 son créditos**. `createCre
 talla si el formulario manda `lineas`; si no, la deduce del texto y la deja en null.
 **PENDIENTE: investigar por qué el formulario no las manda** (pregunté y quedó sin responder).
 
-## 🟠 El aviso de "lotes por enlazar" se esconde solo cuando falla
+## 🟠 Secciones que se esconden igual cuando FALLAN que cuando no hay nada
 
-`LotesPorEnlazar.tsx` traga el error a propósito (*"es información de apoyo: si no carga, la
-pantalla principal sigue sirviendo"*) y devuelve `null`. Suena razonable, pero es lo que hizo
-**invisible durante días** el deploy a medias del 29: el endpoint respondía error por la columna
-que faltaba, y el dueño no veía ni el aviso ni una explicación — solo una pantalla normal sin
-botón, y concluyó que la función de los 1.1 estaba mal hecha.
+**La regla**: una sección puede callarse cuando **no hay nada que mostrar**, nunca cuando **no pudo
+preguntarlo**. Son dos estados distintos y varias los pintan igual, con un `catch` mudo que devuelve
+`null`.
 
-**La regla que hay que aplicar aquí**: una sección puede esconderse cuando **no hay nada que
-mostrar**, nunca cuando **no pudo preguntarlo**. Son dos estados distintos y hoy se pintan igual.
-Falta distinguirlos: si la consulta falla, un renglón discreto que diga que no se pudo cargar, con
-"Reintentar".
+No es teoría: eso hizo **invisible durante días** el deploy a medias del 29 —el endpoint respondía
+error por una columna que faltaba y el dueño solo veía una pantalla normal—.
 
-Revisar de paso si hay más secciones con el mismo `catch` mudo (`FrascosArmados`, `PrimerosPasos`,
-`AvisoEsenciasSinPerfume`, `AvisoAlertas` — este último lo escribí igual el 2026-08-29, así que
-entra en la misma corrección).
+- ✅ `LotesPorEnlazar` — **arreglado el 2026-08-29**: si la consulta falla, sale un renglón discreto
+  con "Reintentar".
+- ⬜ Falta el mismo tratamiento en `FrascosArmados`, `PrimerosPasos`, `AvisoEsenciasSinPerfume` y
+  `AvisoAlertas`.
 
-## Lo siguiente, ya decidido y sin empezar: los 3 arreglos de los 1.1
+## ✅ Los 3 arreglos de los 1.1 — HECHOS (2026-08-29), sin desplegar
 
-Salieron de auditar la lógica 1.1 entera el 2026-08-29, con el código y sus datos delante.
-**Aprobados por él ese mismo día**; no se ha escrito ni una línea todavía.
+Aprobados por él ese mismo día y construidos esa tarde. Diseño completo en
+[`superpowers/specs/2026-08-29-logica-1.1-design.md`](superpowers/specs/2026-08-29-logica-1.1-design.md).
+**Sin migración**: el deploy es `git pull` + build.
 
-1. **Vender un 1.1 sin frascos armados lo FABRICA.** 🔴 `consumirPorVenta` nunca pregunta si la
-   ficha es 1.1: si no hay frasco armado, descuenta esencia + envase 1.1 como si lo hubiera
-   armado. La tienda lo esconde (sale "Sin armar"), pero **una venta cargada a mano en el
-   dashboard no lo revisa**. **Decisión suya:** dejar pasar la venta y avisar — no se fabrica, el
-   frasco queda en −1 y la respuesta dice *"vendiste 1 sin frascos armados"*. Es la misma regla
-   que ya rige el inventario de materiales.
-2. **El 1.1 recién creado puede nacer con el precio del corriente.** 🔴 La ficha nace sin precio
-   propio; si la categoría "1.1" no existe o no tiene precio para esa talla, cae al precio
-   heredado del perfume normal **sin avisar**. Es el susto de Khamrah por la puerta de al lado.
-   **Arreglo:** el enlazador busca el precio de la lista de los 1.1 para esa talla y lo enseña en
-   el mismo modal donde se corrige el nombre; si esa lista no existe, enseña el heredado marcado
-   en rojo. **Regla nueva aprobada:** si acepta el precio de la lista, la ficha **no** guarda
-   precio propio (así subir la lista los sube a todos); solo si escribe otro queda amarrado.
-3. **Disponible por una talla, se vende por otra.** 🟠 "Hay armados" suma TODAS las tallas, pero el
-   descuento busca la talla exacta: un frasco de 50 ml hace que el de 100 ml se vea disponible.
-   **Arreglo:** cada talla dice cuántos frascos tiene ella.
+1. **Vender un 1.1 sin frascos ya no lo fabrica.** Se registra la venta, el frasco queda en −1, no
+   se toca ni un material y **la pantalla lo dice** (antes esos avisos se calculaban y no los leía
+   nadie: venta, crédito, crear y editar).
+2. **El precio del 1.1 se ve antes de crearlo.** El aviso trae el de la lista de los 1.1 para esa
+   talla; si esa lista no existe, enseña el heredado **en rojo**. Aceptar el de la lista **no**
+   guarda precio propio, así que subir la lista los sube a todos.
+3. **La disponibilidad es por talla.** La tienda tacha la talla sin frascos y no deja pedirla; el
+   armador del dashboard la marca "· sin armar" sin bloquear.
 
-**Fuera de esos tres, encontrados en la misma auditoría y NO aprobados todavía:**
+**De paso**: `LotesPorEnlazar` ya distingue "no hay nada" de "no se pudo preguntar" (era el punto
+naranja de arriba).
 
-- **Una devolución no devuelve el frasco al stock** (`devolucion.repository.ts` no toca
-  inventario). Aplica a todo el catálogo, no solo a los 1.1; por eso quedó fuera.
+**Sigue sin aprobar, de la misma auditoría:**
+
+- **Una devolución no devuelve el frasco al stock** (`devolucion.repository.ts` no toca inventario).
+  Aplica a todo el catálogo, no solo a los 1.1.
 - **La pestaña Productos no dice cuántas unidades quedan** (la columna Stock de la Ola 2).
 
 ## El estado de los datos de producción (medido contra el respaldo del 2026-08-29)

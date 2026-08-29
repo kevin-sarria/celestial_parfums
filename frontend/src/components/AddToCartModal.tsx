@@ -20,7 +20,7 @@ interface Props {
     nombre: string;
     precio: number;
     /** Precio de cada presentación; sin él se usa `precio` para todas. */
-    precios?: { presentacion: string; precio: number }[];
+    precios?: { presentacion: string; precio: number; motivo_agotado?: string | null }[];
     /** Descuento propio del producto (%): con él, los cupones no se acumulan. */
     descuento: number;
     imagen_url: string | null;
@@ -46,10 +46,23 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
     producto.precios?.find((x) => x.presentacion === p)?.precio ?? producto.precio;
   const precioActual = presentacion ? precioDe(presentacion) : producto.precio;
 
+  /**
+   * ¿Se puede pedir ESTA talla?
+   *
+   * La respuesta la da el servidor talla por talla (2026-08-29). Antes se
+   * miraban las existencias del perfume entero, y en los 1.1 —que solo se
+   * venden armados— un frasco de 50 ml ponía a la venta el de 100 ml.
+   * Sin el dato (un combo, un producto sin `precios`) se deja pedir: marcar
+   * agotado por falta de información esconde cosas que sí se tienen.
+   */
+  const agotada = (p: string) =>
+    !!producto.precios?.find((x) => x.presentacion === p)?.motivo_agotado;
+
   useEffect(() => {
     if (open) {
       setCantidad(1);
-      setPresentacion(presentaciones[0] ?? '');
+      // Arranca en la primera que SÍ se puede pedir.
+      setPresentacion(presentaciones.find((p) => !agotada(p)) ?? presentaciones[0] ?? '');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
@@ -104,8 +117,11 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
             {/* Cada talla lleva su precio: el cliente ve qué cuesta antes de elegir */}
             <div className="flex flex-wrap gap-1.5">
               {presentaciones.map((p) => (
-                <Chip key={p} active={presentacion === p} onClick={() => setPresentacion(p)}>
+                <Chip key={p} active={presentacion === p} disabled={agotada(p)}
+                  title={agotada(p) ? `${p}: agotado por ahora` : undefined}
+                  onClick={() => setPresentacion(p)}>
                   {p} · {formatPrice(finalPrice(precioDe(p), producto.descuento))}
+                  {agotada(p) && ' · agotado'}
                 </Chip>
               ))}
             </div>
@@ -149,7 +165,8 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
           <Button variant="ghost" className="rounded-full" onClick={onClose}>
             Cancelar
           </Button>
-          <Button className="rounded-full" onClick={handleAdd}>
+          <Button className="rounded-full" onClick={handleAdd}
+            disabled={!!presentacion && agotada(presentacion)}>
             <ShoppingCart className="size-4" />
             Agregar al carrito
           </Button>

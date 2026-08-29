@@ -55,6 +55,14 @@ const resolverPrecios = (p: PerfumeRow) => {
     /** Frasco propio de esta combinación; null = el de la receta del tamaño. */
     envase_insumo_id: r.envase_insumo_id ?? null,
     accesorios: idsDeJson(r.accesorios),
+    /** Frascos armados de ESTA talla (no la suma de todas). */
+    armados: armadosDeTalla(r),
+    /**
+     * Por qué no se puede vender ESTA talla, o null si sí. Viaja con el precio
+     * porque quien elige tamaño —la tienda y el armador de pedidos— necesita
+     * saberlo talla por talla: el perfume puede estar disponible y ese tamaño no.
+     */
+    motivo_agotado: motivoAgotadoDeTalla(p, r),
   }));
 };
 
@@ -108,6 +116,10 @@ export const sinEsenciaParaUno = (p: PerfumeRow): boolean => {
 export const frascosArmados = (p: PerfumeRow): number =>
   p.presentaciones.reduce((total, r) => total + Number(r.stock ?? 0), 0);
 
+/** Frascos armados de UNA talla concreta (los negativos cuentan como cero). */
+const armadosDeTalla = (r: PerfumeRow['presentaciones'][number]): number =>
+  Math.max(0, Number(r.stock ?? 0));
+
 /** Por qué NO se puede vender hoy, o null si sí se puede. */
 export type MotivoAgotado = 'sin_esencia' | 'sin_armados' | 'sin_producto' | null;
 
@@ -126,9 +138,17 @@ export type MotivoAgotado = 'sin_esencia' | 'sin_armados' | 'sin_producto' | nul
  * Devuelve el MOTIVO y no un booleano suelto para poder explicárselo al dueño
  * en la pantalla: "agotado" a secas obliga a adivinar qué le falta.
  */
-export const motivoAgotado = (p: PerfumeRow): MotivoAgotado => {
+/**
+ * La misma regla, pero **para UNA talla**.
+ *
+ * `armados` son los frascos de ESA talla, no la suma de todas. Es la corrección
+ * del 2026-08-29: sumarlas hacía que un frasco de 50 ml pusiera disponible el de
+ * 100 ml, y al vender —que sí busca la talla exacta— no había nada que sacar.
+ * Con `armados = null` se juzga al perfume entero (basta con que una talla lo
+ * pueda vender), que es lo que necesita la card del catálogo.
+ */
+const motivoConArmados = (p: PerfumeRow, armados: number): MotivoAgotado => {
   const tipo = p.tipo_producto ?? 'fabricado';
-  const armados = frascosArmados(p);
 
   // Un 1.1 se ofrece cuando está ARMADO, no cuando se podría armar: tener su
   // envase especial y la esencia en bodega no lo pone en la tienda.
@@ -147,6 +167,24 @@ export const motivoAgotado = (p: PerfumeRow): MotivoAgotado => {
   if (armados > 0) return null;
 
   return sinEsenciaParaUno(p) ? 'sin_esencia' : null;
+};
+
+/** Por qué no se puede vender ESTA talla hoy, o null si sí se puede. */
+export const motivoAgotadoDeTalla = (
+  p: PerfumeRow, r: PerfumeRow['presentaciones'][number],
+): MotivoAgotado => motivoConArmados(p, armadosDeTalla(r));
+
+/**
+ * Por qué no se puede vender el perfume, mirándolo entero.
+ *
+ * Disponible = **alguna** de sus tallas lo está. Un 1.1 con un solo frasco de
+ * 100 ml sigue apareciendo en el catálogo; lo que ya no pasa es que ese frasco
+ * ponga disponible su talla de 50 ml (eso lo decide `motivoAgotadoDeTalla`).
+ */
+export const motivoAgotado = (p: PerfumeRow): MotivoAgotado => {
+  if (!p.presentaciones.length) return motivoConArmados(p, 0);
+  const motivos = p.presentaciones.map((r) => motivoAgotadoDeTalla(p, r));
+  return motivos.includes(null) ? null : (motivos[0] ?? null);
 };
 
 export const sinExistenciasParaUno = (p: PerfumeRow): boolean => motivoAgotado(p) !== null;

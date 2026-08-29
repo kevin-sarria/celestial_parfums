@@ -230,6 +230,13 @@ agotado (lo que ve la tienda) = agotado_manual  OR  motivo_agotado != null
   (ver [`pendientes.md`](pendientes.md)).
 - Todo esto es **una sola función** —`motivoAgotado` en `perfume.mapeo.ts`— y devuelve el
   MOTIVO, no un booleano: así el dashboard puede explicar *qué* falta en vez de solo marcarlo.
+- **Se juzga POR TALLA** (2026-08-29). Antes se sumaban los frascos de todas, y un 1.1 con un frasco
+  de 50 ml enseñaba disponible también el de 100 ml, que al venderse no tenía nada que sacar. El
+  perfume entero sigue disponible mientras **alguna** talla lo esté; la tienda tacha la talla
+  agotada y no deja pedirla.
+- **Y un 1.1 sin frascos NO se fabrica al venderlo desde el dashboard**: se registra la venta, el
+  frasco queda en negativo, no se descuenta material y la pantalla lo avisa. Detalle en
+  [`inventario-costeo.md`](inventario-costeo.md).
 
 - **Se calcula en cada consulta, no se guarda** (mismo criterio que los sellos, el cupo y la
   gama): un valor guardado quedaría mintiendo en cuanto entre una compra de esencia, y

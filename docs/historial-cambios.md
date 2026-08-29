@@ -389,3 +389,29 @@ Tres pedidos del dueño en la misma frase, construidos en este orden (diseño en
   auditada, ruido para una operación de una persona.
 - *Enlace vivo entre el 1.1 y su corriente*: obligaría a decidir cuál manda el día que se separen.
 - *Detectar los 1.1 por el nombre*: un "Set 1.1" bastaría para que la lista mintiera.
+
+## Sesión del 2026-08-29: fusionar materiales, alertas y la lógica de los 1.1
+
+Tres bloques en el mismo día, los tres salidos de que el dueño usara el sistema con sus datos.
+
+1. **Fusionar dos registros del mismo material** (`superpowers/specs/2026-08-29-fusionar-materiales-design.md`).
+   Tenía dos fichas del mismo perfumero, las dos con historia, ninguna borrable. Lo que lo desbloqueó
+   fue un hecho del diseño ya existente: `insumos_costo.stock` es una **columna guardada**, no una
+   suma del libro, así que re-etiquetar movimientos viejos **no los vuelve a ejecutar**.
+2. **Alertas por familia y materiales "en prueba"** (`superpowers/specs/2026-08-29-alertas-y-en-prueba-design.md`).
+   La decisión que las une: el mínimo del pedido sugerido y el umbral del aviso **son el mismo
+   número**; guardarlo dos veces garantiza que un día digan cosas distintas.
+3. **Los tres arreglos de los 1.1** (`superpowers/specs/2026-08-29-logica-1.1-design.md`), tras
+   auditar esa lógica entera a petición suya:
+   - Vender un 1.1 sin frascos armados **lo fabricaba** (descontaba esencia + envase). Ahora se
+     registra, queda en negativo y se avisa. De paso, los avisos del inventario —que existían y
+     **no los leía nadie**— salen por fin en pantalla, en ventas y en créditos.
+   - El 1.1 recién creado podía **heredar en silencio** el precio del corriente. Ahora el precio se
+     ve antes de crear, en rojo si no hay lista, y aceptar el de la lista **no** guarda precio propio.
+   - La disponibilidad pasó a mirarse **por talla**: sumarlas hacía que un frasco de 50 ml pusiera
+     disponible el de 100 ml.
+
+**Lo que se aprendió del despliegue de ese día**, y que quedó en `gotchas.md`: `migrate dev` en el
+servidor ofrece borrar la base (ahora hay freno de mano), y el frontend puede quedarse viejo sin que
+nada falle —se detecta midiendo la fecha del `index.html` que sirve el servidor, no recargando el
+navegador—.

@@ -10,6 +10,7 @@ import { detectarCombos } from '../../../application/hooks/useComboDetector';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
+import { mostrarAvisos, type Respuesta } from '../pedido/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
 import {
   articulosDeLineas, descuentoDeCupon, itemsDeLineas, presentacionResumen, subtotalDeLineas,
@@ -212,9 +213,10 @@ export function CreditoForm({
         codigo_descuento: form.codigo_descuento.trim().toUpperCase() || null,
       };
       const res = credito
-        ? await http.patch(urls.creditos.credito(credito.id), body)
-        : await http.post(urls.creditos.crear, body);
+        ? await http.patch<Respuesta>(urls.creditos.credito(credito.id), body)
+        : await http.post<Respuesta>(urls.creditos.crear, body);
       if (!res.ok) { setError(res.error); return; }
+      mostrarAvisos(res.cuerpo);
       onSaved(creoPersona);
     } catch { setError('No se pudo conectar con el servidor'); }
     finally { setGuardando(false); }

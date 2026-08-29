@@ -517,9 +517,22 @@ Lo que toca a este documento:
 - **Guardar la ficha de un perfume ya no borra sus frascos armados.** `editPerfume` rehacía la
   tabla de tallas entera en cada guardado; desde que esa fila lleva inventario, eso era plata
   desapareciendo en silencio (ver [`gotchas.md`](gotchas.md)).
-- Cubierto por 11 pruebas de aritmética (`perfume.disponibilidad.test.ts`), 6 contra base
+- Cubierto por 16 pruebas de aritmética (`perfume.disponibilidad.test.ts`), 6 contra base
   (`perfume.disponibilidad.bd.test.ts`, que es la única que nota si alguien recorta
   `perfumeInclude`), 3 de edición (`perfume.edicion.bd.test.ts`) y un recorrido en navegador.
+
+#### La disponibilidad es POR TALLA (corregido el 2026-08-29)
+
+"Hay armados" sumaba todas las tallas, pero **el descuento busca la talla exacta**: un frasco de
+50 ml ponía disponible el de 100 ml, y quien lo compraba recibía la promesa de algo que no existe.
+
+Ahora la regla se evalúa talla por talla (`motivoAgotadoDeTalla`) y el perfume **entero** sigue
+disponible mientras alguna de sus tallas lo esté —lo que necesita la card del catálogo para no
+esconder la fragancia—. Cada precio viaja con sus `armados` y su `motivo_agotado`.
+
+**Los frascos solo mandan en los 1.1.** En los demás siguen mandando la esencia o la botella:
+aplicar el cambio a lo bruto habría agotado talla por talla a todo el catálogo corriente, que se
+arma contra pedido y casi nunca tiene frascos hechos. Hay una prueba puesta solo para eso.
 
 ### Qué es un "1.1" (y por qué no necesitó nada nuevo)
 
@@ -535,6 +548,32 @@ envase va de **$5.000 el normal a $33.535–$81.133 el del 1.1** (entre el 60% y
   los $70.000 y dos de ellos se venderían a pérdida.**
 - Precios acordados: **$120.000** de lista para la categoría y **$150.000 propio** en Bon Bon y
   Yum Yum. Márgenes reales: 55% / 45% / 41% / 45% / 31% (Yum Yum es el más ajustado).
+
+### Dos reglas de plata de los 1.1 (2026-08-29)
+
+Salieron de auditar la lógica 1.1 entera a petición del dueño. Diseño completo en
+[`superpowers/specs/2026-08-29-logica-1.1-design.md`](superpowers/specs/2026-08-29-logica-1.1-design.md).
+
+**1. Un 1.1 NUNCA se fabrica al vender.** Un contratipo sin frascos se arma contra pedido y por eso
+la venta descuenta su receta. Un 1.1 no: es una fragancia original envasada, existe o no existe.
+Antes, venderlo sin frascos armados descontaba esencia + envase 1.1 como si lo hubiera armado —solo
+alcanzable desde el dashboard, que es por donde el dueño registra casi todo—. Ahora: **la venta se
+registra, el frasco queda en negativo, no se toca ni un material y la respuesta lo dice**. Es la
+misma regla que ya rige los materiales (dejar pasar y avisar).
+
+Los avisos suben por venta y por crédito, al crear y al editar, y se enseñan en pantalla. Antes se
+calculaban y **nadie los leía**: una venta que no descontó nada se veía igual de bien que una normal.
+
+**2. El precio con el que nace un 1.1 se ve antes de crearlo.** La ficha copiaba el precio del
+perfume corriente, y si la lista de los 1.1 no cubría esa talla, ese número mandaba **sin avisar**.
+Ahora el aviso de lotes por enlazar trae el de la lista y el que se heredaría, y la tarjeta lo pinta
+en rojo cuando no hay lista. Qué se guarda:
+
+| Lo que hace el dueño | Qué se guarda en la talla | Por qué |
+|---|---|---|
+| Acepta el de la lista | Nada | Sube solo el día que suba la lista |
+| Escribe otro | Ese número, como excepción | Bon Bon y Yum Yum valen más |
+| Todavía no hay lista | Nada (va al precio de respaldo) | La lista que él cree después lo alcanza igual |
 
 ## Pedido sugerido (`reposicion`)
 
