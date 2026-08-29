@@ -6,7 +6,9 @@ import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
 import {
   insumoSchema, gamaSchema, formulaSchema, escalaSchema, cotizacionConfigSchema, accesoriosFormulaSchema,
+  fusionInsumoSchema,
 } from '../schemas/cotizacion.schema';
+import { fusionarInsumos, vistaPreviaFusion } from '../repositories/fusionarInsumos.repository';
 
 /**
  * Datos de costeo del módulo mayorista (insumos, fórmulas, escalas y textos).
@@ -76,6 +78,28 @@ costeoRouter.patch('/insumos/:id', validate(insumoSchema), h(async (req, res) =>
 costeoRouter.delete('/insumos/:id', h(async (req, res) => {
   await repo.eliminarInsumo(Number(req.params.id));
   res.json({ message: 'Insumo eliminado' });
+}));
+
+/**
+ * FUSIONAR DOS REGISTROS DEL MISMO MATERIAL.
+ *
+ * El GET solo cuenta lo que se movería, para enseñarlo antes de aplicar: una
+ * fusión no se puede deshacer, así que nadie la confirma a ciegas.
+ */
+costeoRouter.get('/insumos/:id/fusion', h(async (req, res) => {
+  res.json({ data: await vistaPreviaFusion(Number(req.params.id)) });
+}));
+
+costeoRouter.post('/insumos/:id/fusion', validate(fusionInsumoSchema), h(async (req, res) => {
+  const data = await fusionarInsumos(Number(req.params.id), req.body.destino_id);
+  // El duplicado pudo ser la esencia o el envase de algún perfume: el catálogo
+  // se sirve de caché y sin esto tardaría hasta 5 minutos en enterarse.
+  bustCatalogoCache();
+  res.json({
+    message: `«${data.origen.nombre}» se fusionó con «${data.destino.nombre}». `
+      + `Existencias sin cambios: ${data.destino.stock}.`,
+    data,
+  });
 }));
 
 // ── Fórmulas por volumen (traen sus escalas incluidas) ──────────────────────

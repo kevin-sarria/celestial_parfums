@@ -1,7 +1,7 @@
 import { hoy } from '../../../utils/fechas';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, FlaskConical, PackagePlus, Pencil, Plus, Scale, ShoppingCart, ToggleLeft, ToggleRight, Trash2, Wand2 } from 'lucide-react';
+import { Droplets, FlaskConical, PackagePlus, Plus, ShoppingCart, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,8 @@ import { AvisoEsenciasSinPerfume } from './inventario/EmparejarEsenciasModal';
 import { MaterialModal } from './inventario/MaterialModal';
 import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
 import { CargaInicialArmados } from './inventario/CargaInicialArmados';
+import { AccionesMaterial, AccionesMaterialMovil } from './inventario/AccionesMaterial';
+import { FusionarMaterialModal } from './inventario/FusionarMaterialModal';
 import type {
   CatalogoItem, CatalogoRespuesta, FrascoArmado, InventarioInsumo, ResumenInventario,
 } from '../types';
@@ -67,6 +69,8 @@ export function InventarioTab() {
   // "Insumos y precios", que enseñaba estos mismos registros desde otro ángulo.
   const [material, setMaterial] = useState<{ abierto: boolean; dato: InventarioInsumo | null }>(
     { abierto: false, dato: null });
+  /** El duplicado que se está fusionando con otro registro. Null = cerrado. */
+  const [fusionando, setFusionando] = useState<InventarioInsumo | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -286,47 +290,23 @@ export function InventarioTab() {
           tarjetaMovil
           emptyText="Todavía no has registrado insumos."
           renderActions={i => (
-            <span className="flex items-center justify-end gap-0.5">
-              {i.activo && (
-                <Button size="sm" variant="ghost" className="h-7" onClick={() => abrirAjuste(i)}>
-                  Ajustar
-                </Button>
-              )}
-              <Button size="icon" variant="ghost" className="size-8 text-muted-foreground"
-                title="Editar nombre, tipo o unidad"
-                onClick={() => setMaterial({ abierto: true, dato: i })}>
-                <Pencil className="size-4" />
-              </Button>
-              <Button size="icon" variant="ghost" className="size-8 text-muted-foreground"
-                title={i.activo
-                  ? 'Apagar: deja de aparecer al comprar y producir. Su historial queda intacto.'
-                  : 'Encender: vuelve a estar disponible.'}
-                onClick={() => alternarActivo(i)}>
-                {i.activo ? <ToggleRight className="size-4" /> : <ToggleLeft className="size-4" />}
-              </Button>
-              <Button size="icon" variant="ghost" className="size-8 text-muted-foreground hover:text-destructive"
-                title="Eliminar (solo si nunca se usó)"
-                onClick={() => eliminarInsumo(i)}>
-                <Trash2 className="size-4" />
-              </Button>
-            </span>
+            <AccionesMaterial
+              insumo={i}
+              onAjustar={abrirAjuste}
+              onEditar={(x) => setMaterial({ abierto: true, dato: x })}
+              onFusionar={setFusionando}
+              onAlternarActivo={alternarActivo}
+              onEliminar={eliminarInsumo}
+            />
           )}
           accionesMovil={i => (
-            <>
-              {i.activo && (
-                <Button size="sm" variant="outline" onClick={() => abrirAjuste(i)}>
-                  <Scale className="size-4" /> Ajustar existencias
-                </Button>
-              )}
-              <Button size="sm" variant="outline" onClick={() => alternarActivo(i)}>
-                {i.activo ? <ToggleRight className="size-4" /> : <ToggleLeft className="size-4" />}
-                {i.activo ? 'Apagar' : 'Encender'}
-              </Button>
-              <Button size="sm" variant="outline" className="text-destructive"
-                onClick={() => eliminarInsumo(i)}>
-                <Trash2 className="size-4" /> Eliminar
-              </Button>
-            </>
+            <AccionesMaterialMovil
+              insumo={i}
+              onAjustar={abrirAjuste}
+              onFusionar={setFusionando}
+              onAlternarActivo={alternarActivo}
+              onEliminar={eliminarInsumo}
+            />
           )}
           acciones={
             <>
@@ -452,6 +432,15 @@ export function InventarioTab() {
         <MaterialModal
           material={material.dato}
           onClose={() => setMaterial({ abierto: false, dato: null })}
+          onGuardado={() => { load(); recargarPasos(); }}
+        />
+      )}
+
+      {fusionando && (
+        <FusionarMaterialModal
+          material={fusionando}
+          insumos={insumos}
+          onClose={() => setFusionando(null)}
           onGuardado={() => { load(); recargarPasos(); }}
         />
       )}

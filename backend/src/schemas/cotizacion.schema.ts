@@ -53,6 +53,11 @@ export const accesoriosFormulaSchema = z.object({
   insumo_ids: z.array(z.number().int().positive()).max(20),
 });
 
+/** Con qué material bueno se fusiona el duplicado (el de la URL). */
+export const fusionInsumoSchema = z.object({
+  destino_id: z.number({ message: 'Elige con cuál material se fusiona' }).int().positive(),
+});
+
 // ── Fórmulas por volumen ────────────────────────────────────────────────────
 export const formulaSchema = z
   .object({

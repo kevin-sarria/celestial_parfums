@@ -4,6 +4,7 @@ import { badRequest } from '../utils/httpError';
 // La creación del perfume a partir de su esencia vive en un solo sitio: la usan
 // el alta desde una compra y la pantalla de puesta al día.
 import { enlazarOCrearAccesorio, enlazarOCrearPerfume, sinSufijoEsencia } from './emparejarEsencias.repository';
+import { contarUsos, motivosQueRetienen } from './insumo.usos';
 import type {
   InsumoInput, FormulaInput, EscalaInput, CotizacionConfigInput, CondicionesComerciales,
 } from '../schemas/cotizacion.schema';
@@ -192,29 +193,17 @@ export const actualizarInsumo = (id: number, data: InsumoInput) => {
  * romper el historial contable.
  */
 export const eliminarInsumo = async (id: number) => {
-  const [movimientos, compras, comoEnvase, comoEsencia, enAccesorios, enPerfumes, enTallas] =
-    await Promise.all([
-      prisma.movimientoInventario.count({ where: { insumo_id: id } }),
-      prisma.compraItem.count({ where: { insumo_id: id } }),
-      prisma.formulaVolumen.count({ where: { envase_insumo_id: id } }),
-      prisma.formulaVolumen.count({ where: { esencia_insumo_id: id } }),
-      prisma.formulaAccesorio.count({ where: { insumo_id: id } }),
-      prisma.perfume.count({ where: { OR: [{ insumo_esencia_id: id }, { insumo_producto_id: id }] } }),
-      prisma.perfumePresentacion.count({ where: { envase_insumo_id: id } }),
-    ]);
-
-  const motivos: string[] = [];
-  if (movimientos > 0) motivos.push(`tiene ${movimientos} movimiento(s) de inventario`);
-  if (compras > 0) motivos.push(`aparece en ${compras} compra(s)`);
-  if (comoEnvase + comoEsencia + enAccesorios > 0) motivos.push('lo usa la receta de algún tamaño');
-  if (enPerfumes > 0) motivos.push(`${enPerfumes} perfume(s) lo tienen asignado`);
-  if (enTallas > 0) motivos.push('es el envase de alguna talla');
+  // La lista de dónde cuelga un insumo vive en `insumo.usos.ts`: la comparten
+  // este borrado y la fusión, que muda exactamente lo mismo que aquí retiene.
+  const motivos = motivosQueRetienen(await contarUsos(id));
 
   if (motivos.length > 0) {
     throw badRequest(
       `No se puede borrar: ${motivos.join(', ')}. `
       + 'Borrarlo dejaría esos registros sin referencia y descuadraría tu historial. '
-      + 'Apágalo con el interruptor "Activo": deja de aparecer al comprar y producir, y su pasado queda intacto.',
+      + 'Si es un DUPLICADO de otro material, fusiónalo con el bueno (botón "Fusionar"): '
+      + 'su historia se muda y tus existencias no se mueven. '
+      + 'Si no, apágalo con el interruptor "Activo": deja de aparecer al comprar y producir, y su pasado queda intacto.',
     );
   }
   return prisma.insumoCosto.delete({ where: { id } });

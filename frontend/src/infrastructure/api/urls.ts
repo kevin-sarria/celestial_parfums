@@ -30,6 +30,13 @@ export const urls = {
     primerosPasos: '/inventario/primeros-pasos',
     /** Qué reponer y cuánto. Solo lee, no mueve nada. */
     reposicion: '/inventario/reposicion',
+    /** Reglas de alerta por familia de material (una por familia). */
+    alertas: '/inventario/alertas',
+    /** Las que están saltando ahora mismo, para el aviso del dashboard. */
+    alertasActivas: '/inventario/alertas/activas',
+    alerta: (id: number) => `/inventario/alertas/${id}`,
+    /** Marcar un material como "en prueba": deja de sugerirse. */
+    enPrueba: (id: number) => `/inventario/en-prueba/${id}`,
     /** Entradas y salidas de UN material, con su costo. */
     movimientos: (insumoId: number) => `/inventario/movimientos/${insumoId}`,
     /** Conteo físico: "tengo X". El sistema calcula la diferencia. */
@@ -57,6 +64,8 @@ export const urls = {
     insumos: '/costeo/insumos',
     crearInsumo: '/costeo/insumos',
     insumo: (id: number) => `/costeo/insumos/${id}`,
+    /** GET = qué se movería; POST = fusionar este duplicado con el material bueno. */
+    fusionInsumo: (id: number) => `/costeo/insumos/${id}/fusion`,
     /** Recetas por tamaño: qué lleva y cuánto de cada cosa. */
     formulas: '/costeo/formulas',
     crearFormula: '/costeo/formulas',
