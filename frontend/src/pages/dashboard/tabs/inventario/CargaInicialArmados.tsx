@@ -36,7 +36,7 @@ const porNombre = (insumos: Insumo[], clave: string) =>
  * porque el único que existía —registrar un lote— le habría descontado una
  * esencia que ya gastó y que además no contó al inventariar (contó solo el
  * líquido suelto). El aviso amarillo de abajo no es decorativo: es la diferencia
- * entre esta pantalla y "Armé perfumes", y hay que poder leerla sin saber nada
+ * entre esta pantalla y "Armé directo", y hay que poder leerla sin saber nada
  * del sistema.
  */
 export function CargaInicialArmados({ perfumes, formulas, catalogo, insumos, onClose, onGuardado }: Props) {
@@ -63,7 +63,7 @@ export function CargaInicialArmados({ perfumes, formulas, catalogo, insumos, onC
 
   /**
    * Lo que costaría armar UNO hoy, como propuesta. Sale de la receta de ese
-   * tamaño con los promedios de hoy —el mismo cálculo de "Armé perfumes"—, así
+   * tamaño con los promedios de hoy —el mismo cálculo de "Armé directo"—, así
    * que es un punto de partida honesto, no un invento: el dueño lo corrige si
    * sus frascos le costaron otra cosa.
    */
@@ -124,7 +124,7 @@ export function CargaInicialArmados({ perfumes, formulas, catalogo, insumos, onC
       <p className="rounded-lg border border-amber-400/45 bg-amber-400/10 px-3 py-2 text-[12.5px] text-amber-800">
         Esto <strong>no descuenta esencia ni envases</strong>: es para los frascos que armaste
         antes, cuyo material ya salió de tu bodega. Si acabas de armarlos, usa
-        <strong> Registrar uso → Armé perfumes</strong>, que sí descuenta la receta.
+        <strong> Registrar uso → Armé directo</strong>, que sí descuenta la receta.
       </p>
 
       <Field label="¿De qué producto son?">

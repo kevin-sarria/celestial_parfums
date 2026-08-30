@@ -43,7 +43,7 @@ describe('crear un 1.1 que hereda del corriente', () => {
     await irA(pagina, '/dashboard/inventario');
     await pagina.waitForSelector('text=Registrar llegada');
     await pagina.getByRole('button', { name: /^Registrar uso$/ }).click();
-    await pagina.getByRole('menuitem', { name: /Armé perfumes/ }).click();
+    await pagina.getByRole('menuitem', { name: /Armé directo/ }).click();
     await pagina.waitForSelector('text=Registrar producción');
 
     await pagina.getByRole('button', { name: /Sin especificar/ }).click();

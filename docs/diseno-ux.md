@@ -524,3 +524,26 @@ Tiene razón por dos motivos distintos, y conviene separarlos porque se arreglan
 sola tabla con un renglón por familia, encabezado de columnas y los campos en línea: **de 913 px a
 390 px** (medido en la misma pantalla, 1440 px de ancho), sin quitar ni un dato. En una herramienta
 interna la densidad es una virtud: quien la abre ya sabe qué es cada cosa y quiere verlo todo junto.
+
+## "Registrar uso" pasó de un botón a tres (2026-08-30)
+
+Producir son dos momentos, así que el menú los nombra en el orden en que ocurren:
+
+```
+Registrar uso ▾
+  🧪 Puse a macerar               gasta esencia y diluyente. NO gasta envases
+  🍾 Envasé frascos               gasta envases y saca ml de un granel
+  📦 Armé directo (sin macerar)   todo el mismo día: la receta entera
+  💧 Muestra, regalo o daño       salió sin venta
+```
+
+Dos decisiones de redacción que importan más de lo que parecen:
+
+- **"Armé perfumes" pasó a "Armé directo (sin macerar)".** Con una sola opción el nombre bastaba;
+  con tres, "armé perfumes" describiría también a las otras dos. El paréntesis dice **en qué se
+  diferencia**, que es lo único que hay que decidir al abrir el menú.
+- **Cada opción lleva su nota diciendo qué GASTA.** Es la pregunta que el dueño se hace —"¿esto me
+  descuenta los envases?"— y la que el sistema respondía mal antes de la maceración.
+
+La barra salió a `inventario/AccionesInventario.tsx` al hacerlo: `InventarioTab.tsx` llegaba a 540
+líneas y son botones que no saben nada del inventario, solo qué hacer al pulsarlos.

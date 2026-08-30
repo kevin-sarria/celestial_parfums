@@ -106,7 +106,7 @@ describe('un producto que solo se vende armado', () => {
     await pagina.waitForSelector('text=Valor del inventario');
 
     await pagina.getByRole('button', { name: /Registrar uso/ }).click();
-    await pagina.getByRole('menuitem', { name: /Armé perfumes/ }).click();
+    await pagina.getByRole('menuitem', { name: /Armé directo/ }).click();
     // El botón del desplegable muestra la opción elegida, y de arranque es la
     // primera de la lista — no el `placeholder`.
     await pagina.getByRole('button', { name: /Sin especificar/ }).click();

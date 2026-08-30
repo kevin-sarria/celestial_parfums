@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 29 de agosto de 2026.** Todo compila, **391 pruebas en verde** (254 backend +
-84 frontend + 53 recorridos, más 1 saltada a propósito) y el linter del frontend en cero.
+**Última sesión: 30 de agosto de 2026.** Todo compila, **417 pruebas en verde** (279 backend +
+84 frontend + 54 recorridos, más 1 saltada a propósito) y el linter del frontend en cero.
 
 ## ✅ Producción está al día (2026-08-29, tarde)
 
@@ -116,8 +116,8 @@ venderlos volvería a descontar la receta. **Aquí no hay riesgo de cobrar de me
 descontar material dos veces.
 
 Se arregla con el **runbook** de abajo (~20 minutos en el dashboard), con **una excepción nueva**:
-el lote del **212 VIP Black no se rehace, se convierte** — esos 500 ml están macerando, no son 5
-frascos. Ver [`la maceración`](superpowers/specs/2026-08-24-maceracion-y-envasado-design.md).
+el lote del **212 VIP Black no se rehace, se convierte** con el botón *"esto en realidad está
+macerando"* — ya construido (2026-08-30).
 
 ### 3. Lo que el respaldo dice del catálogo
 
@@ -265,39 +265,33 @@ frontend es toda de cálculo puro (no hay `@testing-library`, ni entorno jsdom m
 estas pantallas se verifican **en el navegador**, y con el backend tumbado a propósito para ver el
 camino del error. Montar pruebas de componentes es una decisión del dueño que sigue sin tomarse.
 
-## 🧪 La maceración: el sistema no sabe que producir son DOS momentos
+## ✅ La maceración — HECHA (2026-08-30), sin desplegar
 
-**Encontrado el 2026-08-23, con el dueño mirando sus datos en vivo.** No entra en las 3 olas de
-Productos y Accesorios — decisión suya, va después.
+Producir son dos momentos y el sistema creía que era uno. **Construido entero**: poner a macerar,
+envasar (varias veces y en tallas distintas), cerrar tanda, borrar, y convertir un lote viejo.
+Detalle y porqués en [`inventario-costeo.md`](inventario-costeo.md); diseño en
+[`superpowers/specs/2026-08-24-maceracion-y-envasado-design.md`](superpowers/specs/2026-08-24-maceracion-y-envasado-design.md).
 
-Hoy `producir` = consumir esencia + diluyente + **un envase por unidad** y dejar N frascos
-armados de UNA talla fija. En perfumería de verdad son dos momentos separados por semanas, y el
-dueño ya está trabajando así:
+> **⚠️ TRAE MIGRACIÓN** (`20260830120000_maceracion`): el deploy es `git pull` +
+> **`npx prisma migrate deploy`** + build + `pm2 restart`.
 
-| El sistema cree | La realidad (lote de 212 VIP Black, 11/8) |
-|---|---|
-| 5 frascos de 100 ml listos | ~500 ml en un frasco de 1 litro **macerando** |
-| Se gastaron 5 envases de 100 ml | Los 5 envases siguen **vacíos en la repisa** |
+**Lo que cambia para el dueño:**
 
-No fue un error del dueño: **hizo lo único que el sistema le dejaba hacer.** Textual: *"hice una
-cosa rara"*.
+- *Registrar uso* pasa de un botón a tres: **Puse a macerar** (gasta líquido, no envases),
+  **Envasé frascos** (gasta envases, saca ml del granel) y **Armé directo**, que es el de siempre.
+- Producciones estrena **Macerando ahora**, con los días que lleva cada tanda y sus botones
+  *Envasar* y *Cerrar tanda*.
+- Inventario estrena la métrica **Macerando**: sin ella, poner a macerar hacía *desaparecer* plata
+  de la bodega.
+- Cada lote de armado directo tiene un botón para decir **"esto en realidad está macerando"**.
 
-**Modelo propuesto — dos pasos:**
+**Lo primero que hay que hacer con esto, en producción**: convertir el lote del **212 VIP Black**
+del 11 de agosto. Devuelve 5 envases, 5 bolsas y **5 perfumeros** —parte del agujero que ese
+material tiene en negativo— y deja los 500 ml donde deben estar.
 
-1. **Macerar**: consume esencia + diluyente, **no consume envases**, y produce X ml de granel de
-   esa fragancia con su fecha de inicio y su fecha estimada de listo. El granel lleva costo por ml.
-2. **Envasar**: toma ml del granel + N envases de la talla que sea → N frascos armados. Se puede
-   hacer en varias tandas y **en tallas distintas** (3 × 30 ml + 2 × 50 ml + 3 × 100 ml del mismo
-   granel). El costo del frasco = ml × costo del granel + envase + accesorios.
-
-**Por qué importa cada vez más**: el dueño va a pasar de una maceración suelta a **macerar las 10
-referencias más vendidas** (dicho el 2026-08-23). Con 10 graneles en curso, aproximar cada uno como
-"N frascos de 100 ml" deja el inventario y los costos inservibles.
-
-**Qué NO hacer mientras tanto**: borrar el lote del 212 VIP Black. Devolvería la esencia al
-inventario, y esa esencia sí se gastó — está en el frasco de 1 litro. Si se quiere cuadrar el
-conteo físico, ajustar **+5 el Envase 100 ml** y dejar el lote quieto. Al construir la maceración,
-ese lote se migra.
+**Cubierto por 26 pruebas**: 11 de aritmética (reproducen los $24.187,956 por frasco del lote real),
+14 contra base y un recorrido en navegador que macera, envasa, vende y comprueba que **la esencia
+sale una sola vez**.
 
 ## ✅ El alta de productos y los envases en cero — HECHO (2026-08-25)
 

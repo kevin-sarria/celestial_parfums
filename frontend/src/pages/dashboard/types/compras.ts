@@ -99,6 +99,11 @@ export interface Produccion {
   costo_manual: boolean;
   /** Rastro de las correcciones, la más nueva primero. */
   historial: { fecha: string; texto: string }[];
+  /**
+   * De qué tanda de maceración salieron estos frascos. Null = armado directo, y
+   * solo esos pueden convertirse en "en realidad está macerando".
+   */
+  maceracion_id?: number | null;
 }
 
 export interface PagoForm {

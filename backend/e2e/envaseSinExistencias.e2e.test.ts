@@ -36,7 +36,7 @@ describe('envases sin existencias al registrar una producción', () => {
     await irA(pagina, '/dashboard/inventario');
     await pagina.waitForSelector('text=Registrar llegada');
     await pagina.getByRole('button', { name: /^Registrar uso$/ }).click();
-    await pagina.getByRole('menuitem', { name: /Armé perfumes/ }).click();
+    await pagina.getByRole('menuitem', { name: /Armé directo/ }).click();
     await pagina.waitForSelector('text=Registrar producción');
 
     await campo(pagina, 'Envase usado').click();

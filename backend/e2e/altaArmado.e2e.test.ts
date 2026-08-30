@@ -25,7 +25,7 @@ describe('alta de un 1.1 desde el lote', () => {
     await irA(pagina, '/dashboard/inventario');
     await pagina.waitForSelector('text=Registrar llegada');
     await pagina.getByRole('button', { name: /^Registrar uso$/ }).click();
-    await pagina.getByRole('menuitem', { name: /Armé perfumes/ }).click();
+    await pagina.getByRole('menuitem', { name: /Armé directo/ }).click();
     await pagina.waitForSelector('text=Registrar producción');
 
     // El buscador arranca en "Sin especificar", que es la opción por defecto.

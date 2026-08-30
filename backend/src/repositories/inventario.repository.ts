@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { $Enums, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
 import { r3, r4 } from '../utils/redondeo';
@@ -16,7 +16,14 @@ const num = (v: unknown) => Number(v);
 
 import { aBase } from './inventario.compras';
 
-export type TipoMovimiento = 'compra' | 'produccion' | 'garantia' | 'ajuste' | 'merma' | 'muestra' | 'venta';
+/**
+ * Sale del enum de Prisma, no de una copia a mano: cuando se agregó
+ * `maceracion` al esquema, una lista escrita aquí se habría quedado atrás y el
+ * compilador habría rechazado un tipo que la base sí acepta. Es la misma
+ * lección de la limpieza de `any` (2026-08-23): los valores válidos los declara
+ * el esquema.
+ */
+export type TipoMovimiento = $Enums.MovimientoTipo;
 
 interface MovimientoNuevo {
   insumo_id: number;
@@ -96,9 +103,20 @@ export const aplicarMovimiento = async (tx: Prisma.TransactionClient, mov: Movim
  */
 export const revertirMovimientos = async (
   tx: Prisma.TransactionClient, tipo: TipoMovimiento, referenciaId: number,
+  /**
+   * Devolver SOLO estos materiales. Sin la lista se devuelven todos, que es lo
+   * normal. La usa la conversión de un lote a maceración: los envases vuelven a
+   * la repisa, pero la esencia NO —está dentro del frasco que está reposando—.
+   */
+  soloInsumos?: number[],
 ) => {
+  const filtro = {
+    tipo,
+    referencia_id: referenciaId,
+    ...(soloInsumos ? { insumo_id: { in: soloInsumos } } : {}),
+  };
   const movs = await tx.movimientoInventario.findMany({
-    where: { tipo, referencia_id: referenciaId },
+    where: filtro,
     orderBy: { id: 'desc' },
   });
   for (const m of movs) {
@@ -110,7 +128,7 @@ export const revertirMovimientos = async (
       data: { stock: r3(stock) },
     });
   }
-  await tx.movimientoInventario.deleteMany({ where: { tipo, referencia_id: referenciaId } });
+  await tx.movimientoInventario.deleteMany({ where: filtro });
   // El promedio se reconstruye del libro: revertirlo "a ojo" lo iría torciendo
   const insumos = [...new Set(movs.map((m) => m.insumo_id))];
   for (const id of insumos) await recalcularPromedio(tx, id);

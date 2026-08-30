@@ -3,6 +3,7 @@ import { prisma } from '../config/prisma';
 import { r3, r4 } from '../utils/redondeo';
 import { aplicarMovimiento, revertirMovimientos } from './inventario.repository';
 import { revertirTerminado, sacarDeTerminado } from './inventario.terminado';
+import { idsDeMaterialesGenerales } from './materialesGenerales';
 
 /** Los Decimal de Prisma llegan como objeto; esto los baja a número. */
 const num = (v: unknown) => Number(v);
@@ -74,12 +75,6 @@ export const recetaDe = async (perfumeId: number, ml: number | null) => {
   if (!formula) return null;
   if (!perfume.insumo_esencia_id) return { sinEsencia: true, nombre: perfume.nombre, items: [] };
 
-  const porNombre = async (clave: string) => {
-    const i = await prisma.insumoCosto.findFirst({
-      where: { tipo: 'materia_prima', nombre: { contains: clave } },
-    });
-    return i?.id ?? null;
-  };
   const total = num(formula.ml_total);
   const esen = num(formula.esencia_ml);
   const sell = num(formula.sellador_ml);
@@ -90,9 +85,11 @@ export const recetaDe = async (perfumeId: number, ml: number | null) => {
     if (id && cant > 0) items.push({ insumo_id: id, cantidad: r3(cant) });
   };
   add(perfume.insumo_esencia_id, esen);
-  add(await porNombre('iluyente'), r3(total - esen - sell - fero));
-  add(await porNombre('ellador'), sell);
-  add(await porNombre('eromona'), fero);
+  // El diluyente es el RESTO, no un ingrediente con su propia medida.
+  const generales = await idsDeMaterialesGenerales();
+  add(generales.diluyente, r3(total - esen - sell - fero));
+  add(generales.sellador, sell);
+  add(generales.feromonas, fero);
   // El frasco y la caja de ESTA referencia mandan sobre los de la receta:
   // un 1.1 de Sauvage no usa el mismo frasco que uno de Bleu.
   const propio = presentacion?.perfumes?.[0];

@@ -1,21 +1,23 @@
 import { hoy } from '../../../utils/fechas';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Droplets, FlaskConical, PackagePlus, Plus, ShoppingCart, Wand2 } from 'lucide-react';
+import { ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import Modal from '../../../components/Modal';
-import ExportMenu from '../../../components/ExportMenu';
 import ImportModal from '../../../components/ImportModal';
-import MenuAcciones from '../../../components/MenuAcciones';
 import { SmartTable } from '../../../components/table/SmartTable';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import { inventarioColumns, terminadoColumns } from '../columns';
 import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, SectionTitle, StatCard } from '../ui';
+import { MaceracionModal } from './inventario/MaceracionModal';
+import { EnvasadoModal } from './inventario/EnvasadoModal';
+import { AccionesInventario } from './inventario/AccionesInventario';
+import type { Tanda } from './inventario/tandas';
 import { SalidaModal } from './inventario/SalidaModal';
 import { PrimerosPasos } from './inventario/PrimerosPasos';
 import { AsignarEsenciasModal } from './inventario/AsignarEsenciasModal';
@@ -54,6 +56,10 @@ export function InventarioTab() {
   const [costoAjuste, setCostoAjuste] = useState('');
   const [minimoAjuste, setMinimoAjuste] = useState('');
   const [prodAbierta, setProdAbierta] = useState(false);
+  const [macerarAbierta, setMacerarAbierta] = useState(false);
+  const [envasarAbierta, setEnvasarAbierta] = useState(false);
+  /** Lo que está macerando ahora: alimenta la métrica y el modal de envasar. */
+  const [tandas, setTandas] = useState<Tanda[]>([]);
   const [perfumes, setPerfumes] = useState<PerfumeLite[]>([]);
   const [cargaInicialAbierta, setCargaInicialAbierta] = useState(false);
   // Salidas sin venta: rolones del mostrario, minis de regalo, derrames
@@ -87,6 +93,10 @@ export function InventarioTab() {
       setValorTotal(inv?.valor_total ?? 0);
       setSalidasMes(inv?.salidas_mes ?? { muestras: 0, mermas: 0, ajustes: 0 });
       setTerminado(inv?.terminado ?? { filas: [], unidades: 0, valor: 0 });
+      // Silencioso: si no carga, el inventario se sigue viendo entero. La
+      // métrica y el modal de envasar simplemente no aparecen.
+      http.get<{ data: Tanda[] }>(urls.inventario.maceraciones)
+        .then((r) => { if (r.ok && r.cuerpo?.data) setTandas(r.cuerpo.data); });
       setCatalogo(rc.cuerpo?.data ?? []);
       setFormulas(rf.cuerpo?.data ?? []);
       // /api/parfums sin paginar responde { data: { data: [...] } }
@@ -209,6 +219,14 @@ export function InventarioTab() {
           <StatCard label="Frascos armados" value={String(terminado.unidades)}
             nota={`${formatPrice(terminado.valor)} en producto listo para vender`} />
         )}
+        {/* Sin esta métrica, poner a macerar haría DESAPARECER plata de la
+            bodega: sale de los materiales y no entra en ningún sitio visible. */}
+        {tandas.length > 0 && (
+          <StatCard label="Macerando"
+            value={`${tandas.reduce((t, x) => t + x.saldo_ml, 0)} ml`}
+            nota={`${formatPrice(tandas.reduce((t, x) => t + x.valor_saldo, 0))} reposando`
+              + ` en ${tandas.length} ${tandas.length === 1 ? 'tanda' : 'tandas'}`} />
+        )}
       </FranjaMetricas>
 
       {/**
@@ -308,81 +326,18 @@ export function InventarioTab() {
               onEliminar={eliminarInsumo}
             />
           )}
-          acciones={
-            <>
-              {/* Excel es mantenimiento: cabe detrás de un clic para no competir
-                  con las tres acciones reales del día. Los nombres van en el idioma
-                  del dueño, no del sistema: "Movimientos" e "Insumos" no le dicen
-                  nada a quien no construyó esto. */}
-              <ExportMenu
-                onImportar={() => setImportOpen(true)}
-                importarLabel="Subir hoja de conteo"
-                descargas={[
-                  { entity: 'inventario', label: 'Hoja de conteo', nota: 'Para contar y volver a subirla' },
-                  { entity: 'insumos', label: 'Lista de materiales', nota: 'Qué usas y cuánto cuesta' },
-                  { entity: 'movimientos', label: 'Historial de entradas y salidas', nota: 'Solo se descarga' },
-                ]}
-              />
-              {/**
-                * Agrupados por la PREGUNTA que responden, no por orden de llegada.
-                *
-                * Esta barra había crecido a seis botones del mismo peso —uno por
-                * cada función nueva— y encontrar lo que se hace a diario costaba
-                * lo mismo que encontrar lo de una vez al mes. Ahora: lo que se
-                * configura de vez en cuando en un menú, lo que consume material
-                * en otro, y **una sola acción destacada**, que es la que de
-                * verdad se usa (61 compras registradas contra 0 producciones).
-                *
-                * Los nombres van en el idioma del dueño: "Registrar uso", nunca
-                * "Movimientos" — esa palabra es del sistema, no del negocio.
-                */}
-              <MenuAcciones
-                label="Materiales" icon={Plus} titulo="Dar de alta y clasificar"
-                acciones={[
-                  {
-                    label: 'Material nuevo', icon: Plus,
-                    nota: 'Una esencia, un frasco, un accesorio',
-                    onSelect: () => setMaterial({ abierto: true, dato: null }),
-                  },
-                  {
-                    // Vive aquí y no solo en Primeros pasos: esa caja desaparece
-                    // al completarse, y sin esto la asignación quedaría
-                    // inalcanzable para el próximo perfume nuevo.
-                    label: 'Asignar esencias', icon: Wand2,
-                    nota: 'Enlazar varias fragancias de una vez',
-                    onSelect: () => setEsenciasAbierto(true),
-                  },
-                  {
-                    // Va en "dar de alta" y no en "registrar uso" a propósito:
-                    // aquí no sale nada de la bodega, entra algo que ya existía.
-                    label: 'Frascos ya armados', icon: FlaskConical,
-                    nota: 'Los que armaste antes, sin descontar material',
-                    onSelect: () => setCargaInicialAbierta(true),
-                  },
-                ]}
-              />
-              <MenuAcciones
-                label="Registrar uso" icon={Droplets} titulo="Material que salió"
-                acciones={[
-                  {
-                    label: 'Armé perfumes', icon: FlaskConical,
-                    nota: 'Descuenta la receta del tamaño',
-                    onSelect: () => setProdAbierta(true),
-                  },
-                  {
-                    label: 'Muestra, regalo o daño', icon: Droplets,
-                    nota: 'Salió sin venta: mostrario o pérdida',
-                    onSelect: () => setSalidaAbierta(true),
-                  },
-                ]}
-              />
-              <Button size="sm" asChild>
-                <Link to="/dashboard/pagos?nueva=1">
-                  <PackagePlus className="size-4" /> Registrar llegada
-                </Link>
-              </Button>
-            </>
-          }
+          acciones={(
+            <AccionesInventario
+              onImportar={() => setImportOpen(true)}
+              onMaterialNuevo={() => setMaterial({ abierto: true, dato: null })}
+              onAsignarEsencias={() => setEsenciasAbierto(true)}
+              onFrascosYaArmados={() => setCargaInicialAbierta(true)}
+              onMacerar={() => setMacerarAbierta(true)}
+              onEnvasar={() => setEnvasarAbierta(true)}
+              onArmarDirecto={() => setProdAbierta(true)}
+              onSalida={() => setSalidaAbierta(true)}
+            />
+          )}
         />
       </Section>
 
@@ -469,6 +424,26 @@ export function InventarioTab() {
           catalogo={catalogo}
           insumos={insumos}
           onClose={() => setCargaInicialAbierta(false)}
+          onGuardado={load}
+        />
+      )}
+
+      {macerarAbierta && (
+        <MaceracionModal
+          formulas={formulas}
+          perfumes={perfumes}
+          onClose={() => setMacerarAbierta(false)}
+          onGuardado={load}
+        />
+      )}
+
+      {envasarAbierta && (
+        <EnvasadoModal
+          tandas={tandas}
+          formulas={formulas}
+          perfumes={perfumes}
+          insumos={insumos}
+          onClose={() => setEnvasarAbierta(false)}
           onGuardado={load}
         />
       )}

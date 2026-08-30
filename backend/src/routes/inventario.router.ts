@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as repo from '../repositories/inventario.repository';
 import * as producciones from '../repositories/inventario.producciones';
 import { crearFicha11YEnlazar, lotesPorEnlazar, mandarFrascosAlaFicha } from '../repositories/producciones.enlazar';
+import * as maceracion from '../repositories/inventario.maceracion';
 import * as reposicion from '../repositories/reposicion.repository';
 import { alertasDisparadas, borrarAlerta, guardarAlerta, listarAlertas } from '../repositories/alertas.repository';
 import { cargaInicialArmados, listarTerminado } from '../repositories/inventario.terminado';
@@ -16,6 +17,7 @@ import { h } from '../middleware/error.middleware';
 import {
   ajusteSchema, produccionSchema, produccionEdicionSchema, cargaInicialArmadosSchema,
   fichaDeLoteSchema, enlazarLoteSchema, salidaSchema, minimoSchema, minimosGamasSchema,
+  maceracionSchema, envasadoSchema, cerrarMaceracionSchema,
   alertaSchema, enPruebaSchema,
 } from '../schemas/inventario.schema';
 
@@ -177,6 +179,67 @@ inventarioRouter.post('/producciones/:id/enlazar', validate(enlazarLoteSchema), 
   await mandarFrascosAlaFicha(Number(req.params.id), req.body.perfume_id);
   bustCatalogoCache();
   res.json({ message: 'Listo: esos frascos ya están en su ficha, con su costo' });
+}));
+
+/**
+ * MACERACIÓN: producir son dos momentos.
+ *
+ * Poner a macerar gasta el líquido y **no toca los envases**; envasar gasta los
+ * envases y saca ml del granel. El diseño y el porqué, en
+ * `docs/superpowers/specs/2026-08-24-maceracion-y-envasado-design.md`.
+ */
+inventarioRouter.get('/maceraciones', h(async (req, res) => {
+  res.json({ data: await maceracion.listarMaceraciones({ incluirCerradas: req.query.todas === '1' }) });
+}));
+
+/** Qué se descontaría y cuánto costaría, sin escribir nada. */
+inventarioRouter.get('/maceraciones/vista-previa', h(async (req, res) => {
+  const { formula_volumen_id, perfume_id, ml } = req.query;
+  res.json({
+    data: await maceracion.vistaPreviaMaceracion(
+      Number(formula_volumen_id), Number(perfume_id), Number(ml),
+    ),
+  });
+}));
+
+inventarioRouter.post('/maceraciones', validate(maceracionSchema), h(async (req, res) => {
+  const data = await maceracion.macerar(req.body);
+  res.status(201).json({
+    message: `Puesto a macerar: ${req.body.ml} ml de ${data.perfume.nombre}`,
+    data,
+  });
+}));
+
+inventarioRouter.post('/maceraciones/:id/envasar', validate(envasadoSchema), h(async (req, res) => {
+  const data = await maceracion.envasar({ ...req.body, maceracion_id: Number(req.params.id) });
+  bustCatalogoCache();
+  res.status(201).json({
+    message: data.aviso ?? `Envasados ${req.body.cantidad}. Quedan ${data.saldo_ml} ml en la tanda`,
+    data,
+  });
+}));
+
+inventarioRouter.post('/maceraciones/:id/cerrar', validate(cerrarMaceracionSchema), h(async (req, res) => {
+  const data = await maceracion.cerrarMaceracion(Number(req.params.id), req.body.fecha ?? undefined);
+  res.json({
+    message: `Tanda cerrada. Se anotaron ${Number(data.ml_merma)} ml como merma`,
+    data,
+  });
+}));
+
+/** Un lote de armado directo que en realidad estaba macerando. */
+inventarioRouter.post('/producciones/:id/es-maceracion', h(async (req, res) => {
+  const data = await maceracion.convertirLoteEnMaceracion(Number(req.params.id));
+  bustCatalogoCache();
+  res.status(201).json({
+    message: `Ese lote es ahora una tanda de ${Number(data.ml_iniciales)} ml macerando`,
+    data,
+  });
+}));
+
+inventarioRouter.delete('/maceraciones/:id', h(async (req, res) => {
+  await maceracion.eliminarMaceracion(Number(req.params.id));
+  res.json({ message: 'Tanda borrada: su líquido volvió al inventario' });
 }));
 
 /** Registra un lote armado y descuenta sus insumos. */

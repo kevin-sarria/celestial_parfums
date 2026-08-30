@@ -415,3 +415,24 @@ Tres bloques en el mismo día, los tres salidos de que el dueño usara el sistem
 servidor ofrece borrar la base (ahora hay freno de mano), y el frontend puede quedarse viejo sin que
 nada falle —se detecta midiendo la fecha del `index.html` que sirve el servidor, no recargando el
 navegador—.
+
+## Sesión del 2026-08-30: la maceración
+
+La pieza más grande que quedaba pendiente, y la que el dueño necesitaba antes de pasar de una
+maceración suelta a **macerar las 10 referencias más vendidas**: con diez graneles en curso,
+aproximar cada uno como "N frascos de 100 ml" deja el inventario y los costos inservibles.
+
+Se construyó tal cual el diseño del 2026-08-24, con dos correcciones que aparecieron al hacerlo:
+
+1. **El envasado no tiene motor propio.** Reutiliza `registrarProduccion` porque un envasado ES un
+   lote, solo que con `maceracion_id`; con tanda, `aplicarLote` no cobra materiales de líquido y en
+   su lugar suma `ml de la talla × costo_ml`. Copiar el motor habría dejado dos versiones de la
+   misma regla, y la de envasar se habría quedado atrás a la primera.
+2. **Al convertir un lote viejo, la tanda vale solo el líquido.** Los envases y accesorios vuelven a
+   la repisa y su plata se va con ellos; dejarla dentro del granel los haría pagar **dos veces** al
+   envasar de verdad. Lo cazó una prueba, no una revisión a ojo.
+
+De paso: `TipoMovimiento` dejó de ser una lista escrita a mano y sale del enum de Prisma (al agregar
+`maceracion` al esquema, la copia se habría quedado atrás), y la búsqueda de diluyente/sellador/
+feromonas por nombre —que estaba duplicada entre la venta y la maceración— salió a
+`materialesGenerales.ts`.

@@ -1,7 +1,7 @@
 import { hoy } from '../../../utils/fechas';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, Trash2 } from 'lucide-react';
+import { FlaskConical, Pencil, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
@@ -14,6 +14,7 @@ import { produccionesColumns } from '../columns';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
 import { LotesPorEnlazar } from './producciones/LotesPorEnlazar';
+import { MacerandoAhora } from './producciones/MacerandoAhora';
 import type { FrascoArmado, InventarioInsumo, Produccion, ResumenInventario } from '../types';
 import type { CatalogoItem, CatalogoRespuesta } from '../types';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
@@ -24,6 +25,9 @@ import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion
  * `getUTCMonth()`: el último día del mes, pasadas las 7 p.m., en UTC ya es el
  * mes siguiente, y esa noche el historial arrancaba un mes adelantado.
  */
+const TITULO_CONVERTIR = 'Esto en realidad está macerando: devuelve los envases, quita los frascos '
+  + 'y deja el líquido como una tanda reposando.';
+
 const inicioDeMes = () => `${hoy().slice(0, 8)}01`;
 
 /**
@@ -39,7 +43,7 @@ export function ProduccionesTab() {
   const [error, setError] = useState('');
   /** El lote que se está corrigiendo; null = nadie. */
   const [editando, setEditando] = useState<Produccion | null>(null);
-  // Lo que necesita el modal de corrección: es el MISMO de "Armé perfumes", así
+  // Lo que necesita el modal de corrección: es el MISMO de "Armé directo", así
   // que pide los mismos datos.
   const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
   const [perfumes, setPerfumes] = useState<PerfumeLite[]>([]);
@@ -99,6 +103,26 @@ export function ProduccionesTab() {
     load();
   };
 
+  /**
+   * "ESTO EN REALIDAD ESTÁ MACERANDO": convierte un lote de armado directo.
+   *
+   * El sistema no puede adivinar cuál lote es cuál —la diferencia está en la
+   * repisa, no en los datos—, así que el botón sale en todos los lotes armados
+   * directo y decide el dueño. Los frascos 1.1 que sí existen no se tocan.
+   */
+  const convertir = async (p: Produccion) => {
+    const aviso = `¿El lote de ${p.cantidad} × ${p.perfume_nombre ?? p.volumen_nombre} `
+      + 'todavía está reposando, sin envasar?\n\n'
+      + 'Los envases y accesorios vuelven al inventario, esos frascos dejan de contar como '
+      + 'armados, y el líquido queda como una tanda macerando con su fecha y su costo original.\n\n'
+      + 'Esto no se puede deshacer con un botón.';
+    if (!window.confirm(aviso)) return;
+    const res = await http.post<{ message?: string }>(urls.inventario.loteEsMaceracion(p.id), {});
+    if (!res.ok) { toast.error(res.error, { id: 'convertir' }); return; }
+    toast.success(res.cuerpo?.message ?? 'Ese lote es ahora una tanda macerando');
+    load();
+  };
+
   if (loading) return <Section><PerfumeSpinner /></Section>;
 
   const desde = inicioDeMes();
@@ -126,6 +150,10 @@ export function ProduccionesTab() {
           nota="Todo el historial" />
       </FranjaMetricas>
 
+      <MacerandoAhora
+        formulas={formulas} perfumes={perfumes} insumos={insumos} onCambio={load}
+      />
+
       <LotesPorEnlazar perfumes={perfumes} onResuelto={load} />
 
       <Section>
@@ -135,8 +163,7 @@ export function ProduccionesTab() {
           , en <strong className="text-foreground">Frascos ya armados</strong> — al venderlos no se
           vuelve a descontar material. Si borras un lote,
           <strong className="text-foreground"> el material vuelve y los frascos se quitan</strong>.
-          Para registrar uno nuevo, usa <strong className="text-foreground">Registrar uso → Armé
-          perfumes</strong> en Inventario.
+          Para registrar uno nuevo, usa <strong className="text-foreground">Registrar uso</strong> en Inventario.
         </p>
 
         <SmartTable
@@ -154,6 +181,14 @@ export function ProduccionesTab() {
                 onClick={() => setEditando(p)}>
                 <Pencil className="size-4" />
               </Button>
+              {!p.maceracion_id && (
+                <Button size="icon" variant="ghost" title={TITULO_CONVERTIR}
+                  aria-label="Esto en realidad está macerando"
+                  className="size-8 text-muted-foreground hover:text-primary"
+                  onClick={() => convertir(p)}>
+                  <FlaskConical className="size-4" />
+                </Button>
+              )}
               <Button size="icon" variant="ghost" aria-label="Borrar lote"
                 className="size-8 text-muted-foreground hover:text-destructive"
                 onClick={() => borrar(p)}>
@@ -166,6 +201,11 @@ export function ProduccionesTab() {
               <Button size="sm" variant="outline" onClick={() => setEditando(p)}>
                 <Pencil className="size-4" /> Corregir lote
               </Button>
+              {!p.maceracion_id && (
+                <Button size="sm" variant="outline" onClick={() => convertir(p)}>
+                  <FlaskConical className="size-4" /> Está macerando
+                </Button>
+              )}
               <Button size="sm" variant="outline" className="text-destructive" onClick={() => borrar(p)}>
                 <Trash2 className="size-4" /> Borrar lote
               </Button>

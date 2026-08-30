@@ -1,7 +1,17 @@
 # Maceración y envasado: producir son DOS momentos
 
-**Fecha:** 2026-08-24
+**Fecha:** 2026-08-24 · **CONSTRUIDO el 2026-08-30** (migración `20260830120000_maceracion`).
 **Decidido con el dueño** en esta misma sesión (sus respuestas están citadas más abajo).
+
+> **Lo que cambió al construirlo**, y por qué:
+>
+> - **El envasado NO tiene motor propio**: reutiliza `registrarProduccion`, porque un envasado ES
+>   un lote con `maceracion_id`. Copiar el motor habría dado dos versiones de la misma regla.
+> - **Al convertir un lote, la tanda vale solo el LÍQUIDO**, no el costo entero del lote: los
+>   envases y accesorios vuelven a la repisa y su plata se va con ellos. Sin esto, al envasarlos de
+>   verdad se pagarían dos veces. Lo cazó una prueba.
+> - **La prueba 11** (crear un 1.1 desde el envasado) no entró: la "puerta única" que la motivaba se
+>   revocó el 2026-08-25 y el 1.1 ya tiene tres puertas propias.
 **Sustituye a** la "Ola 2" de `2026-08-23-productos-y-accesorios-design.md` en lo que toca al
 alta del 1.1 desde el lote: ese alta vive ahora en *Envasé frascos*.
 

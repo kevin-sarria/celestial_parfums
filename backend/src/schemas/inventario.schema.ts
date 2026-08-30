@@ -45,6 +45,39 @@ export const produccionSchema = z.object({
 });
 
 /**
+ * PONER A MACERAR: la primera mitad de producir.
+ *
+ * No lleva envases a propósito — se gastan al envasar, semanas después—, y por
+ * eso no es una variante de `produccionSchema` sino un esquema propio.
+ */
+export const maceracionSchema = z.object({
+  fecha,
+  perfume_id: z.number().int().positive('Elige qué fragancia estás macerando'),
+  /// De qué receta se toma la proporción; se escala a los ml de la tanda.
+  formula_volumen_id: z.number().int().positive('Elige la proporción de referencia'),
+  ml: z.number().positive('Dinos cuántos ml preparaste').max(100000),
+  /// Cuándo estará lista. La escribe el dueño y es opcional: el reposo depende
+  /// de la fragancia y el sistema no propone plazos.
+  listo_estimado: z.string().nullish(),
+  nota: z.string().max(255).nullish(),
+});
+
+/** ENVASAR: sacar ml de una tanda y meterlos en frascos de una talla. */
+export const envasadoSchema = z.object({
+  fecha,
+  formula_volumen_id: z.number().int().positive('Elige la talla que envasaste'),
+  cantidad: z.number().int().min(1, 'Al menos un frasco').max(10000),
+  perfume_id: z.number().int().positive('Elige de qué producto son estos frascos'),
+  envase_insumo_id: z.number().int().positive().nullish(),
+  nota: z.string().max(255).nullish(),
+});
+
+/** Cerrar una tanda: lo que quedaba se anota como merma. */
+export const cerrarMaceracionSchema = z.object({
+  fecha: fecha.nullish(),
+});
+
+/**
  * Frascos que YA estaban armados antes de que el sistema existiera.
  *
  * No lleva `consumos` a propósito, y esa ausencia es toda la diferencia con

@@ -57,6 +57,15 @@ export const urls = {
     /** Manda los frascos de un lote a una ficha que ya existe. */
     enlazarLote: (id: number) => `/inventario/producciones/${id}/enlazar`,
     produccion: (id: number) => `/inventario/producciones/${id}`,
+    /** Producir son DOS momentos: macerar (semanas) y envasar. */
+    maceraciones: '/inventario/maceraciones',
+    maceracionesTodas: '/inventario/maceraciones?todas=1',
+    vistaPreviaMaceracion: '/inventario/maceraciones/vista-previa',
+    envasar: (id: number) => `/inventario/maceraciones/${id}/envasar`,
+    cerrarMaceracion: (id: number) => `/inventario/maceraciones/${id}/cerrar`,
+    maceracion: (id: number) => `/inventario/maceraciones/${id}`,
+    /** "Esto en realidad está macerando": convierte un lote de armado directo. */
+    loteEsMaceracion: (id: number) => `/inventario/producciones/${id}/es-maceracion`,
   },
 
   /** Materiales, sus costos y las recetas por tamaño. */

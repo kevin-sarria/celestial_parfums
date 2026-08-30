@@ -34,6 +34,12 @@ export interface LoteInput {
   costo_unitario?: number | null;
   /** true = lo escribió una persona. Lo declara quien llama; no se adivina. */
   costo_manual?: boolean;
+  /**
+   * De qué tanda de maceración salieron. Null = armado directo, el camino de
+   * siempre. Con tanda, `consumos` trae SOLO envase y accesorios —la esencia ya
+   * se gastó al macerar— y el líquido se cobra por ml (ver `aplicarLote`).
+   */
+  maceracion_id?: number | null;
 }
 
 /**
@@ -57,6 +63,27 @@ const aplicarLote = async (tx: Prisma.TransactionClient, loteId: number, data: L
       nota: `Lote de ${data.cantidad} u`,
     });
     costoTotal += res.costoAplicado * Math.abs(c.cantidad);
+  }
+
+  /**
+   * EL LÍQUIDO QUE VIENE DE UNA TANDA se cobra por ml, no por materiales.
+   *
+   * Es la mitad del costo de un frasco envasado: la esencia y el diluyente ya
+   * salieron de la bodega el día de la mezcla, así que aquí solo se le suma al
+   * lote lo que ese líquido costó. Sumar los materiales otra vez sería contar
+   * dos veces la misma esencia — y es justo lo que hacía el sistema viejo.
+   */
+  if (data.maceracion_id) {
+    const [tanda, formula] = await Promise.all([
+      tx.maceracion.findUnique({
+        where: { id: data.maceracion_id }, select: { costo_ml: true },
+      }),
+      tx.formulaVolumen.findUnique({
+        where: { id: data.formula_volumen_id }, select: { ml_total: true },
+      }),
+    ]);
+    if (!tanda) throw badRequest('Esa tanda de maceración ya no existe');
+    costoTotal += num(tanda.costo_ml) * num(formula?.ml_total ?? 0) * data.cantidad;
   }
 
   /**
@@ -117,6 +144,7 @@ export const registrarProduccion = async (data: LoteInput) => prisma.$transactio
       formula_volumen_id: data.formula_volumen_id,
       perfume_id: data.perfume_id ?? null,
       envase_insumo_id: data.envase_insumo_id ?? null,
+      maceracion_id: data.maceracion_id ?? null,
       cantidad: data.cantidad,
       costo_unitario: 0,
       costo_total: 0,
@@ -153,6 +181,8 @@ export const listarProducciones = async (limite = 60) => {
     // marcar el costo que puso una persona.
     envase_insumo_id: p.envase_insumo_id,
     costo_manual: p.costo_manual,
+    /** Null = armado directo; con número, salió de esa tanda. */
+    maceracion_id: p.maceracion_id,
     historial: Array.isArray(p.historial)
       ? p.historial as unknown as { fecha: string; texto: string }[]
       : [],
@@ -207,6 +237,7 @@ export const editarProduccion = async (id: number, data: LoteInput) => prisma.$t
       formula_volumen_id: data.formula_volumen_id,
       perfume_id: data.perfume_id ?? null,
       envase_insumo_id: data.envase_insumo_id ?? null,
+      maceracion_id: data.maceracion_id ?? null,
       cantidad: data.cantidad,
       nota: data.nota ?? null,
     },

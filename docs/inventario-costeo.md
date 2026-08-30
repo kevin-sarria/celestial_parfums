@@ -575,6 +575,74 @@ en rojo cuando no hay lista. Qué se guarda:
 | Escribe otro | Ese número, como excepción | Bon Bon y Yum Yum valen más |
 | Todavía no hay lista | Nada (va al precio de respaldo) | La lista que él cree después lo alcanza igual |
 
+## Macerar y envasar: producir son DOS momentos (2026-08-30)
+
+Construido a partir del diseño del 2026-08-24
+([spec](superpowers/specs/2026-08-24-maceracion-y-envasado-design.md)). **Trae migración**
+(`20260830120000_maceracion`).
+
+Hasta ahora `registrarProduccion` hacía todo de un golpe: descontaba esencia + diluyente + **un
+envase por unidad** y daba por armados N frascos. En perfumería son dos momentos separados por
+semanas, y el dueño ya trabajaba así: su lote del 11 de agosto eran ~500 ml reposando en un frasco
+de un litro, con los 5 envases todavía vacíos en la repisa.
+
+### Las tres reglas que lo gobiernan
+
+1. **El granel se costea el día que se mezcla.** En el frasco va todo junto desde el principio, así
+   que envasar solo añade el envase y los accesorios. `maceraciones.costo_ml` queda congelado.
+2. **Cada tanda va por separado.** Con diez graneles en curso lo que importa es cuál lleva más
+   tiempo reposando; un saldo único promediado lo borra.
+3. **El saldo NO se guarda, se recalcula**: `ml_iniciales − Σ(envasados × ml de su talla) − merma`.
+   Así, corregir o borrar un envasado viejo corrige el saldo solo.
+
+### La igualdad que sostiene todo
+
+> **Macerar + envasar tiene que costar lo mismo que armar directo.**
+
+Comprobado con los números reales del lote del 11 de agosto, en aritmética y contra la base:
+
+| | |
+|---|---|
+| Granel: esencia 250 ml + diluyente 244,5 + sellador 4 + feromonas 1,5 | **$83.939,78** (500 ml → **$167,879 56/ml**) |
+| Envasado: 5 envases + 5 bolsas organza + 5 perfumeros | **$37.000** |
+| Total | **$120.939,78** → **$24.187,956 por frasco** |
+
+Es exactamente el `costo_unitario` que tiene `producciones.id = 1` en producción. Si la
+implementación deja de reproducir ese número, está mal.
+
+### Detalles que costaron una decisión
+
+- **El material del granel sale con tipo `maceracion`**, no `produccion`. No es cosmético:
+  `revertirMovimientos` busca por tipo + referencia, y con los dos bajo el mismo tipo la maceración
+  7 y el lote 7 serían indistinguibles — borrar un lote devolvería material de una maceración ajena.
+- **Envasar reutiliza `registrarProduccion`**, no una copia: un envasado ES un lote, solo que con
+  `maceracion_id`. Con tanda, `aplicarLote` no cobra materiales de líquido y en su lugar suma
+  `ml de la talla × costo_ml`.
+- **Borrar una tanda con envasados se rechaza.** Es el arreglo de fondo del susto viejo: devolvería
+  una esencia que sí se gastó, porque está dentro de los frascos ya envasados.
+- **Envasar de más avisa y deja pasar** (misma regla que los insumos que no alcanzan).
+- **Cerrar tanda** anota los ml que quedaban como merma. No genera movimiento de inventario: el
+  granel no es un insumo y no hay a quién restarle.
+
+### Convertir un lote viejo
+
+El botón *"esto en realidad está macerando"* de Producciones, y lo delicado es **qué vuelve y qué
+no**:
+
+| | |
+|---|---|
+| Envases y accesorios | **Vuelven** a la bodega: nunca se usaron |
+| Esencia y diluyente | **No vuelven**: están en el frasco. Sus movimientos se **re-etiquetan** a la tanda nueva, así que el stock no se mueve y borrar la tanda los devuelve bien |
+| Frascos armados | **Se quitan**: no existen |
+| Costo de la tanda | El del lote **menos lo que se devolvió** |
+
+Ese último renglón lo cazó una prueba, no una revisión a ojo: dejar dentro del granel la plata de
+los envases valoraría 500 ml con $25.000 de frascos que están vacíos en la estantería, y al
+envasarlos de verdad se pagarían **dos veces**.
+
+**Solo se puede convertir si sus frascos siguen completos**: si ya se vendió alguno, esos frascos
+existieron de verdad y no hay nada que convertir sin descuadrar el terminado.
+
 ## Pedido sugerido (`reposicion`)
 
 Pantalla **solo informativa**: qué material hay que reponer y cuánto pedir. No mueve stock ni

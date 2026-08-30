@@ -135,6 +135,7 @@ Primeras (sin carpeta con nombre):
 | `20260820120000_regalos_y_extras` | Quita `perfumes.regalo_automatico` y agrega `perfumes.es_accesorio` + `venta_perfume.regalo` (default 0). Ninguna ficha ni venta existente cambia de significado |
 | `20260825120000_editar_producciones` | `producciones.costo_manual` e `historial` (JSON). **El código nuevo lee esas columnas al listar CUALQUIER lote: sin aplicarla, Producciones y el aviso de "lotes por enlazar" revientan enteros.** Se quedó sin aplicar en el deploy del 2026-08-29 y el dueño estuvo días sin poder crear una ficha 1.1 — ver el aviso del runbook |
 | `20260829120000_alertas_inventario` | `insumos_costo.en_prueba` (default false) y la tabla `alertas_inventario`. Sin ella, Inventario y el pedido sugerido responden error: el backend lee `en_prueba` en cada consulta de materiales |
+| `20260830120000_maceracion` | Tabla `maceraciones`, `producciones.maceracion_id` y el valor `maceracion` en el enum `MovimientoTipo`. Producir son dos momentos: macerar y envasar. **El enum se amplía con `MODIFY`, así que la migración es segura de repetir**, pero sin ella un `POST /inventario/maceraciones` revienta con "Data truncated for column 'tipo'" |
 
 **Verificado el 2026-08-01**: la base local se reemplazó por el dump real de producción y las
 migraciones pendientes se aplicaron EN ORDEN sobre esos datos, sin perder una fila (212 perfumes,

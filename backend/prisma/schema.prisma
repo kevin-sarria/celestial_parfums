@@ -435,6 +435,7 @@ model Perfume {
   devoluciones       DevolucionPerfume[]
   cotizado_en        CotizacionItem[]
   producciones       Produccion[]
+  maceraciones       Maceracion[]
   terminado          MovimientoTerminado[]
 
   @@index([categoria_id])
@@ -1091,6 +1092,11 @@ enum MovimientoTipo {
   /// Consumo por una VENTA. Como se arma contra pedido, la venta es la que
   /// gasta los insumos; de aquí sale el costo de mercancía vendida.
   venta
+  /// Esencia y diluyente que se van a un frasco a MACERAR. Va aparte de
+  /// `produccion` porque `revertirMovimientos` busca por tipo + referencia: con
+  /// las dos cosas bajo el mismo tipo, la maceración 7 y el lote 7 serían
+  /// indistinguibles y borrar un lote devolvería material de una maceración ajena.
+  maceracion
 }
 
 /// Línea de una compra a proveedor: qué insumo, cuánto y a qué precio.
@@ -1184,6 +1190,7 @@ model FormulaVolumen {
   items             CotizacionItem[]
   accesorios        FormulaAccesorio[]
   producciones      Produccion[]
+  maceraciones      Maceracion[]
   presentaciones    Presentacion[]
 
   @@index([activo])
@@ -1426,9 +1433,56 @@ model Produccion {
   historial          Json?
   created_at         DateTime @default(now())
 
-  formula FormulaVolumen @relation(fields: [formula_volumen_id], references: [id])
-  perfume Perfume?       @relation(fields: [perfume_id], references: [id], onDelete: SetNull)
+  /// De qué tanda de maceración salieron estos frascos. Null = armado directo,
+  /// que es el camino de siempre y no cambia. Con tanda, el lote NO consume
+  /// esencia ni diluyente —ya se gastaron al macerar— y su costo sale de los ml.
+  maceracion_id      Int?
+
+  formula    FormulaVolumen @relation(fields: [formula_volumen_id], references: [id])
+  perfume    Perfume?       @relation(fields: [perfume_id], references: [id], onDelete: SetNull)
+  maceracion Maceracion?    @relation(fields: [maceracion_id], references: [id], onDelete: SetNull)
 
   @@index([fecha])
+  @@index([maceracion_id])
   @@map("producciones")
+}
+
+/// UNA TANDA PUESTA A MACERAR: el granel que reposa semanas antes de envasarse.
+///
+/// Producir son DOS momentos y el sistema creía que era uno solo: descontaba
+/// esencia + un envase por unidad y daba por armados N frascos que en realidad
+/// eran medio litro reposando en un frasco de un litro. Encontrado con el dueño
+/// el 2026-08-23 mirando su lote real de 212 VIP Black.
+///
+/// Cada tanda va SEPARADA (decisión suya): con diez graneles en curso lo que
+/// importa es cuál lleva más tiempo reposando, y un saldo único promediado lo
+/// borra. Diseño completo en
+/// `docs/superpowers/specs/2026-08-24-maceracion-y-envasado-design.md`.
+model Maceracion {
+  id                 Int       @id @default(autoincrement())
+  fecha              DateTime  @db.Date
+  perfume_id         Int
+  /// Proporción de referencia con la que se mezcló (de qué receta salió el
+  /// reparto esencia/diluyente). Se guarda para poder EXPLICAR el costo, no
+  /// para recalcularlo: el costo se congela el día de la mezcla.
+  formula_volumen_id Int?
+  ml_iniciales       Decimal   @db.Decimal(10, 2)
+  /// Costo de UN ml, congelado al mezclar. De aquí sale el costo de cada frasco.
+  costo_ml           Decimal   @db.Decimal(12, 6)
+  costo_total        Decimal   @db.Decimal(12, 2)
+  /// Cuándo estará lista. La escribe el dueño y es opcional: el reposo depende
+  /// de la fragancia y el sistema no propone plazos ni bloquea nada.
+  listo_estimado     DateTime? @db.Date
+  /// Null = sigue viva. Con fecha = cerrada, y `ml_merma` dice qué se perdió.
+  cerrada_en         DateTime? @db.Date
+  ml_merma           Decimal?  @db.Decimal(10, 2)
+  nota               String?   @db.VarChar(255)
+  created_at         DateTime  @default(now())
+
+  perfume   Perfume         @relation(fields: [perfume_id], references: [id])
+  formula   FormulaVolumen? @relation(fields: [formula_volumen_id], references: [id], onDelete: SetNull)
+  envasados Produccion[]
+
+  @@index([cerrada_en])
+  @@map("maceraciones")
 }
