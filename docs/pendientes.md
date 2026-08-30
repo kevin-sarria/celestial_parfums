@@ -18,19 +18,35 @@ ofreció borrar la base. Contra lo segundo hay ya un freno de mano en `npm run p
 **Falta confirmar en pantalla**: que el aviso de *lotes por enlazar* aparece en Producciones con
 sus 5 lotes, y usar *Fusionar* con los dos perfumeros (ids 9 y 11).
 
-## 🔴 Plata sin costear: los créditos guardan la línea SIN TALLA
+## 🟠 Plata sin costear: 4 ventas de agosto sin talla (causa YA corregida)
 
-Encontrado el 2026-08-29 midiendo el respaldo. **Sin talla, el sistema no sabe qué receta descontar
-y la venta queda con `costo_mercancia = 0`.**
+**La causa está encontrada y arreglada; lo que queda es corregir los registros.**
 
-| Crédito | Venta | Fecha | Valor | Qué pasó |
+**Por qué pasó**: hasta el 2026-08-24, `createCredito` armaba su venta **a mano** con
+`tx.venta.create` y **solo `perfume_ids`** — ids pelados, sin talla. El formulario SÍ mandaba
+`lineas` con su `ml`; el crédito las ignoraba. Sin talla el sistema no sabe qué receta descontar, y
+la venta queda con `costo_mercancia = 0`.
+
+Lo arregló el commit `020f55c` (2026-08-24), que hizo que Créditos y Ventas entren por el mismo
+`escribirVentaConConsumo`, **y llegó a producción el 2026-08-29**. Cubierto por
+`credito.inventario.bd.test.ts` (7 pruebas): *"descuenta la receta de la talla que dice la línea"*.
+
+**Lo que quedó tocado** (medido contra el respaldo del 29):
+
+| Venta | Fecha | Quién | Valor | Qué hacer |
 |---|---|---|---|---|
-| 7 (David Sánchez) | 1281 | 23-ago | $140.000 | Althaïr + Khamrah 100ML, **las dos líneas sin talla**. El frasco 1.1 de Khamrah sigue figurando en inventario aunque se entregara |
-| 8 (Santy Tabares) | 1289 | 26-ago | $90.000 | Mandarin Sky 100ML, sin talla, costo $0 |
+| 1269 | 05-ago | Maria Valentina | $56.250 | Venta normal. El texto dice "30ML": editarla y elegir esa talla |
+| 1272 | 08-ago | Luisa Ovalle (crédito 6) | $78.750 | 3 líneas sin talla: Cloud, Coconut Passion y Yum Yum |
+| 1281 | 23-ago | David Sánchez (crédito 7) | $140.000 | Althaïr 100ML + **Khamrah 1.1**. Antes hay que crear la ficha 1.1 desde el aviso de lotes |
+| 1289 | 26-ago | Santy Tabares (crédito 8) | $90.000 | Mandarin Sky 100ML |
 
-De las 4 ventas de agosto con líneas sin talla, **3 son créditos**. `createCredito` solo pone la
-talla si el formulario manda `lineas`; si no, la deduce del texto y la deja en null.
-**PENDIENTE: investigar por qué el formulario no las manda** (pregunté y quedó sin responder).
+**$365.000 sin costo.** Se arregla abriendo cada uno, eligiendo la talla y guardando: al guardar, el
+sistema devuelve lo de antes y descuenta lo de ahora. **Ojo**: ese material sale del inventario
+**hoy**, al costo promedio de hoy — es lo correcto (salió de la bodega de verdad), pero las esencias
+van a bajar de golpe cuando lo haga.
+
+**El orden importa en el crédito 7**: primero crear la ficha *Khamrah 1.1* desde el aviso de lotes
+por enlazar; si no, no está en el buscador y volvería a quedar apuntando al Khamrah corriente.
 
 ## 🟠 Secciones que se esconden igual cuando FALLAN que cuando no hay nada
 
