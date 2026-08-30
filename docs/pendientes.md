@@ -190,10 +190,17 @@ mucho de la tabla de arriba, avisar antes de seguir.
 
 ## Estado del entorno local (importante para retomar)
 
+> ### ⚠️ Un apagón borró el índice de MySQL local esa misma noche (2026-08-29)
+>
+> Se reconstruyó todo desde `Downloads/backup-celestial-2026-08-29.sql` y **las 391 pruebas volvieron
+> a pasar**. Lo que cambió respecto a lo de abajo: **`celestial_prod_20260814` y
+> `celestial_prod_20260825` ya no existen** (sus carpetas quedaron en `data/_roto_2026-08-29` por si
+> alguna vez hicieran falta) y `perfumes_db` es ahora una copia limpia del respaldo del 29 con sus
+> dos migraciones aplicadas. El diagnóstico completo, en [`gotchas.md`](gotchas.md).
+
 - **`celestial_prod_20260829`**: copia real del servidor del **2026-08-29**, la más reciente
   (`Downloads/backup-celestial-2026-08-29.sql`). Es contra la que se mide de ahora en adelante.
-  **Ojo: se le aplicó a mano la migración `20260825120000_editar_producciones`** para comprobar que
-  arreglaba el enlazador, así que ya NO refleja el estado exacto del servidor en ese punto.
+  Se recargó limpia esa noche, así que refleja el respaldo tal cual.
 - **Las dos bases de trabajo (`perfumes_db` y `perfumes_test`) tienen aplicada a mano
   `20260829120000_alertas_inventario`** y registrada en `_prisma_migrations`, como manda el gotcha
   del MySQL de XAMPP.

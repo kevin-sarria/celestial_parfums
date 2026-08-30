@@ -322,6 +322,43 @@ causa por la que `prisma migrate diff` lo revienta (ver abajo).
   golpe es una oportunidad de corromper las tablas Aria (ver abajo), así que no se hace a la
   ligera.
 
+## Un apagón dejó a MySQL sin su índice de tablas (2026-08-29, noche)
+
+Síntoma: el backend local respondía error en TODAS las pantallas, y desde `mysql.exe`:
+
+```
+ERROR 1932 (42S02): Table 'perfumes_db.perfumes' doesn't exist in engine
+```
+
+**No era la tabla: era el índice de InnoDB.** `data/ibdata1` guarda el diccionario que dice qué
+tablas existen y en qué archivo vive cada una. Tras el corte de luz, ese archivo había quedado
+**reemplazado por la copia en blanco que XAMPP trae de fábrica** — comprobado con `md5sum`: el de
+`data/` y el de `backup/` eran idénticos, y el suyo estaba fechado en **2019**.
+
+Por eso los síntomas parecían contradictorios y conviene reconocerlos juntos:
+
+| Lo que se ve | Por qué |
+|---|---|
+| El servidor arranca y `SELECT 1` funciona | Las tablas de sistema (`mysql.*`) son **Aria**, no InnoDB |
+| TODAS las bases fallan, no una | El diccionario es uno solo para toda la instalación |
+| Los archivos siguen ahí (103 `.frm`/`.ibd`) | Solo se perdió el índice, no los datos |
+| Crear una tabla NUEVA funciona | El motor está sano; es la prueba que confirma el diagnóstico |
+
+**Cómo se arregló** (10 minutos, y las bases locales son todas reconstruibles: producción vive en el
+VPS y el respaldo del día estaba en `Downloads`):
+
+1. `mysqladmin -u root shutdown` — nunca matando el proceso.
+2. **Mover** (no borrar) las carpetas huérfanas a `data/_roto_2026-08-29`. Quedan como
+   `#mysql50#_roto_2026-08-29` en `SHOW DATABASES`, y es a propósito: si algún día hiciera falta
+   rescatar un `.ibd`, siguen ahí.
+3. Arrancar, `CREATE DATABASE perfumes_db` y cargar el respaldo con `--default-character-set=utf8mb4`.
+4. Aplicar a mano las migraciones que el respaldo no traía y registrarlas en `_prisma_migrations`
+   (receta de abajo). `perfumes_test` **se rehace sola**: la crea el arranque de las pruebas.
+
+**Prevención**: es el mismo consejo que el punto siguiente, y ya van dos veces el mismo día. Un
+apagón con MySQL prendido corrompe la base local; una UPS pequeña le da al equipo los dos minutos
+que necesita para apagarse bien.
+
 ## MySQL de XAMPP que arranca y se muere a los segundos
 
 **LA CAUSA RAÍZ ERA `innodb_log_file_size=5M`.** Reparar las tablas Aria era tratar el síntoma:
