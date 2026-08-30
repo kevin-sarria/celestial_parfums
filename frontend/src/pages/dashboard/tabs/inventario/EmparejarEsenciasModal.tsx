@@ -5,6 +5,8 @@ import Modal from '../../../../components/Modal';
 import { Button } from '@/components/ui/button';
 import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
+import { useConsultaDeApoyo } from '../../../../application/hooks/useConsultaDeApoyo';
+import { NoSePudoCargar } from '../../../../components/NoSePudoCargar';
 
 interface Candidato { id: number; nombre: string; genero: string | null; parecido: number }
 
@@ -56,20 +58,17 @@ export function EmparejarEsenciasModal({ onClose, onGuardado }: {
  * ocupa sitio para siempre.
  */
 export function AvisoEsenciasSinPerfume({ onGuardado }: { onGuardado: () => void }) {
-  const [pendientes, setPendientes] = useState<number | null>(null);
   const [abierto, setAbierto] = useState(false);
   const [version, setVersion] = useState(0);
+  const { dato, fallo, recargar: reintentar } =
+    useConsultaDeApoyo<Pendiente[]>(urls.perfumes.esencia.emparejar, version);
+  const pendientes = dato?.length ?? 0;
 
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      // Si falla no se avisa: es un recordatorio, y la pantalla sirve igual sin él.
-      const res = await http.get<{ data?: Pendiente[] }>(urls.perfumes.esencia.emparejar);
-      if (res.ok && vivo) setPendientes((res.cuerpo?.data ?? []).length);
-    })();
-    return () => { vivo = false; };
-  }, [version]);
-
+  // Este aviso habla de PLATA —esas ventas entran con costo cero—, así que si no
+  // se pudo consultar hay que decirlo en vez de desaparecer.
+  if (fallo) {
+    return <NoSePudoCargar que="si hay esencias sin su perfume" onReintentar={reintentar} />;
+  }
   if (!pendientes) return null;
 
   return (

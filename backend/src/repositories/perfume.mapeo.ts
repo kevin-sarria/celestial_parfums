@@ -257,6 +257,15 @@ export const mapPerfume = (p: PerfumeRow) => {
     motivo_agotado: motivo,
     /** Frascos de este perfume que ya están armados, sumando sus tallas. */
     frascos_armados: frascosArmados(p),
+    /**
+     * Unidades del insumo que ES el producto (la botella original, la gorra).
+     * Null = no es un producto comprado o todavía no tiene insumo asignado.
+     *
+     * No cuesta una consulta más: `insumo_producto` ya viaja en `perfumeInclude`
+     * desde que la regla de agotado lo necesita. Era la única razón por la que
+     * la columna Stock de Productos se había quedado esperando.
+     */
+    producto_stock: p.insumo_producto ? Number(p.insumo_producto.stock) : null,
     /** Los 1.1: solo se venden si ya están armados, nunca contra pedido. */
     solo_armado: p.solo_armado,
     /** Es un accesorio (perfumero, bolsa, tarjeta), no una fragancia. */

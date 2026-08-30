@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
+import { useConsultaDeApoyo } from '../../../../application/hooks/useConsultaDeApoyo';
+import { NoSePudoCargar } from '../../../../components/NoSePudoCargar';
 import { Section } from '../../ui';
 import { TarjetaLotePorEnlazar } from './TarjetaLotePorEnlazar';
 
@@ -34,23 +34,9 @@ interface Props {
  * para mover frascos sería una tercera versión de la misma regla.
  */
 export function LotesPorEnlazar({ perfumes, onResuelto }: Props) {
-  const [lotes, setLotes] = useState<LotePorEnlazar[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [fallo, setFallo] = useState(false);
-
-  const cargar = async () => {
-    setCargando(true);
-    try {
-      const res = await http.get<{ data: LotePorEnlazar[] }>(urls.inventario.produccionesPorEnlazar);
-      if (!res.ok) throw new Error(res.error);
-      setLotes(res.cuerpo?.data ?? []);
-      setFallo(false);
-    } catch {
-      setLotes([]);
-      setFallo(true);
-    } finally { setCargando(false); }
-  };
-  useEffect(() => { cargar(); }, []);
+  const { dato, fallo, cargando, recargar: cargar } =
+    useConsultaDeApoyo<LotePorEnlazar[]>(urls.inventario.produccionesPorEnlazar);
+  const lotes = dato ?? [];
 
   const resuelto = () => { cargar(); onResuelto(); };
 
@@ -67,17 +53,7 @@ export function LotesPorEnlazar({ perfumes, onResuelto }: Props) {
    * cuando no pudo enterarse.
    */
   if (fallo) {
-    return (
-      <Section>
-        <p className="text-[12.5px] text-muted-foreground">
-          No se pudo comprobar si hay lotes por enlazar.{' '}
-          <button type="button" onClick={cargar}
-            className="font-medium text-foreground underline underline-offset-2">
-            Reintentar
-          </button>
-        </p>
-      </Section>
-    );
+    return <Section><NoSePudoCargar que="si hay lotes por enlazar" onReintentar={cargar} /></Section>;
   }
 
   // La sección desaparece sola cuando no queda ninguno, como "Frascos ya armados".

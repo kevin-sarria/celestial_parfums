@@ -1,9 +1,10 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Check, ChevronDown, TriangleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
+import { useConsultaDeApoyo } from '../../../../application/hooks/useConsultaDeApoyo';
+import { NoSePudoCargar } from '../../../../components/NoSePudoCargar';
 
 /** Los cuatro contadores con los que se deduce el progreso. */
 interface Progreso {
@@ -47,18 +48,13 @@ interface Paso {
  * rechazó. Ver docs/superpowers/specs/2026-08-04-primeros-pasos-inventario-design.md
  */
 export function PrimerosPasos({ onContar, onAsignarEsencias, onAgregarMaterial, recargar = 0 }: PrimerosPasosProps) {
-  const [p, setP] = useState<Progreso | null>(null);
   const [abierto, setAbierto] = useState(true);
+  const { dato: p, fallo, cargando, recargar: reintentar } =
+    useConsultaDeApoyo<Progreso>(urls.inventario.primerosPasos, recargar);
 
-  useEffect(() => {
-    let vivo = true;
-    // Silencioso a propósito: es una ayuda, no la pantalla. Si falla, la
-    // pestaña sigue sirviendo igual y no tiene sentido alarmar.
-    http.get<{ data?: Progreso }>(urls.inventario.primerosPasos)
-      .then(r => { if (vivo && r.ok && r.cuerpo?.data) setP(r.cuerpo.data); });
-    return () => { vivo = false; };
-  }, [recargar]);
-
+  if (cargando) return null;
+  // No poder preguntar no es lo mismo que no tener nada que enseñar.
+  if (fallo) return <NoSePudoCargar que="en qué van tus primeros pasos" onReintentar={reintentar} />;
   if (!p) return null;
 
   const pasos: Paso[] = [

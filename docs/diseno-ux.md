@@ -547,3 +547,26 @@ Dos decisiones de redacción que importan más de lo que parecen:
 
 La barra salió a `inventario/AccionesInventario.tsx` al hacerlo: `InventarioTab.tsx` llegaba a 540
 líneas y son botones que no saben nada del inventario, solo qué hacer al pulsarlos.
+
+## Una sección que falla NO se esconde: la pieza compartida (2026-08-30)
+
+La regla ya estaba escrita —*puede callarse cuando no hay nada que mostrar, nunca cuando no pudo
+preguntarlo*— y aun así se incumplía en seis sitios, porque cada aviso traía su propio `catch` mudo.
+Una regla que depende de que cada quien la recuerde no es una regla.
+
+Ahora la obliga una pieza: **`useConsultaDeApoyo`** (devuelve `dato`, `fallo` y `recargar` — el
+`fallo` va aparte justo para que no se pueda confundir con "no hay nada") y **`<NoSePudoCargar>`**,
+un renglón discreto con *Reintentar*.
+
+Discreto a propósito: no es un error de la pantalla, es un dato que no se pudo traer. Un recuadro
+rojo a media pantalla por un aviso secundario le enseña al dueño a ignorar los recuadros rojos.
+
+## La columna que dice CUÁNTAS quedan (2026-08-30)
+
+En Productos, *Unidades*. El número no significa lo mismo en cada familia, así que **la etiqueta lo
+dice**: un 1.1 va por *frascos armados* (solo se vende lo que ya está hecho) y un comprado por lo
+que hay *en bodega*.
+
+Y cuando no se puede saber —un comprado sin material asignado— dice **"—", nunca "0"**: cero
+significa "no tengo", y aquí lo cierto es "no lo sé". Es el mismo criterio por el que un `comprado`
+sin insumo tampoco se marca agotado.

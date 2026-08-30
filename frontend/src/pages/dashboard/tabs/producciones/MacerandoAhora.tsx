@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { FlaskConical, PackageCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
+import { useConsultaDeApoyo } from '../../../../application/hooks/useConsultaDeApoyo';
+import { NoSePudoCargar } from '../../../../components/NoSePudoCargar';
 import { formatPrice } from '../../helpers';
 import { Section, SectionTitle } from '../../ui';
 import { EnvasadoModal } from '../inventario/EnvasadoModal';
@@ -33,24 +35,10 @@ interface Props {
 }
 
 export function MacerandoAhora({ formulas, perfumes, insumos, onCambio }: Props) {
-  const [tandas, setTandas] = useState<Tanda[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [fallo, setFallo] = useState(false);
   const [envasando, setEnvasando] = useState<number | null>(null);
-
-  const cargar = async () => {
-    setCargando(true);
-    try {
-      const r = await http.get<{ data: Tanda[] }>(urls.inventario.maceraciones);
-      if (!r.ok) throw new Error(r.error);
-      setTandas(r.cuerpo?.data ?? []);
-      setFallo(false);
-    } catch {
-      setTandas([]);
-      setFallo(true);
-    } finally { setCargando(false); }
-  };
-  useEffect(() => { cargar(); }, []);
+  const { dato, fallo, cargando, recargar: cargar } =
+    useConsultaDeApoyo<Tanda[]>(urls.inventario.maceraciones);
+  const tandas = dato ?? [];
 
   const cerrar = async (t: Tanda) => {
     // Confirmar porque anota una PÉRDIDA: los ml que quedaban se dan por
@@ -74,17 +62,7 @@ export function MacerandoAhora({ formulas, perfumes, insumos, onCambio }: Props)
    * se ve perfectamente normal.
    */
   if (fallo) {
-    return (
-      <Section>
-        <p className="text-[12.5px] text-muted-foreground">
-          No se pudo comprobar si tienes algo macerando.{' '}
-          <button type="button" onClick={cargar}
-            className="font-medium text-foreground underline underline-offset-2">
-            Reintentar
-          </button>
-        </p>
-      </Section>
-    );
+    return <Section><NoSePudoCargar que="si tienes algo macerando" onReintentar={cargar} /></Section>;
   }
 
   if (!tandas.length) return null;

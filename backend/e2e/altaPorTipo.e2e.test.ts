@@ -1,6 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
+import { prisma } from '../src/config/prisma';
 import { abrirDashboard, cerrarNavegador, irA } from './navegador';
 
 /**
@@ -56,4 +57,51 @@ describe('el alta de un producto', () => {
 
     await contexto.close();
   }, 90_000);
+});
+
+/**
+ * RECORRIDO — la pestaña Productos dice CUÁNTAS UNIDADES quedan.
+ *
+ * Llevaba dos olas esperando "porque traer las unidades sería una consulta más
+ * en el camino caliente del catálogo". Al construir la maceración se comprobó
+ * que no: los frascos armados y el stock del material ya viajaban en la misma
+ * respuesta. La columna solo hacía falta pintarla.
+ */
+describe('las unidades en la pestaña Productos', () => {
+  it('un 1.1 se cuenta por frascos armados y un comprado por su material', async () => {
+    const marca = Date.now();
+    const presentacion = await prisma.presentacion.findFirstOrThrow({ orderBy: { id: 'asc' } });
+
+    // Un 1.1 con 3 frascos armados: se cuenta por lo que está hecho.
+    const once = await prisma.perfume.create({
+      data: {
+        nombre: `Unidades 1.1 ${marca}`, precio: 150000, solo_armado: true, publicado: false,
+        presentaciones: { create: { presentacion_id: presentacion.id, stock: 3 } },
+      },
+    });
+    // Un comprado con 7 unidades de su material: se cuenta por la bodega.
+    const material = await prisma.insumoCosto.create({
+      data: { nombre: `Gorra unidades ${marca}`, tipo: 'accesorio', precio: 25000, stock: 7 },
+    });
+    const comprado = await prisma.perfume.create({
+      data: {
+        nombre: `Unidades comprado ${marca}`, precio: 40000, publicado: false,
+        tipo_producto: 'comprado', es_accesorio: true, insumo_producto_id: material.id,
+      },
+    });
+
+    const { contexto, pagina } = await abrirDashboard();
+    await irA(pagina, '/dashboard/productos');
+    await pagina.waitForSelector('text=Productos');
+
+    for (const [nombre, unidades] of [[once.nombre, '3'], [comprado.nombre, '7']] as const) {
+      await pagina.getByPlaceholder(/Buscar/).first().fill(nombre);
+      const fila = pagina.locator('tr').filter({ hasText: nombre }).first();
+      await fila.waitFor({ timeout: 20_000 });
+      await expect.poll(() => fila.textContent(), { timeout: 15_000 }).toContain(unidades);
+    }
+
+    await pagina.screenshot({ path: foto('productos-unidades') });
+    await contexto.close();
+  }, 120_000);
 });

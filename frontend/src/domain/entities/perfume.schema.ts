@@ -104,6 +104,8 @@ export const perfumeSchema = z.object({
   motivo_agotado: z.enum(['sin_esencia', 'sin_armados', 'sin_producto']).nullable().default(null),
   /** Frascos de este perfume que ya están armados, sumando todas sus tallas. */
   frascos_armados: z.number().default(0),
+  /** Unidades del insumo que ES el producto (un comprado). Null = no aplica. */
+  producto_stock: z.number().nullable().default(null),
   /** Los 1.1: solo se venden si ya están armados, nunca contra pedido. */
   solo_armado: z.boolean().default(false),
   /** Es un accesorio (perfumero, bolsa, tarjeta), no una fragancia. */

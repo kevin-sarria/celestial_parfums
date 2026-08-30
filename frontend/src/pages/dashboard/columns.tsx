@@ -308,6 +308,19 @@ export const perfumesColumns: ColumnDef<Perfume>[] = [
  * fragancia. A cambio entran las dos que aquí sí se miran a diario — de qué
  * clase es y cuántas unidades quedan.
  */
+/**
+ * Cuántas unidades quedan de un producto, según cómo se consigue.
+ *
+ * Null = no se puede saber (un comprado al que todavía no se le asignó su
+ * material). Se devuelve null y no cero: cero diría "no tengo", y lo cierto es
+ * "no lo sé" — marcar un agotado inventado escondería cosas que sí se tienen.
+ */
+const unidadesDeProducto = (p: Perfume): number | null => {
+  if (p.solo_armado) return p.frascos_armados;
+  if (p.tipo_producto === 'comprado' || p.es_accesorio) return p.producto_stock;
+  return p.frascos_armados;
+};
+
 export const productosColumns: ColumnDef<Perfume>[] = [
   columnaImagen<Perfume>(p => p.imagen_url, p => p.nombre),
   { key: 'nombre', header: 'Nombre', type: 'string', getValue: p => p.nombre, className: cellName },
@@ -321,6 +334,29 @@ export const productosColumns: ColumnDef<Perfume>[] = [
     render: p => formatPrice(p.precio), className: cellPrice, noTruncate: true },
   { key: 'categoria', header: 'Categoria', type: 'string', getValue: p => p.categoria ?? '',
     render: p => p.categoria ?? '—', className: cellMeta, noTruncate: true },
+  /**
+   * CUÁNTAS UNIDADES QUEDAN, que es lo que esta pantalla no decía.
+   *
+   * El número no significa lo mismo en cada familia, así que se dice cuál es:
+   * un 1.1 se cuenta por FRASCOS ARMADOS —solo se vende lo que ya está hecho— y
+   * un comprado por las unidades del material que ES el producto.
+   *
+   * No cuesta una consulta más: los dos datos ya viajaban en la respuesta del
+   * catálogo. Era la razón por la que esta columna llevaba dos olas esperando.
+   */
+  { key: 'stock', header: 'Unidades', type: 'number',
+    getValue: p => unidadesDeProducto(p) ?? -1,
+    render: p => {
+      const n = unidadesDeProducto(p);
+      if (n === null) return <span className={cellMeta}>—</span>;
+      return (
+        <span className={n <= 0 ? 'font-medium text-destructive' : undefined}>
+          {n}
+          <SubText>{p.solo_armado || !p.es_accesorio ? 'armadas' : 'en bodega'}</SubText>
+        </span>
+      );
+    },
+    className: cellMeta, noTruncate: true, filterable: false },
   { key: 'estado', header: 'Estado', type: 'string',
     getValue: p => [
       p.publicado ? '' : 'Fuera de la tienda',

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Modal from '../../../../components/Modal';
-import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
+import { useConsultaDeApoyo } from '../../../../application/hooks/useConsultaDeApoyo';
+import { NoSePudoCargar } from '../../../../components/NoSePudoCargar';
 import { hoy } from '../../../../utils/fechas';
 import { ETIQUETA_AMBITO, type AlertaDisparada } from './ambitos';
 
@@ -66,21 +67,29 @@ export function AvisoAlertas({ onVerPedido, recargarCon }: {
    */
   recargarCon?: string;
 }) {
-  const [alertas, setAlertas] = useState<AlertaDisparada[]>([]);
   const [cerradas, setCerradas] = useState<Record<string, string>>(leerCerradas);
-
-  useEffect(() => {
-    // Silencioso a propósito: si falla, el dashboard entra igual. Un aviso que
-    // no se pudo cargar no puede bloquear la pantalla de trabajo.
-    http.get<{ data: AlertaDisparada[] }>(urls.inventario.alertasActivas)
-      .then((r) => { if (r.ok && r.cuerpo?.data) setAlertas(r.cuerpo.data); });
-  }, [recargarCon]);
+  const { dato, fallo, recargar } =
+    useConsultaDeApoyo<AlertaDisparada[]>(urls.inventario.alertasActivas, recargarCon);
+  const alertas = dato ?? [];
 
   const cerrar = (a: AlertaDisparada) => {
     const firma = firmaDe(a);
     guardarCerrada(firma);
     setCerradas((prev) => ({ ...prev, [firma]: '1' }));
   };
+
+  /**
+   * Si no se pudo preguntar, se DICE. Este aviso es el que avisa de que se está
+   * acabando el material: callarse cuando falla lo vuelve inútil justo el día
+   * que algo va mal.
+   */
+  if (fallo) {
+    return (
+      <div className="rounded-xl border border-border bg-card px-3.5 py-2.5">
+        <NoSePudoCargar que="si tienes material por debajo del mínimo" onReintentar={recargar} />
+      </div>
+    );
+  }
 
   const visibles = alertas.filter((a) => !cerradas[firmaDe(a)]);
   if (!visibles.length) return null;

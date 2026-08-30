@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 30 de agosto de 2026.** Todo compila, **417 pruebas en verde** (279 backend +
-84 frontend + 54 recorridos, más 1 saltada a propósito) y el linter del frontend en cero.
+**Última sesión: 30 de agosto de 2026.** Todo compila, **418 pruebas en verde** (279 backend +
+84 frontend + 55 recorridos, más 1 saltada a propósito) y el linter del frontend en cero.
 
 ## ✅ Producción está al día (2026-08-29, tarde)
 
@@ -48,19 +48,42 @@ van a bajar de golpe cuando lo haga.
 **El orden importa en el crédito 7**: primero crear la ficha *Khamrah 1.1* desde el aviso de lotes
 por enlazar; si no, no está en el buscador y volvería a quedar apuntando al Khamrah corriente.
 
-## 🟠 Secciones que se esconden igual cuando FALLAN que cuando no hay nada
+## 🟡 El aviso del build: el paquete del dashboard pasó de 500 kB (2026-08-30)
 
-**La regla**: una sección puede callarse cuando **no hay nada que mostrar**, nunca cuando **no pudo
-preguntarlo**. Son dos estados distintos y varias los pintan igual, con un `catch` mudo que devuelve
-`null`.
+El dueño lo vio al desplegar. **No es un error**: el build termina en `✓ built` y la tienda queda
+bien. Es un aviso de Vite y dice esto, medido:
 
-No es teoría: eso hizo **invisible durante días** el deploy a medias del 29 —el endpoint respondía
-error por una columna que faltaba y el dueño solo veía una pantalla normal—.
+| Archivo | Tamaño | Comprimido (lo que de verdad viaja) |
+|---|---|---|
+| `DashboardPage` | **509 kB** | 129 kB |
+| `jspdf` (el PDF del catálogo) | 399 kB | 129 kB |
+| `html2canvas` | 199 kB | 46 kB |
 
-- ✅ `LotesPorEnlazar` — **arreglado el 2026-08-29**: si la consulta falla, sale un renglón discreto
-  con "Reintentar".
-- ⬜ Falta el mismo tratamiento en `FrascosArmados`, `PrimerosPasos`, `AvisoEsenciasSinPerfume` y
-  `AvisoAlertas`.
+**A quién le afecta**: solo al dueño, y solo la primera vez que abre el dashboard en un navegador
+nuevo (después queda en caché). La TIENDA no lo carga — el dashboard va en su propio archivo desde
+que se separó, y por eso este número creció sin tocar la velocidad de los clientes.
+
+Lo que hay que hacer cuando se atienda: partir el dashboard por pestañas con `import()` perezoso,
+empezando por las que casi no se abren (Reportes, Cotizaciones, Contenido). No urge; se anota para
+que no crezca en silencio.
+
+## ✅ Las secciones mudas y la columna Stock — HECHAS (2026-08-30)
+
+**El `catch` mudo, cerrado en los seis sitios.** La regla —*una sección puede callarse cuando no
+hay nada que mostrar, nunca cuando no pudo preguntarlo*— dejó de estar escrita solo en la
+documentación y ahora la obliga una pieza compartida:
+`useConsultaDeApoyo` + `<NoSePudoCargar>`. Si la consulta falla sale un renglón discreto con
+*Reintentar* en vez de desaparecer. Cubre `LotesPorEnlazar`, `MacerandoAhora`, `AvisoAlertas`,
+`PrimerosPasos`, `PrimerosPasosProductos` y `AvisoEsenciasSinPerfume`.
+
+*(`FrascosArmados` no necesitaba arreglo: sus datos llegan con la consulta principal de Inventario,
+que ya tiene su franja de error con Reintentar.)*
+
+**La columna Unidades en Productos**, que llevaba dos olas esperando "porque sería una consulta más
+en el camino caliente del catálogo". No lo era: los frascos armados y el stock del material **ya
+viajaban** en la misma respuesta. Un 1.1 se cuenta por frascos armados y un comprado por las
+unidades de su material; cuando no se puede saber dice "—" y no "0", porque cero significaría
+"no tengo". Con su recorrido en navegador.
 
 ## ✅ Los 3 arreglos de los 1.1 — HECHOS (2026-08-29), sin desplegar
 
