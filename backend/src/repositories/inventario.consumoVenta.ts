@@ -115,12 +115,35 @@ export const recetaDe = async (perfumeId: number, ml: number | null) => {
  * se devolvía y nadie lo leía, así que una venta que no descontó nada se veía
  * igual de bien que una normal.
  */
-export const consumirPorVenta = async (
+export const consumirPorVenta = (
   tx: Prisma.TransactionClient,
   ventaId: number,
   fecha: Date,
   lineas: { perfume_id: number; ml: number | null; cantidad: number }[],
+) => descontarSalida(tx, { referenciaId: ventaId, fecha, lineas });
+
+/**
+ * EL MOTOR: producto que SALE, sea por una venta o por una garantía.
+ *
+ * Son la misma operación —un frasco se va— y solo cambia el porqué, así que
+ * cambia el `tipo` del movimiento y nada más. Estaba escrito solo para ventas y
+ * la reposición de una devolución habría acabado siendo una copia con otro
+ * nombre; la copia se habría quedado atrás la primera vez que se tocara esta.
+ */
+export const descontarSalida = async (
+  tx: Prisma.TransactionClient,
+  opciones: {
+    referenciaId: number;
+    fecha: Date;
+    lineas: { perfume_id: number; ml: number | null; cantidad: number }[];
+    tipo?: 'venta' | 'garantia';
+    /** Texto que queda en el historial del material ("Garantía #12"). */
+    etiqueta?: string;
+  },
 ) => {
+  const { referenciaId, fecha, lineas } = opciones;
+  const tipo = opciones.tipo ?? 'venta';
+  const etiqueta = opciones.etiqueta ?? `Venta #${referenciaId}`;
   let costo = 0;
   const sinCostear: string[] = [];
   const avisos: string[] = [];
@@ -135,7 +158,7 @@ export const consumirPorVenta = async (
      */
     const armado = await sacarDeTerminado(tx, {
       perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad,
-      ventaId, fecha,
+      ventaId: referenciaId, fecha, tipo, etiqueta,
     });
     costo += armado.costo;
 
@@ -165,11 +188,11 @@ export const consumirPorVenta = async (
     for (const it of receta.items) {
       const res = await aplicarMovimiento(tx, {
         insumo_id: it.insumo_id,
-        tipo: 'venta',
+        tipo,
         cantidad: -r3(it.cantidad * porArmar),
         fecha,
-        referencia_id: ventaId,
-        nota: `Venta #${ventaId}`,
+        referencia_id: referenciaId,
+        nota: etiqueta,
       });
       costo += res.costoAplicado * it.cantidad * porArmar;
     }

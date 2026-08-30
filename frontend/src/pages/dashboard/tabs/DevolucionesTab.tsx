@@ -10,6 +10,7 @@ import DevolucionForm from '../devoluciones/DevolucionForm';
 import { formatPrice, fmtDate } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
+import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import {
   ESTADOS, PLAZO_LEGAL_HABILES, diasHabilesDesde, etiquetaMotivo, etiquetaSolucion, metaEstado,
@@ -48,9 +49,15 @@ export function DevolucionesTab() {
   };
   useEffect(() => { load(); }, [filtro]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  /**
+   * Cerrar o reabrir un caso es lo que mueve el inventario, así que aquí es donde
+   * hay que enseñar lo que el servidor no pudo hacer (repuso un 1.1 sin tenerlo
+   * armado, una línea sin costear). Sin esto se movería en silencio.
+   */
   const cambiarEstado = async (d: Devolucion, estado: DevolucionEstado) => {
-    const res = await http.patch(urls.devoluciones.estado(d.id), { estado });
+    const res = await http.patch<Respuesta>(urls.devoluciones.estado(d.id), { estado });
     if (!res.ok) { toast.error(res.error, { id: 'dev-estado' }); return; }
+    mostrarAvisos(res.cuerpo);
     load();
   };
 

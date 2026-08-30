@@ -1,7 +1,7 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 30 de agosto de 2026.** Todo compila, **418 pruebas en verde** (279 backend +
-84 frontend + 55 recorridos, más 1 saltada a propósito) y el linter del frontend en cero.
+**Última sesión: 30 de agosto de 2026.** Todo compila, **430 pruebas en verde** (290 backend +
+84 frontend + 56 recorridos, más 1 saltada a propósito) y el linter del frontend en cero.
 
 ## ✅ Producción está al día (2026-08-29, tarde)
 
@@ -47,6 +47,41 @@ van a bajar de golpe cuando lo haga.
 
 **El orden importa en el crédito 7**: primero crear la ficha *Khamrah 1.1* desde el aviso de lotes
 por enlazar; si no, no está en el buscador y volvería a quedar apuntando al Khamrah corriente.
+
+## 🔴 PRIORITARIO: un 1.1 no lleva bolsa ni perfumero, y el sistema se los cobra
+
+**Lo dijo el dueño el 2026-08-30**: *"al generar un perfume 1.1 estos normalmente no llevan bolsa de
+organza o perfumero… actualmente el coste no es el real"*.
+
+**Qué pasa hoy**, medido contra su base:
+
+| Receta | Accesorios que asigna | Costo |
+|---|---|---|
+| 30 ml | Bolsa Organza + Perfumero Recargable | $2.400 |
+| 100 ml | Bolsa Organza + Perfumero Recargable | $2.400 |
+| 75 ml | Bolsa Organza | $300 |
+| 6 ml | Bolsa Organza | $300 |
+
+Los accesorios cuelgan **de la receta del tamaño**, así que todo lo que se arme en 100 ml —1.1 y
+contratipo por igual— carga los mismos $2.400. En un 1.1 eso es costo inventado, y además **saca de
+la bodega un perfumero que nunca se usó**: parte del agujero que ese material tiene en negativo.
+
+**La buena noticia: la mitad ya existe.** `perfume_presentacion.accesorios` es una columna JSON con
+los ids de los accesorios propios de ESA ficha en ESA talla, y `recetaDe` ya la prefiere sobre los de
+la receta (`accesoriosPropios ?? formula.accesorios`). **Hoy la usan 0 filas** porque nunca se hizo
+la pantalla para llenarla.
+
+**Lo que falta, entonces:**
+
+1. **Poder editarla**: en la ficha del producto, por talla, qué accesorios lleva —con "los de la
+   receta" como valor por defecto y la opción de decir "ninguno"—. Ojo con la diferencia entre
+   *"hereda los de la receta"* (null) y *"expresamente ninguno"* (lista vacía): son distintos y la
+   columna tiene que poder decir las dos cosas.
+2. **Que el ENVASADO la respete.** `envasar` (2026-08-30) usa `formula.accesorios` a secas, así que
+   hoy le cobraría la bolsa y el perfumero a un 1.1 envasado. Es el mismo agujero por otra puerta.
+3. **Que el alta de un 1.1 nazca sin accesorios**, ya que es lo normal según el dueño.
+4. **Rehacer el costo de lo ya armado**, o al menos avisar de cuánto cambia: los 4 lotes 1.1 de
+   agosto llevan ese sobrecosto congelado.
 
 ## 🟡 El aviso del build: el paquete del dashboard pasó de 500 kB (2026-08-30)
 
@@ -105,8 +140,6 @@ naranja de arriba).
 
 **Sigue sin aprobar, de la misma auditoría:**
 
-- **Una devolución no devuelve el frasco al stock** (`devolucion.repository.ts` no toca inventario).
-  Aplica a todo el catálogo, no solo a los 1.1.
 - **La pestaña Productos no dice cuántas unidades quedan** (la columna Stock de la Ola 2).
 
 ## El estado de los datos de producción (medido contra el respaldo del 2026-08-29)
@@ -287,6 +320,39 @@ su tabla en [`arquitectura.md`](arquitectura.md).
 frontend es toda de cálculo puro (no hay `@testing-library`, ni entorno jsdom montado), así que
 estas pantallas se verifican **en el navegador**, y con el backend tumbado a propósito para ver el
 camino del error. Montar pruebas de componentes es una decisión del dueño que sigue sin tomarse.
+
+## ✅ Las garantías mueven el inventario — HECHAS (2026-08-30), sin desplegar
+
+Reponer un frasco lo sacaba de la repisa del dueño y **no de su sistema**, y el que el cliente
+devolvía no volvía nunca. Detalle y porqués en [`reglas-negocio.md`](reglas-negocio.md).
+
+> **⚠️ TRAE MIGRACIÓN** (`20260830130000_devolucion_inventario`): el deploy es `git pull` +
+> **`npx prisma migrate deploy`** + build + `pm2 restart`.
+
+**Decisión suya de ese día: se pregunta caso por caso.** Se le ofreció deducirlo del motivo con una
+tabla fija y lo descartó con razón — un *"llegó equivocado"* puede volver abierto y un *"llegó
+dañado"* puede ser solo la caja. El motivo dice por qué se quejó el cliente, no en qué estado
+llegó el frasco.
+
+| Situación | Qué le pasa al inventario |
+|---|---|
+| Repusiste N frascos | **Salen N**, igual que una venta (de lo armado; si no hay y no es un 1.1, se fabrica) |
+| Te lo devolvieron y sirve | **Entra**, a la talla que se vendió y al costo promedio de hoy |
+| Te lo devolvieron y no sirve | **Nada**: su costo ya se cargó el día de la venta |
+| No te devolvieron nada | **Nada** |
+
+**Lo que cambia en la pantalla**: el formulario estrena una casilla *"el cliente me devolvió el
+producto"* y, si se marca, *"¿se puede volver a vender?"*. Debajo, un renglón dice lo que va a
+pasar **antes** de guardar ("Al guardar, tus frascos armados: −1 que enviaste · +1 que
+recuperaste"). Y lo que el servidor no pudo hacer —reponer un 1.1 sin tenerlo armado, una línea sin
+costear— sale como aviso, igual que en ventas y créditos.
+
+**Lo que se movió también**: cerrar, reabrir, corregir y **borrar** un caso deshacen y rehacen su
+efecto, así que corregir de 1 a 2 frascos repuestos no cuenta el primero dos veces. Un caso puede
+nacer ya resuelto (*"se lo repuse ayer y lo anoto hoy"*) y también mueve inventario.
+
+11 pruebas de base con la tabla entera de combinaciones y un recorrido en navegador que va de la
+venta al frasco que vuelve, y de vuelta.
 
 ## ✅ La maceración — HECHA (2026-08-30), sin desplegar
 

@@ -436,3 +436,30 @@ De paso: `TipoMovimiento` dejó de ser una lista escrita a mano y sale del enum 
 `maceracion` al esquema, la copia se habría quedado atrás), y la búsqueda de diluyente/sellador/
 feromonas por nombre —que estaba duplicada entre la venta y la maceración— salió a
 `materialesGenerales.ts`.
+
+## Sesión del 2026-08-30: la garantía que no movía nada
+
+De la auditoría de los 1.1 quedaba un agujero que aplicaba a todo el catálogo: **resolver una
+devolución no tocaba el inventario**. Reponer un frasco lo sacaba de la repisa del dueño y no de su
+sistema, y el que el cliente devolvía no volvía nunca a estar disponible. En un negocio de 10
+frascos por referencia, eso es la diferencia entre poder vender y prometer lo que ya no existe.
+
+**La decisión de diseño fue del dueño y fue la buena.** Se le ofrecieron tres caminos y se le
+recomendó el de deducirlo del motivo con una tabla fija (menos preguntas). Eligió el otro:
+preguntar caso por caso. Tenía razón — un *"llegó equivocado"* puede volver abierto y un *"llegó
+dañado"* puede ser solo la caja. El motivo dice por qué se quejó el cliente, no en qué estado
+llegó el frasco, y adivinarlo habría metido frascos rotos al stock vendible.
+
+Tres cosas que aparecieron al construirlo:
+
+1. **El tipo de movimiento no podía ser `venta`.** Revertir busca por `(tipo, referencia_id)`: con
+   los dos bajo el mismo tipo, la venta 7 y la devolución 7 serían el mismo movimiento y deshacer
+   una borraría la otra. Se reusó `garantia`, que ya existía en el enum.
+2. **Un caso puede nacer resuelto.** El formulario deja registrar *"se lo repuse ayer y lo anoto
+   hoy"*, y `crearDevolucion` no aplicaba inventario: solo lo hacía el cambio de estado. Se
+   arregló metiendo la creación en su transacción, con su prueba.
+3. **Lo que vuelve entra al costo promedio de hoy**, no al del día de la venta: es un frasco
+   idéntico a los de la repisa y valorarlo distinto partiría en dos el promedio de esa ficha.
+
+De paso, `mostrarAvisos` se movió de `pages/dashboard/pedido/` a `application/`: ya no es cosa del
+pedido, lo usan ventas, créditos y ahora las garantías.

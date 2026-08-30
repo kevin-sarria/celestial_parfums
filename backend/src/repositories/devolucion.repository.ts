@@ -3,6 +3,7 @@ import { prisma } from '../config/prisma';
 import { badRequest, notFound } from '../utils/httpError';
 import { borrarImagenSubida } from '../utils/imagenes';
 import type { DevolucionInput } from '../schemas/devolucion.schema';
+import { aplicarInventarioDevolucion, revertirInventarioDevolucion } from './devolucion.inventario';
 
 /**
  * Devoluciones y reclamos de garantía, SIEMPRE colgadas de una venta.
@@ -43,6 +44,8 @@ const map = (d: FilaDevolucion) => ({
   notas: d.notas,
   reposicion_formula_id: d.reposicion_formula_id,
   reposicion_cantidad: d.reposicion_cantidad,
+  producto_devuelto: d.producto_devuelto,
+  revendible: d.revendible,
   costo_reposicion: num(d.costo_reposicion),
   costo_envio: num(d.costo_envio),
   /// Lo que TE costó la garantía: plata devuelta + producto repuesto + envío.
@@ -106,6 +109,10 @@ const datosBase = (data: DevolucionInput) => ({
   reposicion_cantidad: data.reposicion_cantidad,
   costo_reposicion: data.costo_reposicion,
   costo_envio: data.costo_envio,
+  // Lo que decide qué pasa con el inventario. Se pregunta caso por caso porque
+  // el motivo no alcanza para adivinarlo (ver `devolucion.inventario.ts`).
+  producto_devuelto: data.producto_devuelto ?? false,
+  revendible: data.revendible ?? false,
 });
 
 export const listarDevoluciones = async (estado?: DevolucionEstado) => {
@@ -125,23 +132,29 @@ export const obtenerDevolucion = async (id: number) => {
 
 export const crearDevolucion = async (data: DevolucionInput) => {
   await validarContraVenta(data);
-  const row = await prisma.devolucion.create({
-    data: {
-      ...datosBase(data),
-      origen: 'admin',
-      perfumes: { create: data.perfumes.map((p) => ({ perfume_id: p.perfume_id, cantidad: p.cantidad })) },
-    },
-    include: INCLUDE,
+  // Un caso puede nacer ya resuelto —el típico "se lo repuse ayer y lo anoto
+  // hoy"—, así que el inventario se aplica también al crear. Sobre uno sin
+  // resolver no mueve nada.
+  const { row, avisos } = await prisma.$transaction(async (tx) => {
+    const creada = await tx.devolucion.create({
+      data: {
+        ...datosBase(data),
+        origen: 'admin',
+        perfumes: { create: data.perfumes.map((p) => ({ perfume_id: p.perfume_id, cantidad: p.cantidad })) },
+      },
+      include: INCLUDE,
+    });
+    return { row: creada, avisos: await aplicarInventarioDevolucion(tx, creada.id) };
   });
-  return map(row);
+  return { ...map(row), avisos };
 };
 
 export const actualizarDevolucion = async (id: number, data: DevolucionInput) => {
   await validarContraVenta(data, id);
   // Las líneas se reemplazan enteras: es más simple y no deja huérfanos
-  const row = await prisma.$transaction(async (tx) => {
+  const { row, avisos } = await prisma.$transaction(async (tx) => {
     await tx.devolucionPerfume.deleteMany({ where: { devolucion_id: id } });
-    return tx.devolucion.update({
+    const actualizada = await tx.devolucion.update({
       where: { id },
       data: {
         ...datosBase(data),
@@ -149,8 +162,12 @@ export const actualizarDevolucion = async (id: number, data: DevolucionInput) =>
       },
       include: INCLUDE,
     });
+    // Si ya estaba resuelta, corregirla deshace y rehace su efecto en el
+    // inventario: si no, cambiar de 1 a 2 frascos repuestos contaría el primero
+    // dos veces. Sobre una devolución sin resolver no mueve nada.
+    return { row: actualizada, avisos: await aplicarInventarioDevolucion(tx, id) };
   });
-  return map(row);
+  return { ...map(row), avisos };
 };
 
 export const cambiarEstadoDevolucion = async (id: number, estado: DevolucionEstado) => {
@@ -159,24 +176,40 @@ export const cambiarEstadoDevolucion = async (id: number, estado: DevolucionEsta
   if (estado === 'resuelta' && !actual.solucion) {
     throw badRequest('Antes de cerrarla, abre el caso y di qué hiciste (reposición o devolución del dinero)');
   }
-  const row = await prisma.devolucion.update({
-    where: { id },
-    data: {
-      estado,
-      fecha_resolucion: estado === 'resuelta' || estado === 'rechazada'
-        ? (actual.fecha_resolucion ?? new Date())
-        : null,
-    },
-    include: INCLUDE,
+  /**
+   * Cerrar el caso es lo que MUEVE el inventario, y reabrirlo lo deshace.
+   *
+   * Se hace aquí y no al guardar el formulario porque hasta que no está resuelta
+   * no se sabe qué pasó de verdad: un caso en revisión todavía puede terminar
+   * rechazado. Todo dentro de la misma transacción que el cambio de estado.
+   */
+  const { row, avisos } = await prisma.$transaction(async (tx) => {
+    const actualizada = await tx.devolucion.update({
+      where: { id },
+      data: {
+        estado,
+        fecha_resolucion: estado === 'resuelta' || estado === 'rechazada'
+          ? (actual.fecha_resolucion ?? new Date())
+          : null,
+      },
+      include: INCLUDE,
+    });
+    return { row: actualizada, avisos: await aplicarInventarioDevolucion(tx, id) };
   });
-  return map(row);
+  return { ...map(row), avisos };
 };
 
 export const eliminarDevolucion = async (id: number) => {
   const previa = await prisma.devolucion.findUnique({ where: { id } });
   // Las fotos se borran del disco: servidor pequeño, cero huérfanos
   ((previa?.imagenes as string[] | null) ?? []).forEach(borrarImagenSubida);
-  return prisma.devolucion.delete({ where: { id } });
+  return prisma.$transaction(async (tx) => {
+    // Borrar el caso deshace lo que movió: el frasco repuesto vuelve y el
+    // devuelto se va. Si no, borrar una devolución dejaría el inventario
+    // arreglado por un caso que ya no existe.
+    await revertirInventarioDevolucion(tx, id);
+    return tx.devolucion.delete({ where: { id } });
+  });
 };
 
 // ── Portal del cliente ──────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import Modal from '../../../components/Modal';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
+import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { formatPrice, fmtDate } from '../helpers';
 import { Field, FieldRow } from '../ui';
 import { MOTIVOS, ESTADOS, SOLUCIONES } from '../../../domain/entities/devolucion.labels';
@@ -48,6 +49,8 @@ export default function DevolucionForm({ devolucion, onClose, onGuardada }: Prop
   const [insumosCat, setInsumosCat] = useState<Insumo[]>([]);
   const [repoFormula, setRepoFormula] = useState<number | ''>(devolucion?.reposicion_formula_id ?? '');
   const [repoCantidad, setRepoCantidad] = useState(String(devolucion?.reposicion_cantidad || 1));
+  const [productoDevuelto, setProductoDevuelto] = useState(devolucion?.producto_devuelto ?? false);
+  const [revendible, setRevendible] = useState(devolucion?.revendible ?? false);
   const [costoEnvio, setCostoEnvio] = useState(String(devolucion?.costo_envio ?? 0));
   const [guardando, setGuardando] = useState(false);
 
@@ -88,6 +91,26 @@ export default function DevolucionForm({ devolucion, onClose, onGuardada }: Prop
   const envioNum = Number(costoEnvio) || 0;
   const costoGarantia = montoNum + costoReposicion + envioNum;
 
+  /**
+   * Lo que este caso le va a hacer al inventario, dicho en un renglón.
+   *
+   * Se pinta siempre —también cuando no mueve nada— porque callarse aquí es
+   * indistinguible de "se me olvidó marcarlo", y lo que se mueve son frascos.
+   */
+  const unidadesQueVuelven = productoDevuelto && revendible
+    ? lineas.reduce((t, l) => t + l.cantidad, 0)
+    : 0;
+  const unidadesRepuestas = solucion === 'reposicion' ? unidadesRepo : 0;
+  const movimientos = [
+    unidadesRepuestas > 0 && `−${unidadesRepuestas} que enviaste`,
+    unidadesQueVuelven > 0 && `+${unidadesQueVuelven} que recuperaste`,
+  ].filter(Boolean).join(' · ');
+  const resumenInventario = estado !== 'resuelta'
+    ? 'El inventario se mueve el día que marques el caso como resuelto.'
+    : movimientos
+      ? `Al guardar, tus frascos armados: ${movimientos}.`
+      : 'Este caso no mueve tu inventario.';
+
   /** Suma o quita unidades de una fragancia de la venta. */
   const mover = (perfumeId: number, nombre: string, delta: number) => {
     setLineas((prev) => {
@@ -124,15 +147,20 @@ export default function DevolucionForm({ devolucion, onClose, onGuardada }: Prop
         notas: notas.trim() || null,
         reposicion_formula_id: solucion === 'reposicion' ? (repoFormula || null) : null,
         reposicion_cantidad: solucion === 'reposicion' ? unidadesRepo : 0,
+        producto_devuelto: productoDevuelto,
+        revendible: productoDevuelto && revendible,
         costo_reposicion: solucion === 'reposicion' ? costoReposicion : 0,
         costo_envio: envioNum,
         perfumes: lineas.map((l) => ({ perfume_id: l.perfume_id, cantidad: l.cantidad })),
       };
       const res = devolucion
-        ? await http.patch(urls.devoluciones.devolucion(devolucion.id), cuerpo)
-        : await http.post(urls.devoluciones.crear, cuerpo);
+        ? await http.patch<Respuesta>(urls.devoluciones.devolucion(devolucion.id), cuerpo)
+        : await http.post<Respuesta>(urls.devoluciones.crear, cuerpo);
       if (!res.ok) return fallo(res.error);
       toast.success(devolucion ? 'Devolución actualizada' : 'Devolución registrada');
+      // Guardar un caso ya resuelto también mueve frascos: lo que no se pudo
+      // hacer se dice aquí, no se calla.
+      mostrarAvisos(res.cuerpo);
       onGuardada();
     } finally {
       setGuardando(false);
@@ -276,6 +304,51 @@ export default function DevolucionForm({ devolucion, onClose, onGuardada }: Prop
             </p>
           </Field>
         )}
+
+        {/**
+          * QUÉ PASA CON EL PRODUCTO, que es lo que mueve el inventario.
+          *
+          * Se pregunta y no se deduce del motivo: decisión del dueño el
+          * 2026-08-30. Un "llegó equivocado" puede volver abierto y un "llegó
+          * dañado" puede ser solo la caja — el motivo dice por qué se quejó el
+          * cliente, no en qué estado llegó el frasco.
+          */}
+        <div className="rounded-lg border border-border bg-secondary/40 px-3 py-2.5">
+          <label className="flex items-start gap-2 text-[13px] text-foreground">
+            <input type="checkbox" className="mt-0.5 size-4 accent-[var(--color-primary)]"
+              checked={productoDevuelto}
+              onChange={(e) => {
+                setProductoDevuelto(e.target.checked);
+                if (!e.target.checked) setRevendible(false);
+              }} />
+            El cliente me devolvió el producto
+          </label>
+
+          {productoDevuelto ? (
+            <div className="mt-2 space-y-1.5 pl-6">
+              <p className="text-[12.5px] font-medium text-foreground">¿Se puede volver a vender?</p>
+              <label className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+                <input type="radio" className="size-3.5 accent-[var(--color-primary)]"
+                  checked={revendible} onChange={() => setRevendible(true)} />
+                Sí, vuelve a mi inventario
+              </label>
+              <label className="flex items-center gap-2 text-[12.5px] text-muted-foreground">
+                <input type="radio" className="size-3.5 accent-[var(--color-primary)]"
+                  checked={!revendible} onChange={() => setRevendible(false)} />
+                No, se dañó — se pierde
+              </label>
+            </div>
+          ) : (
+            <p className="mt-1 pl-6 text-[12px] text-muted-foreground">
+              Márcalo solo si el frasco volvió a tus manos. Si no llegó nunca o lo arreglaste
+              hablando, el inventario no se toca.
+            </p>
+          )}
+
+          <p className="mt-2 border-t border-border pt-2 text-[12px] text-muted-foreground">
+            {resumenInventario}
+          </p>
+        </div>
 
         <Field label="Envío que pagaste por esta garantía">
           <Input type="number" min="0" value={costoEnvio}

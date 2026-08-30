@@ -48,6 +48,15 @@ export const devolucionSchema = z
     costo_reposicion: z.number().min(0).default(0),
     /// Envío de la garantía: por ley lo asume el vendedor (art. 11).
     costo_envio: z.number().min(0).default(0),
+  /**
+   * ¿El cliente devolvió el producto y sirve para volver a venderse?
+   *
+   * Las dos por separado porque son dos hechos distintos: un frasco puede
+   * volver a tu casa y no volver a tu inventario. Lo decide el dueño al
+   * resolver, no el motivo del reclamo.
+   */
+  producto_devuelto: z.boolean().optional(),
+  revendible: z.boolean().optional(),
     perfumes: z.array(lineaSchema).max(50).default([]),
   })
   .superRefine((v, ctx) => {

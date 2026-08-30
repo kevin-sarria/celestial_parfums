@@ -11,7 +11,7 @@ import { detectarCombos } from '../../../application/hooks/useComboDetector';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
-import { mostrarAvisos, type Respuesta } from '../pedido/avisosInventario';
+import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
 import {
   descuentoDeCupon, itemsDeLineas, presentacionResumen, subtotalDeLineas, unidadesDeLineas,

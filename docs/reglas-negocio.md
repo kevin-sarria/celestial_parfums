@@ -284,8 +284,39 @@ agotado (lo que ve la tienda) = agotado_manual  OR  motivo_agotado != null
 - **Garantías al costo real** (`devoluciones.costo_reposicion` + `costo_envio`): al marcar "le
   repuse el producto" se elige el tamaño y las unidades, y se valora al **costo de producción**,
   NUNCA al precio de venta — esa plata ya se cobró en la venta original y contarla otra vez
-  duplicaría la pérdida. El costo se congela al guardar. **La reposición NO descuenta
-  inventario**: el material ya salió cuando se registró la producción de ese frasco.
+  duplicaría la pérdida. El costo se congela al guardar.
+### Qué le hace al inventario una garantía resuelta (2026-08-30)
+
+Hasta ese día: **nada**. Reponer un frasco lo sacaba de la repisa del dueño y no de su sistema, y
+el que el cliente devolvía no volvía nunca a estar disponible.
+
+**Se pregunta caso por caso, no se deduce del motivo** (decisión del dueño). Se evaluó una tabla
+fija por motivo y la descartó con razón: un *"llegó equivocado"* puede volver abierto y un *"llegó
+dañado"* puede ser solo la caja. El motivo dice por qué se quejó el cliente, no en qué estado
+llegó el frasco. Por eso el formulario pregunta dos cosas: `producto_devuelto` y, si sí,
+`revendible`.
+
+| Situación | Inventario |
+|---|---|
+| Repusiste N frascos | **Salen N**, igual que una venta (de lo armado; si no hay y no es un 1.1, se fabrica de la receta) |
+| Te lo devolvieron y sirve | **Entra**, a la talla que dice la línea de la venta original |
+| Te lo devolvieron y no sirve | **Nada**: su costo ya se cargó el día de la venta |
+| No te devolvieron nada | **Nada** |
+
+- **Lo que vuelve entra al costo promedio de HOY**, no al del día de la venta: es un frasco
+  idéntico a los que están en la repisa y valorarlo distinto partiría en dos el promedio de esa
+  ficha.
+- **Sin talla en la venta original no se puede devolver** (no se sabe a qué ficha entra): no
+  bloquea el guardado, avisa. Igual que vender un 1.1 sin tenerlo armado, que lo deja en negativo.
+- **Todo se mueve con tipo `garantia` y referencia a la devolución**, nunca con `venta`: revertir
+  busca por tipo + referencia, y con los dos bajo el mismo tipo la venta 7 y la devolución 7 serían
+  indistinguibles.
+- **Cerrar, reabrir, corregir y borrar** deshacen y rehacen el efecto entero
+  (`aplicarInventarioDevolucion` empieza revirtiendo), así que corregir de 1 a 2 frascos repuestos
+  no cuenta el primero dos veces. Un caso puede **nacer resuelto** y también mueve inventario.
+- Lo que no se pudo hacer viaja en `avisos` **fuera de `data`** y la pantalla lo enseña con
+  `mostrarAvisos` (`application/avisosInventario.ts`), el mismo de ventas y créditos.
+
 - Los textos (motivos, estados, soluciones, colores) viven en
   `domain/entities/devolucion.labels.ts` (NO en `pages/dashboard`, para que el portal público no
   arrastre código del dashboard). Hay **dos juegos de soluciones**: `SOLUCIONES` en voz del

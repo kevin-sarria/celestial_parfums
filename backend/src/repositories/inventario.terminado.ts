@@ -187,7 +187,8 @@ export const recalcularPromedioTerminado = async (
 /** Deshace los movimientos de terminado de una producción o de una venta. */
 export const revertirTerminado = async (
   tx: Prisma.TransactionClient,
-  tipo: 'produccion' | 'venta',
+  /** El mismo abanico que escribe `aplicarMovimientoTerminado`, sin la copia a mano. */
+  tipo: MovimientoTerminadoNuevo['tipo'],
   referenciaId: number,
 ) => {
   const movs = await tx.movimientoTerminado.findMany({
@@ -273,9 +274,21 @@ const vacia = (soloArmado = false, nombre = ''): SalidaDeTerminado =>
  */
 export const sacarDeTerminado = async (
   tx: Prisma.TransactionClient,
-  opciones: { perfume_id: number; ml: number | null; cantidad: number; ventaId: number; fecha: Date },
+  opciones: {
+    perfume_id: number; ml: number | null; cantidad: number; ventaId: number; fecha: Date;
+    /**
+     * Por qué sale el frasco. `venta` es lo normal; `garantia` es el que se
+     * envía como reposición de una devolución. Va aparte porque revertir busca
+     * por tipo + referencia: con los dos bajo `venta`, la venta 7 y la
+     * devolución 7 serían indistinguibles.
+     */
+    tipo?: 'venta' | 'garantia';
+    etiqueta?: string;
+  },
 ): Promise<SalidaDeTerminado> => {
   const { perfume_id, ml, cantidad, ventaId, fecha } = opciones;
+  const tipo = opciones.tipo ?? 'venta';
+  const etiqueta = opciones.etiqueta ?? `Venta #${ventaId}`;
   const perfume = await tx.perfume.findUnique({
     where: { id: perfume_id }, select: { nombre: true, solo_armado: true },
   });
@@ -298,9 +311,9 @@ export const sacarDeTerminado = async (
   if (unidades <= 0) return vacia(soloArmado, nombre);
 
   const res = await aplicarMovimientoTerminado(tx, {
-    perfume_id, presentacion_id, tipo: 'venta',
+    perfume_id, presentacion_id, tipo,
     cantidad: -unidades, fecha, referencia_id: ventaId,
-    nota: `Venta #${ventaId}`,
+    nota: etiqueta,
   });
   return {
     unidades,

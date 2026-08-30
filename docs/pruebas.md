@@ -8,13 +8,14 @@ cd backend  && npm run test:e2e      # recorridos en navegador (~35 s)
 cd frontend && npm test
 ```
 
-**349 pruebas** al 2026-08-25 (contadas corriéndolas): **84 en el frontend**, **214 en el
-backend** (1 marcada como discrepancia) y **51 recorridos** en navegador repartidos en 30 archivos
-(`accesorioVendible`, `altaArmado`, `altaPorTipo`, `arranque`, `cargaInicial`, `combo`, `compra`,
-`creditoPlazo`, `cupon`, `desplegable`, `disponibilidad`, `envaseSinExistencias`,
-`esenciaEnPerfume`, `etiquetas`, `filtroServidor`, `filtroServidorPerfumes`, `listaPrecios`,
-`mayoreo`, `menuLateral`, `modal`, `paginaPublica`, `pedidoSugerido`, `portalCliente`,
-`promociones`, `regaloDeLinea`, `tallas`, `venta`).
+**430 pruebas** al 2026-08-30 (contadas corriéndolas): **84 en el frontend**, **290 en el
+backend** (1 marcada como discrepancia) y **56 recorridos** en navegador repartidos en 35 archivos
+(`accesorioVendible`, `alertasInventario`, `altaArmado`, `altaHeredada`, `altaPorTipo`, `arranque`,
+`cargaInicial`, `combo`, `compra`, `creditoPlazo`, `cupon`, `desplegable`, `devolucionInventario`,
+`disponibilidad`, `editarLote`, `enlazarLotes`, `envaseSinExistencias`, `esenciaEnPerfume`,
+`etiquetas`, `filtroServidor`, `filtroServidorPerfumes`, `fusionarMaterial`, `listaPrecios`,
+`maceracion`, `mayoreo`, `menuLateral`, `modal`, `paginaPublica`, `pedidoSugerido`,
+`portalCliente`, `promociones`, `regaloDeLinea`, `tallas`, `venta`, `venta11SinArmar`).
 
 ## Por qué estas herramientas
 

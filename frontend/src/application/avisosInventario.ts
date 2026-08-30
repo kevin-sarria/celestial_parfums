@@ -1,7 +1,7 @@
 import { toast } from 'sonner';
 
 /**
- * LO QUE EL SERVIDOR AVISA DESPUÉS DE GUARDAR UNA VENTA O UN CRÉDITO.
+ * LO QUE EL SERVIDOR AVISA DESPUÉS DE GUARDAR (venta, crédito o devolución).
  *
  * Son cosas que no impiden guardar pero que el dueño tiene que saber: vendió un
  * 1.1 sin tenerlo armado, o una línea no se pudo costear. El servidor las

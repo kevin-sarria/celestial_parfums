@@ -1373,6 +1373,14 @@ model Devolucion {
   /// de producción (no al precio de venta: la venta original ya se cobró).
   reposicion_formula_id Int?
   reposicion_cantidad   Int                 @default(0)
+  /// ¿El cliente te devolvió el producto físicamente? Con `no llegó` o cuando se
+  /// resuelve por teléfono, no vuelve nada y el inventario no se toca.
+  producto_devuelto     Boolean             @default(false)
+  /// Y si volvió, ¿se puede volver a vender? Un frasco roto vuelve a tu casa
+  /// pero no a tu inventario. Lo decide el dueño caso por caso al resolver: el
+  /// motivo no alcanza para adivinarlo (un "llegó equivocado" puede volver
+  /// abierto, y un "llegó dañado" puede ser solo la caja).
+  revendible            Boolean             @default(false)
   /// Costo de producir lo repuesto + envío que asumimos. Se congela al cerrar.
   costo_reposicion      Decimal             @default(0) @db.Decimal(12, 2)
   costo_envio           Decimal             @default(0) @db.Decimal(12, 2)

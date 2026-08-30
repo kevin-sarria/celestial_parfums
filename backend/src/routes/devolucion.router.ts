@@ -74,16 +74,25 @@ devolucionRouter.get('/:id', h(async (req, res) => {
   res.json({ data: await repo.obtenerDevolucion(Number(req.params.id)) });
 }));
 
+/**
+ * Los `avisos` viajan FUERA de `data`: son lo que no se pudo hacer con el
+ * inventario (repuso un 1.1 sin tenerlo armado, una línea sin costear) y la
+ * pantalla los enseña como advertencia. Dentro de `data` se perderían entre
+ * los campos del caso.
+ */
 devolucionRouter.post('/', validate(devolucionSchema), h(async (req, res) => {
-  res.status(201).json({ message: 'Devolución registrada', data: await repo.crearDevolucion(req.body) });
+  const { avisos, ...data } = await repo.crearDevolucion(req.body);
+  res.status(201).json({ message: 'Devolución registrada', data, avisos });
 }));
 
 devolucionRouter.patch('/:id', validate(devolucionSchema), h(async (req, res) => {
-  res.json({ message: 'Devolución actualizada', data: await repo.actualizarDevolucion(Number(req.params.id), req.body) });
+  const { avisos, ...data } = await repo.actualizarDevolucion(Number(req.params.id), req.body);
+  res.json({ message: 'Devolución actualizada', data, avisos });
 }));
 
 devolucionRouter.patch('/:id/estado', validate(devolucionEstadoSchema), h(async (req, res) => {
-  res.json({ data: await repo.cambiarEstadoDevolucion(Number(req.params.id), req.body.estado) });
+  const { avisos, ...data } = await repo.cambiarEstadoDevolucion(Number(req.params.id), req.body.estado);
+  res.json({ data, avisos });
 }));
 
 devolucionRouter.delete('/:id', h(async (req, res) => {

@@ -98,6 +98,9 @@ export interface Devolucion {
   notas: string | null;
   reposicion_formula_id: number | null;
   reposicion_cantidad: number;
+  /** Si el frasco volvió a manos del dueño, y si sirve para venderse otra vez. */
+  producto_devuelto: boolean;
+  revendible: boolean;
   costo_reposicion: number;
   costo_envio: number;
   /** Lo que TE costó la garantía: devuelto + repuesto + envío. */
