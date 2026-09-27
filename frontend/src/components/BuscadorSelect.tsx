@@ -106,7 +106,7 @@ export default function BuscadorSelect({
   const contRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const [caja, setCaja] = useState({ top: 0, left: 0, width: 0, alto: ALTO_PANEL, arriba: false });
+  const [caja, setCaja] = useState({ top: 0, left: 0, width: 0, anchoMax: 0, alto: ALTO_PANEL, arriba: false });
   /**
    * Dónde se cuelga el panel: dentro del diálogo si lo hay, si no en el <body>.
    *
@@ -160,8 +160,14 @@ export default function BuscadorSelect({
     // así el panel nunca se sale de la pantalla ni queda pegado al borde, y la
     // lista scrollea por dentro. Fijar un alto "que suele caber" es lo que deja
     // el último renglón cortado en las pantallas bajas.
-    const abajo = window.innerHeight - r.bottom - MARGEN - AIRE_BORDE;
-    const arriba = r.top - MARGEN - AIRE_BORDE;
+    // El hueco se mide contra lo que de verdad se VE: en el iPhone el teclado
+    // tapa media pantalla sin cambiar `innerHeight`, y el panel se abría
+    // debajo del teclado. `visualViewport` sí se encoge.
+    const vista = window.visualViewport;
+    const techo = vista?.offsetTop ?? 0;
+    const piso = vista ? vista.offsetTop + vista.height : window.innerHeight;
+    const abajo = piso - r.bottom - MARGEN - AIRE_BORDE;
+    const arriba = r.top - techo - MARGEN - AIRE_BORDE;
     // Se despliega hacia arriba solo si abajo no cabe y arriba se ve más.
     const haciaArriba = abajo < ALTO_PANEL && arriba > abajo;
 
@@ -169,6 +175,8 @@ export default function BuscadorSelect({
       top: (haciaArriba ? r.top - MARGEN : r.bottom + MARGEN) - dy,
       left: r.left - dx,
       width: r.width,
+      // Hasta el borde derecho de la PANTALLA (r.left sí es de pantalla)
+      anchoMax: Math.max(r.width, window.innerWidth - r.left - AIRE_BORDE),
       alto: Math.max(120, Math.min(ALTO_PANEL, haciaArriba ? arriba : abajo)),
       arriba: haciaArriba,
     });
@@ -195,11 +203,17 @@ export default function BuscadorSelect({
    */
   useEffect(() => {
     if (!abierto) return;
+    // El teclado del celular mueve la vista sin disparar `resize` en la ventana.
+    const vista = window.visualViewport;
     window.addEventListener('scroll', recolocar, true);
     window.addEventListener('resize', recolocar);
+    vista?.addEventListener('resize', recolocar);
+    vista?.addEventListener('scroll', recolocar);
     return () => {
       window.removeEventListener('scroll', recolocar, true);
       window.removeEventListener('resize', recolocar);
+      vista?.removeEventListener('resize', recolocar);
+      vista?.removeEventListener('scroll', recolocar);
     };
   }, [abierto, recolocar]);
 
@@ -315,7 +329,13 @@ export default function BuscadorSelect({
             position: anfitrion ? 'absolute' : 'fixed',
             top: caja.top,
             left: caja.left,
-            width: caja.width,
+            // Como mínimo el ancho del campo, pero NUNCA más angosto que lo que
+            // dice: en un campo chico (las "Filas" de la tabla) la lista medía
+            // lo mismo que el botón y cortaba "25" en "2…" (dueño, 2026-09-27).
+            // El tope evita que se salga por el borde derecho de la pantalla.
+            minWidth: caja.width,
+            width: 'max-content',
+            maxWidth: caja.anchoMax,
             maxHeight: caja.alto,
             // Desplegado hacia arriba: se ancla por abajo para que crezca en
             // esa dirección sin taparle el campo al usuario.
@@ -338,7 +358,9 @@ export default function BuscadorSelect({
               value={texto}
               placeholder="Escribe para filtrar…"
               style={{ paddingLeft: '2.25rem' }}
-              className="h-9 w-full bg-transparent pr-3 text-sm text-foreground outline-none placeholder:text-muted-foreground"
+              // 16px en el celular: con menos, Safari del iPhone acerca la
+              // pantalla al darle foco y el modal entero queda descuadrado.
+              className="h-9 w-full bg-transparent pr-3 text-base text-foreground outline-none placeholder:text-muted-foreground md:text-sm"
               onChange={(e) => { setTexto(e.target.value); setResaltada(0); }}
               onKeyDown={onKeyDown}
             />

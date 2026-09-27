@@ -27,6 +27,14 @@ interface ArmadorPedidoProps {
 }
 
 /**
+ * Alto de los controles de una línea: el normal en el celular (dedo) y el
+ * compacto desde `sm`. La letra NO se toca: la de fábrica de `Input` y del
+ * desplegable (`text-base md:text-sm`) es la misma, y bajar de 16px en el
+ * celular hace que Safari del iPhone acerque la pantalla al tocar el campo.
+ */
+const CONTROL = 'h-9 sm:h-8';
+
+/**
  * El editor de líneas del pedido: un producto, su talla y cuántas van.
  *
  * Lo comparten Ventas y Créditos. La talla se elige de `perfume.precios[]`, que
@@ -135,23 +143,48 @@ export function ArmadorPedido({
             const tallas = tallasDe(p);
             const descuento = p?.descuento ?? 0;
             return (
+              /**
+               * En el celular, dos pisos: arriba QUÉ es y cuánto vale, abajo los
+               * controles con el mismo alto y la misma letra. En una sola tira
+               * con `flex-wrap` cada control caía donde le cupiera —el regalo
+               * solo en otra línea, el precio flotando en la mitad— y cada campo
+               * medía distinto (dueño, 2026-09-27, en su iPhone).
+               *
+               * Desde `sm` los dos envoltorios son `contents`: sus hijos vuelven
+               * a ser una sola fila, y `order` devuelve el precio y la ✕ al final.
+               */
               <li
                 key={l.key}
-                className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-secondary/30 px-2.5 py-2"
+                className="flex flex-col gap-2 rounded-lg border border-border bg-secondary/30 px-2.5 py-2 sm:flex-row sm:flex-wrap sm:items-center"
               >
-                <span className="min-w-32 flex-1 text-[13px] font-medium text-foreground">
-                  {p?.nombre ?? l.nombre ?? `#${l.perfume_id}`}
-                  {l.regalo > 0 && (
-                    <span className="ml-1.5 rounded-full bg-primary/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-primary">
-                      {l.regalo === l.cantidad ? 'Regalo' : `${l.regalo} regalo`}
-                    </span>
-                  )}
-                </span>
+                <div className="flex items-center gap-2 sm:contents">
+                  <span className="min-w-0 flex-1 text-[13px] font-medium text-foreground sm:min-w-32">
+                    {p?.nombre ?? l.nombre ?? `#${l.perfume_id}`}
+                    {l.regalo > 0 && (
+                      <span className="ml-1.5 inline-block whitespace-nowrap rounded-full bg-primary/15 px-1.5 py-0.5 text-[10.5px] font-semibold text-primary">
+                        {l.regalo === l.cantidad ? 'Regalo' : `${l.regalo} regalo`}
+                      </span>
+                    )}
+                  </span>
 
+                  <span className="text-right text-[12.5px] font-semibold tabular-nums text-foreground sm:order-2 sm:w-24">
+                    {formatPrice(precioUnitario(l, porId) * unidadesCobradas(l))}
+                  </span>
+
+                  <button
+                    type="button" aria-label="Quitar"
+                    className="rounded p-1 text-muted-foreground hover:text-destructive sm:order-3"
+                    onClick={() => quitar(l.key)}
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2 sm:contents">
                 {/* Un producto sin tallas (una gorra) no muestra selector */}
                 {tallas.length > 0 && (
                   <SelectSimple
-                    className="h-8 w-26 text-[12.5px]"
+                    className={`${CONTROL} min-w-0 flex-1 sm:w-26 sm:flex-none`}
                     value={l.presentacion ?? ''}
                     aria-label="Talla"
                     onChange={e => {
@@ -176,16 +209,21 @@ export function ArmadorPedido({
                   </SelectSimple>
                 )}
 
-                <Input
-                  type="number" min="1" value={l.cantidad}
-                  className="h-8 w-16 text-[12.5px]"
-                  aria-label="Cantidad"
-                  onChange={e => {
-                    const cantidad = Math.max(1, Number(e.target.value) || 1);
-                    // El regalo nunca puede quedar por encima de la cantidad nueva.
-                    actualizar(l.key, { cantidad, regalo: Math.min(l.regalo, cantidad) });
-                  }}
-                />
+                {/* En el celular la cantidad lleva su palabra: un "1" suelto al
+                    lado de la talla no dice qué es. En el escritorio no hacía falta. */}
+                <label className="flex items-center gap-1 text-[11.5px] text-muted-foreground">
+                  <span className="sm:hidden">cant.</span>
+                  <Input
+                    type="number" min="1" value={l.cantidad}
+                    className={`${CONTROL} w-16`}
+                    aria-label="Cantidad"
+                    onChange={e => {
+                      const cantidad = Math.max(1, Number(e.target.value) || 1);
+                      // El regalo nunca puede quedar por encima de la cantidad nueva.
+                      actualizar(l.key, { cantidad, regalo: Math.min(l.regalo, cantidad) });
+                    }}
+                  />
+                </label>
 
                 {permitirExtras && (
                   <label
@@ -195,7 +233,7 @@ export function ArmadorPedido({
                     regalo
                     <Input
                       type="number" min="0" max={l.cantidad} value={l.regalo}
-                      className="h-8 w-14 text-[12.5px]"
+                      className={`${CONTROL} w-16 sm:w-14`}
                       aria-label="Regalo"
                       onChange={e => actualizar(l.key, {
                         regalo: Math.min(l.cantidad, Math.max(0, Number(e.target.value) || 0)),
@@ -217,18 +255,7 @@ export function ArmadorPedido({
                     sin −{descuento}%
                   </label>
                 )}
-
-                <span className="w-24 text-right text-[12.5px] font-semibold tabular-nums text-foreground">
-                  {formatPrice(precioUnitario(l, porId) * unidadesCobradas(l))}
-                </span>
-
-                <button
-                  type="button" aria-label="Quitar"
-                  className="rounded p-1 text-muted-foreground hover:text-destructive"
-                  onClick={() => quitar(l.key)}
-                >
-                  <X className="size-3.5" />
-                </button>
+                </div>
               </li>
             );
           })}
