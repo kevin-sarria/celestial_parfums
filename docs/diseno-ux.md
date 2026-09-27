@@ -346,6 +346,54 @@ que no entiende de tecnología poco entendería cómo hacer las cosas"*. Skill d
   querer en una tabla de 212 filas saca un producto de la venta sin que nada lo grite. El
   texto explica la consecuencia y ofrece la alternativa correcta.
 
+## El iPhone: 16 px, fechas y renglones de dos pisos (2026-09-27)
+
+El dueño registra ventas desde su **iPhone 15 Pro Max** y el modal de ventas se veía mal. Tres
+causas, tres reglas:
+
+- **Ningún campo escribible baja de 16 px en el celular.** Con menos, Safari de iOS **acerca la
+  pantalla** al darle foco y el modal queda descuadrado. `Input` y `BuscadorSelect` ya traen
+  `text-base md:text-sm`: **no se les pisa la letra** con `text-[12.5px]` (así estaban cantidad y
+  regalo en `ArmadorPedido`). El buscador de dentro del desplegable tenía `text-sm` a secas y
+  se abría con foco: por eso se veía mal "al abrir un desplegable".
+- **Las fechas en iOS se enderezan en `index.css`**, dentro de `@supports (-webkit-touch-callout:
+  none)` (solo Safari de iOS): Safari las centraba, les ponía su propio alto y un ancho mínimo que
+  no casaba con los demás campos. Fuera del iPhone no se tocan, porque `appearance: none` le
+  quitaría al computador el icono del calendario.
+- **Un renglón con varios controles, en el celular va en dos pisos**: arriba qué es y cuánto vale,
+  abajo los controles con el mismo alto. Una tira con `flex-wrap` deja cada control donde le
+  quepa y con medidas distintas. Desde `sm` los envoltorios pasan a `contents` y vuelve a ser una
+  fila (ver `ArmadorPedido`).
+- **El desplegable mide el hueco con `visualViewport`**, no con `innerHeight`: el teclado del
+  iPhone tapa media pantalla sin cambiar `innerHeight`.
+
+**Cómo se verificó**: WebKit de Playwright con el perfil `devices['iPhone 15 Pro Max']`. Ojo: el
+WebKit de **Windows no trae el control de fecha nativo** (lo pinta como texto), así que la fecha
+hay que confirmarla en el iPhone de verdad. Medido: los controles del renglón pasaron de
+32 px de alto con letra mezclada (16/12,5) a 36 px y 16 px todos; cantidad y regalo, de 64/56 px a
+64/64.
+
+## Tablas: un recuadro, encabezado y pie fijos, cuerpo con scroll (2026-09-27)
+
+Pedido del dueño: *"no me gusta que cuando se pongan más filas se extienda demasiado la tabla…
+que el tbody tenga su scroll y el thead y el tfooter queden estáticos"*. Vive en `SmartTable`, así
+que lo heredan todas las tablas del dashboard sin tocarlas:
+
+- **Un solo recuadro** con tres pisos: encabezado `sticky`, cuerpo con alto máximo
+  `min(62svh, 560px)` que scrollea por dentro, y el pie (filas por página, "1–25 de 212" y las
+  páginas) DENTRO del borde. Antes el paginador quedaba suelto debajo.
+- El alto va en el contenedor que scrollea (`Table contenedorClassName`), **no** en un envoltorio:
+  el `sticky` se pega al contenedor con scroll más cercano. El encabezado lleva **fondo sólido**
+  (si no, se ven pasar las filas) y su borde es una sombra (el borde de la fila no viaja con él).
+- En el celular, con vista de tarjetas, el pie va suelto debajo (las tarjetas no tienen recuadro).
+- **El panel de un desplegable nunca es más angosto que su texto** (`BuscadorSelect`: `minWidth`
+  = el campo, `width: max-content`, tope al borde de la pantalla). En el campo de "Filas" la
+  lista medía lo mismo que el botón y cortaba "25" en "2…".
+
+**Frascos armados tiene su propia pestaña** (`armados`, en *Producción e inventario*): apilada
+encima de los 226 materiales, el dueño leía las dos tablas como una sola lista. Inventario deja
+la tarjeta "Frascos armados →" como enlace.
+
 ## Verificación visual (obligatoria)
 
 **Ninguna pantalla se entrega sin abrirla en un navegador y mirarla.** El procedimiento está

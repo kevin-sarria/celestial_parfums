@@ -511,11 +511,23 @@ ultra largo […] que el mensaje sea muy breve"*.
   barras**: muy oscuro y de croma bajo, el validador lo rechaza.
 - Piezas compartidas en `dashboard/reportes/comun.tsx` (`useReporte` con reintentar,
   `ReporteShell`, `Panel`, `Ranking`).
-- `ReporteShell` acepta `acciones` para los controles del reporte. En Ventas hay un selector
-  de **3 / 6 / 12 meses** que recorta la serie **solo del gráfico**; el resto del reporte
-  siempre son 12 meses y la etiqueta lo dice explícitamente en vez de mentir.
-- La tarjeta "Ventas" dice cómo va el último mes contra el anterior (`variacionUltimoMes`).
-  Devuelve null si el mes previo fue cero: un "+∞ %" no informa.
+- **El reporte de ventas es por RANGO de fechas** (2026-09-27, opción B del dueño sobre un
+  selector de mes): `/reportes/ventas?desde&hasta`, ambos incluidos, sin fechas = mes en curso,
+  tope de 5 años. Consultas en `reporteVentasRango.ts`, aritmética pura en
+  `reporteVentasRango.calculo.ts` (con sus pruebas). Reemplazó al de 3/6/12 meses, que además
+  contaba "los más vendidos" de TODA la historia sin decirlo y, en el gráfico, sumaba lo
+  cobrado de los créditos sin su costo (ganancia inflada).
+  - Definiciones del dueño: **Vendido** = solo lo pagado por completo; lo demás es **En deuda**
+    (en un crédito, valor menos abonos). **Invertido** = compras a proveedores + envíos.
+    **Pérdidas** = mermas + faltantes al contar + costo de garantías repuestas + dinero devuelto +
+    ventas por debajo del costo; las muestras se enseñan pero NO suman (son marketing).
+  - **Sin costo registrado = `null` = "Sin datos"**, nunca cero. El costo de lo vendido solo
+    existe desde agosto de 2026. Con costo parcial, la ganancia se mide solo sobre las ventas
+    costeadas y sale marcada **"parcial · N %"** (`cobertura_pct`): en febrero de 2026 había 1
+    venta costeada de 20 y sin la marca se leía "margen 57,8 %" como si fuera del mes.
+  - Un mes sin ventas dice "—", no "Sin datos": no hay nada que costear.
+  - `useReporte(ruta, params)` recarga cuando cambian los parámetros y la pantalla deja lo
+    anterior a la vista (atenuado) en vez de volver al spinner.
 - El **ticket promedio** se mide solo sobre ventas pagadas: meter lo pendiente infla la cifra
   con plata que no ha entrado. En compras se aclara que el gasto **no es pérdida** (lo no
   vendido sigue en bodega) — sin eso, ver "gasté más de lo que vendí" asusta sin motivo.

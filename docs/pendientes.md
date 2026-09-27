@@ -1,7 +1,41 @@
 # Dónde quedamos y qué sigue
 
-**Última sesión: 30 de agosto de 2026.** Todo compila, **430 pruebas en verde** (290 backend +
-84 frontend + 56 recorridos, más 1 saltada a propósito) y el linter del frontend en cero.
+## ✅ El abono doble — ARREGLADO (2026-09-27), sin desplegar
+
+Pasó en producción el 2026-09-05 (abono de $50.000 de Nidia Bravo registrado dos veces; el dueño ya
+corrigió ese registro a mano en la base). Tres defensas, cada una por su puerta:
+
+1. **La pantalla** (`AbonoModal.tsx`, salió de `CreditosTab`): el Enter es el del formulario y una
+   ref corta cualquier envío mientras hay uno en camino. Antes el Enter iba en crudo y cada
+   pulsación —y la repetición de la tecla sostenida— mandaba otro abono.
+2. **El servidor** (`addAbono`): rechaza con 409 un abono con el mismo monto al mismo crédito dentro
+   de **1 minuto**, con candado `FOR UPDATE` sobre el crédito para que dos peticiones simultáneas no
+   pasen las dos. El dueño dio el visto bueno a esta segunda defensa el 2026-09-27.
+3. **Borrar un abono equivocado** desde el mismo modal (antes solo en la base). De paso, la ruta de
+   borrar ya exige que el abono sea DE ESE crédito.
+
+Sin migración: el deploy es `git pull` + build de los dos lados. Pruebas:
+`credito.abono.bd.test.ts` (7, incluido el doble clic simultáneo) y `e2e/abono.e2e.test.ts` (4 Enter
+seguidos → 1 abono; borrarlo actualiza la pantalla sin recargar).
+
+**De paso**: `venta.totales.bd.test.ts` fallaba desde el 1 de septiembre porque sus ventas tenían
+fecha fija de agosto y mide el mes en curso. Ahora usa la fecha de hoy.
+
+**Última sesión: 27 de septiembre de 2026.** Backend **309 pruebas en verde** (+1 saltada a
+propósito), frontend 84, **57 recorridos**, linter en cero. **Nada de esto está en git todavía.**
+Lo hecho ese día, además del abono:
+
+- **Modal de ventas en el iPhone** (ver `diseno-ux.md`, *El iPhone: 16 px…*). Falta que el dueño
+  confirme en su teléfono cómo quedó el campo de fecha (el WebKit de Windows no lo reproduce).
+- **Tablas con encabezado y pie fijos y scroll interno**, y el desplegable de "Filas" ya no corta
+  los números (`diseno-ux.md`, *Tablas: un recuadro…*).
+- **Frascos armados en su propia pestaña**, aparte de los materiales de Inventario.
+- **Reporte de ventas por rango de fechas** con vendido, deuda, costo, ganancia, invertido y
+  pérdidas, mes a mes (`arquitectura.md`, *Reportes*). Medido contra el respaldo del 22 de
+  septiembre (cargado en la base local `celestial_prod_20260922`): enero–septiembre, $13,87 M
+  vendidos pagados, $650.000 en deuda, ganancia medible solo sobre $2,3 M (el resto sin costo).
+
+Sin migración en nada de esto: el deploy es `git pull` + build de los dos lados.
 
 ## ✅ Producción está al día (2026-08-29, tarde)
 
