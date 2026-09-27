@@ -1,6 +1,14 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { limpiarBase, crearVenta } from '../test/baseDePrueba';
 import { getAllVentas } from './venta.repository';
+import { hoyEnColombia } from '../utils/fechas';
+
+/**
+ * Los totales son DEL MES EN CURSO, así que las ventas tienen que ser de hoy.
+ * Con la fecha fija de `crearVenta` (12 de agosto) esta prueba pasaba en agosto
+ * y empezó a fallar sola el 1 de septiembre de 2026.
+ */
+const deHoy = (valor: number) => crearVenta({ valor, dia: hoyEnColombia() });
 
 /**
  * LA LISTA Y SUS TOTALES VIENEN JUNTOS SI SE PIDEN JUNTOS.
@@ -19,7 +27,7 @@ describe('getAllVentas', () => {
   beforeEach(limpiarBase);
 
   it('sin pedirlos, no trae totales', async () => {
-    await crearVenta({ valor: 60000 });
+    await deHoy(60000);
 
     const res = await getAllVentas(1, 10);
 
@@ -28,8 +36,8 @@ describe('getAllVentas', () => {
   });
 
   it('pidiéndolos, vienen en la MISMA respuesta', async () => {
-    await crearVenta({ valor: 60000 });
-    await crearVenta({ valor: 40000 });
+    await deHoy(60000);
+    await deHoy(40000);
 
     const res = await getAllVentas(1, 10, undefined, true);
 
@@ -41,8 +49,8 @@ describe('getAllVentas', () => {
   });
 
   it('los totales no se recortan con la página', async () => {
-    await crearVenta({ valor: 60000 });
-    await crearVenta({ valor: 40000 });
+    await deHoy(60000);
+    await deHoy(40000);
 
     const res = await getAllVentas(1, 1, undefined, true);
 

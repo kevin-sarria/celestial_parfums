@@ -182,10 +182,11 @@ export const crearCliente = async (email: string) => {
  * (a diferencia de `movimientos_inventario.referencia_id`, que es un número
  * suelto), así que un id inventado revienta al enlazar un cupón.
  */
-export const crearVenta = (opciones: { pagada?: boolean; valor?: number } = {}) =>
+/** `dia`: por defecto una fecha fija; quien mida totales DEL MES debe pasar la de hoy. */
+export const crearVenta = (opciones: { pagada?: boolean; valor?: number; dia?: Date } = {}) =>
   prisma.venta.create({
     data: {
-      dia: new Date('2026-08-12'),
+      dia: opciones.dia ?? new Date('2026-08-12'),
       persona: 'Cliente de prueba',
       cantidad_perfumes: 1,
       presentacion: '30 ml',
