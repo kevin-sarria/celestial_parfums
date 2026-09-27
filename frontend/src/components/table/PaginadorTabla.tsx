@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { SelectSimple } from '@/components/ui/select-simple';
 
@@ -27,7 +28,11 @@ function getPages(page: number, totalPages: number, compacto: boolean): (number 
 }
 
 
-export function PaginadorTabla({ tamano, onTamano, pagina, totalPaginas, onPagina, compacto }: {
+const MILES = new Intl.NumberFormat('es-CO');
+
+export function PaginadorTabla({
+  tamano, onTamano, pagina, totalPaginas, onPagina, compacto, desde, hasta, total,
+}: {
   tamano: number;
   onTamano: (n: number) => void;
   pagina: number;
@@ -35,21 +40,36 @@ export function PaginadorTabla({ tamano, onTamano, pagina, totalPaginas, onPagin
   onPagina: (n: number) => void;
   /** Pantalla angosta: el paginador completo no cabe y se muestra una ventana. */
   compacto: boolean;
+  /** Qué filas se están viendo ("26–50 de 212"), numeradas desde 1. */
+  desde: number;
+  hasta: number;
+  total: number;
 }) {
+  const id = useId();
   return (
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <label htmlFor="st-ps">Filas:</label>
-          <SelectSimple
-            id="st-ps"
-            className="w-18"
-            value={tamano}
-            onChange={e => onTamano(Number(e.target.value))}
-          >
-            {PAGE_SIZE_OPTIONS.map(n => (
-              <option key={n} value={n}>{n}</option>
-            ))}
-          </SelectSimple>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="flex items-center gap-2">
+            <label htmlFor={id}>{compacto ? 'Filas' : 'Filas por página'}</label>
+            {/* h-8: el campo de siempre (h-9) se veía más alto que los botones
+                de página de al lado, y el pie parecía de dos alturas. */}
+            <SelectSimple
+              id={id}
+              className="h-8 w-20"
+              value={tamano}
+              onChange={e => onTamano(Number(e.target.value))}
+            >
+              {PAGE_SIZE_OPTIONS.map(n => (
+                <option key={n} value={n}>{n}</option>
+              ))}
+            </SelectSimple>
+          </span>
+          {/* Vacía, "0–0 de 0" no dice nada que la tabla no diga ya */}
+          {total > 0 && (
+            <span className="tabular-nums">
+              {MILES.format(desde)}–{MILES.format(hasta)} de {MILES.format(total)}
+            </span>
+          )}
         </div>
 
         {totalPaginas > 1 && (

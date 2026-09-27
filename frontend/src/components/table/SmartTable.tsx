@@ -24,6 +24,14 @@ import { PaginadorTabla } from './PaginadorTabla';
  */
 const PAGE_SIZE_LOCAL = 25;
 
+/**
+ * Hasta dónde crece el cuerpo antes de scrollear por dentro: ~12 filas en un
+ * portátil, y nunca más de lo que deja ver la pantalla junto a la barra de
+ * arriba y el pie. `svh` y no `vh`: en el iPhone la barra de Safari cambia el
+ * `vh` al desplazarse y la tabla daría saltos.
+ */
+const ALTO_CUERPO = 'max-h-[min(62svh,560px)] overflow-y-auto';
+
 interface PaginationProps {
   page: number;
   totalRows: number;
@@ -250,6 +258,21 @@ export function SmartTable<T>({
     else { setSizeLocal(s); setPageLocal(1); }
   };
 
+  const totalFilas = pagination ? pagination.totalRows : processed.length;
+  const paginador = (
+    <PaginadorTabla
+      tamano={tamanoActual}
+      onTamano={cambiarTamano}
+      pagina={paginaActual}
+      totalPaginas={totalPages}
+      onPagina={irAPagina}
+      compacto={pantallaAngosta}
+      desde={visibles.length ? offsetNumero + 1 : 0}
+      hasta={offsetNumero + visibles.length}
+      total={totalFilas}
+    />
+  );
+
   return (
     <div className="space-y-3">
       {/* ── Barra de la tabla: buscar y estado a la izquierda, acciones a la derecha ── */}
@@ -318,10 +341,25 @@ export function SmartTable<T>({
           </ul>
         )
       ) : (
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <Table className="min-w-150">
-          <TableHeader className="bg-secondary/60">
-            <TableRow className="hover:bg-transparent">
+      /*
+       * UN recuadro con tres pisos: encabezado fijo, cuerpo que scrollea por
+       * dentro y pie fijo con filas y páginas. Antes la tabla crecía hasta
+       * medir las 100 filas que se pidieran y el paginador quedaba suelto
+       * debajo, fuera del borde (dueño, 2026-09-27: "que el tbody tenga su
+       * scroll y el thead y el pie queden estáticos").
+       *
+       * El alto máximo va en el contenedor que scrollea (`contenedorClassName`),
+       * no en un envoltorio: es al que se pega el encabezado `sticky`.
+       * `overflow-hidden` solo recorta las esquinas; el filtro de columna y el
+       * desplegable de filas se pintan en un portal y no quedan cortados.
+       */
+      <div className="overflow-hidden rounded-xl border border-border bg-card">
+        <Table className="min-w-150" contenedorClassName={ALTO_CUERPO}>
+          {/* Fondo SÓLIDO en el encabezado: con el `/60` de antes, al pegarse
+              arriba las filas se verían pasar por debajo. El borde inferior va
+              como sombra porque el de la fila no viaja con el `sticky`. */}
+          <TableHeader className="sticky top-0 z-10 bg-card shadow-[inset_0_-1px_0_var(--color-border)] [&_tr]:border-b-0">
+            <TableRow className="bg-secondary/60 hover:bg-secondary/60">
               {numerada && (
                 <TableHead className="h-10 w-12 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                   #
@@ -456,20 +494,14 @@ export function SmartTable<T>({
             )}
           </TableBody>
         </Table>
+        {paginadorVisible && (
+          <div className="border-t border-border bg-secondary/30 px-3 py-2">{paginador}</div>
+        )}
       </div>
       )}
 
-      {/* ── Footer: tamaño de página + paginador ── */}
-      {paginadorVisible && (
-        <PaginadorTabla
-          tamano={tamanoActual}
-          onTamano={cambiarTamano}
-          pagina={paginaActual}
-          totalPaginas={totalPages}
-          onPagina={irAPagina}
-          compacto={pantallaAngosta}
-        />
-      )}
+      {/* En el celular las tarjetas no llevan recuadro: el pie va suelto debajo */}
+      {vistaTarjeta && paginadorVisible && paginador}
 
       {tooltip && (
         <div
