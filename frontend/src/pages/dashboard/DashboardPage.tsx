@@ -40,6 +40,7 @@ import { ReposicionTab } from './tabs/ReposicionTab';
 import { AlertasTab } from './tabs/AlertasTab';
 import { AvisoAlertas } from './tabs/alertas/AvisoAlertas';
 import { ProduccionesTab } from './tabs/ProduccionesTab';
+import { FrascosArmadosTab } from './tabs/FrascosArmadosTab';
 import { ReportesVentasTab } from './tabs/ReportesVentasTab';
 import { ReportesComprasTab } from './tabs/ReportesComprasTab';
 import { ReportesClientesTab } from './tabs/ReportesClientesTab';
@@ -381,6 +382,7 @@ export default function DashboardPage() {
             {tab === 'costos' && <CostosProduccionTab />}
             {tab === 'devoluciones' && <DevolucionesTab />}
             {tab === 'inventario' && <InventarioTab />}
+            {tab === 'armados' && <FrascosArmadosTab />}
             {tab === 'reposicion' && <ReposicionTab />}
             {tab === 'alertas' && <AlertasTab />}
             {tab === 'producciones' && <ProduccionesTab />}

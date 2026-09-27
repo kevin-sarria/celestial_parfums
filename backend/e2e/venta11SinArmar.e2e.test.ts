@@ -119,7 +119,7 @@ describe('vender un 1.1 sin frascos armados', () => {
     // 3. Ni un ml de esencia, ni un envase: lo que antes se iba en silencio.
     expect(await stockDe(esencia.id)).toBeCloseTo(esenciaAntes, 2);
     expect(await stockDe(envase11.id)).toBeCloseTo(envaseAntes, 2);
-    // Y el frasco que no existía queda en −1, a la vista en "Frascos ya armados".
+    // Y el frasco que no existía queda en −1, a la vista en la pestaña "Frascos armados".
     await expect.poll(armadosDe, { timeout: 15_000 }).toBe(-1);
   }, 150_000);
 });

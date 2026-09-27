@@ -98,8 +98,10 @@ describe('macerar y envasar', () => {
     expect(await stockDe(esencia)).toBeCloseTo(trasMacerar, 2);
 
     // ── 3. LOS FRASCOS EXISTEN Y SE PUEDEN VENDER ────────────────────────────
-    await irA(pagina, '/dashboard/inventario');
-    await pagina.getByText(/Frascos ya armados/).first().waitFor({ timeout: 20_000 });
+    // Desde el 2026-09-27 los frascos tienen su propia pestaña, aparte de los materiales.
+    await irA(pagina, '/dashboard/armados');
+    await pagina.getByRole('heading', { name: /Frascos armados/ }).waitFor({ timeout: 20_000 });
+    await pagina.getByText(perfume).first().waitFor({ timeout: 20_000 });
     await pagina.screenshot({ path: foto('maceracion-frascos-armados') });
 
     await irA(pagina, '/dashboard/ventas');

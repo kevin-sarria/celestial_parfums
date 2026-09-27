@@ -12,8 +12,8 @@ import { SmartTable } from '../../../components/table/SmartTable';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
-import { inventarioColumns, terminadoColumns } from '../columns';
-import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, SectionTitle, StatCard } from '../ui';
+import { inventarioColumns } from '../columns';
+import { EncabezadoPagina, Field, FieldRow, FranjaMetricas, Section, StatCard } from '../ui';
 import { MaceracionModal } from './inventario/MaceracionModal';
 import { EnvasadoModal } from './inventario/EnvasadoModal';
 import { AccionesInventario } from './inventario/AccionesInventario';
@@ -216,8 +216,11 @@ export function InventarioTab() {
             para vender"), y meterlas en una sola cambiaría en silencio un número
             que él ya venía siguiendo. */}
         {terminado.unidades !== 0 && (
-          <StatCard label="Frascos armados" value={String(terminado.unidades)}
-            nota={`${formatPrice(terminado.valor)} en producto listo para vender`} />
+          <Link to="/dashboard/armados" className="block rounded-xl transition-opacity hover:opacity-80"
+            title="Ver los frascos armados">
+            <StatCard label="Frascos armados →" value={String(terminado.unidades)}
+              nota={`${formatPrice(terminado.valor)} en producto listo para vender`} />
+          </Link>
         )}
         {/* Sin esta métrica, poner a macerar haría DESAPARECER plata de la
             bodega: sale de los materiales y no entra en ningún sitio visible. */}
@@ -264,33 +267,9 @@ export function InventarioTab() {
         </p>
       )}
 
-      {/**
-        * Los frascos ya armados, cuando los hay.
-        *
-        * Se esconde en cero (mismo criterio que el resto de la pantalla: solo se
-        * pinta lo que hay que mirar). Va ARRIBA de los materiales porque es lo
-        * que se puede vender hoy mismo, y porque la tabla de materiales tiene
-        * 226 renglones: debajo de ella no lo vería nadie.
-        */}
-      {terminado.filas.length > 0 && (
-        <Section>
-          <SectionTitle count={terminado.filas.length}>Frascos ya armados</SectionTitle>
-          <p className="text-[12.5px] text-muted-foreground">
-            Producto terminado, listo para entregar. Su material ya se descontó el día que lo
-            armaste, así que al venderlo <strong className="text-foreground">no se vuelve a
-            descontar</strong>. El costo de cada uno quedó congelado en ese momento.
-          </p>
-          <SmartTable
-            columns={terminadoColumns}
-            rows={terminado.filas}
-            rowKey={f => `${f.perfume_id}-${f.presentacion_id}`}
-            paginadoLocal
-            tarjetaMovil
-            emptyText="Todavía no has armado frascos por adelantado."
-          />
-        </Section>
-      )}
-
+      {/* Los frascos ya armados tienen su propia pestaña desde el 2026-09-27
+          (`FrascosArmadosTab`): apilados encima de los materiales, el dueño
+          leía las dos tablas como una sola lista. */}
       <Section>
         <p className="text-[12.5px] text-muted-foreground">
           El stock entra con las compras a proveedores y sale con la producción. Usa

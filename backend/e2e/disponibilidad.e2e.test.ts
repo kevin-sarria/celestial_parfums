@@ -98,7 +98,7 @@ describe('un producto que solo se vende armado', () => {
     await contexto.close();
   });
 
-  it('al armar el lote aparece en Inventario y se puede vender', async () => {
+  it('al armar el lote aparece en Frascos armados y se puede vender', async () => {
     // Cierra el círculo: el 1.1 existía y estaba agotado; se arma y pasa a ser
     // producto terminado, visible como inventario y vendible.
     const { contexto, pagina } = await abrirDashboard();
@@ -114,13 +114,17 @@ describe('un producto que solo se vende armado', () => {
     await campo(pagina, '¿Cuántas unidades?').fill('2');
     await pagina.getByRole('button', { name: 'Registrar lote' }).click();
 
+    // La franja de arriba dice cuánta plata está hoy en frascos, no en
+    // material. Ojo: las etiquetas de las métricas se pintan en MAYÚSCULAS con
+    // CSS, y `innerText` devuelve lo renderizado, no el texto del código.
+    await expect.poll(async () => pagina.locator('body').innerText()).toMatch(/frascos armados/i);
+
+    // Y el frasco aparece en SU pestaña: desde el 2026-09-27 los frascos armados
+    // viven aparte de los materiales, que era lo que confundía al dueño.
+    await irA(pagina, '/dashboard/armados');
     const fila = pagina.getByRole('row', { name: new RegExp(NOMBRE) });
     await fila.waitFor();
     expect(await fila.innerText()).toContain('2');
-    // Y la franja de arriba dice cuánta plata está hoy en frascos, no en
-    // material. Ojo: las etiquetas de las métricas se pintan en MAYÚSCULAS con
-    // CSS, y `innerText` devuelve lo renderizado, no el texto del código.
-    expect(await pagina.locator('body').innerText()).toMatch(/frascos armados/i);
 
     await fila.scrollIntoViewIfNeeded();
     await pagina.screenshot({ path: foto('inventario-frascos-armados') });
