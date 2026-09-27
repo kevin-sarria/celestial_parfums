@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma';
-import { getVentasPorMes } from './venta.repository';
+import { claveMes } from './reporteVentasRango.calculo';
 
 /**
  * Reportes del negocio: ventas, compras y clientes.
@@ -12,9 +12,6 @@ import { getVentasPorMes } from './venta.repository';
 
 const num = (v: unknown) => Number(v ?? 0);
 const r2 = (n: number) => Math.round(n * 100) / 100;
-
-/** Clave AAAA-MM en UTC: las columnas `@db.Date` se leen como medianoche UTC. */
-const claveMes = (d: Date) => `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 
 /**
  * Esqueleto de los últimos N meses con los campos en cero.
@@ -36,58 +33,7 @@ const mesesVacios = <T extends Record<string, number>>(meses: number, campos: T)
   } };
 };
 
-// ─────────────────────────── Ventas ───────────────────────────
-
-export const reporteVentas = async (meses = 12) => {
-  const { desde } = mesesVacios(meses, {});
-
-  const [serie, ventas, lineas, porTalla] = await Promise.all([
-    getVentasPorMes(meses),
-    prisma.venta.findMany({
-      where: { dia: { gte: desde } },
-      select: { valor_venta: true, pagada: true, credito: { select: { id: true } } },
-    }),
-    // Unidades por producto: la cantidad vive en la línea, no en la venta
-    prisma.ventaPerfume.groupBy({
-      by: ['perfume_id'],
-      _sum: { cantidad: true },
-      orderBy: { _sum: { cantidad: 'desc' } },
-      take: 10,
-    }),
-    prisma.ventaPerfume.groupBy({ by: ['ml'], _sum: { cantidad: true } }),
-  ]);
-
-  const perfumes = await prisma.perfume.findMany({
-    where: { id: { in: lineas.map((l) => l.perfume_id) } },
-    select: { id: true, nombre: true },
-  });
-  const nombre = new Map(perfumes.map((p) => [p.id, p.nombre]));
-
-  const pagadas = ventas.filter((v) => v.pagada);
-  const totalPagado = pagadas.reduce((s, v) => s + num(v.valor_venta), 0);
-  const pendientes = ventas.filter((v) => !v.pagada);
-
-  return {
-    serie,
-    // El ticket promedio se mide solo sobre lo cobrado: incluir lo pendiente
-    // infla la cifra con plata que todavía no entró.
-    ticket_promedio: pagadas.length ? r2(totalPagado / pagadas.length) : 0,
-    num_ventas: ventas.length,
-    num_pagadas: pagadas.length,
-    num_pendientes: pendientes.length,
-    valor_pendiente: r2(pendientes.reduce((s, v) => s + num(v.valor_venta), 0)),
-    a_credito: ventas.filter((v) => v.credito).length,
-    top_productos: lineas.map((l) => ({
-      perfume_id: l.perfume_id,
-      nombre: nombre.get(l.perfume_id) ?? `#${l.perfume_id}`,
-      unidades: l._sum.cantidad ?? 0,
-    })),
-    // `ml` en null = venta histórica sin talla o producto que no la tiene
-    por_talla: porTalla
-      .map((t) => ({ ml: t.ml, unidades: t._sum.cantidad ?? 0 }))
-      .sort((a, b) => (a.ml ?? 0) - (b.ml ?? 0)),
-  };
-};
+// Ventas: vive en `reporteVentasRango.ts` (por rango de fechas, 2026-09-27).
 
 // ─────────────────────────── Compras ───────────────────────────
 

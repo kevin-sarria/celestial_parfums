@@ -14,15 +14,17 @@ import { EncabezadoPagina, Section } from '../ui';
  */
 
 /** Carga un reporte con su spinner, su error y su botón de reintentar. */
-export function useReporte<T>(ruta: string) {
+export function useReporte<T>(ruta: string, params?: Record<string, string>) {
   const [datos, setDatos] = useState<T | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
+  /** Los parámetros como texto: un objeto nuevo en cada render recargaría sin fin. */
+  const clave = JSON.stringify(params ?? {});
 
   const cargar = async () => {
     setCargando(true);
     try {
-      const res = await http.get<{ data: T }>(urls.reportes(ruta));
+      const res = await http.get<{ data: T }>(urls.reportes(ruta), { params: JSON.parse(clave) });
       if (!res.ok) throw new Error(res.error);
       setDatos(res.cuerpo?.data ?? null);
       setError('');
@@ -32,7 +34,7 @@ export function useReporte<T>(ruta: string) {
       setError(e instanceof Error ? e.message : 'No se pudo cargar el reporte');
     } finally { setCargando(false); }
   };
-  useEffect(() => { cargar(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { cargar(); }, [clave]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { datos, cargando, error, recargar: cargar };
 }
