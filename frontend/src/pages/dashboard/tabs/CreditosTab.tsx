@@ -2,9 +2,6 @@ import { useEffect, useState } from 'react';
 import { CircleDollarSign, Gauge, Pencil, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { DialogFooter } from '@/components/ui/dialog';
-import Modal from '../../../components/Modal';
 import ImportModal from '../../../components/ImportModal';
 import ExportButton from '../../../components/ExportButton';
 import { SmartTable } from '../../../components/table/SmartTable';
@@ -13,11 +10,12 @@ import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import PerfilCreditoModal from './PerfilCreditoModal';
 import { CreditoForm } from './CreditoForm';
+import { AbonoModal } from './AbonoModal';
 import { creditosColumns } from '../columns';
 import { DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
-import { EncabezadoPagina, Field, FranjaMetricas, Section, StatCard } from '../ui';
+import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import type { Credito, PerfilCredito, Usuario } from '../types';
 
 interface TotalesCartera {
@@ -42,8 +40,8 @@ export function CreditosTab() {
   const [modal, setModal] = useState<{ open: boolean; credito: Credito | null }>({ open: false, credito: null });
   const [importOpen, setImportOpen] = useState(false);
 
-  const [abonoModal, setAbonoModal] = useState<{ open: boolean; creditoId: number | null }>({ open: false, creditoId: null });
-  const [abonoMonto, setAbonoMonto] = useState('');
+  /** El crédito al que se le está abonando; null = modal cerrado. */
+  const [abonando, setAbonando] = useState<Credito | null>(null);
 
   const [perfil, setPerfil] = useState<PerfilCredito | null>(null);
   const [perfilOpen, setPerfilOpen] = useState(false);
@@ -138,16 +136,18 @@ export function CreditosTab() {
     finally { setCupoSaving(false); }
   };
 
-  const handleAbono = async () => {
-    if (!abonoModal.creditoId || !abonoMonto) return;
+  /**
+   * Un abono entró o se borró: el servidor ya devolvió el crédito como quedó,
+   * así que se reemplaza esa fila y solo se piden los totales de la cartera,
+   * que sí cambian y no vienen en la respuesta.
+   */
+  const alCambiarAbonos = async (actualizado: Credito) => {
+    setCreditos(prev => prev.map(c => (c.id === actualizado.id ? actualizado : c)));
+    setAbonando(prev => (prev ? actualizado : prev));
     try {
-      const res = await http.patch(urls.creditos.abono(abonoModal.creditoId), {
-        monto: Number(abonoMonto),
-      });
-      if (!res.ok) { toast.error(res.error, { id: 'creditos' }); return; }
-      toast.success(`Abono de ${formatPrice(Number(abonoMonto))} registrado`);
-      setAbonoModal({ open: false, creditoId: null }); setAbonoMonto(''); load();
-    } catch { toast.error('No se pudo conectar con el servidor', { id: 'creditos' }); }
+      const res = await http.get<{ data: TotalesCartera }>(urls.creditos.totales);
+      if (res.ok && res.cuerpo) setTotales(res.cuerpo.data);
+    } catch { /* los totales se ponen al día en la próxima carga */ }
   };
 
   const handleDelete = async (c: Credito) => {
@@ -175,7 +175,7 @@ export function CreditosTab() {
         size={conTexto ? 'sm' : 'icon'}
         className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-primary'}
         title="Registrar abono"
-        onClick={() => { setAbonoModal({ open: true, creditoId: c.id }); setAbonoMonto(''); }}
+        onClick={() => setAbonando(c)}
       >
         <CircleDollarSign className="size-4" />{conTexto && ' Abonar'}
       </Button>
@@ -290,25 +290,11 @@ export function CreditosTab() {
         }}
       />
 
-      <Modal
-        open={abonoModal.open}
-        onClose={() => setAbonoModal({ open: false, creditoId: null })}
-        title="Registrar abono"
-        maxWidth={360}
-        footer={
-          <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => setAbonoModal({ open: false, creditoId: null })}>
-              Cancelar
-            </Button>
-            <Button onClick={handleAbono} disabled={!abonoMonto}>Guardar abono</Button>
-          </DialogFooter>
-        }
-      >
-        <Field label="Monto del abono (COP)">
-          <Input type="number" min="1" value={abonoMonto}
-            onChange={e => setAbonoMonto(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAbono()} />
-        </Field>
-      </Modal>
+      <AbonoModal
+        credito={abonando}
+        onClose={() => setAbonando(null)}
+        onCambio={alCambiarAbonos}
+      />
 
       <PerfilCreditoModal
         open={perfilOpen}

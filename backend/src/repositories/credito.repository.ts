@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
-import { notFound } from '../utils/httpError';
+import { conflict, notFound } from '../utils/httpError';
 import { DIAS_PLAZO_CREDITO, sumarDias } from '../utils/fechas';
 import { CreateCreditoDTO } from '../types/credito.type';
 import { paginatedResponse } from '../utils/pagination';
@@ -332,26 +332,75 @@ const sincronizarVenta = async (creditoId: number) => {
   }
 };
 
+/**
+ * Cuánto tiempo un abono IDÉNTICO (mismo crédito, mismo monto) se toma por
+ * repetido. Un minuto: el doble clic o el Enter repetido llegan en décimas de
+ * segundo, y dos cuotas iguales de verdad no se registran con segundos de
+ * diferencia.
+ */
+export const VENTANA_ABONO_REPETIDO_MS = 60_000;
+
+/**
+ * Registra un abono, **sin dejar que el mismo entre dos veces**.
+ *
+ * El 2026-09-05 un abono de $50.000 quedó doble en producción (el formulario
+ * no se bloqueaba y el Enter mandaba uno por pulsación). La pantalla ya se
+ * defiende, pero el servidor es el único que ve todas las puertas: doble clic,
+ * una red que reintenta, dos pestañas abiertas.
+ *
+ * El candado (`FOR UPDATE`) sobre la fila del crédito es lo que hace que la
+ * comprobación sirva: sin él, dos peticiones simultáneas miran a la vez, no
+ * ven ningún abono y entran las dos. Con él, la segunda espera a que la
+ * primera termine y ya la ve.
+ */
 export const addAbono = async (id: string, monto: number) => {
-  const credito = await prisma.credito.findUnique({ where: { id: Number(id) } });
-  if (!credito) throw new Error('Crédito no encontrado');
+  const creditoId = Number(id);
+  const ahora = new Date();
 
-  await prisma.creditoAbono.create({
-    data: {
-      credito_id: Number(id),
-      monto,
-      fecha: new Date(),
-    },
+  await prisma.$transaction(async (tx) => {
+    const [fila] = await tx.$queryRaw<{ id: number }[]>`
+      SELECT id FROM creditos WHERE id = ${creditoId} FOR UPDATE`;
+    if (!fila) throw notFound('Crédito no encontrado');
+
+    const repetido = await tx.creditoAbono.findFirst({
+      where: {
+        credito_id: creditoId,
+        monto,
+        created_at: { gte: new Date(ahora.getTime() - VENTANA_ABONO_REPETIDO_MS) },
+      },
+    });
+    if (repetido) {
+      throw conflict(
+        'Ese mismo abono ya quedó registrado hace unos segundos. Si de verdad son dos '
+        + 'abonos iguales, espera un minuto y vuelve a guardarlo.',
+      );
+    }
+
+    // `created_at` se pone aquí y no lo pone la base: la ventana de arriba se
+    // mide con este mismo reloj, así no depende de la zona horaria de MySQL.
+    await tx.creditoAbono.create({
+      data: { credito_id: creditoId, monto, fecha: ahora, created_at: ahora },
+    });
   });
-  await sincronizarVenta(Number(id));
+  await sincronizarVenta(creditoId);
 
-  return releerCredito(Number(id));
+  return releerCredito(creditoId);
 };
 
-export const deleteAbono = async (abonoId: string) => {
-  const abono = await prisma.creditoAbono.delete({ where: { id: Number(abonoId) } });
+/**
+ * Borra un abono equivocado y devuelve el crédito como queda.
+ *
+ * Se exige que el abono sea DE ESE crédito: con solo el número del abono, la
+ * ruta `/creditos/7/abono/99` podía borrar el abono 99 de cualquier otro.
+ */
+export const deleteAbono = async (creditoId: string, abonoId: string) => {
+  const { count } = await prisma.creditoAbono.deleteMany({
+    where: { id: Number(abonoId), credito_id: Number(creditoId) },
+  });
+  if (count === 0) throw notFound('Ese abono ya no existe');
   // Si al quitar el abono la deuda se reabre, la venta vuelve a quedar pendiente
-  await sincronizarVenta(abono.credito_id);
+  await sincronizarVenta(Number(creditoId));
+  return releerCredito(Number(creditoId));
 };
 
 export const deleteCredito = async (id: string) => {
