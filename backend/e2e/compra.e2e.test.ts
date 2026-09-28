@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
-import { abrirDashboard, campo, cerrarNavegador, elegirOpcion, irA } from './navegador';
+import { abrirDashboard, campo, cerrarNavegador, elegirOpcion, irA, elegirFecha } from './navegador';
 
 /**
  * RECORRIDO — registrar una compra da de alta el material, lo mete al
@@ -31,7 +31,7 @@ describe('registrar una compra a un proveedor', () => {
     await pagina.waitForSelector('text=Registrar pago');
 
     await pagina.getByRole('button', { name: '+ Registrar pago' }).click();
-    await campo(pagina, 'Día *').fill(new Date().toISOString().slice(0, 10));
+    await elegirFecha(pagina, 'Día *', new Date().toLocaleDateString('en-CA', { timeZone: 'America/Bogota' }));
     await campo(pagina, 'Valor compra (COP) *').fill(String(PAGADO));
 
     // La empresa se crea aquí mismo: mandar al dueño a otra pantalla a mitad de

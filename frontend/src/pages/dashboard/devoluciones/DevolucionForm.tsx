@@ -15,6 +15,7 @@ import { Field, FieldRow } from '../ui';
 import { MOTIVOS, ESTADOS, SOLUCIONES } from '../../../domain/entities/devolucion.labels';
 import { calcularDesgloseCosto } from '../../../application/costeoCotizacion';
 import type { FormulaVolumen, Insumo } from '../../../domain/entities/cotizacion.types';
+import { CampoFecha } from '@/components/CampoFecha';
 import type {
   Devolucion, DevolucionEstado, DevolucionMotivo, DevolucionSolucion, VentaParaDevolucion,
 } from '../types';
@@ -228,7 +229,7 @@ export default function DevolucionForm({ devolucion, onClose, onGuardada }: Prop
         {/* 2. El reclamo */}
         <FieldRow>
           <Field label="¿Qué día reportó? *">
-            <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            <CampoFecha value={fecha} onChange={(e) => setFecha(e.target.value)} />
           </Field>
           <Field label="Motivo *">
             <SelectSimple value={motivo} onChange={(e) => setMotivo(e.target.value as DevolucionMotivo)}>

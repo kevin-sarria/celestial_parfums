@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SelectSimple } from '@/components/ui/select-simple';
 import type { ColumnDef, FilterValue, StringOp, NumberOp, DateOp } from './tableTypes';
+import { CampoFecha } from '@/components/CampoFecha';
 
 interface Props<T> {
   column: ColumnDef<T>;
@@ -54,6 +55,9 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
+      // El calendario o la lista que se abren DESDE el filtro flotan fuera de
+      // él (en un portal): un clic ahí no es "fuera" del filtro.
+      if ((e.target as Element).closest?.('[data-panel-flotante]')) return;
       if (ref.current && !ref.current.contains(e.target as Node) &&
           anchorEl && !anchorEl.contains(e.target as Node)) onClose();
     };
@@ -147,7 +151,7 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
               <option value="before">Antes de</option>
               <option value="after">Después de</option>
             </SelectSimple>
-            <Input type="date" value={dateVal} onChange={e => setDateVal(e.target.value)} autoFocus />
+            <CampoFecha value={dateVal} onChange={e => setDateVal(e.target.value)} />
           </>
         )}
 

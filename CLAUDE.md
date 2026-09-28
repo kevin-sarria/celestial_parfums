@@ -89,6 +89,11 @@ criterio general reutilizable.
 - Paleta **marfil + iris**, tipografías Fraunces / Manrope, **solo modo claro**, estética sobria.
 - **NINGÚN `<select>` de HTML en toda la aplicación**: `BuscadorSelect` para 6+ opciones o listas
   que crecen; `SelectSimple` para 2-5 opciones fijas. Es el fallo que más se repite.
+- **NINGÚN `<input type="date">`**: `CampoFecha` (misma API que el input). El control nativo
+  abre el calendario del sistema, feo y distinto en cada teléfono (dueño, 2026-09-28).
+- **Ningún campo escribible con letra de menos de 16 px en el celular**: Safari del iPhone acerca
+  la pantalla al darle foco. `Input` y los desplegables ya traen `text-base md:text-sm`; no se
+  les pisa la letra.
 - **Toasts con sonner**, nunca uno propio, nunca `richColors`. `window.alert()` está deprecado.
 - **Ninguna pantalla se entrega sin abrirla en un navegador y mirarla**, y **midiendo en vez de
   opinando** — "quedó más compacto" no se verifica, "pasó de 55 renglones a 41 píxeles" sí.

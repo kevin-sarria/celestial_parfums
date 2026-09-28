@@ -22,6 +22,7 @@ import { EncabezadoPagina, FranjaMetricas, Section, Field, FieldRow, FormError, 
 import type { Pago, Empresa, PagoForm, IvaModo } from '../types';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { emptyPagoForm } from '../types';
+import { CampoFecha } from '@/components/CampoFecha';
 
 export function PagosTab() {
   const [pagos, setPagos] = useState<Pago[]>([]);
@@ -269,7 +270,7 @@ export function PagosTab() {
       >
         <FieldRow>
           <Field label="Día *">
-            <Input type="date" required value={form.dia}
+            <CampoFecha required value={form.dia}
               onChange={e => setForm(f => ({ ...f, dia: e.target.value }))} />
           </Field>
           <Field label="Valor compra (COP) *">

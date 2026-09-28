@@ -105,39 +105,6 @@
     letter-spacing: 0.01em;
   }
 
-  /*
-   * Campos de fecha y hora en el iPhone. Safari los pinta con su propio
-   * aspecto y se salta el del design system: texto CENTRADO, alto propio (un
-   * campo vacío se aplasta) y un ancho mínimo suyo que lo deja más largo o más
-   * corto que los campos de al lado. Lo señaló el dueño en su iPhone 15 Pro Max
-   * el 2026-09-27, en el modal de ventas.
-   *
-   * `@supports (-webkit-touch-callout)` solo lo cumple Safari de iOS: así el
-   * computador conserva el icono del calendario, que `appearance: none` le
-   * quitaría. El calendario nativo del iPhone se sigue abriendo igual.
-   */
-  @supports (-webkit-touch-callout: none) {
-    input[type='date'],
-    input[type='datetime-local'],
-    input[type='time'],
-    input[type='month'] {
-      -webkit-appearance: none;
-      appearance: none;
-      display: block;
-      min-width: 0;
-    }
-
-    input[type='date']::-webkit-date-and-time-value,
-    input[type='datetime-local']::-webkit-date-and-time-value,
-    input[type='time']::-webkit-date-and-time-value,
-    input[type='month']::-webkit-date-and-time-value {
-      text-align: left;
-      margin: 0;
-      /* Vacío no tiene texto y el campo se encogía: el renglón se reserva */
-      min-height: 1.5em;
-    }
-  }
-
   #root {
     width: 100%;
     min-height: 100svh;

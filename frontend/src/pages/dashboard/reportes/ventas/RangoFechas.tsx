@@ -1,6 +1,6 @@
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { hoy } from '../../../../utils/fechas';
+import { CampoFecha } from '@/components/CampoFecha';
 
 export interface Rango { desde: string; hasta: string }
 
@@ -47,12 +47,12 @@ export function RangoFechas({ valor, onCambio }: { valor: Rango; onCambio: (r: R
       <div className="flex items-end gap-2">
         <label className="space-y-1 text-[11.5px] font-semibold text-foreground/70">
           <span className="block">Desde</span>
-          <Input type="date" className="h-9 w-38" value={valor.desde} max={valor.hasta}
+          <CampoFecha className="h-9 w-38" value={valor.desde} max={valor.hasta}
             onChange={(e) => e.target.value && onCambio({ ...valor, desde: e.target.value })} />
         </label>
         <label className="space-y-1 text-[11.5px] font-semibold text-foreground/70">
           <span className="block">Hasta</span>
-          <Input type="date" className="h-9 w-38" value={valor.hasta} min={valor.desde} max={hoy()}
+          <CampoFecha className="h-9 w-38" value={valor.hasta} min={valor.desde} max={hoy()}
             onChange={(e) => e.target.value && onCambio({ ...valor, hasta: e.target.value })} />
         </label>
       </div>

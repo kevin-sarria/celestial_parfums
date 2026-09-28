@@ -356,10 +356,10 @@ causas, tres reglas:
   `text-base md:text-sm`: **no se les pisa la letra** con `text-[12.5px]` (así estaban cantidad y
   regalo en `ArmadorPedido`). El buscador de dentro del desplegable tenía `text-sm` a secas y
   se abría con foco: por eso se veía mal "al abrir un desplegable".
-- **Las fechas en iOS se enderezan en `index.css`**, dentro de `@supports (-webkit-touch-callout:
-  none)` (solo Safari de iOS): Safari las centraba, les ponía su propio alto y un ancho mínimo que
-  no casaba con los demás campos. Fuera del iPhone no se tocan, porque `appearance: none` le
-  quitaría al computador el icono del calendario.
+- ~~Las fechas en iOS se enderezaban en `index.css`~~: no bastó. Al día siguiente el dueño pidió
+  quitar el control nativo (*"estamos usando el básico de html que se ve feo"*), y desde el
+  2026-09-28 **ninguna fecha es `<input type="date">`**: ver *Selector de fecha propio* más abajo.
+  Ese CSS se borró.
 - **Un renglón con varios controles, en el celular va en dos pisos**: arriba qué es y cuánto vale,
   abajo los controles con el mismo alto. Una tira con `flex-wrap` deja cada control donde le
   quepa y con medidas distintas. Desde `sm` los envoltorios pasan a `contents` y vuelve a ser una
@@ -386,9 +386,35 @@ que lo heredan todas las tablas del dashboard sin tocarlas:
   el `sticky` se pega al contenedor con scroll más cercano. El encabezado lleva **fondo sólido**
   (si no, se ven pasar las filas) y su borde es una sombra (el borde de la fila no viaja con él).
 - En el celular, con vista de tarjetas, el pie va suelto debajo (las tarjetas no tienen recuadro).
-- **El panel de un desplegable nunca es más angosto que su texto** (`BuscadorSelect`: `minWidth`
-  = el campo, `width: max-content`, tope al borde de la pantalla). En el campo de "Filas" la
-  lista medía lo mismo que el botón y cortaba "25" en "2…".
+- **El ancho del panel de un desplegable** (`panelAnclado.ts`): en un campo ANCHO mide exactamente
+  lo que el campo; solo un campo CHICO (menos de 176 px, como "Filas") puede crecer hasta que su
+  texto quepa. El 2026-09-27 se dejó crecer a todos hasta su texto para que "Filas" no cortara
+  "25" en "2…", y la lista de productos ("+ Crear producto nuevo (no está en el catálogo)") se
+  salió del campo hasta el borde de la pantalla: el dueño lo vio como un **desfase** (2026-09-28).
+
+## Selector de fecha propio: `CampoFecha` (2026-09-28)
+
+**Ninguna fecha usa `<input type="date">`**, por la misma razón que ningún desplegable usa
+`<select>`: cerrado se veía bien, pero al abrirlo aparecía el calendario del sistema operativo,
+distinto en cada teléfono y fuera del estilo. El dueño lo pidió con captura de su celular.
+
+- Misma API que el input (`value` 'AAAA-MM-DD', `onChange(e => e.target.value)`, `min`, `max`,
+  `required`): reemplazó a los 13 campos de fecha sin tocar sus manejadores.
+- El campo dice **"28 sep 2026"**; el calendario va de **lunes a domingo**, con casillas de 36 px
+  (el dedo), "Hoy" siempre y "Quitar fecha" si no es obligatoria. Se maneja con flechas, Re/Av
+  Pág (meses), Enter y Escape.
+- `required` sigue bloqueando el envío: un botón no participa en la validación del formulario,
+  así que lleva un input oculto que sí.
+- Los nombres de los meses van escritos a mano (`utils/calendario.ts`): `Intl` en es-CO daba
+  "28 de sept de 2026" y la clase `capitalize` convertía el título en "Septiembre **De** 2026".
+- **Panel flotante compartido**: el desplegable y el calendario se colocan con
+  `usePanelAnclado` (colgarse del diálogo, seguir al campo, cerrarse con un clic fuera,
+  `visualViewport`). Los dos llevan `data-panel-flotante`, y el filtro de columna **no cuenta
+  como "fuera"** un clic ahí: si no, elegir un día cerraba el filtro.
+- Recorridos: `elegirFecha(pagina, etiqueta, 'AAAA-MM-DD')` y `valorFecha(...)` en
+  `e2e/navegador.ts` (el botón expone el valor en `data-valor`).
+- Medido: en 430 y 300 px la lista de productos mide y empieza igual que su campo (±2 px) y el
+  calendario cabe en la pantalla (se corre a la izquierda si no).
 
 **Frascos armados tiene su propia pestaña** (`armados`, en *Producción e inventario*): apilada
 encima de los 226 materiales, el dueño leía las dos tablas como una sola lista. Inventario deja

@@ -24,6 +24,7 @@ import { urls } from '../../../infrastructure/api/urls';
 import { BloqueCampos, Field, FieldRow, FormError } from '../ui';
 import type { CodigoValidado, ClienteSeleccion, Credito, Usuario } from '../types';
 import { fechaLimitePorDefecto } from '../../../utils/fechas';
+import { CampoFecha } from '@/components/CampoFecha';
 
 interface CreditoFormProps {
   open: boolean;
@@ -236,7 +237,7 @@ export function CreditoForm({
         <FieldRow>
           {/* Al mover la fecha, la límite se recorre con ella si no se tocó a mano */}
           <Field label="Fecha *">
-            <Input type="date" required value={form.fecha}
+            <CampoFecha required value={form.fecha}
               onChange={e => setForm(f => ({
                 ...f,
                 fecha: e.target.value,
@@ -244,7 +245,7 @@ export function CreditoForm({
               }))} />
           </Field>
           <Field label="Fecha límite de pago *">
-            <Input type="date" required value={form.fecha_limite}
+            <CampoFecha required value={form.fecha_limite}
               onChange={e => setForm(f => ({ ...f, fecha_limite: e.target.value }))} />
           </Field>
         </FieldRow>

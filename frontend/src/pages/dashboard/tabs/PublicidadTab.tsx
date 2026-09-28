@@ -16,6 +16,7 @@ import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { Anuncio, AnuncioForm, CodigoValidado, Lookup } from '../types';
 import { emptyAnuncioForm } from '../types';
+import { CampoFecha } from '@/components/CampoFecha';
 
 interface PublicidadTabProps {
   categorias: Lookup[];
@@ -405,10 +406,10 @@ export function PublicidadTab({ categorias }: PublicidadTabProps) {
           <Field label="Vigencia (opcional)">
             {/* En celular los dos calendarios no caben en una fila: se apilan */}
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <Input type="date" className="min-w-0" value={form.inicio}
+              <CampoFecha className="min-w-0" value={form.inicio}
                 onChange={e => setForm(f => ({ ...f, inicio: e.target.value }))} />
               <span className="hidden text-[12px] text-muted-foreground sm:inline">a</span>
-              <Input type="date" className="min-w-0" value={form.fin}
+              <CampoFecha className="min-w-0" value={form.fin}
                 onChange={e => setForm(f => ({ ...f, fin: e.target.value }))} />
             </div>
           </Field>

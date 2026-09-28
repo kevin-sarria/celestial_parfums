@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { abrirDashboard, campo, cerrarNavegador, irA } from './navegador';
+import { abrirDashboard, cerrarNavegador, elegirFecha, irA, valorFecha } from './navegador';
 
 /**
  * RECORRIDO — el acuerdo de pago que propone el formulario de Créditos.
@@ -35,13 +35,13 @@ describe('el formulario de créditos', () => {
     await pagina.getByRole('button', { name: /nuevo crédito/i }).click();
 
     // Al abrirlo: hoy + 30 días.
-    const fechaHoy = await campo(pagina, 'Fecha *').inputValue();
-    expect(await campo(pagina, 'Fecha límite de pago *').inputValue()).toBe(mas30(fechaHoy));
+    const fechaHoy = await valorFecha(pagina, 'Fecha *');
+    expect(await valorFecha(pagina, 'Fecha límite de pago *')).toBe(mas30(fechaHoy));
 
     // Y si el dueño mueve la fecha del crédito a un 31, el plazo la sigue sin
     // desbordarse al mes de más: 31 de enero → 2 de marzo, no 3.
-    await campo(pagina, 'Fecha *').fill('2026-01-31');
-    await expect.poll(() => campo(pagina, 'Fecha límite de pago *').inputValue()).toBe('2026-03-02');
+    await elegirFecha(pagina, 'Fecha *', '2026-01-31');
+    await expect.poll(() => valorFecha(pagina, 'Fecha límite de pago *')).toBe('2026-03-02');
 
     await contexto.close();
   });

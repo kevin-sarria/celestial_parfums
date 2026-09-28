@@ -128,6 +128,29 @@ export const campo = (pagina: Page, etiqueta: string) =>
   pagina.getByLabel(etiqueta, { exact: true }).last();
 
 /**
+ * La fecha 'AAAA-MM-DD' de un selector de fecha (`CampoFecha`).
+ *
+ * Desde el 2026-09-28 las fechas ya no son `<input type="date">` sino un botón
+ * que abre el calendario de la aplicación, así que no hay `inputValue()`: el
+ * botón expone lo elegido en `data-valor`.
+ */
+export const valorFecha = async (pagina: Page, etiqueta: string) =>
+  (await campo(pagina, etiqueta).getAttribute('data-valor')) ?? '';
+
+/** Elige una fecha como lo haría una persona: abre, navega hasta el mes y toca el día. */
+export const elegirFecha = async (pagina: Page, etiqueta: string, fecha: string) => {
+  await campo(pagina, etiqueta).click();
+  const cuadricula = pagina.locator('[role="grid"][data-mes]').last();
+  const objetivo = fecha.slice(0, 7);
+  for (let i = 0; i < 60; i++) {
+    const mes = await cuadricula.getAttribute('data-mes');
+    if (mes === objetivo) break;
+    await pagina.getByRole('button', { name: mes! < objetivo ? 'Mes siguiente' : 'Mes anterior' }).last().click();
+  }
+  await pagina.locator(`[data-dia="${fecha}"]`).last().click();
+};
+
+/**
  * Elige una opción en un desplegable del dashboard.
  *
  * **Ningún desplegable de la aplicación es un `<select>` del navegador**: todos

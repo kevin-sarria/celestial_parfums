@@ -12,6 +12,7 @@ import { mlDiluyente } from '../../../../application/costeoCotizacion';
 import type { InventarioInsumo, Lookup } from '../../types';
 import type { FormulaVolumen, Insumo } from '../../../../domain/entities/cotizacion.types';
 import type { PerfumeLite } from './ProduccionModal';
+import { CampoFecha } from '@/components/CampoFecha';
 
 interface Props {
   perfumes: PerfumeLite[];
@@ -163,7 +164,7 @@ export function CargaInicialArmados({ perfumes, formulas, catalogo, insumos, onC
           )}
         </Field>
         <Field label="¿Cuándo los armaste?">
-          <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          <CampoFecha value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </Field>
       </FieldRow>
 

@@ -24,6 +24,7 @@ import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { BloqueCampos, Field, FieldRow, FormError } from '../ui';
 import type { CodigoValidado, ClienteSeleccion, Usuario, Venta } from '../types';
+import { CampoFecha } from '@/components/CampoFecha';
 
 interface VentaFormProps {
   open: boolean;
@@ -253,7 +254,7 @@ export function VentaForm({
       <BloqueCampos titulo="¿Cuándo y a quién?">
         <FieldRow>
           <Field label="Día *">
-            <Input type="date" required value={form.dia}
+            <CampoFecha required value={form.dia}
               onChange={e => setForm(f => ({ ...f, dia: e.target.value }))} />
           </Field>
           <Field label="Persona *">

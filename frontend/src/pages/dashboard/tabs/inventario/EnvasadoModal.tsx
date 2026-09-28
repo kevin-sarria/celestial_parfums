@@ -14,6 +14,7 @@ import type { InventarioInsumo } from '../../types';
 import type { FormulaVolumen } from '../../../../domain/entities/cotizacion.types';
 import type { PerfumeLite } from './ProduccionModal';
 import type { Tanda } from './tandas';
+import { CampoFecha } from '@/components/CampoFecha';
 
 /**
  * ENVASAR: la segunda mitad de producir.
@@ -129,7 +130,7 @@ export function EnvasadoModal({
           />
         </Field>
         <Field label="Día que envasaste">
-          <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          <CampoFecha value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </Field>
       </FieldRow>
 

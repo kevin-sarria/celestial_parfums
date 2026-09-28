@@ -11,6 +11,7 @@ import { formatPrice } from '../../helpers';
 import { Field, FieldRow } from '../../ui';
 import type { FormulaVolumen } from '../../../../domain/entities/cotizacion.types';
 import type { PerfumeLite } from './ProduccionModal';
+import { CampoFecha } from '@/components/CampoFecha';
 
 /**
  * PONER A MACERAR: la primera mitad de producir.
@@ -129,13 +130,13 @@ export function MaceracionModal({ formulas, perfumes, onClose, onGuardado }: Pro
           </SelectSimple>
         </Field>
         <Field label="Día que la preparaste">
-          <Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+          <CampoFecha value={fecha} onChange={(e) => setFecha(e.target.value)} />
         </Field>
       </FieldRow>
 
       <FieldRow>
         <Field label="¿Cuándo estará lista? (opcional)">
-          <Input type="date" value={listo} onChange={(e) => setListo(e.target.value)} />
+          <CampoFecha value={listo} onChange={(e) => setListo(e.target.value)} />
         </Field>
         <Field label="Nota (opcional)">
           <Input value={nota} maxLength={255} onChange={(e) => setNota(e.target.value)} />
