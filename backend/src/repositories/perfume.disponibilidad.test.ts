@@ -103,10 +103,23 @@ describe('sinExistenciasParaUno — original (comprado)', () => {
     expect(sinExistenciasParaUno(fila({ tipo_producto: 'comprado' }))).toBe(false);
   });
 
-  it('un fraccionado no se juzga por ahora', () => {
-    // La botella de la que salen los decants se gasta por ml, no por unidades:
-    // el corte pide la merma de fraccionamiento, que el dueño aún no definió.
-    expect(sinExistenciasParaUno(fila({ tipo_producto: 'fraccionado', productoStock: 0 }))).toBe(false);
+  it('un decant se vende mientras la botella alcance para uno más, con su merma', () => {
+    // Decant de 5 ml + 2 ml que se pierden al trasvasar (dueño, 2026-09-28) = 7 ml
+    const decant = (stock: number) => fila({ tipo_producto: 'fraccionado', productoStock: stock, tallas: [talla(5, null)] });
+    expect(motivoAgotado(decant(7))).toBe(null);
+    expect(motivoAgotado(decant(6))).toBe('sin_producto');
+  });
+
+  it('cada talla de decant responde por sí misma', () => {
+    const p = fila({ tipo_producto: 'fraccionado', productoStock: 8, tallas: [talla(5, null), talla(10, null)] });
+    expect(motivoAgotadoDeTalla(p, p.presentaciones[0])).toBe(null);
+    expect(motivoAgotadoDeTalla(p, p.presentaciones[1])).toBe('sin_producto');
+    // Y el perfume sigue en la tienda: su talla chica todavía se puede vender
+    expect(sinExistenciasParaUno(p)).toBe(false);
+  });
+
+  it('un decant sin botella asignada no se marca agotado', () => {
+    expect(sinExistenciasParaUno(fila({ tipo_producto: 'fraccionado', tallas: [talla(5, null)] }))).toBe(false);
   });
 });
 

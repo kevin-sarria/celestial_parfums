@@ -21,21 +21,14 @@ El módulo más grande y el que más plata mueve. Base del futuro POS.
   también para las pruebas): un valor puesto a mano desaparece en cuanto algo obliga a
   reconstruir.
 
-### CASO DE BORDE ABIERTO — decisión pendiente con el dueño
+### Borrar la única compra de un material (DECIDIDO 2026-09-28)
 
-`recalcularPromedio` solo escribe el precio `if (movs.length)`. Si al borrar la compra el
-insumo se queda **sin ningún movimiento**, conserva el costo que fijó la compra borrada en vez
-de volver al precio de partida. Se auto-corrige en la siguiente entrada, pero mientras tanto
-muestra un costo que ya no corresponde (se observó con Esencia Clásica en 383,18 en vez de 380).
-El caso general SÍ está resuelto; este no.
-
-- Hay **dos pruebas** en `inventario.costoPromedio.bd.test.ts`: la del comportamiento correcto
-  está en `it.skip` con la etiqueta `DISCREPANCIA` (esperado 380, real 420) y **otra que fija lo
-  que hace HOY**, para que el día que se arregle el cambio salte a la vista.
-- **NO se arregló, y no por pereza**: el precio de arranque **no se guarda en ninguna parte** —
-  la primera compra lo sobreescribe—, así que "volver al de partida" no es una línea de código
-  sino una columna nueva (`precio_inicial`) con su migración. La otra salida sería dejarlo en 0,
-  pero eso hace ver márgenes inflados sin avisar.
+Si al borrar una compra el material se queda **sin ningún movimiento**, su costo se queda en el de
+esa compra (`recalcularPromedio` solo escribe el precio `if (movs.length)`). **El dueño decidió no
+guardar un "precio de arranque"** (`precio_inicial`): el costo sale siempre de las compras,
+promediando cada compra nueva con lo que ya había —*"cada que se recompre debe ir calculando el
+nuevo precio entre las primeras compras y las últimas"*—, que es justo la fórmula de arriba. La
+prueba `inventario.costoPromedio.bd.test.ts` fija este comportamiento.
 
 ## Compras (sobre `pagos_proveedor`)
 
@@ -392,7 +385,11 @@ costo. Editar o borrar una venta revierte el consumo (`revertirVenta`).
   - **fabricado** → usa la receta de la talla.
   - **comprado** → descuenta UNA unidad del insumo que ES el producto (`insumo_producto_id`), y
     **NO exige talla**: una gorra no tiene ml.
-  - **fraccionado** → descuenta los ml del decant de la botella origen (`ml_utiles`) + su envase.
+  - **fraccionado** → descuenta de la botella origen los ml del decant **más 2 ml de merma de
+    trasvase** (`utils/decants.ts`, `MERMA_TRASVASE_ML`; el dueño dijo "1 a 2 ml" el 2026-09-28 y
+    se tomó el tope) + su envase. La misma cuenta decide cuándo un decant se agota: la botella
+    tiene que alcanzar para uno más con su merma (`perfume.mapeo.ts`). El campo `ml_utiles` ya no
+    se pregunta en la ficha: nunca entró en ninguna cuenta y la merma por decant lo reemplaza.
 - **GOTCHA que costó un ciclo**: `consumirPorVenta` saltaba toda línea sin `ml`, así que los
   comprados nunca descontaban. Solo los fabricados y fraccionados necesitan talla.
 - **Lo que se define en `perfume_presentacion` (`envase_insumo_id`, `accesorios`) MANDA** sobre
@@ -864,8 +861,8 @@ Sigue vigente y **no se cambia sin volver a preguntarle al dueño**:
    visible. Nunca en silencio: el descuadre crecería sin que nadie se entere.
 3. **Perfume sin insumos configurados: NO descuenta y se lista aparte.** Obligar a configurarlos
    antes de vender frenaría el mostrador, y usar una esencia genérica descuadraría ese insumo.
-4. **Originales: falta decidir con el dueño cuántos ml se pierden al trasvasar** (merma de
-   fraccionamiento).
+4. **Originales: se pierden 2 ml por decant al trasvasar** (dueño, 2026-09-28: "1 a 2 ml"; ver
+   *fraccionado* arriba).
 5. **Merchandising con inventario** (gorras y demás): ya cubierto por `tipo_producto = comprado`.
 6. **El enlace catálogo↔costeo, revisado (2026-08-23).** `PerfumePresentacion` usa
    `presentaciones` (catálogo público) y el costeo usa `formulas_volumen`. La relación de verdad

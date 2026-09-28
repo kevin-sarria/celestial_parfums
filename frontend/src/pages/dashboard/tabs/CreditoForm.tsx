@@ -9,6 +9,7 @@ import BuscadorSelect from '../../../components/BuscadorSelect';
 import { detectarCombos } from '../../../application/hooks/useComboDetector';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
+import { CuponAmarrado } from '../pedido/CuponAmarrado';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
 import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
@@ -146,6 +147,11 @@ export function CreditoForm({
   }, [form.lineas, form.aplicar_combo, combos, porId]);
 
   const productosSubtotal = Math.max(0, subtotal - ahorroCombo);
+  /**
+   * Un cupón ya canjeado queda amarrado a este crédito, igual que en Ventas
+   * (dueño, 2026-09-28): el campo se bloquea y solo se suelta borrando el crédito.
+   */
+  const codigoBloqueado = credito?.codigo?.codigo ?? null;
   const cuponActivo = codigoCheck?.valido ? (codigoCheck.cupon ?? null) : cuponPrefill;
   const cuponPct = cuponActivo?.descuento_pct ?? 0;
   const descuentoCupon = descuentoDeCupon(productosSubtotal, cuponPct, cuponActivo?.max_descuento ?? 0);
@@ -356,30 +362,30 @@ export function CreditoForm({
         </Field>
 
         <Field label="Código de descuento (opcional, se canjea al crear)">
-          <div className="flex gap-2">
-            <Input
-              value={form.codigo_descuento}
-              placeholder="Ej: CP-7XK2M9"
-              className="uppercase"
-              onChange={e => { setForm(f => ({ ...f, codigo_descuento: e.target.value })); setCodigoCheck(null); setCuponPrefill(null); }}
-              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); validarCodigo(); } }}
-            />
-            <Button type="button" variant="outline" className="shrink-0"
-              disabled={validando || !form.codigo_descuento.trim()} onClick={validarCodigo}>
-              {validando ? 'Validando…' : 'Validar'}
-            </Button>
-          </div>
+          {codigoBloqueado ? (
+            <CuponAmarrado codigo={codigoBloqueado} de="crédito" />
+          ) : (
+            <>
+              <div className="flex gap-2">
+                <Input
+                  value={form.codigo_descuento}
+                  placeholder="Ej: CP-7XK2M9"
+                  className="uppercase"
+                  onChange={e => { setForm(f => ({ ...f, codigo_descuento: e.target.value })); setCodigoCheck(null); setCuponPrefill(null); }}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); validarCodigo(); } }}
+                />
+                <Button type="button" variant="outline" className="shrink-0"
+                  disabled={validando || !form.codigo_descuento.trim()} onClick={validarCodigo}>
+                  {validando ? 'Validando…' : 'Validar'}
+                </Button>
+              </div>
 
-          {codigoCheck && (
-            <p className={cn('mt-1.5 text-[12.5px] font-medium', codigoCheck.valido ? 'text-primary' : 'text-destructive')}>
-              {codigoCheck.codigo}: {codigoCheck.motivo}
-            </p>
-          )}
-          {cuponPrefill && !codigoCheck && (
-            <p className="mt-1.5 text-[12.5px] text-muted-foreground">
-              Este crédito ya usó el cupón {form.codigo_descuento} (−{cuponPrefill.descuento_pct}%).
-              Bórralo si quieres quitarlo.
-            </p>
+              {codigoCheck && (
+                <p className={cn('mt-1.5 text-[12.5px] font-medium', codigoCheck.valido ? 'text-primary' : 'text-destructive')}>
+                  {codigoCheck.codigo}: {codigoCheck.motivo}
+                </p>
+              )}
+            </>
           )}
           {cuponPct > 0 && productosSubtotal > 0 && (
             <p className="mt-1.5 rounded-lg border border-primary/25 bg-brand-soft/60 px-3 py-2 text-[12px] text-primary">

@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { accesoriosPropios } from './accesoriosDeFicha';
+import { mlPorDecant } from '../utils/decants';
 
 /**
  * CÓMO SE LEE UN PERFUME: de fila de base a lo que ve la tienda.
@@ -141,7 +142,7 @@ export type MotivoAgotado = 'sin_esencia' | 'sin_armados' | 'sin_producto' | nul
  * Con `armados = null` se juzga al perfume entero (basta con que una talla lo
  * pueda vender), que es lo que necesita la card del catálogo.
  */
-const motivoConArmados = (p: PerfumeRow, armados: number): MotivoAgotado => {
+const motivoConArmados = (p: PerfumeRow, armados: number, ml: number | null = null): MotivoAgotado => {
   const tipo = p.tipo_producto ?? 'fabricado';
 
   // Un 1.1 se ofrece cuando está ARMADO, no cuando se podría armar: tener su
@@ -156,6 +157,15 @@ const motivoConArmados = (p: PerfumeRow, armados: number): MotivoAgotado => {
     return Number(p.insumo_producto.stock) > 0 ? null : 'sin_producto';
   }
 
+  // Un decant se corta de la botella original al venderlo: se puede vender
+  // mientras la botella alcance para UNO más, con lo que se pierde al
+  // trasvasar. Sin botella asignada o sin saber la talla no hay nada que
+  // mirar, y marcarlo agotado lo escondería de la tienda sin motivo.
+  if (tipo === 'fraccionado') {
+    if (!p.insumo_producto || ml == null) return null;
+    return Number(p.insumo_producto.stock) >= mlPorDecant(ml) ? null : 'sin_producto';
+  }
+
   // Un frasco ya armado se vende aunque no quede ni gota de esencia: esa
   // esencia ya se gastó el día que se armó.
   if (armados > 0) return null;
@@ -166,7 +176,7 @@ const motivoConArmados = (p: PerfumeRow, armados: number): MotivoAgotado => {
 /** Por qué no se puede vender ESTA talla hoy, o null si sí se puede. */
 export const motivoAgotadoDeTalla = (
   p: PerfumeRow, r: PerfumeRow['presentaciones'][number],
-): MotivoAgotado => motivoConArmados(p, armadosDeTalla(r));
+): MotivoAgotado => motivoConArmados(p, armadosDeTalla(r), r.presentacion.ml ?? null);
 
 /**
  * Por qué no se puede vender el perfume, mirándolo entero.

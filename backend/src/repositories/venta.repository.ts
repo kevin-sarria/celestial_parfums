@@ -30,7 +30,7 @@ export const mapaFiltrosVenta: MapaFiltros = {
 type LineaVenta = { perfume_id: number; ml: number | null; cantidad: number };
 import { paginatedResponse } from '../utils/pagination';
 import { agruparEnlaces, buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
-import { aplicarCodigoAVenta, liberarCodigoDeVenta, validarCodigoParaVenta, codigoCanjeadoDeVenta } from '../services/anuncio.service';
+import { aplicarCodigoAVenta, exigirCuponIntacto, liberarCodigoDeVenta, validarCodigoParaVenta } from '../services/anuncio.service';
 
 const includeRel = {
   user: { select: { id: true, nombre: true, apellido: true, telefono: true, email: true } },
@@ -254,19 +254,8 @@ export const updateVenta = async (id: string, data: CreateVentaDTO) => {
   const pagada = data.pagada ?? true;
   const codigo = data.codigo_descuento?.trim() || null;
 
-  /**
-   * Un cupón ya canjeado queda amarrado a su venta: cambiarlo o quitarlo desde
-   * el editor lo revivía en silencio y esa persona podía volver a usarlo. Para
-   * soltarlo hay que ELIMINAR la venta, que es una acción deliberada.
-   * La comprobación vive aquí y no solo en el formulario: la pantalla se puede
-   * saltar, el servidor no.
-   */
-  const yaCanjeado = await codigoCanjeadoDeVenta(ventaId);
-  if (yaCanjeado && (codigo?.trim().toUpperCase() ?? '') !== yaCanjeado) {
-    throw new Error(
-      `Esta venta ya canjeó el cupón ${yaCanjeado}. Para cambiarlo hay que eliminar la venta y volver a registrarla.`,
-    );
-  }
+  // Un cupón canjeado no se cambia ni se quita al editar (ver `exigirCuponIntacto`)
+  await exigirCuponIntacto(ventaId, codigo, { es: 'venta', articulo: 'la' });
 
   if (codigo) await validarCodigoParaVenta(codigo, ventaId);
   const { avisos } = await prisma.$transaction(async (tx) => escribirVentaConConsumo(tx, ventaId, {

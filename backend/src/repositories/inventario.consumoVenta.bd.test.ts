@@ -105,7 +105,7 @@ describe('venta de productos que no se fabrican', () => {
     expect(costo).toBe(18000);
   });
 
-  it('un FRACCIONADO descuenta los ml del decant de la botella y su envase', async () => {
+  it('un FRACCIONADO descuenta los ml del decant y su merma de la botella, y su envase', async () => {
     const botella = await crearInsumo('Sauvage original 200 ml', { precio: 6316, stock: 95 });
     const envase = await crearInsumo('Frasco decant 10 ml', { tipo: 'envase', precio: 1200, stock: 50 });
 
@@ -123,9 +123,10 @@ describe('venta de productos que no se fabrican', () => {
 
     const { costo } = await vender([{ perfume_id: decant.id, ml: 10, cantidad: 2 }]);
 
-    expect((await estadoDe(botella.id)).stock).toBe(75); // 95 − 2×10
+    // Cada decant saca sus 10 ml MÁS los 2 que se pierden al trasvasar (dueño, 2026-09-28)
+    expect((await estadoDe(botella.id)).stock).toBe(71); // 95 − 2×(10 + 2)
     expect((await estadoDe(envase.id)).stock).toBe(48);
-    expect(costo).toBe(2 * (10 * 6316 + 1200));
+    expect(costo).toBe(2 * (12 * 6316 + 1200));
   });
 
   it('un fraccionado SIN talla no se puede descontar: no se sabe cuántos ml lleva', async () => {

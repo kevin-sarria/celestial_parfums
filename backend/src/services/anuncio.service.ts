@@ -411,6 +411,28 @@ export const liberarCodigoDeVenta = async (
 };
 
 /**
+ * UN CUPÓN YA CANJEADO QUEDA AMARRADO A SU VENTA O A SU CRÉDITO.
+ *
+ * Cambiarlo o quitarlo desde el editor lo revivía en silencio y esa persona
+ * podía volver a usarlo. Para soltarlo hay que ELIMINAR la venta o el crédito,
+ * que es una acción deliberada. Hasta el 2026-09-28 los créditos sí lo
+ * soltaban al borrar el código; el dueño decidió que funcionen igual que las
+ * ventas. La regla vive aquí, en el servidor: la pantalla se puede saltar.
+ */
+export const exigirCuponIntacto = async (
+  ventaId: number, codigo: string | null, que: { es: string; articulo: 'la' | 'el' },
+) => {
+  const yaCanjeado = await codigoCanjeadoDeVenta(ventaId);
+  if (yaCanjeado && (codigo?.trim().toUpperCase() ?? '') !== yaCanjeado) {
+    const pronombre = que.articulo === 'la' ? 'registrarla' : 'registrarlo';
+    throw conflict(
+      `${que.articulo === 'la' ? 'Esta' : 'Este'} ${que.es} ya canjeó el cupón ${yaCanjeado}. `
+      + `Para cambiarlo hay que eliminar ${que.articulo} ${que.es} y volver a ${pronombre}.`,
+    );
+  }
+};
+
+/**
  * El código canjeado que tiene una venta, si lo hay. Sirve para impedir que se
  * cambie al editar: la regla vive en el servidor, no en el formulario.
  */

@@ -27,7 +27,7 @@ export const mapaFiltrosCreditos: MapaFiltros = {
     ? { user: { telefono: { contains: f.value.trim() } } } : null),
 };
 import { buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
-import { canjearCodigoEnCredito, liberarCodigoDeVenta } from '../services/anuncio.service';
+import { canjearCodigoEnCredito, exigirCuponIntacto, liberarCodigoDeVenta } from '../services/anuncio.service';
 import { escribirVentaConConsumo } from './venta.repository';
 import { lineasDeVenta } from '../schemas/venta.schema';
 
@@ -280,6 +280,9 @@ export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
   const pagada = abonado >= deuda;
   const ventaId = existente.venta_id;
 
+  // Igual que en ventas: el cupón canjeado queda amarrado; se suelta borrando el crédito
+  if (ventaId) await exigirCuponIntacto(ventaId, codigo, { es: 'crédito', articulo: 'el' });
+
   const avisos = await prisma.$transaction(async (tx) => {
     let deInventario: string[] = [];
     if (ventaId) {
@@ -311,10 +314,10 @@ export const updateCredito = async (id: string, data: CreateCreditoDTO) => {
     return deInventario;
   });
 
-  // Cupón: se libera el anterior (salvo que sea el mismo) y se re-canjea el nuevo.
-  // Quitar el código lo devuelve a "activo" para que el cliente lo use en otra compra.
+  // Cupón: uno canjeado no se toca (se comprobó arriba); si no había ninguno
+  // canjeado, se suelta el anterior y se canjea el nuevo.
   if (ventaId) {
-    await liberarCodigoDeVenta(ventaId, codigo);
+    await liberarCodigoDeVenta(ventaId, codigo, true);
     if (codigo) await canjearCodigoEnCredito(codigo, ventaId);
   }
 

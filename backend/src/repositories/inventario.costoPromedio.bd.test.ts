@@ -99,32 +99,16 @@ describe('revertir una compra', () => {
   });
 
   /**
-   * DISCREPANCIA (ya anotada en CLAUDE.md como caso de borde abierto).
+   * Al borrar la ÚNICA compra de un material, su costo se queda en el de esa
+   * compra y no vuelve a un "precio de arranque".
    *
-   * La regla dice que `insumos_costo.precio` es la PROYECCIÓN del libro de
-   * movimientos. Al borrar la única compra el libro queda vacío, el stock sí
-   * vuelve a cero... pero el precio se queda en el de la compra borrada, porque
-   * `recalcularPromedio` solo escribe el precio `if (movs.length)`.
-   *
-   *   esperado: 380 (el precio de arranque del material)
-   *   real:     420 (el que fijó la compra que ya no existe)
-   *
-   * Es lo que se vio en agosto con la Esencia Clásica en $383,18 en vez de $380.
-   *
-   * NO se arregla aquí: el precio de arranque **no se guarda en ninguna parte**
-   * — la primera compra lo sobreescribe —, así que "volver al de partida" exige
-   * una columna nueva y su migración. Decisión pendiente con el dueño.
+   * DECIDIDO por el dueño el 2026-09-28: no se guarda un precio de arranque.
+   * El costo sale SIEMPRE de las compras, promediando cada compra nueva con lo
+   * que ya había ("cada que se recompre debe ir calculando el nuevo precio
+   * entre las primeras compras y las últimas"), que es lo que hace
+   * `aplicarMovimiento`. Sin compras no hay otro número mejor que el último.
    */
-  it.skip('DISCREPANCIA: al vaciarse el libro, el precio vuelve al de partida', async () => {
-    const insumo = await crearInsumo('Esencia Clásica', { precio: 380, stock: 0 });
-    await mover({ insumo_id: insumo.id, tipo: 'compra', cantidad: 500, costo_unitario: 420, fecha: FECHA, referencia_id: 9 });
-
-    await prisma.$transaction((tx) => revertirMovimientos(tx, 'compra', 9));
-
-    expect(await estadoDe(insumo.id)).toEqual({ stock: 0, promedio: 380 });
-  });
-
-  it('el caso de borde de arriba, tal como se comporta HOY (para que el cambio se note)', async () => {
+  it('sin compras, el costo se queda en el de la última compra (decisión del dueño)', async () => {
     const insumo = await crearInsumo('Esencia Clásica', { precio: 380, stock: 0 });
     await mover({ insumo_id: insumo.id, tipo: 'compra', cantidad: 500, costo_unitario: 420, fecha: FECHA, referencia_id: 9 });
 

@@ -76,8 +76,6 @@ export interface CamposDelTipo {
   esencia: boolean;
   /** El insumo del que sale (el producto que se revende o la botella origen). */
   insumoOrigen: boolean;
-  /** Cuántos ml se aprovechan de la botella. */
-  mlUtiles: boolean;
   /** La casilla de accesorio (perfumero, bolsa, tarjeta). */
   accesorio: boolean;
   /** La pregunta "¿lo preparas tú o lo compras hecho?" (solo los 1.1). */
@@ -87,19 +85,19 @@ export interface CamposDelTipo {
 export const CAMPOS_POR_TIPO: Record<TipoAlta, CamposDelTipo> = {
   fragancia: {
     atributosDeFragancia: true, tallas: true, esencia: true,
-    insumoOrigen: false, mlUtiles: false, accesorio: false, preparadoOComprado: false,
+    insumoOrigen: false, accesorio: false, preparadoOComprado: false,
   },
   armado: {
     // Un 1.1 SÍ es una fragancia: se busca por notas y se vende por ocasión.
     atributosDeFragancia: true, tallas: true, esencia: true,
-    insumoOrigen: false, mlUtiles: false, accesorio: false, preparadoOComprado: true,
+    insumoOrigen: false, accesorio: false, preparadoOComprado: true,
   },
   comprado: {
     atributosDeFragancia: false, tallas: false, esencia: false,
-    insumoOrigen: true, mlUtiles: false, accesorio: true, preparadoOComprado: false,
+    insumoOrigen: true, accesorio: true, preparadoOComprado: false,
   },
   decant: {
     atributosDeFragancia: true, tallas: true, esencia: false,
-    insumoOrigen: true, mlUtiles: true, accesorio: false, preparadoOComprado: false,
+    insumoOrigen: true, accesorio: false, preparadoOComprado: false,
   },
 };

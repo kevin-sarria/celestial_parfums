@@ -64,71 +64,26 @@ cotizaciones está en [`inventario-costeo.md`](inventario-costeo.md).
   resetea si se vuelve a teclear el valor. Esto importa porque **todas las ventas históricas se
   registraron con el descuento ya aplicado a mano**.
 
-### CUPÓN CANJEADO = AMARRADO A SU VENTA
+### CUPÓN CANJEADO = AMARRADO A SU VENTA O A SU CRÉDITO
 
 Antes bastaba con **borrar el texto del campo al editar** para que `liberarCodigoDeVenta` lo
-devolviera a `activo` y esa persona pudiera usarlo otra vez. Ahora:
+devolviera a `activo` y esa persona pudiera usarlo otra vez. Ahora, **igual en ventas y en
+créditos** (el dueño igualó los créditos el 2026-09-28; antes quitar el código de un crédito lo
+liberaba):
 
+- `exigirCuponIntacto` (`anuncio.service.ts`) rechaza editar una venta o un crédito cambiando o
+  quitando un cupón ya canjeado. Una sola regla para los dos; vive en el servidor.
 - `liberarCodigoDeVenta(ventaId, excepto, soloNoCanjeados)` — al **editar** se pasa `true`; al
-  **borrar** la venta no, porque ahí sí debe soltarse.
-- `updateVenta` **rechaza** el cambio con un mensaje claro. La regla vive en el servidor: la
-  pantalla se puede saltar.
-- En el formulario el campo sale `disabled` con la explicación.
-- **Ojo: en CRÉDITOS sigue funcionando distinto a propósito** (quitar el código lo libera; es
-  el único camino para devolver un cupón canjeado en crédito). Igualar las dos reglas es una
-  decisión aparte que hay que hablar con el dueño.
-
-## Créditos ↔ Ventas
-
-- Crear un crédito genera su **venta enlazada pendiente** (`creditos.venta_id`), con los
-  perfumes detectados del texto de artículos vía `perfumeMatcher`.
-- El abono que salda la deuda marca la venta como pagada (y es simétrico: borrar un abono la
-  reabre; borrar el crédito borra su venta).
-- Estadística "Ingresos este mes" = ventas de contado del mes + abonos del mes. La venta
-  enlazada a crédito NUNCA suma ahí (su plata entra por abonos; evita doble conteo).
-- `creditos.fecha_limite` (`@db.Date`): acuerdo de pago, **por defecto 30 días de calendario**
-  desde `fecha`, editable. El crédito sale "Vencido" en la tabla si sigue con saldo pasada esa
-  fecha.
-  - **Son días, no "el mismo día del mes siguiente"** — decidido por el dueño el 2026-08-23. Su
-    razón: un crédito de fin de enero con límite el 28 de febrero *parece* menos de un mes;
-    contando 30 días el plazo es siempre el mismo, y "un mes" en un acuerdo de palabra es
-    aproximado.
-  - Antes se calculaba con `setMonth(+1)` y en los días **29, 30 y 31 se desbordaba**: un crédito
-    del 31 de enero vencía el **3 de marzo** (31 días de plazo) y uno del 31 de marzo, el 1 de
-    mayo. Nadie lo había notado porque ningún crédito de producción nació esos días (6 créditos,
-    cero afectados al 2026-08-14). Le habría tocado a 1 de cada 10.
-  - La cuenta vive en `utils/fechas.ts` (`DIAS_PLAZO_CREDITO` + `sumarDias`) **en los dos lados**:
-    el formulario la propone mientras escribes y el servidor la decide al guardar. Están
-    probadas de las tres formas —la aritmética sola, lo que se guarda de verdad y lo que el dueño
-    ve en pantalla— porque son dos cálculos distintos y el día que se separen mostraría una fecha
-    y guardaría otra.
-
-### Crédito itemizado (productos reales, no texto libre)
-
-- El formulario arma **líneas**: perfume del catálogo + su talla + cantidad. El precio sale de
-  la lista de precios (cascada de `mapPerfume`); el descuento de la página se aplica por
-  defecto pero cada línea tiene un check **"sin −X%"** para quitarlo (a crédito no siempre
-  aplica lo del contado). La suma = "valor de los productos".
-- **Interruptor "aplicar precio de combo"** (apagado por defecto): a crédito el mayoreo NO se
-  aplica solo; si se enciende, reutiliza `detectarCombos` (mismo motor del carrito) y resta el
-  ahorro. Los ítems con descuento propio o esencia premium no entran al combo.
-- El form manda `perfume_ids` (repetidos por cantidad), `presentacion` (resumen "30ml, 60ml") y
-  `articulos` (texto generado). El backend usa los ids directo (sin matcher); el importador de
-  Excel sigue infiriéndolos del texto libre.
-- **La deuda que se manda ya es el valor FINAL** (líneas − combo − cupón): el cálculo del cupón
-  vive en el FRONT; el backend la guarda tal cual y solo consume el código. Así editar no
-  aplica el descuento dos veces. Campo editable a mano.
-- **Editar crédito** (`updateCredito`, PATCH `/creditos/:id`): conserva los abonos, recalcula
-  pagada contra ellos, reconstruye las líneas desde `venta.perfumes` (talla best-effort) y
-  re-enlaza el cupón como en ventas.
+  **borrar** la venta o el crédito no, porque ahí sí debe soltarse: la compra se deshizo.
+- En los dos formularios el campo sale bloqueado con la explicación (`pedido/CuponAmarrado.tsx`).
+- Pruebas: `credito.cupon.bd.test.ts` y el recorrido `cupon.e2e.test.ts`.
 
 ### Cupón sobre un crédito
 
-- Al crear o editar un crédito se puede canjear un código: el descuento se calcula en el form y
-  se guarda la deuda ya neta. El cupón se consume **al instante** (canjeado, un solo uso), NO
-  espera a que pague todo — a diferencia de una venta normal (`canjearCodigoEnCredito`).
-- Borrar el crédito (o quitar el código al editar) **libera** el cupón: revierte la compra. Es
-  el único camino para "devolver" un cupón canjeado en crédito.
+- Al crear un crédito se puede canjear un código: el descuento se calcula en el form y se guarda
+  la deuda ya neta. El cupón se consume **al instante** (canjeado, un solo uso), NO espera a que
+  pague todo — a diferencia de una venta normal (`canjearCodigoEnCredito`).
+- Solo **borrar el crédito** libera el cupón (ver arriba).
 
 ## Unidades por perfume en una venta
 

@@ -1,6 +1,6 @@
 import { hoy } from '../../../utils/fechas';
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Lock, TriangleAlert, XCircle } from 'lucide-react';
+import { CheckCircle2, TriangleAlert, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,6 +10,7 @@ import BuscadorSelect from '../../../components/BuscadorSelect';
 import { detectarCombos } from '../../../application/hooks/useComboDetector';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
+import { CuponAmarrado } from '../pedido/CuponAmarrado';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
 import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
@@ -388,17 +389,7 @@ export function VentaForm({
 
         <Field label="Código de descuento (si el pedido de WhatsApp traía uno)">
           {codigoBloqueado ? (
-            <>
-              <div className="relative">
-                <Input value={codigoBloqueado} disabled className="pr-9 uppercase" />
-                <Lock className="pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              </div>
-              <p className="mt-1.5 rounded-lg border border-border bg-secondary/50 px-3 py-2 text-[12.5px] text-muted-foreground">
-                Este cupón <strong>ya se canjeó</strong> y queda amarrado a esta venta. Para
-                cambiarlo hay que eliminar la venta y volver a registrarla — así nadie lo
-                revive por accidente.
-              </p>
-            </>
+            <CuponAmarrado codigo={codigoBloqueado} de="venta" />
           ) : (
             <>
               <div className="flex gap-2">

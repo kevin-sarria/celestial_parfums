@@ -238,16 +238,9 @@ export function FichaPerfumeModal({
             </p>
           </Field>
 
-          {campos.mlUtiles && (
-            <Field label="¿Cuántos ml aprovechas de la botella?">
-              <Input type="number" min="1" value={form.ml_utiles} placeholder="Ej: 95 de una de 100"
-                onChange={e => setForm(f => ({ ...f, ml_utiles: e.target.value }))} />
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                Menos que el volumen nominal: al trasvasar siempre queda producto en el frasco
-                y en la jeringa. Si pones el nominal, cada decant te saldrá más barato de lo real.
-              </p>
-            </Field>
-          )}
+          {/* Ya no se pregunta cuántos ml se aprovechan de la botella: nunca entró
+              en ninguna cuenta, y desde el 2026-09-28 lo que se pierde al trasvasar
+              se descuenta en cada decant (backend/src/utils/decants.ts). */}
         </div>
       )}
 

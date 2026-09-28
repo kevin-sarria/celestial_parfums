@@ -175,18 +175,4 @@ describe('cupón sobre un crédito: se consume al instante', () => {
     expect(row.estado).toBe('canjeado');
     expect(row.canjeado_at).not.toBeNull();
   });
-
-  it('en CRÉDITOS quitar el código sí lo libera, y es a propósito', async () => {
-    // Es el único camino para devolver un cupón canjeado en un crédito. Ojo:
-    // en VENTAS la regla es la contraria. Igualarlas es una decisión aparte que
-    // hay que hablar con el dueño, no un descuido.
-    const cliente = await crearCliente('ana@prueba.local');
-    const promo = await crearCampanaCupon();
-    const codigo = await emitirCodigo(cliente.id, promo.id);
-    await canjearCodigoEnCredito(codigo.codigo, venta);
-
-    await liberarCodigoDeVenta(venta);
-
-    expect((await estadoDelCodigo(codigo.codigo)).estado).toBe('activo');
-  });
 });

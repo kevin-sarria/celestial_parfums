@@ -55,13 +55,13 @@ El detalle de cada punto está más abajo en este archivo.
 | 11 | Partir el dashboard con `import()` perezoso: el paquete pasa de 500 kB (no urge) |
 | 12 | Opcional: rebajar también el costo de las 11 ventas de frascos 1.1 que cargaron bolsa y perfumero. Hoy conservan el costo con que se vendieron, a propósito |
 
-**Decisiones que esperan al dueño:**
+**Decisiones del dueño (2026-09-28, todas cerradas):**
 
-| # | Pregunta |
-|---|---|
-| 13 | ¿El cupón funciona igual en créditos que en ventas? (hoy, en créditos, quitar el código lo libera) |
-| 14 | ¿Cuántos ml se pierden al trasvasar a decants? Sin eso, un decant nunca se agota solo |
-| 15 | ¿Guardar el precio de arranque de cada material (`precio_inicial`) para el caso de borde del costo promedio? |
+| # | Pregunta | Decisión |
+|---|---|---|
+| 13 | ¿El cupón funciona igual en créditos que en ventas? | **Sí**: ya canjeado queda amarrado; solo borrar lo suelta (`reglas-negocio.md`) |
+| 14 | ¿Cuántos ml se pierden al trasvasar a decants? | **1 a 2 ml**; se toma 2 (`inventario-costeo.md`) |
+| 15 | ¿Guardar `precio_inicial`? | **No**: el costo sale siempre de las compras, promediadas |
 
 **Entorno local:** `celestial_prod_20260922` es la copia más reciente de producción (22-sep).
 `perfumes_db` ya tiene aplicada la migración del 27-sep.
