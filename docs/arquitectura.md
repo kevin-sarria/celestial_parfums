@@ -312,6 +312,11 @@ clasificaciones, que antes eran su propio grupo) y *Mayoreo B2B* al final, que e
 cuando el negocio crezca. Se respetaron las dos decisiones de abajo: plata y operación separadas, y
 las recetas en el taller. La lista y el porqué viven en `navegacion.ts`.
 
+Las **cinco clasificaciones** (aromas, ocasiones, categorías, presentaciones y gamas) son UNA entrada
+del menú, "Clasificaciones", que abre Aromas; arriba de cada una, `SelectorClasificaciones` pasa a
+las otras. Cada lista conserva su dirección (`/dashboard/ocasiones`…), así que enlaces y recorridos
+siguen sirviendo. Lo decide `CLASIFICACIONES` / `entradaActiva` en `navegacion.ts`.
+
 ### Catálogo: Perfumes y Productos son la MISMA tabla, partida en dos (2026-08-23, Ola 1)
 
 El dueño empezó a vender 1.1 (contratipos con envase premium), accesorios (perfumero, bolsa,

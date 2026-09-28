@@ -81,7 +81,8 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'productos', 'combos', 'precios', 'descuentos'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'pagina', label: 'Página web', tabs: ['publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
-  { id: 'ajustes', label: 'Ajustes', tabs: ['usuarios', 'aromas', 'ocasiones', 'categorias', 'presentaciones', 'gamas'] },
+  // `aromas` es la puerta a las cinco clasificaciones (ver CLASIFICACIONES)
+  { id: 'ajustes', label: 'Ajustes', tabs: ['usuarios', 'aromas'] },
   { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'precios_mayoreo'] },
 ];
 
@@ -91,8 +92,24 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
  */
 export const TAB_INICIO: Tab = 'inicio';
 
+/**
+ * Las cinco listas que se configuran una vez y se olvidan. En el menú son UNA
+ * entrada ("Clasificaciones", que abre la primera) y arriba de cada una hay
+ * pestañas para pasar a las otras (2026-09-28). Cada lista conserva su propia
+ * dirección, así que los enlaces y los recorridos de siempre siguen sirviendo.
+ */
+export const CLASIFICACIONES: Tab[] = ['aromas', 'ocasiones', 'categorias', 'presentaciones', 'gamas'];
+export const esClasificacion = (t: Tab) => CLASIFICACIONES.includes(t);
+
+/** Lo que dice el menú para una pestaña: la de las clasificaciones se llama por su grupo. */
+export const etiquetaEnMenu = (t: Tab) => (t === CLASIFICACIONES[0] ? 'Clasificaciones' : TAB_META[t].label);
+
+/** ¿Esta entrada del menú está activa estando en `actual`? */
+export const entradaActiva = (t: Tab, actual: Tab) =>
+  t === actual || (t === CLASIFICACIONES[0] && esClasificacion(actual));
+
 export const sectionOfTab = (tab: Tab) =>
-  NAV_SECTIONS.find(s => s.tabs.includes(tab))?.id ?? '';
+  NAV_SECTIONS.find(s => s.tabs.some(t => entradaActiva(t, tab)))?.id ?? '';
 
 /** Al entrar al panel se cae en Inicio (antes era la lista de Perfumes, 2026-09-28). */
 export const TAB_POR_DEFECTO: Tab = TAB_INICIO;

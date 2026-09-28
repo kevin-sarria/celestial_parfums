@@ -11,7 +11,8 @@ import { http, type Respuesta } from '../../infrastructure/api/http';
 import { urls, type Clasificacion } from '../../infrastructure/api/urls';
 import type { Tab, Lookup } from './types';
 import { MenuLateral } from './MenuLateral';
-import { TAB_META, TAB_POR_DEFECTO, esTabValido } from './navegacion';
+import { TAB_META, TAB_POR_DEFECTO, esClasificacion, esTabValido } from './navegacion';
+import { SelectorClasificaciones } from './SelectorClasificaciones';
 import CentroNotificaciones from './CentroNotificaciones';
 import { PerfumesTab } from './tabs/PerfumesTab';
 import { ProductosTab } from './tabs/ProductosTab';
@@ -314,6 +315,7 @@ export default function DashboardPage() {
                 onMutate={refreshAll}
               />
             )}
+            {esClasificacion(tab) && <SelectorClasificaciones actual={tab} />}
             {tab === 'aromas' && (
               <LookupTab title="Tipos de Aroma" nuevo="Nuevo aroma" editar="Editar aroma"
                 ejemplo="Ej: Amaderado, Cítrico, Oriental" items={aromas}

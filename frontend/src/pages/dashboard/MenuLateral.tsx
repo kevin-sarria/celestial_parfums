@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import BackupSeguridad from './BackupSeguridad';
 import { BrandMark } from '../../components/BrandMark';
-import { NAV_SECTIONS, TAB_INICIO, TAB_META, TAB_POR_DEFECTO, esTabValido, sectionOfTab } from './navegacion';
+import { NAV_SECTIONS, TAB_INICIO, TAB_META, TAB_POR_DEFECTO, entradaActiva, esTabValido, etiquetaEnMenu, sectionOfTab } from './navegacion';
 import type { Tab } from './types';
 
 /**
@@ -101,7 +101,7 @@ export function MenuLateral() {
           })()}
           {NAV_SECTIONS.map(sec => {
             const abierta = openSections.has(sec.id);
-            const contieneActiva = sec.tabs.includes(tab);
+            const contieneActiva = sec.tabs.some(t => entradaActiva(t, tab));
             return (
               <div key={sec.id} className="mb-1">
                 <button
@@ -119,8 +119,9 @@ export function MenuLateral() {
                 {abierta && (
                   <div className="mb-2 flex flex-col gap-0.5">
                     {sec.tabs.map(t => {
-                      const { label, icon: Icon } = TAB_META[t];
-                      const activa = tab === t;
+                      const { icon: Icon } = TAB_META[t];
+                      const label = etiquetaEnMenu(t);
+                      const activa = entradaActiva(t, tab);
                       return (
                         <button
                           key={t}
