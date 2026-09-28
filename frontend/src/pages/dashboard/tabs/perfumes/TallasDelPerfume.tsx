@@ -3,6 +3,7 @@ import { SelectSimple } from '@/components/ui/select-simple';
 import { Field } from '../../ui';
 import { formatPrice } from '../../helpers';
 import type { Lookup, PerfumeForm } from '../../types';
+import { AccesoriosDeTalla, type OpcionAccesorio } from './AccesoriosDeTalla';
 
 /** Un insumo elegible como frasco de una talla. */
 interface Envase { id: number; nombre: string }
@@ -19,11 +20,12 @@ interface Envase { id: number; nombre: string }
  * Recibe el formulario entero y su `setForm`: el dueño del estado sigue siendo
  * la pestaña, que es quien lo guarda.
  */
-export function TallasDelPerfume({ form, setForm, presentaciones, envases, precioDeLista }: {
+export function TallasDelPerfume({ form, setForm, presentaciones, envases, accesorios, precioDeLista }: {
   form: PerfumeForm;
   setForm: React.Dispatch<React.SetStateAction<PerfumeForm>>;
   presentaciones: Lookup[];
   envases: Envase[];
+  accesorios: OpcionAccesorio[];
   /** Lo que ya cuesta esa talla por la lista de su categoría (null = sin precio). */
   precioDeLista: (presentacionId: number) => number | null;
 }) {
@@ -46,7 +48,15 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, preci
               <label className="flex min-w-28 flex-1 cursor-pointer items-center gap-2 text-[13px] text-foreground">
                 <input
                   type="checkbox" className="size-4 accent-primary" checked={activa}
-                  onChange={() => setForm(f => ({ ...f, presentaciones: toggleId(f.presentaciones, pr.id) }))}
+                  onChange={() => setForm(f => ({
+                    ...f,
+                    presentaciones: toggleId(f.presentaciones, pr.id),
+                    // Un 1.1 NO lleva bolsa ni perfumero: la talla nueva arranca
+                    // en "Ninguno" (el dueño la cambia si ese sí los lleva).
+                    accesorios_talla: f.solo_armado && !(pr.id in f.accesorios_talla)
+                      ? { ...f.accesorios_talla, [pr.id]: [] }
+                      : f.accesorios_talla,
+                  }))}
                 />
                 {pr.nombre}
               </label>
@@ -82,6 +92,13 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, preci
                       <option value="">Frasco del tamaño</option>
                       {envases.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
                     </SelectSimple>
+                  )}
+                  {form.tipo_producto !== 'comprado' && (
+                    <AccesoriosDeTalla
+                      valor={form.accesorios_talla[pr.id] ?? null}
+                      opciones={accesorios}
+                      onCambio={v => setForm(f => ({ ...f, accesorios_talla: { ...f.accesorios_talla, [pr.id]: v } }))}
+                    />
                   )}
                 </>
               )}

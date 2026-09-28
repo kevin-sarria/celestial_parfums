@@ -180,6 +180,7 @@ export function FichaPerfumeModal({
           setForm={setForm}
           presentaciones={presentaciones}
           envases={ficha.envases}
+          accesorios={ficha.accesorios}
           precioDeLista={ficha.precioDeLista}
         />
       )}

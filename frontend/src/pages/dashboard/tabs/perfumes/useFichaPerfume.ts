@@ -4,7 +4,7 @@ import type { Perfume } from '../../../../domain/entities/perfume.schema';
 import { esEsencia } from '../../../../domain/entities/insumo';
 import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
-import type { Insumo } from '../../../../domain/entities/cotizacion.types';
+import type { FormulaVolumen, Insumo } from '../../../../domain/entities/cotizacion.types';
 import { subirImagenAdmin } from '../../helpers';
 import type { Lookup, PerfumeForm, PrecioLista } from '../../types';
 import { emptyPerfumeForm } from '../../types';
@@ -35,6 +35,8 @@ export interface FichaPerfume {
   esencias: Insumo[];
   insumosProducto: Insumo[];
   envases: Insumo[];
+  /** Lo que se puede poner como accesorio de una talla (ver `AccesoriosDeTalla`). */
+  accesorios: Insumo[];
   imgMode: 'url' | 'file';
   setImgMode: (m: 'url' | 'file') => void;
   /** Qué se está dando de alta. Null = el modal enseña las cuatro puertas. */
@@ -71,9 +73,13 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
   const [esencias, setEsencias] = useState<Insumo[]>([]);
   const [insumosProducto, setInsumosProducto] = useState<Insumo[]>([]);
   const [envases, setEnvases] = useState<Insumo[]>([]);
+  const [accesorios, setAccesorios] = useState<Insumo[]>([]);
   useEffect(() => {
     (async () => {
-      const r = await http.get<{ data: Insumo[] }>(urls.costeo.insumos);
+      const [r, rf] = await Promise.all([
+        http.get<{ data: Insumo[] }>(urls.costeo.insumos),
+        http.get<{ data: FormulaVolumen[] }>(urls.costeo.formulas),
+      ]);
       if (!r.ok) return;
       const todos = r.cuerpo?.data ?? [];
       // Se reconocen por su GAMA, no por el nombre: ver `esEsencia`. Colgarlo de
@@ -82,6 +88,11 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
       // Para comprados/fraccionados: cualquier insumo puede SER el producto
       setInsumosProducto(todos);
       setEnvases(todos.filter((i: Insumo) => i.tipo === 'envase'));
+      // Accesorio = lo que es de tipo accesorio Y lo que alguna receta ya usa
+      // como tal: el perfumero está registrado como envase y es un accesorio.
+      const deRecetas = new Set((rf.ok ? rf.cuerpo?.data ?? [] : [])
+        .flatMap((f) => (f.accesorios_default ?? []).map((a) => a.insumo_id)));
+      setAccesorios(todos.filter((i: Insumo) => i.tipo === 'accesorio' || deRecetas.has(i.id)));
     })();
   }, []);
   const [formError, setFormError] = useState('');
@@ -139,6 +150,10 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
         (p.precios ?? []).filter(pr => pr.envase_insumo_id)
           .map(pr => [pr.presentacion_id, pr.envase_insumo_id as number]),
       ),
+      accesorios_talla: Object.fromEntries(
+        (p.precios ?? []).filter(pr => pr.accesorios != null)
+          .map(pr => [pr.presentacion_id, pr.accesorios]),
+      ),
     });
     setFormError(''); setImgMode('url'); setModal({ open: true, editId: p.id });
   };
@@ -183,7 +198,10 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
       envases_talla: form.presentaciones.map(id => ({
         presentacion_id: id,
         envase_insumo_id: form.envases_talla[id] || null,
-        accesorios: [],
+        // null = los del tamaño. Antes viajaba SIEMPRE [] y el servidor lo leía
+        // como "los del tamaño"; hoy [] es "ninguno" y mandarlo de oficio le
+        // quitaría los accesorios a todo lo que se guarde.
+        accesorios: form.accesorios_talla[id] ?? null,
       })),
     };
     try {
@@ -207,7 +225,7 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
 
   return {
     modal, form, setForm, formError, formLoading,
-    esencias, insumosProducto, envases,
+    esencias, insumosProducto, envases, accesorios,
     imgMode, setImgMode,
     tipoElegido, setTipoElegido, uploading,
     precioDeLista, abrirNuevo, abrirEdicion, cerrar, guardar, eliminar, subirImagen,

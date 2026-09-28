@@ -19,7 +19,7 @@ import type { Tanda } from './tandas';
  * ENVASAR: la segunda mitad de producir.
  *
  * Saca ml de una tanda que ya reposó y los mete en frascos. Gasta el envase y
- * los accesorios de la receta; **no vuelve a gastar esencia**, porque esa salió
+ * los accesorios de la ficha (ver accesoriosDeFicha.ts en el servidor); **no vuelve a gastar esencia**, porque esa salió
  * de la bodega el día de la mezcla.
  *
  * De la misma tanda se puede envasar varias veces y **en tallas distintas**
@@ -182,7 +182,7 @@ export function EnvasadoModal({
           <p className="mt-0.5 text-muted-foreground">
             Cada frasco te queda en aproximadamente{' '}
             <strong className="text-foreground">{formatPrice(costoPorFrasco)}</strong>
-            {' '}(el sistema le suma los accesorios de la receta al guardar).
+            {' '}(el sistema le suma los accesorios que lleve esa ficha al guardar; un 1.1, ninguno).
           </p>
           {saldoDespues < 0 && (
             <p className="mt-1 font-medium text-destructive">

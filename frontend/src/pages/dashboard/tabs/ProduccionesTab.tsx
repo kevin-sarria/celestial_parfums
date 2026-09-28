@@ -14,6 +14,7 @@ import { produccionesColumns } from '../columns';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import { ProduccionModal, type PerfumeLite } from './inventario/ProduccionModal';
 import { LotesPorEnlazar } from './producciones/LotesPorEnlazar';
+import { AccesoriosSobrantes } from './producciones/AccesoriosSobrantes';
 import { MacerandoAhora } from './producciones/MacerandoAhora';
 import type { FrascoArmado, InventarioInsumo, Produccion, ResumenInventario } from '../types';
 import type { CatalogoItem, CatalogoRespuesta } from '../types';
@@ -91,7 +92,7 @@ export function ProduccionesTab() {
     // se vendieron, el conteo queda en negativo y hay que ajustarlo a mano.
     const aviso = p.perfume_nombre
       ? `¿Borrar el lote de ${p.cantidad} × ${p.perfume_nombre} ${p.volumen_nombre}?\n\n`
-        + 'El material vuelve al inventario y se quitan esos frascos de "Frascos ya armados". '
+        + 'El material vuelve al inventario y se quitan esos frascos de "Frascos armados". '
         + 'Si alguno ya se vendió, el conteo quedará en negativo.'
       : `¿Borrar el lote de ${p.cantidad} × ${p.volumen_nombre}? Los insumos vuelven al inventario.`;
     if (!window.confirm(aviso)) return;
@@ -154,13 +155,14 @@ export function ProduccionesTab() {
         formulas={formulas} perfumes={perfumes} insumos={insumos} onCambio={load}
       />
 
+      <AccesoriosSobrantes onCorregido={load} />
       <LotesPorEnlazar perfumes={perfumes} onResuelto={load} />
 
       <Section>
         <p className="text-[12.5px] text-muted-foreground">
           Cada lote descontó sus insumos al registrarse y dejó sus frascos listos en{' '}
-          <Link to="/dashboard/inventario" className="text-primary hover:underline">Inventario</Link>
-          , en <strong className="text-foreground">Frascos ya armados</strong> — al venderlos no se
+          <Link to="/dashboard/armados" className="text-primary hover:underline">Frascos armados</Link>
+          {' '}— al venderlos no se
           vuelve a descontar material. Si borras un lote,
           <strong className="text-foreground"> el material vuelve y los frascos se quitan</strong>.
           Para registrar uno nuevo, usa <strong className="text-foreground">Registrar uso</strong> en Inventario.

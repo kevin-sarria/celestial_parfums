@@ -7,6 +7,7 @@ import { registrarProduccion } from './inventario.producciones';
 import { revertirTerminado } from './inventario.terminado';
 import { idsDeMaterialesGenerales } from './materialesGenerales';
 import { costoDelFrasco, costoPorMl, escalarReceta, saldoDeTanda } from './maceracion.calculo';
+import { consumosDeAccesorios } from './accesoriosDeFicha';
 
 /**
  * MACERAR: la primera mitad de producir.
@@ -267,10 +268,7 @@ export const envasar = async (data: EnvasadoInput) => {
   if (!tanda) throw badRequest('Esa tanda ya no existe');
   if (tanda.cerrada_en) throw badRequest('Esa tanda está cerrada: ya no se puede envasar de ella');
 
-  const formula = await prisma.formulaVolumen.findUnique({
-    where: { id: data.formula_volumen_id },
-    include: { accesorios: true },
-  });
+  const formula = await prisma.formulaVolumen.findUnique({ where: { id: data.formula_volumen_id } });
   if (!formula) throw badRequest('Ese tamaño ya no existe');
 
   const mlQueSalen = num(formula.ml_total) * data.cantidad;
@@ -297,7 +295,9 @@ export const envasar = async (data: EnvasadoInput) => {
     nota: data.nota ?? null,
     consumos: [
       ...(envaseId ? [{ insumo_id: envaseId, cantidad: data.cantidad }] : []),
-      ...formula.accesorios.map((a) => ({ insumo_id: a.insumo_id, cantidad: data.cantidad })),
+      // Los de ESTA ficha, no los de la receta a secas: un 1.1 envasado no
+      // lleva bolsa ni perfumero (ver `accesoriosDeFicha.ts`).
+      ...await consumosDeAccesorios(prisma, data.formula_volumen_id, data.perfume_id ?? null, data.cantidad),
     ],
   });
 

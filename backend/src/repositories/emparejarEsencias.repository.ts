@@ -357,6 +357,9 @@ export const crearProductoArmado = async (datos: {
           presentacion_id: datos.presentacion_id,
           envase_insumo_id: datos.envase_insumo_id ?? null,
           precio: datos.precio_presentacion ?? null,
+          // Un 1.1 NACE sin bolsa ni perfumero: es lo normal según el dueño
+          // (2026-08-30). Lista vacía = "ninguno"; ver `accesoriosDeFicha.ts`.
+          accesorios: [],
         },
       },
     },

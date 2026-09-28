@@ -4,6 +4,7 @@ import { r3, r4 } from '../utils/redondeo';
 import { aplicarMovimiento, revertirMovimientos } from './inventario.repository';
 import { revertirTerminado, sacarDeTerminado } from './inventario.terminado';
 import { idsDeMaterialesGenerales } from './materialesGenerales';
+import { accesoriosEfectivos, accesoriosPropios } from './accesoriosDeFicha';
 
 /** Los Decimal de Prisma llegan como objeto; esto los baja a número. */
 const num = (v: unknown) => Number(v);
@@ -94,9 +95,9 @@ export const recetaDe = async (perfumeId: number, ml: number | null) => {
   // un 1.1 de Sauvage no usa el mismo frasco que uno de Bleu.
   const propio = presentacion?.perfumes?.[0];
   add(propio?.envase_insumo_id ?? formula.envase_insumo_id, 1);
-  const accesoriosPropios = (propio?.accesorios as number[] | null) ?? null;
-  if (accesoriosPropios?.length) accesoriosPropios.forEach((id) => add(id, 1));
-  else formula.accesorios.forEach((a) => add(a.insumo_id, 1));
+  // null = los de la receta; [] = ninguno (ver `accesoriosDeFicha.ts`)
+  accesoriosEfectivos(accesoriosPropios(propio?.accesorios), formula.accesorios.map((a) => a.insumo_id))
+    .forEach((id) => add(id, 1));
   return { sinEsencia: false, nombre: perfume.nombre, items };
 };
 

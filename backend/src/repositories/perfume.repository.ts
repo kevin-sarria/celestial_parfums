@@ -164,7 +164,7 @@ export const selectPerfumesByIds = async (ids: number[]) => {
  * Enlaces perfume→presentación con su precio propio cuando lo tienen.
  * Sin precio propio quedan en null y heredan el de la lista de su categoría.
  */
-const enlacesPresentacion = (data: CreatePerfumeDTO) => {
+const enlacesPresentacion = (data: CreatePerfumeDTO, alCrear = false) => {
   const propios = new Map((data.precios_propios ?? []).map((p) => [p.presentacion_id, p.precio]));
   // Frasco y accesorios de ESTE perfume en ESTA talla (mandan sobre la receta)
   const envases = new Map((data.envases_talla ?? []).map((e) => [e.presentacion_id, e]));
@@ -174,7 +174,13 @@ const enlacesPresentacion = (data: CreatePerfumeDTO) => {
       presentacion_id: id,
       precio: propios.get(id) ?? null,
       envase_insumo_id: e?.envase_insumo_id ?? null,
-      accesorios: e?.accesorios?.length ? e.accesorios : undefined,
+      /**
+       * null/ausente = los de la receta (se guarda NULL); [] = ninguno. Antes la
+       * lista vacía se convertía en "los de la receta" y no había forma de decir
+       * "ninguno". Un 1.1 NUEVO nace sin accesorios si nadie dijo otra cosa;
+       * al editar no se adivina: manda lo que llegue.
+       */
+      accesorios: e?.accesorios ?? (alCrear && data.solo_armado ? [] : undefined),
     };
   });
 };
@@ -209,7 +215,7 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       ocasiones: {
         create: (data.ocasiones ?? []).map((id) => ({ ocasion_id: id })),
       },
-      presentaciones: { create: enlacesPresentacion(data) },
+      presentaciones: { create: enlacesPresentacion(data, true) },
     },
   });
   return { id: perfume.id };

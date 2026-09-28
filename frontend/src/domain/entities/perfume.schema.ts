@@ -30,7 +30,8 @@ export const precioPresentacionSchema = z.object({
   propio: z.boolean().default(false),
       presentacion_id: z.number().default(0),
       envase_insumo_id: z.number().nullable().default(null),
-      accesorios: z.array(z.number()).default([]),
+      /** null = los de la receta del tamaño; [] = ninguno. */
+      accesorios: z.array(z.number()).nullable().default(null),
   /** Frascos armados de ESTA talla (no la suma de todas). */
   armados: z.number().default(0),
   /**

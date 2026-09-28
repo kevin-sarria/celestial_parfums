@@ -20,7 +20,7 @@ export interface CreatePerfumeDTO {
   solo_armado?: boolean;
   /** Marca que esta ficha es un accesorio (perfumero, bolsa, tarjeta), no una fragancia. */
   es_accesorio?: boolean;
-  envases_talla?: { presentacion_id: number; envase_insumo_id?: number | null; accesorios?: number[] }[];
+  envases_talla?: { presentacion_id: number; envase_insumo_id?: number | null; accesorios?: number[] | null }[];
   tipos_aroma: number[];
   ocasiones: number[];
   presentaciones: number[];

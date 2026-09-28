@@ -42,7 +42,8 @@ export const createPerfumeSchema = z.object({
   envases_talla: z.array(z.object({
     presentacion_id: z.number().int().positive(),
     envase_insumo_id: z.number().int().positive().nullish(),
-    accesorios: z.array(z.number().int().positive()).default([]),
+    /// null = los de la receta; [] = ninguno; [ids] = los suyos (`accesoriosDeFicha.ts`)
+    accesorios: z.array(z.number().int().positive()).max(20).nullish(),
   })).optional(),
   precios_propios: z
     .array(

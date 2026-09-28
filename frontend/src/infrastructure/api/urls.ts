@@ -50,6 +50,11 @@ export const urls = {
     /** Los puntos de pedido de todas las gamas, de una vez. */
     minimosGama: '/inventario/minimos-gama',
     producciones: '/inventario/producciones',
+    /** Accesorios de UN frasco de esa receta para esa ficha (?formula&perfume). */
+    accesoriosDeLote: '/inventario/accesorios-de-lote',
+    /** Lotes que cargaron accesorios que su ficha no lleva. Solo lee. */
+    accesoriosSobrantes: '/inventario/producciones/accesorios-sobrantes',
+    corregirAccesoriosSobrantes: '/inventario/producciones/accesorios-sobrantes/corregir',
     /** Lotes por enlazar a su ficha 1.1. Solo lee. */
     produccionesPorEnlazar: '/inventario/producciones/por-enlazar',
     /** Crea la ficha 1.1 que le falta a un lote y le manda sus frascos. */

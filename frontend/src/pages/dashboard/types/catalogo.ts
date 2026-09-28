@@ -50,6 +50,11 @@ export interface PerfumeForm {
   es_accesorio: boolean;
   /** Frasco propio por talla (presentacion_id → insumo del envase). */
   envases_talla: Record<number, number | ''>;
+  /**
+   * Accesorios propios por talla. Sin clave (o null) = los del tamaño; [] =
+   * ninguno. Ver `AccesoriosDeTalla`.
+   */
+  accesorios_talla: Record<number, number[] | null>;
   /** Precio propio por presentación (id → texto); vacío = usa la lista de su categoría. */
   precios_propios: Record<number, string>;
 }
@@ -62,6 +67,7 @@ export const emptyPerfumeForm = (): PerfumeForm => ({
   tipo_producto: 'fabricado', insumo_producto_id: '', ml_utiles: '', solo_armado: false,
   es_accesorio: false,
   envases_talla: {},
+  accesorios_talla: {},
   precios_propios: {},
 });
 

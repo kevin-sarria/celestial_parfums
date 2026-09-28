@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { accesoriosPropios } from './accesoriosDeFicha';
 
 /**
  * CÓMO SE LEE UN PERFUME: de fila de base a lo que ve la tienda.
@@ -16,14 +17,6 @@ import { Prisma } from '@prisma/client';
  */
 export type PerfumeRow = Prisma.PerfumeGetPayload<{ include: typeof perfumeInclude }>;
 
-/**
- * La columna `accesorios` es `Json`: puede traer lo que sea. Antes se leía con
- * `as number[]`, que no comprueba nada — un valor raro guardado a mano viajaba
- * a la pantalla como id de accesorio y el pedido salía con un accesorio
- * fantasma. Lo que no sea número se descarta.
- */
-const idsDeJson = (v: Prisma.JsonValue): number[] =>
-  (Array.isArray(v) ? v : []).filter((x): x is number => typeof x === 'number');
 
 // Un perfume cuenta como "nuevo lanzamiento" durante sus primeros 30 días en el catálogo.
 export const NUEVO_DIAS = 7;
@@ -54,7 +47,8 @@ const resolverPrecios = (p: PerfumeRow) => {
     presentacion_id: r.presentacion_id,
     /** Frasco propio de esta combinación; null = el de la receta del tamaño. */
     envase_insumo_id: r.envase_insumo_id ?? null,
-    accesorios: idsDeJson(r.accesorios),
+    /** null = los de la receta; [] = ninguno (ver `accesoriosDeFicha.ts`). */
+    accesorios: accesoriosPropios(r.accesorios),
     /** Frascos armados de ESTA talla (no la suma de todas). */
     armados: armadosDeTalla(r),
     /**
