@@ -17,7 +17,7 @@ contratipo de 30 ml, 10 unidades de 1.1, 0 originales; 60 de 150 clientes repite
 | 1 | **Pantalla de Inicio**: ventas del mes contra el mes anterior a la misma fecha, cuánto te deben, vencidos, qué atender, últimas ventas, qué 1.1 armar, esencias que se acaban (`arquitectura.md`) | **hecho**, sin desplegar |
 | 2 | Reporte por línea: contratipo / 1.1 / original, con unidades, ventas y ganancia de cada una (`arquitectura.md`) | **hecho**, sin desplegar |
 | 3 | Ganancia por fragancia (no solo las más vendidas), en el mismo reporte | **hecho**, sin desplegar |
-| 4 | Lista de recompra. **Decisión**: no hay un número fijo (a unos les dura 1 semana, a otros 3 meses); se calcula por cliente con **sus propias fechas de recompra**, y para quien compró una sola vez, un punto medio sacado de los que sí repiten | sigue |
+| 4 | Lista de recompra con el ritmo de cada cliente y el punto medio para los de una compra (`arquitectura.md`, *Recompra*). Para mejorarla: guardar el teléfono de los clientes (hoy ninguno lo tiene) y enlazar las ventas a su cuenta | **hecho**, sin desplegar |
 | 5 | Originales y decants (flujo botella → decants, proveedor y factura por botella) | **pendiente, no es pronto** (dueño) |
 | 6 | Mayoreo: no se quita; lo usará cuando el negocio crezca. En la reorganización puede ir a "Ajustes" | decidido |
 | 7 | Reorganizar el menú en 6 grupos (Hoy, Taller, Catálogo, Números, Página web, Ajustes) y juntar las 5 clasificaciones en una pantalla | propuesto, falta el visto bueno |

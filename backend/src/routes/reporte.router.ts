@@ -4,6 +4,7 @@ import { requireAdmin } from '../middleware/auth.middleware';
 import { h } from '../middleware/error.middleware';
 import { reporteVentasRango } from '../repositories/reporteVentasRango';
 import { resumenInicio } from '../repositories/inicio.repository';
+import { listaRecompra } from '../repositories/recompra';
 import { badRequest } from '../utils/httpError';
 import { hoyEnColombia } from '../utils/fechas';
 
@@ -39,6 +40,11 @@ reporteRouter.get('/ventas', h(async (req, res) => {
 /** La pantalla de Inicio: el mes contra el anterior, la cartera y lo que hay que atender. */
 reporteRouter.get('/inicio', h(async (_req, res) => {
   res.json({ data: await resumenInicio() });
+}));
+
+/** A qué cliente ya se le debería estar acabando el perfume, por su propio ritmo de compra. */
+reporteRouter.get('/recompra', h(async (_req, res) => {
+  res.json({ data: await listaRecompra() });
 }));
 
 reporteRouter.get('/compras', h(async (req, res) => {

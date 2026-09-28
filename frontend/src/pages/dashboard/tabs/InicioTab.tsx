@@ -5,7 +5,7 @@ import { formatPrice } from '@/lib/format';
 import { leerFecha, mesLegible } from '@/utils/calendario';
 import { ReporteShell, useReporte } from '../reportes/comun';
 import {
-  EsenciasPorAcabarse, Frascos11SinArmar, ListaPendientes, PanelInicio, UltimasVentas,
+  ClientesParaEscribir, EsenciasPorAcabarse, Frascos11SinArmar, ListaPendientes, PanelInicio, UltimasVentas,
 } from './inicio/Paneles';
 import type { ResumenInicio } from './inicio/tipos';
 
@@ -104,6 +104,13 @@ export function InicioTab() {
             <div className="grid gap-4 lg:grid-cols-2">
               <PanelInicio titulo="Qué atender">
                 <ListaPendientes pendientes={d.pendientes} />
+              </PanelInicio>
+              <PanelInicio
+                titulo="Clientes para escribirles"
+                detalle={`Ya se les debe estar acabando (compran cada ~${d.recompra.punto_medio_dias} días)`}
+                enlace={{ a: '/dashboard/recompra', texto: `Recompra (${d.recompra.resumen.le_toca})` }}
+              >
+                <ClientesParaEscribir clientes={d.recompra.le_toca} />
               </PanelInicio>
               <PanelInicio titulo="Últimas ventas" enlace={{ a: '/dashboard/ventas', texto: 'Ver ventas' }}>
                 <UltimasVentas ventas={d.ultimas_ventas} />

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { formatPrice } from '@/lib/format';
 import { fechaLegible } from '@/utils/calendario';
 import type { EsenciaPorAcabarse, Frasco11, Pendiente, TonoPendiente, VentaReciente } from './tipos';
+import type { ClienteRecompra } from '../recompra/tipos';
 
 /**
  * Los cuatro bloques de Inicio. Cada uno es CORTO a propósito (un tope de
@@ -148,6 +149,26 @@ export function EsenciasPorAcabarse({ filas }: { filas: EsenciaPorAcabarse[] }) 
             e.stock <= 0 || e.dias_restantes === 0 ? 'text-rose-600' : 'text-amber-700',
           )}>
             {cuantoDura(e)}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Los primeros clientes a quienes les toca volver a comprar (la lista entera está en Recompra). */
+export function ClientesParaEscribir({ clientes }: { clientes: ClienteRecompra[] }) {
+  if (clientes.length === 0) return <TodoBien>A nadie le toca todavía.</TodoBien>;
+  return (
+    <ul className="flex flex-col divide-y divide-border">
+      {clientes.map(c => (
+        <li key={c.clave} className="flex items-center gap-3 py-2 first:pt-0 last:pb-0">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13.5px] font-medium text-foreground">{c.nombre}</p>
+            <p className="truncate text-[12px] text-muted-foreground">{c.ultima_referencia}</p>
+          </div>
+          <span className="shrink-0 text-[12.5px] font-medium text-emerald-700">
+            {c.dias_para === 0 ? 'Hoy' : `hace ${-c.dias_para} ${c.dias_para === -1 ? 'día' : 'días'}`}
           </span>
         </li>
       ))}

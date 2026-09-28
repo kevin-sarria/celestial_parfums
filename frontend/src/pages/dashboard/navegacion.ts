@@ -2,7 +2,7 @@ import {
   SprayCan, PackageCheck, Package, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText,
   BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX,
-  ChartColumn, Layers, Coins, TriangleAlert, House, type LucideIcon,
+  ChartColumn, Layers, Coins, TriangleAlert, House, Repeat, type LucideIcon,
 } from 'lucide-react';
 import type { Tab } from './types';
 
@@ -29,6 +29,7 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   descuentos: { label: 'Descuentos', icon: BadgePercent },
   ventas: { label: 'Ventas', icon: CircleDollarSign },
   creditos: { label: 'Creditos', icon: ClipboardList },
+  recompra: { label: 'Recompra', icon: Repeat },
   devoluciones: { label: 'Devoluciones', icon: PackageX },
   pagos: { label: 'Proveedores', icon: Factory },
   inventario: { label: 'Inventario', icon: Boxes },
@@ -67,7 +68,7 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
    * paga al proveedor) con OPERACIÓN (qué tengo, qué armé, con qué receta,
    * cuánto me cuesta, qué pedir). Se busca con cabezas distintas.
    */
-  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'devoluciones', 'pagos'] },
+  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'recompra', 'devoluciones', 'pagos'] },
   /**
    * Las RECETAS y el costo de producción viven aquí, no en Mayoreo: de ellas
    * salen los materiales que descuenta cada venta y cada lote, así que las usa

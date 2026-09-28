@@ -1,4 +1,5 @@
 import type { ResumenVentas } from '../../reportes/ventas/tipos';
+import type { ClienteRecompra, ResumenRecompra } from '../recompra/tipos';
 
 /**
  * Lo que responde `/reportes/inicio` (ver
@@ -58,4 +59,6 @@ export interface ResumenInicio {
   frascos_11: { total_armados: number; referencias: number; sin_armar: Frasco11[]; dias: number };
   esencias: { total: number; filas: EsenciaPorAcabarse[] };
   ultimas_ventas: VentaReciente[];
+  /** Los primeros 5 a quienes les toca volver a comprar. */
+  recompra: { resumen: ResumenRecompra; punto_medio_dias: number; le_toca: ClienteRecompra[] };
 }

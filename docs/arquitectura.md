@@ -517,6 +517,27 @@ los grupos del menú (`TAB_INICIO`, no pertenece a ninguno).
 - Medido contra el respaldo del 22-sep: septiembre $1.029.000 vendidos contra $1.167.500 de agosto
   a la misma fecha; 17 frascos 1.1 armados de 21 referencias, 7 sin armar (6 con ventas).
 
+## Recompra: a quién escribirle (2026-09-28)
+
+Pestaña `recompra` en "Ventas y créditos" y un bloque "Clientes para escribirles" en Inicio.
+`GET /api/reportes/recompra` → `recompra.ts` (consulta) + `recompra.calculo.ts` (puro, 5 pruebas).
+
+- **El ritmo es el de CADA cliente** (decisión del dueño: *"a unos les dura 1 semana y a otros 3
+  meses"*): la **mediana** de los días entre sus compras (mediana y no promedio: comprar dos veces la
+  misma semana no parte el ritmo a la mitad). Varias ventas el mismo día son una compra. Quien
+  compró una vez usa el **punto medio**: la mediana de los ritmos de los que repiten.
+- Estados: **le toca** (pasó su fecha, hace menos de un ciclo), **pronto** (en ≤7 días),
+  **dormido** (pasó más de un ciclo entero: dejó de comprar; su mensaje lo invita a volver) y
+  **al día**. Dentro de cada grupo, primero el más cercano a su fecha.
+- **Quién es quién**: la venta enlazada a un cliente se agrupa por su cuenta; si no (220 de 319
+  ventas), por el nombre escrito sin tildes ni mayúsculas. Los nombres genéricos ("Cliente random",
+  25 ventas) se dejan fuera (`NOMBRES_GENERICOS`).
+- **Ningún cliente tiene teléfono guardado** (medido): el botón abre WhatsApp con el mensaje escrito
+  (`wa.me/?text=`) y el contacto se elige allá; también se puede copiar. El mensaje es una
+  sugerencia que el dueño lee y cambia antes de mandar.
+- Medido en el respaldo del 22-sep: compra típica **cada 36 días** (50 clientes que repiten); 19 "le
+  toca", 6 "pronto", 90 dormidos, 26 al día.
+
 ## Reportes (sección propia del dashboard)
 
 - **Tres pestañas, no una** (`rep_ventas`, `rep_compras`, `rep_clientes`): son preguntas

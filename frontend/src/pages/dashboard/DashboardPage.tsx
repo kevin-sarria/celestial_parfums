@@ -22,6 +22,7 @@ import { LookupTab, type ResultadoLookup } from './tabs/LookupTab';
 import { VentasTab } from './tabs/VentasTab';
 import { CreditosTab } from './tabs/CreditosTab';
 import { InicioTab } from './tabs/InicioTab';
+import { RecompraTab } from './tabs/RecompraTab';
 import { PagosTab } from './tabs/PagosTab';
 import { UsuariosTab } from './tabs/UsuariosTab';
 import { PublicidadTab } from './tabs/PublicidadTab';
@@ -367,6 +368,7 @@ export default function DashboardPage() {
             {tab === 'inicio' && <InicioTab />}
             {tab === 'ventas' && <VentasTab />}
             {tab === 'creditos' && <CreditosTab />}
+            {tab === 'recompra' && <RecompraTab />}
             {tab === 'rep_ventas' && <ReportesVentasTab />}
             {tab === 'rep_compras' && <ReportesComprasTab />}
             {tab === 'rep_clientes' && <ReportesClientesTab />}

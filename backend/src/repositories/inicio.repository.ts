@@ -4,6 +4,7 @@ import { reporteVentasRango } from './reporteVentasRango';
 import { getCreditoTotales } from './credito.repository';
 import { calcularNotificaciones } from './notificacion.repository';
 import { calcularReposicion } from './reposicion.repository';
+import { listaRecompra } from './recompra';
 
 /**
  * La pantalla de INICIO del dashboard: lo que el dueño mira primero cada día.
@@ -113,7 +114,7 @@ export const resumenInicio = async () => {
   const hoy = hoyEnColombia();
   const p = periodosComparables(hoy);
 
-  const [mes, anterior, cartera, pendientes, frascos, esencias, ventas] = await Promise.all([
+  const [mes, anterior, cartera, pendientes, frascos, esencias, ventas, recompra] = await Promise.all([
     reporteVentasRango(p.desde, p.hasta),
     reporteVentasRango(p.desdeAnterior, p.hastaAnterior),
     getCreditoTotales(),
@@ -121,6 +122,7 @@ export const resumenInicio = async () => {
     frascos11(hoy),
     esenciasPorAcabarse(),
     ultimasVentas(),
+    listaRecompra(),
   ]);
 
   return {
@@ -132,5 +134,11 @@ export const resumenInicio = async () => {
     frascos_11: frascos,
     esencias,
     ultimas_ventas: ventas,
+    // Los primeros a quienes les toca volver a comprar; la lista entera vive en su pestaña
+    recompra: {
+      resumen: recompra.resumen,
+      punto_medio_dias: recompra.punto_medio_dias,
+      le_toca: recompra.clientes.filter((c) => c.estado === 'le_toca').slice(0, 5),
+    },
   };
 };
