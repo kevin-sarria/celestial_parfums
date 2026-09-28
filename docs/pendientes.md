@@ -1,5 +1,48 @@
 # Dónde quedamos y qué sigue
 
+## 📋 Lo que falta (lista corta, 2026-09-27)
+
+Todo lo hecho hasta el 27 de septiembre está en `main` y subido a GitHub (último commit `783db09`).
+El detalle de cada punto está más abajo en este archivo.
+
+**Del dueño, ya:**
+
+| # | Qué | Estado |
+|---|---|---|
+| 1 | Desplegar. **Lleva migración**: `git pull` → `npx prisma migrate deploy` → build de los dos lados → `pm2 restart` | pendiente |
+| 2 | En **Producciones**, pulsar **Corregir** en el aviso de accesorios (27 lotes 1.1, $54.300 en el respaldo del 22-sep) | pendiente, después del 1 |
+| 3 | Mirar en el iPhone el campo de fecha del modal de ventas (el WebKit de Windows no lo reproduce) | por confirmar |
+| 4 | Confirmar si las garantías y la maceración del 30 de agosto ya estaban desplegadas (quedan cubiertas con el 1) | por confirmar |
+
+**Datos que solo él puede corregir (desde las pantallas):**
+
+| # | Qué |
+|---|---|
+| 5 | Talla de 4 ventas de agosto sin costo ($365.000): 1269, 1272, 1281, 1289. Para la 1281, antes crear la ficha Khamrah 1.1 |
+| 6 | Crear las fichas 1.1 desde el aviso de lotes por enlazar y fusionar los dos perfumeros (ids 9 y 11) |
+| 7 | Pasar el lote del 212 VIP Black a maceración |
+| 8 | 3 esencias sin género; la gama "Diseñador" sin esencias; separar "200/250 ML" en dos tallas con sus recetas |
+
+**Código que sigue (en este orden sugerido):**
+
+| # | Qué |
+|---|---|
+| 9 | Kit del combo: que el combo sugiera sus accesorios de regalo (diseño en `superpowers/specs/2026-08-18-regalos-y-extras-design.md`) |
+| 10 | Tienda: `/accesorios` aparte y sacar los accesorios de `/perfumes` (Ola 3) |
+| 11 | Partir el dashboard con `import()` perezoso: el paquete pasa de 500 kB (no urge) |
+| 12 | Opcional: rebajar también el costo de las 11 ventas de frascos 1.1 que cargaron bolsa y perfumero. Hoy conservan el costo con que se vendieron, a propósito |
+
+**Decisiones que esperan al dueño:**
+
+| # | Pregunta |
+|---|---|
+| 13 | ¿El cupón funciona igual en créditos que en ventas? (hoy, en créditos, quitar el código lo libera) |
+| 14 | ¿Cuántos ml se pierden al trasvasar a decants? Sin eso, un decant nunca se agota solo |
+| 15 | ¿Guardar el precio de arranque de cada material (`precio_inicial`) para el caso de borde del costo promedio? |
+
+**Entorno local:** `celestial_prod_20260922` es la copia más reciente de producción (22-sep).
+`perfumes_db` ya tiene aplicada la migración del 27-sep.
+
 ## ✅ El abono doble — ARREGLADO (2026-09-27), sin desplegar
 
 Pasó en producción el 2026-09-05 (abono de $50.000 de Nidia Bravo registrado dos veces; el dueño ya
