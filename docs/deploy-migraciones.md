@@ -106,6 +106,11 @@ aunque no falte nada. En ese caso, aplicar el SQL de la migración directo con m
   location = /index.html {
       add_header Cache-Control "no-cache";
   }
+  # El service worker tampoco: Cloudflare lo retenía 4 h y los teléfonos seguían
+  # con el v1 después de desplegar el v2 (medido el 2026-09-28)
+  location = /sw.js {
+      add_header Cache-Control "no-cache";
+  }
   ```
 
   Y en `location /`, añadir `add_header Cache-Control "no-cache";`. Luego `sudo nginx -t && sudo
