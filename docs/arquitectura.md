@@ -552,6 +552,15 @@ los grupos del menú (`TAB_INICIO`, no pertenece a ninguno).
   - Un mes sin ventas dice "—", no "Sin datos": no hay nada que costear.
   - `useReporte(ruta, params)` recarga cuando cambian los parámetros y la pantalla deja lo
     anterior a la vista (atenuado) en vez de volver al spinner.
+- **Por línea y por fragancia** (2026-09-28, pedido al revisar el panel): cuánto se vendió, cuánto
+  costó, la ganancia y el margen de cada categoría (contratipo, 1.1, original; los accesorios van
+  aparte como "Accesorios") y de cada fragancia, ordenadas por la ganancia que dejan. Aritmética
+  pura en `reporteVentasRango.lineas.ts` (6 pruebas). **La base guarda valor y costo por VENTA, no
+  por línea**: una venta de una sola línea va entera; una que mezcla líneas se reparte según el
+  precio de catálogo × unidades cobradas (un regalo no trae plata). En el respaldo del 22-sep solo
+  1 de 319 ventas mezcla categorías, y la pantalla dice cuántas se repartieron. Medido de agosto al
+  22-sep: contratipo $1.855.549 con 52,4 % de margen; 1.1 $592.951 con 33,9 %; suman exacto el
+  vendido del rango.
 - El **ticket promedio** se mide solo sobre ventas pagadas: meter lo pendiente infla la cifra
   con plata que no ha entrado. En compras se aclara que el gasto **no es pérdida** (lo no
   vendido sigue en bodega) — sin eso, ver "gasté más de lo que vendí" asusta sin motivo.

@@ -28,21 +28,21 @@ export function Ganancia({ valor, cobertura }: { valor: number | null; cobertura
   );
 }
 
-const margen = (m: number | null) => (m == null ? dineroOSinDatos(null) : `${m.toLocaleString('es-CO')} %`);
+export const margen = (m: number | null) => (m == null ? dineroOSinDatos(null) : `${m.toLocaleString('es-CO')} %`);
 
-const Th = ({ children, izq }: { children: ReactNode; izq?: boolean }) => (
+export const Th = ({ children, izq }: { children: ReactNode; izq?: boolean }) => (
   <th className={cn('whitespace-nowrap px-3 py-2.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground', izq ? 'sticky left-0 z-[1] bg-[color-mix(in_oklab,var(--color-secondary)_60%,var(--color-card))] text-left' : 'text-right')}>
     {children}
   </th>
 );
 
-const celda = 'whitespace-nowrap px-3 py-2 text-right tabular-nums';
+export const celda = 'whitespace-nowrap px-3 py-2 text-right tabular-nums';
 /**
  * La columna del mes queda FIJA a la izquierda: en el celular la tabla se
  * desliza de lado para ver las 9 columnas, y sin esto se perdía de qué mes era
  * cada cifra. Lleva fondo propio para que las cifras no se vean pasar debajo.
  */
-const fija = 'sticky left-0 z-[1] whitespace-nowrap bg-card px-3';
+export const fija = 'sticky left-0 z-[1] whitespace-nowrap bg-card px-3';
 
 /**
  * El detalle mes a mes del rango, con su fila de totales.

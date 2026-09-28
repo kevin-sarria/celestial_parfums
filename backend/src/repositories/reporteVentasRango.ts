@@ -3,6 +3,7 @@ import {
   mesesDelRango, porMes, resumirCompras, resumirPerdidas, resumirVentas,
   type SalidaFila, type VentaFila,
 } from './reporteVentasRango.calculo';
+import { repartirPorLineaYFragancia, type FichaDeProducto } from './reporteVentasRango.lineas';
 
 /**
  * Reporte de ventas entre dos fechas: el tablero que el dueño pidió el
@@ -102,9 +103,25 @@ export const reporteVentasRango = async (desde: Date, hasta: Date) => {
     porTalla.set(l.ml, (porTalla.get(l.ml) ?? 0) + l.cantidad);
   });
   const top = [...porPerfume.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
-  const nombres = new Map((await prisma.perfume.findMany({
-    where: { id: { in: top.map(([id]) => id) } }, select: { id: true, nombre: true },
-  })).map((p) => [p.id, p.nombre]));
+
+  // Las fichas de todo lo vendido: el nombre, la línea (su categoría, o
+  // "Accesorios") y el precio con que se reparte una venta mixta
+  const fichas = new Map<number, FichaDeProducto>((await prisma.perfume.findMany({
+    where: { id: { in: [...porPerfume.keys()] } },
+    select: { id: true, nombre: true, precio: true, es_accesorio: true, categoria: { select: { nombre: true } } },
+  })).map((p) => [p.id, {
+    nombre: p.nombre,
+    linea: p.es_accesorio ? 'Accesorios' : (p.categoria?.nombre ?? 'Sin categoría'),
+    precio: num(p.precio),
+  }]));
+  const nombres = new Map([...fichas.entries()].map(([id, f]) => [id, f.nombre]));
+  const lineasYFragancias = repartirPorLineaYFragancia(
+    ventasRaw.map((v) => ({
+      valor: num(v.valor_venta), costo: num(v.costo_mercancia), pagada: v.pagada,
+      lineas: v.perfumes.map((l) => ({ perfume_id: l.perfume_id, cantidad: l.cantidad, regalo: l.regalo })),
+    })),
+    fichas,
+  );
 
   return {
     desde, hasta,
@@ -113,6 +130,7 @@ export const reporteVentasRango = async (desde: Date, hasta: Date) => {
     perdidas: resumirPerdidas(salidas, devolFilas, ventas),
     meses,
     top_productos: top.map(([id, unidades]) => ({ perfume_id: id, nombre: nombres.get(id) ?? `#${id}`, unidades })),
+    ...lineasYFragancias,
     por_talla: [...porTalla.entries()]
       .map(([ml, unidades]) => ({ ml, unidades }))
       .sort((a, b) => (a.ml ?? 0) - (b.ml ?? 0)),

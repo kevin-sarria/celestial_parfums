@@ -4,6 +4,7 @@ import { Panel, Ranking, ReporteShell, useReporte } from '../reportes/comun';
 import { RangoFechas, rangoPorDefecto, type Rango } from '../reportes/ventas/RangoFechas';
 import { Ganancia, TablaMeses, dineroOSinDatos } from '../reportes/ventas/TablaMeses';
 import { PanelPerdidas } from '../reportes/ventas/PanelPerdidas';
+import { PorLineaYFragancia } from '../reportes/ventas/PorLineaYFragancia';
 import type { ReporteVentasRango } from '../reportes/ventas/tipos';
 import { formatPrice } from '../helpers';
 import { FranjaMetricas, StatCard } from '../ui';
@@ -85,6 +86,8 @@ export function ReportesVentasTab() {
             )}
 
             <TablaMeses datos={datos} />
+
+            <PorLineaYFragancia datos={datos} />
 
             <div className="grid gap-4 lg:grid-cols-3">
               <PanelPerdidas p={datos.perdidas} />

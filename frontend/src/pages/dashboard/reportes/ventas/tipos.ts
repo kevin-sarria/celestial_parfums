@@ -59,6 +59,22 @@ export interface ReporteVentasRango {
   meses: MesReporte[];
   top_productos: { perfume_id: number; nombre: string; unidades: number }[];
   por_talla: { ml: number | null; unidades: number }[];
+  /** Por categoría (contratipo, 1.1, original…) y "Accesorios"; de la que más vende a la que menos. */
+  por_linea: (CifrasDeGrupo & { linea: string })[];
+  /** Todas las fragancias vendidas, de la que más ganancia deja a la que menos (sin costo, al final). */
+  por_fragancia: (CifrasDeGrupo & { perfume_id: number; nombre: string })[];
+  /** Ventas que mezclaron líneas y se repartieron por precio de catálogo. */
+  ventas_repartidas: number;
+}
+
+/** Lo vendido de una línea o de una fragancia (solo lo pagado por completo). */
+export interface CifrasDeGrupo {
+  unidades: number;
+  vendido: number;
+  costo: number | null;
+  ganancia: number | null;
+  margen_pct: number | null;
+  cobertura_pct: number | null;
 }
 
 /** Por debajo de esta cobertura la ganancia se enseña como parcial. */

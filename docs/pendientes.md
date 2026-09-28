@@ -15,8 +15,8 @@ contratipo de 30 ml, 10 unidades de 1.1, 0 originales; 60 de 150 clientes repite
 | # | Qué | Estado / decisión del dueño |
 |---|---|---|
 | 1 | **Pantalla de Inicio**: ventas del mes contra el mes anterior a la misma fecha, cuánto te deben, vencidos, qué atender, últimas ventas, qué 1.1 armar, esencias que se acaban (`arquitectura.md`) | **hecho**, sin desplegar |
-| 2 | Reporte por línea: contratipo / 1.1 / original, con unidades, ventas y ganancia de cada una | sigue |
-| 3 | Ganancia por fragancia (no solo las más vendidas) | sigue |
+| 2 | Reporte por línea: contratipo / 1.1 / original, con unidades, ventas y ganancia de cada una (`arquitectura.md`) | **hecho**, sin desplegar |
+| 3 | Ganancia por fragancia (no solo las más vendidas), en el mismo reporte | **hecho**, sin desplegar |
 | 4 | Lista de recompra. **Decisión**: no hay un número fijo (a unos les dura 1 semana, a otros 3 meses); se calcula por cliente con **sus propias fechas de recompra**, y para quien compró una sola vez, un punto medio sacado de los que sí repiten | sigue |
 | 5 | Originales y decants (flujo botella → decants, proveedor y factura por botella) | **pendiente, no es pronto** (dueño) |
 | 6 | Mayoreo: no se quita; lo usará cuando el negocio crezca. En la reorganización puede ir a "Ajustes" | decidido |
