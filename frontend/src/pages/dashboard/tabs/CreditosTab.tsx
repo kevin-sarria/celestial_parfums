@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CircleDollarSign, Gauge, Pencil, Trash2, Upload } from 'lucide-react';
+import { CircleDollarSign, Gauge, History, Pencil, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import ImportModal from '../../../components/ImportModal';
@@ -11,6 +11,7 @@ import type { Combo } from '../../../domain/entities/combo.schema';
 import PerfilCreditoModal from './PerfilCreditoModal';
 import { CreditoForm } from './CreditoForm';
 import { AbonoModal } from './AbonoModal';
+import { PagosCreditoModal } from './PagosCreditoModal';
 import { creditosColumns } from '../columns';
 import { DEFAULT_PAGE_SIZE, formatPrice } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
@@ -42,6 +43,8 @@ export function CreditosTab() {
 
   /** El crédito al que se le está abonando; null = modal cerrado. */
   const [abonando, setAbonando] = useState<Credito | null>(null);
+  /** El crédito cuyo historial de pagos está abierto; null = cerrado. */
+  const [viendoPagos, setViendoPagos] = useState<Credito | null>(null);
 
   const [perfil, setPerfil] = useState<PerfilCredito | null>(null);
   const [perfilOpen, setPerfilOpen] = useState(false);
@@ -144,6 +147,7 @@ export function CreditosTab() {
   const alCambiarAbonos = async (actualizado: Credito) => {
     setCreditos(prev => prev.map(c => (c.id === actualizado.id ? actualizado : c)));
     setAbonando(prev => (prev ? actualizado : prev));
+    setViendoPagos(prev => (prev ? actualizado : prev));
     try {
       const res = await http.get<{ data: TotalesCartera }>(urls.creditos.totales);
       if (res.ok && res.cuerpo) setTotales(res.cuerpo.data);
@@ -178,6 +182,15 @@ export function CreditosTab() {
         onClick={() => setAbonando(c)}
       >
         <CircleDollarSign className="size-4" />{conTexto && ' Abonar'}
+      </Button>
+      <Button
+        variant={conTexto ? 'outline' : 'ghost'}
+        size={conTexto ? 'sm' : 'icon'}
+        className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-primary'}
+        title="Historial de pagos"
+        onClick={() => setViendoPagos(c)}
+      >
+        <History className="size-4" />{conTexto && ' Pagos'}
       </Button>
       <Button
         variant={conTexto ? 'outline' : 'ghost'}
@@ -293,6 +306,12 @@ export function CreditosTab() {
       <AbonoModal
         credito={abonando}
         onClose={() => setAbonando(null)}
+        onCambio={alCambiarAbonos}
+      />
+
+      <PagosCreditoModal
+        credito={viendoPagos}
+        onClose={() => setViendoPagos(null)}
         onCambio={alCambiarAbonos}
       />
 

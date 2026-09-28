@@ -70,6 +70,13 @@ tiene `include`.
   en vez de escribir la quinta versión — los cortes de `reporte.repository.ts`,
   `venta.repository.ts` y `devolucion.repository.ts` siguen con su solución propia y podrían
   adoptarlo el día que se toquen.
+- **Los abonos de la noche quedaban anotados al día siguiente** (2026-09-28, corregido). `addAbono`
+  guardaba `fecha: new Date()` en una columna `@db.Date`, y MySQL se queda con el día UTC: el abono
+  de las 8:27 p.m. del 21 de septiembre quedó del **22**. Salió al construir el historial de pagos
+  con hora. Lo mismo pasaba con el reclamo de garantía que abre el cliente y con el movimiento de
+  una fusión de materiales. Los tres usan ya `hoyEnColombia()`, y la migración
+  `20260928120000_abonos_dia_colombia` corrige los dos abonos que lo sufrieron. **Quinta vez**:
+  toda escritura de "hoy" en una columna `@db.Date` va con `hoyEnColombia()`.
 
 ## Red y API
 

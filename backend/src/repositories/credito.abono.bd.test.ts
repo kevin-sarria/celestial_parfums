@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prisma } from '../config/prisma';
 import { crearCliente, limpiarBase } from '../test/baseDePrueba';
 import { addAbono, createCredito, deleteAbono } from './credito.repository';
@@ -91,5 +91,28 @@ describe('borrar un abono', () => {
     const conAbono = await addAbono(String(a.id), 50000);
     await expect(deleteAbono(String(b.id), String(conAbono.abonos[0].id))).rejects.toThrow(/ya no existe/);
     expect(await prisma.creditoAbono.count({ where: { credito_id: a.id } })).toBe(1);
+  });
+});
+
+/**
+ * El historial de pagos muestra el día y la hora de cada abono. El día tiene
+ * que ser el de COLOMBIA: hasta el 2026-09-28 se guardaba el día UTC y un abono
+ * de las 8:27 p.m. del 21 de septiembre quedó anotado el 22.
+ */
+describe('día y hora del abono', () => {
+  beforeEach(limpiarBase);
+  afterEach(() => { vi.useRealTimers(); });
+
+  it('un abono de las 8:27 p.m. queda en ese día, no en el siguiente', async () => {
+    const c = await nuevoCredito();
+    // Solo se congela el reloj de Date: Prisma sigue usando sus temporizadores
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const instante = new Date('2026-09-22T01:27:00.000Z'); // 21-sep 8:27 p.m. en Colombia
+    vi.setSystemTime(instante);
+
+    const credito = await addAbono(String(c.id), 40000);
+
+    expect(credito.abonos[0].fecha.toISOString().slice(0, 10)).toBe('2026-09-21');
+    expect(credito.abonos[0].registrado_en.getTime()).toBe(instante.getTime());
   });
 });

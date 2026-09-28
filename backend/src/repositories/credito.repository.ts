@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { conflict, notFound } from '../utils/httpError';
-import { DIAS_PLAZO_CREDITO, sumarDias } from '../utils/fechas';
+import { DIAS_PLAZO_CREDITO, hoyEnColombia, sumarDias } from '../utils/fechas';
 import { CreateCreditoDTO } from '../types/credito.type';
 import { paginatedResponse } from '../utils/pagination';
 import { filtroFecha, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
@@ -57,7 +57,8 @@ const unidadesDe = (lineas: { cantidad: number }[]) =>
 
 const includeAll = {
   user: { select: { id: true, nombre: true, apellido: true, telefono: true, email: true, direccion: true, sin_cuenta: true } },
-  abonos: { orderBy: { created_at: 'asc' as const } },
+  // Por el día del abono y, dentro del mismo día, por la hora en que se anotó
+  abonos: { orderBy: [{ fecha: 'asc' }, { created_at: 'asc' }] as Prisma.CreditoAbonoOrderByWithRelationInput[] },
   venta: {
     select: {
       id: true,
@@ -88,6 +89,8 @@ const mapCredito = (c: CreditoRow) => {
     id: a.id,
     monto: Number(a.monto),
     fecha: a.fecha,
+    // El instante en que se anotó: de ahí sale la hora del historial de pagos
+    registrado_en: a.created_at,
   }));
 
   const totalAbonado = abonos.reduce((acc, a) => acc + a.monto, 0);
@@ -379,7 +382,7 @@ export const addAbono = async (id: string, monto: number) => {
     // `created_at` se pone aquí y no lo pone la base: la ventana de arriba se
     // mide con este mismo reloj, así no depende de la zona horaria de MySQL.
     await tx.creditoAbono.create({
-      data: { credito_id: creditoId, monto, fecha: ahora, created_at: ahora },
+      data: { credito_id: creditoId, monto, fecha: hoyEnColombia(ahora), created_at: ahora },
     });
   });
   await sincronizarVenta(creditoId);
@@ -426,9 +429,10 @@ export const deleteCredito = async (id: string) => {
  * distintas, y ahí ya no se sabe a cuál creerle.
  */
 export const getCreditoTotales = async () => {
-  const ahora = new Date();
-  // Medianoche UTC: con hora local, todo lo del día 1 se saldría del mes
-  const inicioMes = new Date(Date.UTC(ahora.getFullYear(), ahora.getMonth(), 1));
+  // El mes de COLOMBIA, a medianoche UTC (como Prisma lee un `@db.Date`): con
+  // el reloj del servidor, la noche del último día ya contaba como mes nuevo
+  const hoy = hoyEnColombia();
+  const inicioMes = new Date(Date.UTC(hoy.getUTCFullYear(), hoy.getUTCMonth(), 1));
 
   const creditos = await prisma.credito.findMany({
     select: {

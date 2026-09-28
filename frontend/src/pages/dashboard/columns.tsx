@@ -130,7 +130,12 @@ export const creditosColumns: ColumnDef<Credito>[] = [
   // (ver el comentario en credito.repository.ts).
   { key: 'total_abonado', header: 'Abonado', type: 'currency',
     getValue: c => c.total_abonado,
-    render: c => formatPrice(c.total_abonado),
+    render: c => (
+      <span>
+        {formatPrice(c.total_abonado)}
+        {c.abonos.length > 0 && <SubText>{c.abonos.length} {c.abonos.length === 1 ? 'pago' : 'pagos'}</SubText>}
+      </span>
+    ),
     className: cellPrice, noTruncate: true, filterable: false },
   { key: 'total_en_deuda', header: 'En deuda', type: 'currency', getValue: c => c.total_en_deuda,
     render: c => (

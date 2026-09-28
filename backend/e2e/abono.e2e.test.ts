@@ -34,7 +34,7 @@ describe('abonar a un crédito desde el dashboard', () => {
     const { contexto, pagina } = await abrirDashboard();
     await irA(pagina, '/dashboard/creditos');
     const fila = pagina.locator('tr', { hasText: 'Abonadora' }).first();
-    await fila.locator('[title="Registrar abono"]').click();
+    await fila.locator('[title^="Registrar abono"]').click();
 
     // Enter cuatro veces seguidas, sin esperar respuesta: lo que pasó en producción
     const monto = campo(pagina, 'Monto del abono (COP)');
@@ -46,9 +46,15 @@ describe('abonar a un crédito desde el dashboard', () => {
     await pagina.waitForTimeout(800);
     expect(await prisma.creditoAbono.count({ where: { credito_id: credito.id } })).toBe(1);
 
-    // Borrarlo desde el mismo modal
+    // La tabla dice cuántos pagos lleva, y el historial los enseña con su hora
+    await fila.getByText('1 pago', { exact: true }).waitFor();
+    await fila.locator('[title="Historial de pagos"]').click();
+    await pagina.getByText('Pago 1', { exact: true }).waitFor();
+    await pagina.getByText(/· \d{1,2}:\d{2} [ap]\. m\./).waitFor();
+    await pagina.getByText(/Quedó en .*190\.000/).waitFor();
+
+    // Y un abono equivocado se borra desde ahí mismo
     pagina.once('dialog', (d) => d.accept());
-    await fila.locator('[title="Registrar abono"]').click();
     await pagina.getByRole('button', { name: /Borrar abono de/ }).click();
     await pagina.getByText('Abono borrado').waitFor();
     expect(await prisma.creditoAbono.count({ where: { credito_id: credito.id } })).toBe(0);

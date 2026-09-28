@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { dentroDe, fechaLegible, leerFecha, mesLegible, moverDias, moverMeses, semanasDelMes } from './calendario';
+import {
+  dentroDe, diaEnColombia, fechaLegible, horaEnColombia, leerFecha, mesLegible, moverDias, moverMeses, semanasDelMes,
+} from './calendario';
 
 describe('calendario', () => {
   it('lee fechas válidas y rechaza las que no existen', () => {
@@ -35,5 +37,12 @@ describe('calendario', () => {
   it('se lee sin correrse un día (Colombia va en UTC-5)', () => {
     expect(fechaLegible('2026-09-01')).toBe('1 sep 2026');
     expect(mesLegible(2026, 9)).toBe('Septiembre 2026');
+  });
+
+  it('el día y la hora de un instante son los de Colombia', () => {
+    expect(diaEnColombia('2026-09-22T01:27:23.791Z')).toBe('2026-09-21');
+    expect(horaEnColombia('2026-09-22T01:27:23.791Z')).toBe('8:27 p. m.');
+    expect(horaEnColombia('2026-09-18T05:05:00.000Z')).toBe('12:05 a. m.');
+    expect(horaEnColombia('2026-09-18T17:00:00.000Z')).toBe('12:00 p. m.');
   });
 });

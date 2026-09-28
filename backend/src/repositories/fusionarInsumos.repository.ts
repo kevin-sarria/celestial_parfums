@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
+import { hoyEnColombia } from '../utils/fechas';
 import { aplicarMovimiento } from './inventario.repository';
 import { contarUsos, idsDeJson, tallasConAccesorio, type UsosDeInsumo } from './insumo.usos';
 
@@ -183,7 +184,7 @@ export const fusionarInsumos = async (
       insumo_id: destinoId,
       tipo: 'ajuste',
       cantidad: 0,
-      fecha: new Date(),
+      fecha: hoyEnColombia(),
       nota: `Fusionado desde «${origen.nombre}»: ${movidos.movimientos} movimiento(s)`
         + `, ${movidos.compras} compra(s). Traía ${sobraban} unidad(es), que se descartan.`,
     });

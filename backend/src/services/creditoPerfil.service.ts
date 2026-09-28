@@ -39,7 +39,7 @@ export const getPerfilCrediticio = async (userId: number) => {
       creditos: {
         orderBy: { fecha: 'asc' },
         include: {
-          abonos: { orderBy: { fecha: 'asc' } },
+          abonos: { orderBy: [{ fecha: 'asc' }, { created_at: 'asc' }] },
           // Un crédito "con cupón" es el que tiene un código canjeado en su venta
           venta: { select: { codigo: { select: { codigo: true } } } },
         },
@@ -119,12 +119,14 @@ export const getPerfilCrediticio = async (userId: number) => {
     return {
       id: c.id,
       fecha: c.fecha,
+      fecha_limite: c.fecha_limite,
       articulos: c.articulos,
       deuda_inicial: deudaInicial,
       abonado,
       saldo,
       dias_sin_abono: Math.floor(diasSinAbono),
-      abonos: c.abonos.map((a) => ({ monto: Number(a.monto), fecha: a.fecha })),
+      // `registrado_en` es el instante en que se anotó: de ahí sale la hora que ve el cliente
+      abonos: c.abonos.map((a) => ({ monto: Number(a.monto), fecha: a.fecha, registrado_en: a.created_at })),
     };
   });
 

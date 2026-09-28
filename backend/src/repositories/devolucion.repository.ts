@@ -2,6 +2,7 @@ import type { DevolucionEstado, DevolucionMotivo, Prisma } from '@prisma/client'
 import { prisma } from '../config/prisma';
 import { badRequest, notFound } from '../utils/httpError';
 import { borrarImagenSubida } from '../utils/imagenes';
+import { hoyEnColombia } from '../utils/fechas';
 import type { DevolucionInput } from '../schemas/devolucion.schema';
 import { aplicarInventarioDevolucion, revertirInventarioDevolucion } from './devolucion.inventario';
 
@@ -275,7 +276,7 @@ export const solicitarDevolucion = async (
       venta_id: ventaId,
       user_id: userId,
       origen: 'cliente',
-      fecha: new Date(),
+      fecha: hoyEnColombia(),
       motivo,
       detalle,
       estado: 'pendiente',

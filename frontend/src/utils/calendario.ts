@@ -83,3 +83,25 @@ export const mesLegible = (anio: number, mes: number) => {
   const nombre = MESES[mes - 1];
   return `${nombre[0].toUpperCase()}${nombre.slice(1)} ${anio}`;
 };
+
+/**
+ * El DÍA y la HORA de Colombia de un instante (una fecha ISO del servidor).
+ *
+ * Con el desfase fijo de −5 h (Colombia no tiene horario de verano) y no con la
+ * hora del teléfono: un cliente que mira su historial desde el exterior tiene
+ * que ver la hora a la que pagó aquí, no la de su país.
+ */
+const enColombia = (iso: string) => new Date(new Date(iso).getTime() - 5 * 3600_000);
+
+/** '2026-09-22T01:27:00Z' → '2026-09-21'. */
+export const diaEnColombia = (iso: string) => {
+  const d = enColombia(iso);
+  return aTexto({ anio: d.getUTCFullYear(), mes: d.getUTCMonth() + 1, dia: d.getUTCDate() });
+};
+
+/** '2026-09-22T01:27:00Z' → "8:27 p. m." (escrita a mano: `Intl` varía según el navegador). */
+export const horaEnColombia = (iso: string) => {
+  const d = enColombia(iso);
+  const h = d.getUTCHours();
+  return `${h % 12 || 12}:${dos(d.getUTCMinutes())} ${h < 12 ? 'a. m.' : 'p. m.'}`;
+};

@@ -644,3 +644,28 @@ que hay *en bodega*.
 Y cuando no se puede saber —un comprado sin material asignado— dice **"—", nunca "0"**: cero
 significa "no tengo", y aquí lo cierto es "no lo sé". Es el mismo criterio por el que un `comprado`
 sin insumo tampoco se marca agotado.
+
+## Historial de pagos de un crédito: línea de tiempo en un modal (2026-09-28)
+
+Pedido del dueño: *"un histórico de pagos… que se pueda saber qué fecha y hora fue la que se hizo
+un abono… y que el cliente en su cuenta lo pueda ver súper fácil"*. Primero salió una lista plana
+dentro del modal de abonar; el dueño pidió algo más bonito, *"como en un tipo modal, con lista de
+los pagos y fechas"*, e investigar ejemplos. El patrón que repiten las apps de crédito (Addi,
+Nubank, los bloques de historial de transacciones de shadcn) es el que se tomó:
+
+- **Resumen arriba** (pagado, lo que falta, barra de avance, "N pagos · último el …") y **línea
+  de tiempo** debajo: el más reciente arriba, agrupado por mes, cada pago con día y hora y **en
+  cuánto quedó la deuda**. La línea empieza en "Crédito abierto" y termina en "Deuda saldada" o en
+  "Falta por pagar" con la fecha límite (en rojo si venció).
+- **Una sola pieza**: `components/HistorialPagos.tsx` (`HistorialPagos` + `HistorialPagosModal`).
+  La usan el panel (`tabs/PagosCreditoModal.tsx`, botón con reloj "Historial de pagos" en cada
+  crédito, con borrar abono) y "Mi crédito" del cliente (botón "Ver historial de pagos (N)", sin
+  borrar). Los dos ven exactamente lo mismo.
+- **"Pago 1" es siempre el primero** aunque la lista vaya del más nuevo al más viejo.
+- **La hora solo sale si el abono se anotó ese mismo día.** Los que se cargaron después (los de
+  antes del sistema) llevan la hora de cuando se teclearon, que no es la del pago.
+- La hora es la de **Colombia** (`horaEnColombia`, desfase fijo), no la del teléfono: un cliente
+  en el exterior ve la hora a la que pagó aquí.
+- El modal de abonar quedó solo para abonar ("Lleva N pagos." en su frase de arriba). Borrar un
+  abono equivocado se hace desde el historial, donde se ve cuál es.
+- La columna "Abonado" de la tabla dice debajo "N pagos".

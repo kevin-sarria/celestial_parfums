@@ -6,11 +6,14 @@ import { useAuthContext } from '../context/useAuthContext';
 export interface AbonoPortal {
   monto: number;
   fecha: string;
+  /** Instante en que se anotó (de aquí sale la hora). */
+  registrado_en: string;
 }
 
 export interface CreditoPortal {
   id: number;
   fecha: string;
+  fecha_limite: string | null;
   articulos: string;
   deuda_inicial: number;
   abonado: number;

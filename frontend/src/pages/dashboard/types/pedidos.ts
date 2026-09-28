@@ -24,7 +24,7 @@ export interface PerfilCredito {
   creditos: {
     id: number; fecha: string; articulos: string; deuda_inicial: number;
     abonado: number; saldo: number; dias_sin_abono: number;
-    abonos: { monto: number; fecha: string }[];
+    abonos: { monto: number; fecha: string; registrado_en: string }[];
   }[];
 }
 
@@ -52,6 +52,8 @@ export interface CreditoAbono {
   id: number;
   monto: number;
   fecha: string;
+  /** Instante en que se anotó (de aquí sale la hora del historial). */
+  registrado_en: string;
 }
 
 export interface Credito {

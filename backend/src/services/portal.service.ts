@@ -14,6 +14,7 @@ export const getPortalCredito = async (userId: number) => {
     creditos: perfil.creditos.map((c) => ({
       id: c.id,
       fecha: c.fecha,
+      fecha_limite: c.fecha_limite,
       articulos: c.articulos,
       deuda_inicial: c.deuda_inicial,
       abonado: c.abonado,

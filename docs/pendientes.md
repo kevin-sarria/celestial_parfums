@@ -1,5 +1,28 @@
 # Dónde quedamos y qué sigue
 
+## 🆕 2026-09-28: historial de pagos, y la hoja de ruta del dashboard
+
+**Hecho** (sin desplegar; **lleva migración**, `20260928120000_abonos_dia_colombia`):
+
+| Qué | Estado |
+|---|---|
+| Historial de pagos del crédito con fecha y hora, en tu panel y en "Mi crédito" del cliente (`diseno-ux.md`) | hecho |
+| Los abonos de después de las 7 p.m. quedaban con el día siguiente; corregido, y la migración arregla los 2 que lo sufrieron (`gotchas.md`) | hecho |
+
+**Hoja de ruta que salió de revisar todo el panel** (datos de jun–sep 2026: el 79 % de lo vendido es
+contratipo de 30 ml, 10 unidades de 1.1, 0 originales; 60 de 150 clientes repiten):
+
+| # | Qué | Estado / decisión del dueño |
+|---|---|---|
+| 1 | **Pantalla de Inicio**: ventas del mes contra el mes anterior, cuánto te deben, vencidos, qué 1.1 armar, esencias que se acaban | **en curso** (el dueño eligió empezar por aquí) |
+| 2 | Reporte por línea: contratipo / 1.1 / original, con unidades, ventas y ganancia de cada una | sigue |
+| 3 | Ganancia por fragancia (no solo las más vendidas) | sigue |
+| 4 | Lista de recompra. **Decisión**: no hay un número fijo (a unos les dura 1 semana, a otros 3 meses); se calcula por cliente con **sus propias fechas de recompra**, y para quien compró una sola vez, un punto medio sacado de los que sí repiten | sigue |
+| 5 | Originales y decants (flujo botella → decants, proveedor y factura por botella) | **pendiente, no es pronto** (dueño) |
+| 6 | Mayoreo: no se quita; lo usará cuando el negocio crezca. En la reorganización puede ir a "Ajustes" | decidido |
+| 7 | Reorganizar el menú en 6 grupos (Hoy, Taller, Catálogo, Números, Página web, Ajustes) y juntar las 5 clasificaciones en una pantalla | propuesto, falta el visto bueno |
+| — | Nota del dueño: el negocio está estancado porque no sabe cómo publicitar bien. Candidato a trabajo de marketing aparte | anotado |
+
 ## 📋 Lo que falta (lista corta, 2026-09-27)
 
 Todo lo hecho hasta el 27 de septiembre está en `main` y subido a GitHub (último commit `783db09`).

@@ -1,14 +1,12 @@
 import { useRef, useState } from 'react';
-import { Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Modal from '../../../components/Modal';
-import { fmtDate, formatPrice } from '../helpers';
+import { formatPrice } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Field } from '../ui';
-import type { Credito, CreditoAbono } from '../types';
+import type { Credito } from '../types';
 
 interface AbonoModalProps {
   /** null = cerrado. */
@@ -19,7 +17,8 @@ interface AbonoModalProps {
 }
 
 /**
- * Registrar un abono y, si hace falta, borrar uno equivocado.
+ * Registrar un abono. Los pagos ya hechos, y borrar uno equivocado, viven en
+ * el historial de pagos (`PagosCreditoModal`).
  *
  * **No se puede guardar dos veces.** El 2026-09-05 un abono de $50.000 quedó
  * doble en producción: este modal era el único formulario de dinero que no se
@@ -35,7 +34,6 @@ interface AbonoModalProps {
 export function AbonoModal({ credito, onClose, onCambio }: AbonoModalProps) {
   const [monto, setMonto] = useState('');
   const [guardando, setGuardando] = useState(false);
-  const [borrando, setBorrando] = useState<number | null>(null);
   const enVuelo = useRef(false);
 
   // Al cerrar se vacía el campo: la próxima vez se abre limpio, sea el crédito que sea
@@ -55,19 +53,6 @@ export function AbonoModal({ credito, onClose, onCambio }: AbonoModalProps) {
     finally { enVuelo.current = false; setGuardando(false); }
   };
 
-  const borrar = async (a: CreditoAbono) => {
-    if (!credito) return;
-    if (!window.confirm(`¿Borrar el abono de ${formatPrice(a.monto)} del ${fmtDate(a.fecha)}? La deuda vuelve a subir en esa cifra.`)) return;
-    setBorrando(a.id);
-    try {
-      const res = await http.borrar<{ data: Credito }>(urls.creditos.borrarAbono(credito.id, a.id));
-      if (!res.ok || !res.cuerpo) { toast.error(res.error || 'No se pudo borrar el abono', { id: 'abono' }); return; }
-      toast.success('Abono borrado');
-      onCambio(res.cuerpo.data);
-    } catch { toast.error('No se pudo conectar con el servidor', { id: 'abono' }); }
-    finally { setBorrando(null); }
-  };
-
   return (
     <Modal
       open={credito !== null}
@@ -83,6 +68,7 @@ export function AbonoModal({ credito, onClose, onCambio }: AbonoModalProps) {
           {credito.cliente.nombre} {credito.cliente.apellido} debe{' '}
           <strong className="text-foreground">{formatPrice(credito.total_en_deuda)}</strong>{' '}
           de {formatPrice(credito.deuda_inicial)}.
+          {credito.abonos.length > 0 && ` Lleva ${credito.abonos.length} ${credito.abonos.length === 1 ? 'pago' : 'pagos'}.`}
         </p>
       )}
 
@@ -90,31 +76,6 @@ export function AbonoModal({ credito, onClose, onCambio }: AbonoModalProps) {
         <Input type="number" min="1" inputMode="numeric" value={monto} autoFocus
           onChange={e => setMonto(e.target.value)} />
       </Field>
-
-      {credito && credito.abonos.length > 0 && (
-        <div className="space-y-1.5">
-          <p className="text-[12.5px] font-semibold text-foreground/80">
-            Abonos registrados ({credito.abonos.length})
-          </p>
-          <ul className="divide-y divide-border rounded-lg border border-border">
-            {credito.abonos.map(a => (
-              <li key={a.id} className="flex items-center gap-2 px-3 py-1.5 text-[13px]">
-                <span className="flex-1 text-muted-foreground">{fmtDate(a.fecha)}</span>
-                <span className="font-semibold tabular-nums">{formatPrice(a.monto)}</span>
-                <Button
-                  type="button" variant="ghost" size="icon"
-                  className="size-8 text-muted-foreground hover:text-destructive"
-                  aria-label={`Borrar abono de ${formatPrice(a.monto)}`}
-                  disabled={borrando !== null}
-                  onClick={() => borrar(a)}
-                >
-                  <Trash2 className="size-4" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
     </Modal>
   );
 }

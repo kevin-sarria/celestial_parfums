@@ -1,23 +1,16 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, HandCoins } from 'lucide-react';
+import { CalendarDays, HandCoins, History } from 'lucide-react';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
+import { HistorialPagosModal } from '../components/HistorialPagos';
+import { Button } from '@/components/ui/button';
+import { fechaLegible } from '@/utils/calendario';
 import { formatPrice } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import { usePortalCredito } from '../application/hooks/usePortalCredito';
+import { usePortalCredito, type CreditoPortal } from '../application/hooks/usePortalCredito';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
-
-/**
- * Fechas de calendario (día del crédito o del abono): se construyen con los
- * números del AAAA-MM-DD. Pasar la cadena a `new Date()` la leería como
- * medianoche UTC y en Colombia mostraría el día anterior.
- */
-const fmtFecha = (d: string) => {
-  const [y, m, dia] = d.slice(0, 10).split('-').map(Number);
-  return new Date(y, m - 1, dia).toLocaleDateString('es-CO', { day: 'numeric', month: 'short', year: 'numeric' });
-};
 
 /**
  * Portal del cliente: consulta de SU crédito (deuda y cuotas pagadas).
@@ -28,6 +21,8 @@ export default function MiCreditoPage() {
   const navigate = useNavigate();
   const { user } = useAuthContext();
   const { data, loading } = usePortalCredito();
+  /** El crédito cuyo historial de pagos está abierto; null = cerrado. */
+  const [viendo, setViendo] = useState<CreditoPortal | null>(null);
 
   useEffect(() => {
     if (!user) navigate('/login', { replace: true });
@@ -78,7 +73,7 @@ export default function MiCreditoPage() {
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <p className="flex items-center gap-1.5 text-[12.5px] text-muted-foreground">
-                          <CalendarDays className="size-3.5" /> {fmtFecha(c.fecha)}
+                          <CalendarDays className="size-3.5" /> {fechaLegible(c.fecha.slice(0, 10))}
                         </p>
                         <p className="mt-1 text-[15px] font-medium text-foreground">{c.articulos}</p>
                       </div>
@@ -104,21 +99,10 @@ export default function MiCreditoPage() {
                       </p>
                     </div>
 
-                    {c.abonos.length > 0 && (
-                      <div className="mt-4 border-t border-border/70 pt-3">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                          Cuotas pagadas ({c.abonos.length})
-                        </p>
-                        <ul className="flex flex-col gap-1.5">
-                          {c.abonos.map((a, i) => (
-                            <li key={i} className="flex items-center justify-between text-[13.5px]">
-                              <span className="text-muted-foreground">{fmtFecha(a.fecha)}</span>
-                              <span className="font-medium text-foreground">{formatPrice(a.monto)}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
+                    <Button variant="outline" size="sm" className="mt-4 w-full sm:w-auto" onClick={() => setViendo(c)}>
+                      <History className="size-4" />
+                      Ver historial de pagos{c.abonos.length > 0 && ` (${c.abonos.length})`}
+                    </Button>
                   </article>
                 );
               })}
@@ -126,6 +110,12 @@ export default function MiCreditoPage() {
           </>
         )}
       </main>
+
+      <HistorialPagosModal
+        credito={viendo}
+        titulo={viendo?.articulos}
+        onClose={() => setViendo(null)}
+      />
     </div>
   );
 }

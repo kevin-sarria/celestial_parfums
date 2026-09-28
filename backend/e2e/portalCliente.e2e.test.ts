@@ -131,6 +131,15 @@ describe('el portal del cliente', () => {
         user_id: clientaId,
         articulos: 'Perfume del Portal',
         deuda_inicial: 60000,
+        abonos: {
+          create: [
+            // Cargado después (como los de antes del sistema): la hora de cuando se
+            // tecleó no es la del pago, así que NO se muestra
+            { monto: 20000, fecha: new Date('2026-08-22'), created_at: new Date('2026-09-01T15:00:00Z') },
+            // Anotado el mismo día, a las 8:27 p.m. de Colombia (01:27 del 26 en UTC)
+            { monto: 10000, fecha: new Date('2026-08-25'), created_at: new Date('2026-08-26T01:27:00Z') },
+          ],
+        },
       },
     });
 
@@ -144,6 +153,15 @@ describe('el portal del cliente', () => {
     await irA(pagina, '/mi-credito');
     await pagina.waitForSelector('text=Deuda total actual');
     await pagina.waitForSelector('text=/60\.000/');
+
+    // El historial de pagos: cuántos lleva, cuándo y en cuánto quedó la deuda
+    await pagina.getByRole('button', { name: 'Ver historial de pagos (2)' }).click();
+    await pagina.waitForSelector('text=25 ago 2026 · 8:27 p. m.');
+    await pagina.waitForSelector('text=/Quedó en .*30\.000/');
+    // El abono cargado después no enseña hora: sería la de cuando se tecleó
+    expect(await pagina.getByText('22 ago 2026', { exact: true }).count()).toBe(1);
+    // Y el cliente mira, no borra
+    expect(await pagina.getByRole('button', { name: /Borrar abono de/ }).count()).toBe(0);
 
     await contexto.close();
   });
