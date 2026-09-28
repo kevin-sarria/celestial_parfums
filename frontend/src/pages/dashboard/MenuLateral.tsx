@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import BackupSeguridad from './BackupSeguridad';
 import { BrandMark } from '../../components/BrandMark';
-import { NAV_SECTIONS, TAB_META, TAB_POR_DEFECTO, esTabValido, sectionOfTab } from './navegacion';
+import { NAV_SECTIONS, TAB_INICIO, TAB_META, TAB_POR_DEFECTO, esTabValido, sectionOfTab } from './navegacion';
 import type { Tab } from './types';
 
 /**
@@ -84,6 +84,21 @@ export function MenuLateral() {
         </SheetHeader>
 
         <nav className="flex-1 overflow-y-auto p-3">
+          {(() => {
+            const { label, icon: Icon } = TAB_META[TAB_INICIO];
+            return (
+              <button
+                onClick={() => handleTabChange(TAB_INICIO)}
+                className={cn(
+                  'mb-2 flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-left text-[14px] font-medium transition-colors',
+                  tab === TAB_INICIO ? 'bg-brand-soft text-primary' : 'text-foreground hover:bg-secondary',
+                )}
+              >
+                <Icon className="size-4.5 shrink-0" />
+                {label}
+              </button>
+            );
+          })()}
           {NAV_SECTIONS.map(sec => {
             const abierta = openSections.has(sec.id);
             const contieneActiva = sec.tabs.includes(tab);

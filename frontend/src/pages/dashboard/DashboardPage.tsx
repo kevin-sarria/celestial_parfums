@@ -21,6 +21,7 @@ import { DescuentosTab } from './tabs/DescuentosTab';
 import { LookupTab, type ResultadoLookup } from './tabs/LookupTab';
 import { VentasTab } from './tabs/VentasTab';
 import { CreditosTab } from './tabs/CreditosTab';
+import { InicioTab } from './tabs/InicioTab';
 import { PagosTab } from './tabs/PagosTab';
 import { UsuariosTab } from './tabs/UsuariosTab';
 import { PublicidadTab } from './tabs/PublicidadTab';
@@ -363,6 +364,7 @@ export default function DashboardPage() {
             {tab === 'descuentos' && (
               <DescuentosTab onMutate={refreshAll} />
             )}
+            {tab === 'inicio' && <InicioTab />}
             {tab === 'ventas' && <VentasTab />}
             {tab === 'creditos' && <CreditosTab />}
             {tab === 'rep_ventas' && <ReportesVentasTab />}

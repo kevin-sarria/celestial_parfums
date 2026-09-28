@@ -3,6 +3,7 @@ import * as repo from '../repositories/reporte.repository';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { h } from '../middleware/error.middleware';
 import { reporteVentasRango } from '../repositories/reporteVentasRango';
+import { resumenInicio } from '../repositories/inicio.repository';
 import { badRequest } from '../utils/httpError';
 import { hoyEnColombia } from '../utils/fechas';
 
@@ -33,6 +34,11 @@ reporteRouter.get('/ventas', h(async (req, res) => {
   if (desde > hasta) throw badRequest('La fecha "desde" va después de "hasta"');
   if (hasta.getTime() - desde.getTime() > 5 * 366 * 86_400_000) throw badRequest('El rango máximo es de 5 años');
   res.json({ data: await reporteVentasRango(desde, hasta) });
+}));
+
+/** La pantalla de Inicio: el mes contra el anterior, la cartera y lo que hay que atender. */
+reporteRouter.get('/inicio', h(async (_req, res) => {
+  res.json({ data: await resumenInicio() });
 }));
 
 reporteRouter.get('/compras', h(async (req, res) => {

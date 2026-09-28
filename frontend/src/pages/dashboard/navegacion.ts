@@ -2,7 +2,7 @@ import {
   SprayCan, PackageCheck, Package, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText,
   BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX,
-  ChartColumn, Layers, Coins, TriangleAlert, type LucideIcon,
+  ChartColumn, Layers, Coins, TriangleAlert, House, type LucideIcon,
 } from 'lucide-react';
 import type { Tab } from './types';
 
@@ -16,6 +16,7 @@ import type { Tab } from './types';
  */
 
 export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
+  inicio: { label: 'Inicio', icon: House },
   perfumes: { label: 'Perfumes', icon: SprayCan },
   productos: { label: 'Productos', icon: PackageCheck },
   aromas: { label: 'Aromas', icon: Flower2 },
@@ -78,9 +79,16 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
 ];
 
-export const sectionOfTab = (tab: Tab) =>
-  NAV_SECTIONS.find(s => s.tabs.includes(tab))?.id ?? NAV_SECTIONS[0].id;
+/**
+ * Inicio va suelto, arriba de los grupos: es la portada del panel, no un
+ * apartado de ninguno. Por eso no abre ninguna sección.
+ */
+export const TAB_INICIO: Tab = 'inicio';
 
-export const TAB_POR_DEFECTO: Tab = 'perfumes';
+export const sectionOfTab = (tab: Tab) =>
+  NAV_SECTIONS.find(s => s.tabs.includes(tab))?.id ?? '';
+
+/** Al entrar al panel se cae en Inicio (antes era la lista de Perfumes, 2026-09-28). */
+export const TAB_POR_DEFECTO: Tab = TAB_INICIO;
 export const esTabValido = (t?: string): t is Tab => !!t && Object.prototype.hasOwnProperty.call(TAB_META, t);
 

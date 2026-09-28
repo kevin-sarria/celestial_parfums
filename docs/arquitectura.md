@@ -493,6 +493,30 @@ ultra largo […] que el mensaje sea muy breve"*.
   y sus lectores, porque las usan DOS sitios; con la ruta escrita en dos lados, el día que
   la carpeta se mueva uno falla en silencio diciendo "nunca has hecho copia" para siempre.
 
+## Inicio: la portada del panel (2026-09-28)
+
+Al revisar el panel entero con el dueño salió que abría en la lista de Perfumes, que no sirve para
+decidir nada. Ahora `/dashboard` cae en **Inicio** (`TAB_POR_DEFECTO`), que va suelto arriba de
+los grupos del menú (`TAB_INICIO`, no pertenece a ninguno).
+
+- **No calcula nada propio.** `GET /api/reportes/inicio` (`inicio.repository.ts`) llama a las
+  MISMAS funciones de las pantallas de detalle: `reporteVentasRango` (ventas, ganancia, unidades),
+  `getCreditoTotales` (cartera), `calcularNotificaciones` (la campana) y `calcularReposicion`
+  (esencias). Si Inicio y el reporte dijeran cifras distintas no se podría confiar en ninguno.
+- **El mes se compara con el anterior HASTA EL MISMO DÍA** (`periodosComparables`): el 28 de
+  septiembre contra el 1–28 de agosto; el 31 de marzo, contra febrero hasta su último día. Contra
+  el mes anterior entero, siempre parecería que se va peor.
+- Lo único propio es **"Frascos 1.1 por armar"**: los 1.1 publicados (`solo_armado`) sin frascos
+  armados, primero los que se vendieron en los últimos 90 días. Un 1.1 solo se vende armado, así
+  que uno que se vende y está en cero es venta perdida.
+- **Esencias que se acaban primero**: las del pedido sugerido ordenadas por días que alcanzan al
+  ritmo de los últimos 90; tope de 5, el resto en `reposicion`.
+- Cada bloque tiene tope de filas y un enlace a su pantalla: Inicio dice qué mirar, no repite la
+  pantalla entera (la lección de la banda de 55 renglones).
+- En el celular las cuatro cifras van en 2 columnas (de ~470 px de alto a ~260).
+- Medido contra el respaldo del 22-sep: septiembre $1.029.000 vendidos contra $1.167.500 de agosto
+  a la misma fecha; 17 frascos 1.1 armados de 21 referencias, 7 sin armar (6 con ventas).
+
 ## Reportes (sección propia del dashboard)
 
 - **Tres pestañas, no una** (`rep_ventas`, `rep_compras`, `rep_clientes`): son preguntas
