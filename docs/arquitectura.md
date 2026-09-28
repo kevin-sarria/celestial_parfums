@@ -302,6 +302,16 @@ fórmulas y demás, que no es el core de las ventas sino más de operaciones o d
   "cómo lo hago o con qué", al segundo.** Un grupo de ocho pestañas mezcladas obliga a
   leerlas todas para encontrar una.
 
+### El menú en el orden del día (2026-09-28)
+
+Tras revisar el panel entero, el menú se reordenó por lo que el dueño toca más: **Inicio** suelto
+arriba; luego *Ventas y créditos* (con Recompra; "Proveedores" pasó a llamarse **Compras a
+proveedores**), *Producción e inventario* (con Frascos armados), *Catálogo*, *Reportes*, **Página
+web** (lo que antes era "Personas y página", sin Usuarios), **Ajustes** (Usuarios y las cinco
+clasificaciones, que antes eran su propio grupo) y *Mayoreo B2B* al final, que el dueño usará
+cuando el negocio crezca. Se respetaron las dos decisiones de abajo: plata y operación separadas, y
+las recetas en el taller. La lista y el porqué viven en `navegacion.ts`.
+
 ### Catálogo: Perfumes y Productos son la MISMA tabla, partida en dos (2026-08-23, Ola 1)
 
 El dueño empezó a vender 1.1 (contratipos con envase premium), accesorios (perfumero, bolsa,

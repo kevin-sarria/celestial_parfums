@@ -20,7 +20,7 @@ contratipo de 30 ml, 10 unidades de 1.1, 0 originales; 60 de 150 clientes repite
 | 4 | Lista de recompra con el ritmo de cada cliente y el punto medio para los de una compra (`arquitectura.md`, *Recompra*). Para mejorarla: guardar el teléfono de los clientes (hoy ninguno lo tiene) y enlazar las ventas a su cuenta | **hecho**, sin desplegar |
 | 5 | Originales y decants (flujo botella → decants, proveedor y factura por botella) | **pendiente, no es pronto** (dueño) |
 | 6 | Mayoreo: no se quita; lo usará cuando el negocio crezca. En la reorganización puede ir a "Ajustes" | decidido |
-| 7 | Reorganizar el menú en 6 grupos (Hoy, Taller, Catálogo, Números, Página web, Ajustes) y juntar las 5 clasificaciones en una pantalla | propuesto, falta el visto bueno |
+| 7 | Menú en el orden del día: Inicio, Ventas y créditos, Producción e inventario, Catálogo, Reportes, Página web, Ajustes, Mayoreo (`arquitectura.md`). Juntar las 5 clasificaciones en UNA pantalla queda para después: hoy viven juntas en Ajustes | **hecho**, sin desplegar |
 | — | Nota del dueño: el negocio está estancado porque no sabe cómo publicitar bien. Candidato a trabajo de marketing aparte | anotado |
 
 ## 📋 Lo que falta (lista corta, 2026-09-27)

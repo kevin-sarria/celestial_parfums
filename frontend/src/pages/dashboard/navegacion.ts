@@ -21,17 +21,17 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   productos: { label: 'Productos', icon: PackageCheck },
   aromas: { label: 'Aromas', icon: Flower2 },
   ocasiones: { label: 'Ocasiones', icon: CalendarDays },
-  categorias: { label: 'Categorias', icon: Tags },
+  categorias: { label: 'Categorías', icon: Tags },
   presentaciones: { label: 'Presentaciones', icon: Ruler },
   gamas: { label: 'Gamas de esencia', icon: Layers },
   combos: { label: 'Combos', icon: Gift },
   precios: { label: 'Precios', icon: Tags },
   descuentos: { label: 'Descuentos', icon: BadgePercent },
   ventas: { label: 'Ventas', icon: CircleDollarSign },
-  creditos: { label: 'Creditos', icon: ClipboardList },
+  creditos: { label: 'Créditos', icon: ClipboardList },
   recompra: { label: 'Recompra', icon: Repeat },
   devoluciones: { label: 'Devoluciones', icon: PackageX },
-  pagos: { label: 'Proveedores', icon: Factory },
+  pagos: { label: 'Compras a proveedores', icon: Factory },
   inventario: { label: 'Inventario', icon: Boxes },
   armados: { label: 'Frascos armados', icon: Package },
   reposicion: { label: 'Pedido sugerido', icon: ShoppingCart },
@@ -56,28 +56,33 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
 
 // Menú del dashboard agrupado en secciones colapsables (drawer con burger)
 export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
-  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'productos', 'combos', 'precios', 'descuentos'] },
-  { id: 'clasificaciones', label: 'Clasificaciones', tabs: ['aromas', 'ocasiones', 'categorias', 'presentaciones', 'gamas'] },
   /**
-   * DOS grupos, no uno. Lo señaló el dueño cuando "Ventas y créditos" llegó a
-   * ocho pestañas: *"una cosa es la parte contable —lo que se vende, lo que
-   * sale, lo que se devuelve— y otra muy diferente las fórmulas y demás, que no
-   * es el core de las ventas sino más de operaciones o de reglas"*.
+   * Orden del menú = orden del día del dueño (reorganizado el 2026-09-28, tras
+   * revisar el panel entero): primero lo que se toca todos los días —vender,
+   * cobrar, a quién escribirle—, después el taller, el catálogo y los números,
+   * y al final lo que se toca de vez en cuando (la página, los ajustes, el
+   * mayoreo, que el dueño usará cuando el negocio crezca).
    *
-   * Y tenía razón: mezclaba PLATA (ventas, créditos, devoluciones, lo que se le
-   * paga al proveedor) con OPERACIÓN (qué tengo, qué armé, con qué receta,
-   * cuánto me cuesta, qué pedir). Se busca con cabezas distintas.
+   * Se conservan dos decisiones anteriores del dueño:
+   * - PLATA y OPERACIÓN van separadas (2026-08-10): *"una cosa es la parte
+   *   contable —lo que se vende, lo que sale, lo que se devuelve— y otra muy
+   *   diferente las fórmulas y demás"*. Por eso las compras a proveedores
+   *   siguen con la plata, y las recetas con el taller.
+   * - Las RECETAS y el costo de producción viven en el taller, no en Ajustes
+   *   ni en Mayoreo: de ellas salen los materiales que descuenta cada venta y
+   *   cada lote. Mayoreo solo cotiza, y para eso las lee.
+   *
+   * Criterio para una pestaña nueva: si la pregunta es "cuánto dinero", va a
+   * Ventas y créditos; si es "cómo lo hago o con qué", al taller; si se
+   * configura una vez y se olvida, a Ajustes.
    */
   { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'recompra', 'devoluciones', 'pagos'] },
-  /**
-   * Las RECETAS y el costo de producción viven aquí, no en Mayoreo: de ellas
-   * salen los materiales que descuenta cada venta y cada lote, así que las usa
-   * todo el negocio. Mayoreo solo cotiza, y para eso las lee.
-   */
-  { id: 'operacion', label: 'Producción e inventario', tabs: ['inventario', 'armados', 'reposicion', 'alertas', 'producciones', 'formulas', 'costos'] },
-  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'precios_mayoreo'] },
+  { id: 'operacion', label: 'Producción e inventario', tabs: ['producciones', 'armados', 'inventario', 'reposicion', 'alertas', 'formulas', 'costos'] },
+  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'productos', 'combos', 'precios', 'descuentos'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
-  { id: 'cuentas', label: 'Personas y página', tabs: ['usuarios', 'publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
+  { id: 'pagina', label: 'Página web', tabs: ['publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
+  { id: 'ajustes', label: 'Ajustes', tabs: ['usuarios', 'aromas', 'ocasiones', 'categorias', 'presentaciones', 'gamas'] },
+  { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'precios_mayoreo'] },
 ];
 
 /**
