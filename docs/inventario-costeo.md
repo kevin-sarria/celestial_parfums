@@ -280,7 +280,10 @@ la pantalla que los administra pide `?todos=1` (si no, no habría cómo reencend
 ### Producción
 
 `POST /inventario/producciones`: "armé N de 30 ml" descuenta esencia, diluyente, sellador,
-feromonas, envase y accesorios por defecto. **El frontend calcula qué se consume** con el mismo
+feromonas, envase y accesorios. **Los accesorios los pone el SERVIDOR** (`conAccesoriosDeFicha`,
+desde el 2026-09-27): quita los de la receta que mande la pantalla y pone los de la ficha, para
+que una pestaña con la versión vieja tampoco cobre una bolsa que no se usó. La pantalla los pide
+a `GET /inventario/accesorios-de-lote` solo para estimar. Lo demás, **el frontend calcula qué se consume** con el mismo
 motor puro de las cotizaciones y lo manda; el backend valida y aplica (no se reimplementa la
 fórmula en dos lenguajes). El modal avisa si no alcanza el stock. Borrar un lote devuelve los
 insumos. El historial vive en la pestaña **Producciones**.
@@ -395,6 +398,24 @@ costo. Editar o borrar una venta revierte el consumo (`revertirVenta`).
 - **Lo que se define en `perfume_presentacion` (`envase_insumo_id`, `accesorios`) MANDA** sobre
   el envase/accesorios de la receta del tamaño, que pasan a ser el valor por defecto. La receta
   queda como lo que es: las PROPORCIONES.
+- **Accesorios por talla: `null` = los de la receta; `[]` = NINGUNO; `[ids]` = los suyos**
+  (2026-09-27, `accesoriosDeFicha.ts`, la regla en UN sitio para venta, envasado y lote). Antes la
+  lista vacía volvía a la receta, así que no había forma de decir "ninguno", y cada camino decidía
+  distinto: la venta miraba la ficha, el envasado solo la receta y el lote lo armaba la pantalla.
+  - **Un 1.1 no lleva bolsa ni perfumero** (dueño, 2026-08-30) y nace con `[]`
+    (`crearProductoArmado` y `createPerfume` con `solo_armado`). La migración
+    `20260927120000_accesorios_11_ninguno` pasó a `[]` los 1.1 que estaban en NULL.
+  - La ficha manda `null` para "los del tamaño". Antes mandaba SIEMPRE `[]`: con el significado
+    nuevo, eso le habría quitado los accesorios a todo perfume que se guardara.
+  - **El perfumero está registrado como `envase`, no como `accesorio`**: la lista de opciones de
+    la ficha son los de tipo accesorio MÁS lo que alguna receta ya usa como accesorio. Una
+    consulta que solo mire `tipo = 'accesorio'` lo pierde (así se midió mal la primera vez:
+    $8.100 en vez de $54.300).
+  - **Lo ya armado se corrige desde el aviso de Producciones** (`accesoriosSobrantes.ts`): devuelve
+    los accesorios que la ficha no lleva, baja el costo del lote y de sus frascos y rehace el
+    promedio de la ficha. Las ventas ya hechas conservan su costo (quedó congelado ese día).
+    Medido contra el respaldo del 22 de septiembre: 27 lotes 1.1, 27 bolsas + 27 perfumeros,
+    **$54.300**. Se recalcula: corregido, el aviso desaparece y corregir dos veces no hace nada.
 - **Un perfume fabricado sin esencia no descuenta NADA al venderse** (se salta la línea entera) y
   su costo entra en cero → la ganancia del mes sale inflada. Por eso importa el enlace.
 - **El consumo NO es retroactivo, por diseño**: las ventas históricas sin talla por línea no

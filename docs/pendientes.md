@@ -82,40 +82,23 @@ van a bajar de golpe cuando lo haga.
 **El orden importa en el crédito 7**: primero crear la ficha *Khamrah 1.1* desde el aviso de lotes
 por enlazar; si no, no está en el buscador y volvería a quedar apuntando al Khamrah corriente.
 
-## 🔴 PRIORITARIO: un 1.1 no lleva bolsa ni perfumero, y el sistema se los cobra
+## ✅ Un 1.1 ya no se cobra bolsa ni perfumero — HECHO (2026-09-27), sin desplegar
 
-**Lo dijo el dueño el 2026-08-30**: *"al generar un perfume 1.1 estos normalmente no llevan bolsa de
-organza o perfumero… actualmente el coste no es el real"*.
+Pedido del dueño el 2026-08-30. El dueño eligió la **opción A** (se configura por talla en la ficha) y
+**corregir lo ya armado**. Detalle y porqué en [`inventario-costeo.md`](inventario-costeo.md).
 
-**Qué pasa hoy**, medido contra su base:
-
-| Receta | Accesorios que asigna | Costo |
-|---|---|---|
-| 30 ml | Bolsa Organza + Perfumero Recargable | $2.400 |
-| 100 ml | Bolsa Organza + Perfumero Recargable | $2.400 |
-| 75 ml | Bolsa Organza | $300 |
-| 6 ml | Bolsa Organza | $300 |
-
-Los accesorios cuelgan **de la receta del tamaño**, así que todo lo que se arme en 100 ml —1.1 y
-contratipo por igual— carga los mismos $2.400. En un 1.1 eso es costo inventado, y además **saca de
-la bodega un perfumero que nunca se usó**: parte del agujero que ese material tiene en negativo.
-
-**La buena noticia: la mitad ya existe.** `perfume_presentacion.accesorios` es una columna JSON con
-los ids de los accesorios propios de ESA ficha en ESA talla, y `recetaDe` ya la prefiere sobre los de
-la receta (`accesoriosPropios ?? formula.accesorios`). **Hoy la usan 0 filas** porque nunca se hizo
-la pantalla para llenarla.
-
-**Lo que falta, entonces:**
-
-1. **Poder editarla**: en la ficha del producto, por talla, qué accesorios lleva —con "los de la
-   receta" como valor por defecto y la opción de decir "ninguno"—. Ojo con la diferencia entre
-   *"hereda los de la receta"* (null) y *"expresamente ninguno"* (lista vacía): son distintos y la
-   columna tiene que poder decir las dos cosas.
-2. **Que el ENVASADO la respete.** `envasar` (2026-08-30) usa `formula.accesorios` a secas, así que
-   hoy le cobraría la bolsa y el perfumero a un 1.1 envasado. Es el mismo agujero por otra puerta.
-3. **Que el alta de un 1.1 nazca sin accesorios**, ya que es lo normal según el dueño.
-4. **Rehacer el costo de lo ya armado**, o al menos avisar de cuánto cambia: los 4 lotes 1.1 de
-   agosto llevan ese sobrecosto congelado.
+- En la ficha, por cada talla: **Accesorios: Los del tamaño / Ninguno / Elegir…**. Un 1.1 nace en
+  "Ninguno".
+- Venta, envasado y lote usan la MISMA regla (`accesoriosDeFicha.ts`); antes eran tres.
+- **Lleva migración** (`20260927120000_accesorios_11_ninguno`, solo datos): el deploy es con
+  `npx prisma migrate deploy`.
+- **Después de desplegar, el dueño pulsa "Corregir" en el aviso de Producciones.** Medido en el
+  respaldo del 22-sep: 27 lotes 1.1, 27 bolsas + 27 perfumeros, **$54.300** de sobrecosto (la nota
+  vieja decía 4 lotes y solo contaba la bolsa). En una copia del respaldo: las bolsas pasaron de 11
+  a 38 y el lote 32 de $54.077 a $51.677.
+- Las 11 ventas de esos frascos que ya se hicieron conservan su costo (congelado ese día).
+- Pruebas: `accesoriosDeFicha.bd.test.ts` (7). Una vez, en un recorrido temporal, el aviso no
+  apareció en Producciones; no se pudo reproducir en tres corridas más. Si pasa, recargar la página.
 
 ## 🟡 El aviso del build: el paquete del dashboard pasó de 500 kB (2026-08-30)
 
