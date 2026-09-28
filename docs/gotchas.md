@@ -78,6 +78,37 @@ tiene `include`.
   `20260928120000_abonos_dia_colombia` corrige los dos abonos que lo sufrieron. **Quinta vez**:
   toda escritura de "hoy" en una columna `@db.Date` va con `hoyEnColombia()`.
 
+## "Algo salió mal" en el iPhone justo después de desplegar (2026-09-28)
+
+El dueño desplegó Inicio e Historial de pagos y su iPhone (Brave, que es WebKit) quedó en "Algo
+salió mal" aunque recargara. **El código nuevo estaba bien**: con los datos de producción, Inicio,
+Créditos, Ventas y Mi crédito abrían sin error en WebKit. Lo que falló fue la **entrega**:
+
+1. Cada `npm run build` borra los archivos de la versión anterior (`index-XXXX.js` cambia de nombre).
+2. nginx contesta un archivo de `/assets/` que no existe con **200 y la portada HTML** (fallback del
+   SPA), y Cloudflare guarda esa respuesta 4 h.
+3. El HTML sale sin `Cache-Control`, así que el iPhone reusa la portada VIEJA por horas, y esa pide
+   los archivos borrados.
+4. El service worker v1 guardaba en su caché **cualquier** respuesta 200 de `/assets/`, también la
+   portada disfrazada de código, y para siempre.
+5. En WebKit el síntoma NO es un error de importación: llega un "módulo" vacío y React revienta con
+   `undefined is not an object (evaluating 'e._result.default')`. Detectar solo "Importing a module
+   script failed" no lo atrapa. Se reprodujo sirviendo el build con `vite preview` y contestando HTML
+   al pedir `ContactPage-*.js` en WebKit con aspecto de iPhone.
+
+Arreglo (el frontend se recupera solo):
+- `utils/lazyPagina.ts`: todas las páginas perezosas pasan por aquí. Si el archivo falla o llega sin
+  `default`, borra las copias guardadas y recarga **una** vez (`utils/versionNueva.ts`, con marca en
+  `sessionStorage` para no entrar en bucle). Más `vite:preloadError` en `main.tsx` y el
+  `ErrorBoundary`, que también recargan si reconocen el error.
+- `public/sw.js` v2: el nombre nuevo de caché borra la caché envenenada en todos los teléfonos; la
+  navegación va con `cache: 'no-store'`; nunca guarda una respuesta HTML como archivo, y si un
+  archivo de código llega como HTML contesta 404 para que la página lo note.
+- Medido en WebKit: con el archivo malo (y guardado 4 h), la página recarga sola una vez y abre bien.
+- Falta el lado del servidor (nginx): ver `deploy-migraciones.md`, "que nginx no conteste la portada".
+
+**Al usar `lazy(...)` en un sitio nuevo: usar `lazyPagina`.**
+
 ## Red y API
 
 - **NADA de `PUT`**: el CORS del backend (`app.ts`) solo permite `['GET','POST','PATCH','DELETE']`.

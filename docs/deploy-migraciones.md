@@ -87,6 +87,30 @@ aunque no falte nada. En ese caso, aplicar el SQL de la migración directo con m
     `limit_req`/`limit_conn` dentro de `location /api/` del sitio.
   - Si Cloudflare rota sus rangos, actualizar `set_real_ip_from` (cloudflare.com/ips-v4 y /ips-v6).
   - Pendiente opcional: firewall del VPS restringido a solo IPs de Cloudflare en 80/443.
+- **Pendiente (recomendado 2026-09-28): que nginx no conteste la portada en lugar de un archivo
+  que no existe.** Hoy `/assets/LoQueSea.js` inexistente devuelve **200 con el HTML** de la tienda
+  (el `try_files … /index.html` del SPA), Cloudflare lo guarda 4 horas (`max-age=14400`) y el HTML
+  sale **sin `Cache-Control`**, así que el iPhone reusa la portada vieja por horas. Juntas, esas tres
+  cosas tumbaron el panel del dueño en su iPhone justo después de desplegar (ver `gotchas.md`). El
+  frontend ya se recupera solo, pero lo correcto es cortarlo en la puerta. Dentro del `server` de
+  443, antes del `location /` del SPA:
+
+  ```nginx
+  # Un archivo de /assets que no existe es un 404, nunca la portada
+  location /assets/ {
+      try_files $uri =404;
+      expires 30d;
+      add_header Cache-Control "public, immutable";
+  }
+  # La portada nunca se guarda: siempre la versión recién desplegada
+  location = /index.html {
+      add_header Cache-Control "no-cache";
+  }
+  ```
+
+  Y en `location /`, añadir `add_header Cache-Control "no-cache";`. Luego `sudo nginx -t && sudo
+  systemctl reload nginx`. Los nombres de `/assets/` llevan huella (`index-DG1f8QhM.js`), por eso
+  pueden guardarse 30 días sin riesgo.
 
 ## Dependencias que exigen `npm install` en el deploy
 

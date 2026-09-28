@@ -1,10 +1,11 @@
-import { lazy, Suspense, useState } from 'react';
+import { Suspense, useState } from 'react';
+import { lazyPagina } from '../utils/lazyPagina';
 import { FileDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuthContext } from '../application/context/useAuthContext';
 
 // El modal arrastra el motor de filtros; se carga al abrirlo, no antes.
-const ExportarCatalogoModal = lazy(() => import('./ExportarCatalogoModal'));
+const ExportarCatalogoModal = lazyPagina(() => import('./ExportarCatalogoModal'));
 
 /**
  * Descarga del catálogo en PDF (herramienta interna del admin).

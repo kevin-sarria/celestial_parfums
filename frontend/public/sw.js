@@ -1,4 +1,15 @@
-const CACHE_NAME = 'celestial-parfums-v1';
+/**
+ * v2 (2026-09-28): la v1 guardaba como "archivo de código" la página de inicio
+ * que el servidor devuelve cuando un archivo ya no existe (después de cada
+ * despliegue desaparecen los de la versión anterior). Esa copia mala quedaba
+ * para siempre y el iPhone del dueño mostraba "Algo salió mal" sin arreglo.
+ * Cambiar el nombre hace que `activate` borre la caché vieja en todos los
+ * teléfonos la próxima vez que abran la tienda.
+ */
+const CACHE_NAME = 'celestial-parfums-v2';
+
+/** Solo se guarda lo que de verdad es el archivo pedido, nunca una página HTML de relleno. */
+const esGuardable = (res) => res.ok && !(res.headers.get('content-type') || '').includes('text/html');
 const STATIC_ASSETS = [
   '/',
   '/favicon.svg',
@@ -32,7 +43,9 @@ self.addEventListener('fetch', (event) => {
   // Network-first for navigation (HTML pages)
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
+      // `no-store`: el servidor no le dice al teléfono que no guarde el HTML, y
+      // el iPhone reusaba la página VIEJA por horas (pedía archivos ya borrados)
+      fetch(request, { cache: 'no-store' })
         .then((res) => {
           const clone = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
@@ -52,10 +65,15 @@ self.addEventListener('fetch', (event) => {
       caches.match(request).then((cached) => {
         if (cached) return cached;
         return fetch(request).then((res) => {
-          if (res.ok) {
+          if (esGuardable(res)) {
             const clone = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            return res;
           }
+          // Un archivo de código que llega como página HTML es un archivo que ya
+          // no existe (versión vieja): se contesta 404 para que la página lo note
+          // y se recargue, en vez de intentar ejecutar HTML
+          if (res.ok) return new Response('', { status: 404, statusText: 'Archivo de una version anterior' });
           return res;
         });
       })
@@ -68,7 +86,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((cached) => {
         const fetchPromise = fetch(request).then((res) => {
-          if (res.ok) {
+          if (esGuardable(res)) {
             const clone = res.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
           }

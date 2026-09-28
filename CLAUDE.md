@@ -78,6 +78,9 @@ criterio general reutilizable.
 - **TODOS los .ts/.tsx son UTF-8 sin BOM.** Jamás `Get-Content`/`Set-Content` de PowerShell sin
   encoding explícito sobre código fuente.
 - **Nunca `toISOString()` para una fecha de calendario** (da UTC y corre el día en Colombia).
+- **Toda página perezosa usa `lazyPagina`, nunca `lazy` a secas**: tras cada despliegue un teléfono
+  con la versión vieja pide archivos borrados y, sin eso, queda en "Algo salió mal" (ver
+  `docs/gotchas.md`, 2026-09-28).
 - **Lo que se puede recalcular, se recalcula; no se guarda.** Sellos, cupo, promedios por gama,
   agotado automático, notificaciones y reportes salen del historial en cada consulta. Un valor
   guardado queda mintiendo el día que el dueño corrija un registro viejo.
