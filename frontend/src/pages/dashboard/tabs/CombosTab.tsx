@@ -19,6 +19,7 @@ import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { Lookup, ComboForm } from '../types';
 import { emptyComboForm } from '../types';
+import { KitDelComboEditor } from './combos/KitDelComboEditor';
 
 interface CombosTabProps {
   combos: Combo[];
@@ -58,6 +59,7 @@ export function CombosTab({
       categoria_id: c.categoria_id ?? '', presentacion_id: c.presentacion_id ?? '',
       cantidad: String(c.cantidad), precio: String(c.precio),
       descuento: String(c.descuento), activo: c.activo,
+      contenido: (c.contenido ?? []).map(k => ({ perfume_id: k.perfume_id, nombre: k.nombre, cantidad: k.cantidad })),
     });
     setFormError(''); setImgMode('url'); setModal({ open: true, editId: c.id });
   };
@@ -83,12 +85,16 @@ export function CombosTab({
       presentacion_id: form.presentacion_id !== '' ? Number(form.presentacion_id) : null,
       cantidad: Number(form.cantidad), precio: Number(form.precio),
       descuento: Number(form.descuento), activo: form.activo,
+      contenido: form.contenido.map(k => ({ perfume_id: k.perfume_id, cantidad: k.cantidad })),
     };
     try {
       const res = modal.editId
         ? await http.patch(urls.combos.combo(modal.editId), body)
         : await http.post(urls.combos.crear, body);
       if (!res.ok) { setFormError(res.error); return; }
+      // Ventas y Créditos guardan los combos en caché: sin esto seguirían
+      // ofreciendo el kit viejo hasta recargar la página
+      http.olvidar(urls.combos.todos);
       closeModal(); onMutate();
     } catch { setFormError('No se pudo conectar con el servidor'); }
     finally { setFormLoading(false); }
@@ -239,6 +245,13 @@ export function CombosTab({
             </SelectSimple>
           </Field>
         </FieldRow>
+        <Field label="¿Qué trae este combo por defecto?">
+          <p className="mb-2 text-[12px] text-muted-foreground">
+            Accesorios de regalo (perfumero, bolsa, tarjeta). Al registrar una venta que arma este
+            combo, se ofrecen con un botón y entran como regalo: descuentan inventario y no se cobran.
+          </p>
+          <KitDelComboEditor valor={form.contenido} onChange={contenido => setForm(f => ({ ...f, contenido }))} />
+        </Field>
         <FormError>{formError}</FormError>
       </Modal>
     </>

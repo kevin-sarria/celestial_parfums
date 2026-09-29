@@ -10,6 +10,7 @@ import { detectarCombos } from '../../../application/hooks/useComboDetector';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { CuponAmarrado } from '../pedido/CuponAmarrado';
+import { KitDelCombo } from '../pedido/KitDelCombo';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
 import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
@@ -309,6 +310,8 @@ export function CreditoForm({
           permitirExtras
           placeholder="Buscar y agregar perfume…"
         />
+        <KitDelCombo lineas={form.lineas} combos={combos} porId={porId}
+          onChange={lineas => setForm(f => ({ ...f, lineas, deuda_manual: false }))} />
 
         {form.lineas.length > 0 && combos.length > 0 && (
           <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 px-2.5 py-2 text-[12.5px] text-foreground">

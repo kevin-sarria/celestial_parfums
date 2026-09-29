@@ -437,6 +437,7 @@ model Perfume {
   producciones       Produccion[]
   maceraciones       Maceracion[]
   terminado          MovimientoTerminado[]
+  en_kits            ComboContenido[]
 
   @@index([categoria_id])
   @@index([genero])
@@ -821,11 +822,31 @@ model Combo {
   updated_at      DateTime      @updatedAt
   categoria       Categoria?    @relation(fields: [categoria_id], references: [id], onDelete: SetNull)
   presentacion    Presentacion? @relation(fields: [presentacion_id], references: [id], onDelete: SetNull)
+  contenido       ComboContenido[]
 
   @@index([categoria_id])
   @@index([presentacion_id])
   @@index([activo])
   @@map("combos")
+}
+
+/// EL KIT DEL COMBO: los accesorios que trae por defecto (perfumero, bolsa,
+/// tarjeta). Al registrar una venta que arma el combo, se ofrecen con un botón
+/// y entran como REGALO (ola 2 de `docs/superpowers/specs/2026-08-18-regalos-y-extras-design.md`).
+/// Una sola combinación por combo: si el cliente pide otra, se ajusta la línea.
+model ComboContenido {
+  id         Int     @id @default(autoincrement())
+  combo_id   Int
+  /// Solo accesorios (`es_accesorio`); se valida en el servidor.
+  perfume_id Int
+  cantidad   Int     @db.UnsignedSmallInt
+  combo      Combo   @relation(fields: [combo_id], references: [id], onDelete: Cascade)
+  /// Restrict: un accesorio que está en un kit no se puede borrar sin sacarlo antes.
+  perfume    Perfume @relation(fields: [perfume_id], references: [id], onDelete: Restrict)
+
+  @@unique([combo_id, perfume_id])
+  @@index([perfume_id])
+  @@map("combo_contenido")
 }
 
 // Perfumes guardados por un cliente (favoritos / lista de deseos).

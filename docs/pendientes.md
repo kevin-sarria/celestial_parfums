@@ -50,7 +50,7 @@ El detalle de cada punto está más abajo en este archivo.
 
 | # | Qué |
 |---|---|
-| 9 | Kit del combo: que el combo sugiera sus accesorios de regalo (diseño en `superpowers/specs/2026-08-18-regalos-y-extras-design.md`) |
+| 9 | ~~Kit del combo~~ **hecho** el 2026-09-28, sin desplegar (lleva migración `20260928140000_kit_del_combo`; `reglas-negocio.md`) |
 | 10 | Tienda: `/accesorios` aparte y sacar los accesorios de `/perfumes` (Ola 3) |
 | 11 | Partir el dashboard con `import()` perezoso: el paquete pasa de 500 kB (no urge) |
 | 12 | Opcional: rebajar también el costo de las 11 ventas de frascos 1.1 que cargaron bolsa y perfumero. Hoy conservan el costo con que se vendieron, a propósito |

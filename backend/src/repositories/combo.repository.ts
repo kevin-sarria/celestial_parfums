@@ -20,7 +20,6 @@ export const mapaFiltrosCombos: MapaFiltros = {
     : null),
 };
 
-type ComboRow = Prisma.ComboGetPayload<{ include: { categoria: true; presentacion: true } }>;
 import { CreateComboDTO } from '../types/combo.type';
 
 const mapCombo = (c: ComboRow) => ({
@@ -37,9 +36,22 @@ const mapCombo = (c: ComboRow) => ({
   precio:          Number(c.precio),
   descuento:       c.descuento,
   activo:          c.activo,
+  /**
+   * El kit: accesorios que trae por defecto. `publicado` viaja para que la
+   * venta no sugiera uno apagado (mismo criterio que el resto del catálogo).
+   */
+  contenido: c.contenido.map((k) => ({
+    perfume_id: k.perfume_id, nombre: k.perfume.nombre, cantidad: k.cantidad, publicado: k.perfume.publicado,
+  })),
 });
 
-const comboInclude = { categoria: true, presentacion: true } as const;
+const comboInclude = {
+  categoria: true,
+  presentacion: true,
+  contenido: { include: { perfume: { select: { nombre: true, publicado: true } } }, orderBy: { id: 'asc' } },
+} satisfies Prisma.ComboInclude;
+
+type ComboRow = Prisma.ComboGetPayload<{ include: typeof comboInclude }>;
 
 const comboOrderBy = [{ cantidad: 'asc' as const }, { nombre: 'asc' as const }];
 
@@ -74,8 +86,21 @@ export const selectCombosPaginated = async (
   return paginatedResponse(rows.map(mapCombo), total, page, limit);
 };
 
-export const createCombo = async (data: CreateComboDTO) => {
-  const combo = await prisma.combo.create({
+/** Reemplaza el kit del combo por el que llega. `undefined` = no se toca. */
+const escribirContenido = async (
+  tx: Prisma.TransactionClient, comboId: number, contenido: CreateComboDTO['contenido'],
+) => {
+  if (contenido === undefined) return;
+  await tx.comboContenido.deleteMany({ where: { combo_id: comboId } });
+  if (contenido.length) {
+    await tx.comboContenido.createMany({
+      data: contenido.map((k) => ({ combo_id: comboId, perfume_id: k.perfume_id, cantidad: k.cantidad })),
+    });
+  }
+};
+
+export const createCombo = async (data: CreateComboDTO) => prisma.$transaction(async (tx) => {
+  const combo = await tx.combo.create({
     data: {
       nombre:          data.nombre,
       descripcion:     data.descripcion ?? null,
@@ -88,27 +113,32 @@ export const createCombo = async (data: CreateComboDTO) => {
       activo:          data.activo ?? true,
     },
   });
+  await escribirContenido(tx, combo.id, data.contenido);
   return combo.id;
-};
+});
 
 export const updateCombo = async (id: string, data: CreateComboDTO) => {
   const previo = await prisma.combo.findUnique({
     where: { id: Number(id) },
     select: { imagen_url: true },
   });
-  const combo = await prisma.combo.update({
-    where: { id: Number(id) },
-    data: {
-      nombre:          data.nombre,
-      descripcion:     data.descripcion ?? null,
-      imagen_url:      data.imagen_url ?? null,
-      categoria_id:    data.categoria_id ?? null,
-      presentacion_id: data.presentacion_id ?? null,
-      cantidad:        data.cantidad,
-      precio:          data.precio,
-      descuento:       data.descuento ?? 0,
-      activo:          data.activo ?? true,
-    },
+  const combo = await prisma.$transaction(async (tx) => {
+    const actualizado = await tx.combo.update({
+      where: { id: Number(id) },
+      data: {
+        nombre:          data.nombre,
+        descripcion:     data.descripcion ?? null,
+        imagen_url:      data.imagen_url ?? null,
+        categoria_id:    data.categoria_id ?? null,
+        presentacion_id: data.presentacion_id ?? null,
+        cantidad:        data.cantidad,
+        precio:          data.precio,
+        descuento:       data.descuento ?? 0,
+        activo:          data.activo ?? true,
+      },
+    });
+    await escribirContenido(tx, actualizado.id, data.contenido);
+    return actualizado;
   });
   borrarImagenSiCambio(previo?.imagen_url, data.imagen_url);
   return combo;

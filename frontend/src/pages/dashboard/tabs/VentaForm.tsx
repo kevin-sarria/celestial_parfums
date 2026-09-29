@@ -11,6 +11,7 @@ import { detectarCombos } from '../../../application/hooks/useComboDetector';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { CuponAmarrado } from '../pedido/CuponAmarrado';
+import { KitDelCombo } from '../pedido/KitDelCombo';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
 import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
@@ -323,6 +324,7 @@ export function VentaForm({
           permitirExtras
           onCrearProducto={() => setNuevoProd({ nombre: '', precio: '' })}
         />
+        <KitDelCombo lineas={form.lineas} onChange={lineas => setForm(f => ({ ...f, lineas }))} combos={combos} porId={porId} />
 
         {nuevoProd && (
           <div className="space-y-2 rounded-lg border border-primary/25 bg-brand-soft/40 p-3">

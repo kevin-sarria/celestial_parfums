@@ -5,7 +5,7 @@ import { paginatedResponse } from '../utils/pagination';
 import { toSlug } from '../utils/slug';
 import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 import { resumenRatings } from './resena.repository';
-import { badRequest } from '../utils/httpError';
+import { badRequest, conflict } from '../utils/httpError';
 import { filtroEnum, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
 // Cómo se lee un perfume (precio efectivo, agotado, frascos armados) vive en su
 // propio archivo: aquí solo se consulta y se escribe.
@@ -310,6 +310,15 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
 };
 
 export const deletePerfume = async (id: string) => {
+  // Un accesorio que va en el kit de un combo no se borra sin sacarlo antes:
+  // el combo quedaría sugiriendo algo que ya no existe (la base también lo frena)
+  const kits = await prisma.comboContenido.findMany({
+    where: { perfume_id: Number(id) }, select: { combo: { select: { nombre: true } } },
+  });
+  if (kits.length) {
+    throw conflict(`Va en el kit ${kits.length === 1 ? 'del combo' : 'de los combos'} `
+      + `${kits.map((k) => `"${k.combo.nombre}"`).join(', ')}. Sácalo de ahí primero.`);
+  }
   const borrado = await prisma.perfume.delete({ where: { id: Number(id) } });
   borrarImagenSubida(borrado.imagen_url);
   return borrado;

@@ -87,9 +87,11 @@ export interface ComboForm {
   presentacion_id: number | '';
   cantidad: string; precio: string;
   descuento: string; activo: boolean;
+  /** El kit: accesorios que trae por defecto. */
+  contenido: { perfume_id: number; nombre: string; cantidad: number }[];
 }
 
 export const emptyComboForm = (): ComboForm => ({
   nombre: '', descripcion: '', imagen_url: '', categoria_id: '', presentacion_id: '',
-  cantidad: '2', precio: '', descuento: '0', activo: true,
+  cantidad: '2', precio: '', descuento: '0', activo: true, contenido: [],
 });

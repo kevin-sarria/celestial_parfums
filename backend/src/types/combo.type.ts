@@ -8,4 +8,6 @@ export interface CreateComboDTO {
   precio: number;
   descuento?: number;
   activo?: boolean;
+  /** El kit: accesorios que trae por defecto. Ausente = no se toca el que tenía. */
+  contenido?: { perfume_id: number; cantidad: number }[];
 }

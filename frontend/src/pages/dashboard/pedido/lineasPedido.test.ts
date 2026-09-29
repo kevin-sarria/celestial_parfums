@@ -212,7 +212,7 @@ describe('regalo por línea — no arma combo con lo regalado', () => {
   const comboDe3: Combo = {
     id: 1, nombre: '3 de 30 ml', descripcion: null, imagen_url: null,
     categoria_id: 1, categoria: 'Contratipo', presentacion_id: 1, presentacion: '30ML',
-    cantidad: 3, precio: 150000, descuento: 0, activo: true,
+    cantidad: 3, precio: 150000, descuento: 0, activo: true, contenido: [],
   };
 
   const cobro = (lineas: LineaPedido[], porId: Map<number, Perfume>) => {

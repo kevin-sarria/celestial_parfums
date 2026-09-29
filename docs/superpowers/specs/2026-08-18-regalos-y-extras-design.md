@@ -2,7 +2,7 @@
 
 **Fecha**: 2026-08-18 · **Decidido con el dueño**: construirlo en dos olas (opción 1 de las tres
 que se plantearon).
-**Estado**: diseño aprobado por el dueño, sección por sección. Pendiente: implementación.
+**Estado**: ola 1 construida (2026-08-17) y ola 2 construida (2026-09-28).
 
 ## El problema, medido
 

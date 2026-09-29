@@ -11,6 +11,11 @@ export const createComboSchema = z.object({
   precio: z.number().min(0, 'El precio no puede ser negativo'),
   descuento: z.number().int().min(0).max(100).optional(),
   activo: z.boolean().optional(),
+  /** El kit del combo: accesorios que trae por defecto (solo accesorios; lo valida el servicio). */
+  contenido: z.array(z.object({
+    perfume_id: z.number().int().positive(),
+    cantidad: z.number().int().min(1).max(99),
+  })).max(20).optional(),
 });
 
 export const patchDescuentoComboSchema = z.object({

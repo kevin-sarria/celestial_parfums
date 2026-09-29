@@ -43,8 +43,10 @@ describe('fusionar dos registros del mismo material', () => {
     await irA(pagina, '/dashboard/inventario');
     await pagina.waitForSelector('text=Registrar llegada');
 
-    // La fila del duplicado, por su nombre: el orden de la tabla no es asunto
-    // de este recorrido.
+    // La fila del duplicado, por su nombre y con el buscador de la tabla: el
+    // orden y la página no son asunto de este recorrido. Sin buscar, bastaba con
+    // que otro recorrido sembrara materiales antes para que cayera en la página 2.
+    await pagina.getByPlaceholder(/Buscar en todos/).fill('Perfumero Recargable (viejo)');
     const fila = pagina.locator('tr', { hasText: 'Perfumero Recargable (viejo)' }).first();
     await fila.getByRole('button', { name: /Fusionar/ }).click();
     await pagina.waitForSelector('text=Fusionar "Perfumero Recargable (viejo)"');

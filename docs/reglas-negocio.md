@@ -118,6 +118,21 @@ liberaba):
   que el servidor descarta en silencio.
 - La referencia visible de la venta lo dice: `2× Perfumero Recargable [1 regalo]`.
 
+
+### El kit del combo (ola 2, 2026-09-28)
+
+- Cada combo puede traer accesorios por defecto (`combo_contenido`): se configuran en Combos, en
+  "¿Qué trae este combo por defecto?". **Solo accesorios** y cada uno una vez (lo valida el
+  servidor); una combinación por combo: si el cliente pide otra, se ajusta la línea en la venta.
+- Al registrar una venta o un crédito que **arma** el combo, aparece "Combo … trae: 1 perfumero →
+  Agregar como regalo". Un clic los agrega con `regalo = cantidad` (salen del inventario, no se
+  cobran); si ya había una línea de ese accesorio, se fusiona. Un combo armado dos veces trae su
+  kit dos veces, y lo que ya se regaló cuenta como puesto (`pedido/kitDelCombo.calculo.ts`).
+- Se ofrece lo que exista en el catálogo de Ventas, **publicado o no**: un perfumero de regalo no
+  tiene por qué venderse al público, y un accesorio recién creado nace oculto.
+- Un accesorio que está en un kit **no se puede borrar** sin sacarlo antes (el mensaje dice de qué
+  combos); borrar el combo se lleva su kit.
+
 ## Matcher de perfumes (`backend/src/utils/perfumeMatcher.ts`)
 
 - Conservador: solo enlaza con candidato ÚNICO; ambigüedad = sin enlazar (fallo barato).

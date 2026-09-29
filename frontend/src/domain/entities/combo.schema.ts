@@ -14,6 +14,13 @@ export const comboSchema = z.object({
   precio: z.number(),
   descuento: z.number(),
   activo: z.boolean(),
+  /** El kit del combo: accesorios que trae por defecto (se ofrecen como regalo al vender). */
+  contenido: z.array(z.object({
+    perfume_id: z.number(),
+    nombre: z.string(),
+    cantidad: z.number(),
+    publicado: z.boolean(),
+  })).optional().default([]),
 });
 
 export type Combo = z.infer<typeof comboSchema>;
