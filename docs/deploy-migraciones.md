@@ -97,24 +97,32 @@ aunque no falte nada. En ese caso, aplicar el SQL de la migración directo con m
 
   ```nginx
   # Un archivo de /assets que no existe es un 404, nunca la portada
-  location /assets/ {
+  location ^~ /assets/ {
       try_files $uri =404;
       expires 30d;
-      add_header Cache-Control "public, immutable";
   }
-  # La portada nunca se guarda: siempre la versión recién desplegada
+  # La portada y el service worker nunca se guardan: siempre la versión nueva.
+  # (Cloudflare retenía sw.js 4 h y los teléfonos seguían con el v1.)
   location = /index.html {
-      add_header Cache-Control "no-cache";
+      expires -1;
   }
-  # El service worker tampoco: Cloudflare lo retenía 4 h y los teléfonos seguían
-  # con el v1 después de desplegar el v2 (medido el 2026-09-28)
   location = /sw.js {
-      add_header Cache-Control "no-cache";
+      try_files $uri =404;
+      expires -1;
   }
   ```
 
-  Y en `location /`, añadir `add_header Cache-Control "no-cache";`. Luego `sudo nginx -t && sudo
-  systemctl reload nginx`. Los nombres de `/assets/` llevan huella (`index-DG1f8QhM.js`), por eso
+  **`expires` y NO `add_header`, a propósito (seguridad):** en nginx, un `add_header` dentro de un
+  `location` hace que ese bloque deje de heredar TODOS los `add_header` del `server` —CSP, HSTS y
+  demás cabeceras de seguridad— sin avisar. `expires` pone el `Cache-Control` sin tocar esa
+  herencia. El `^~` hace que `/assets/` gane sobre cualquier `location ~* \\.js$` que ya exista. El
+  `/` del SPA cae en `= /index.html` por su `try_files`, así que no hay que tocarlo.
+
+  Aplicar con respaldo y prueba:
+  `sudo cp /etc/nginx/sites-available/celestialparfums.com ~/nginx-respaldo-$(date +%F).conf`,
+  editar, `sudo nginx -t && sudo systemctl reload nginx`, y comprobar que
+  `curl -sI https://celestialparfums.com/assets/NoExiste.js` da 404 y que la portada trae
+  `Cache-Control: no-cache`. Los nombres de `/assets/` llevan huella (`index-DG1f8QhM.js`): por eso
   pueden guardarse 30 días sin riesgo.
 
 ## Dependencias que exigen `npm install` en el deploy
