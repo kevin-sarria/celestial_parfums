@@ -83,6 +83,13 @@ export interface CatalogoFiltros {
   aromas?: string[];
   ocasiones?: string[];
   orden?: OrdenCatalogo;
+  /**
+   * Qué sección de la TIENDA se lista (2026-09-28, Ola 3): `/perfumes` muestra
+   * fragancias —los 1.1 y los splash incluidos, son perfume— y `/accesorios`
+   * el perfumero, la bolsa, la tarjeta. Sin esto se listan fragancias.
+   * El dashboard (`todos`) no se parte así: allá manda la familia.
+   */
+  seccion?: 'fragancias' | 'accesorios';
 }
 
 // Ojo: el precio "efectivo" sale de la cascada (mapPerfume), no de una columna.
@@ -119,7 +126,9 @@ export const selectParfumsPaginated = async (
   familia?: FamiliaProducto,
 ) => {
   const skip = (page - 1) * limit;
-  const and: Prisma.PerfumeWhereInput[] = todos ? [] : [SOLO_PUBLICADOS];
+  const and: Prisma.PerfumeWhereInput[] = todos
+    ? []
+    : [SOLO_PUBLICADOS, { es_accesorio: filtros?.seccion === 'accesorios' }];
   if (search) {
     and.push({
       OR: [

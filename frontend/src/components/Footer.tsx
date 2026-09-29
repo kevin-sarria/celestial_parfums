@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { MessageCircle } from 'lucide-react';
 import { BrandMark } from '@/components/BrandMark';
 import { WHATSAPP_NUMBER, BRAND_NAME } from '../config/constants';
+import { useHayAccesorios } from '../application/hooks/useAccesorios';
 
 const explorar = [
   { to: '/', label: 'Inicio' },
@@ -35,6 +36,11 @@ const enlaceCls = 'text-[13.5px] text-foreground/80 transition-colors hover:text
  */
 export default function Footer() {
   const anio = new Date().getFullYear();
+  // Igual que la cabecera: "Accesorios" solo si hay alguno publicado
+  const hayAccesorios = useHayAccesorios();
+  const enlaces = explorar.flatMap(e => (e.to === '/perfumes' && hayAccesorios
+    ? [e, { to: '/accesorios', label: 'Accesorios' }]
+    : [e]));
   return (
     <footer className="border-t border-border bg-card/40 pb-24 pt-12 sm:pb-12">
       <div className="mx-auto grid w-full max-w-7xl gap-10 px-5 md:px-8 sm:grid-cols-2 lg:grid-cols-4">
@@ -50,7 +56,7 @@ export default function Footer() {
         </div>
 
         <Col titulo="Explorar">
-          {explorar.map((e) => (
+          {enlaces.map((e) => (
             <Link key={e.to} to={e.to} className={enlaceCls}>{e.label}</Link>
           ))}
         </Col>

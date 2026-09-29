@@ -55,6 +55,7 @@ export const selectAllPerfumes = async (req: Request, res: Response) => {
         aromas: parseLista(req.query.aromas),
         ocasiones: parseLista(req.query.ocasiones),
         orden: esOrdenCatalogo(ordenRaw) ? ordenRaw : undefined,
+        seccion: req.query.seccion === 'accesorios' ? 'accesorios' : undefined,
       }, req.query.todos === '1' && esAdminRequest(req), parseFiltros(req.query, mapaFiltrosPerfumes),
         esFamilia(familiaRaw) ? familiaRaw : undefined);
       res.json(result);

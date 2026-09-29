@@ -59,6 +59,18 @@ así que ahí el cliente queda entero. Verificado arrancando `dist/app.js` contr
   (anidado); con `?page=` responde `{ data: [...], total }` y **limit tope 100**. Para listas
   completas (ej. el selector de productos) usar el no paginado y desenvolver ambas formas.
 
+### `/accesorios`: la tienda partida en fragancias y accesorios (2026-09-28, Ola 3)
+
+- `/perfumes` lista **fragancias** (los 1.1 y los splash incluidos: son perfume) y `/accesorios`
+  el perfumero, la bolsa, la tarjeta (`es_accesorio`). El filtro vive en `selectParfumsPaginated`:
+  toda consulta pública lleva `es_accesorio = (seccion === 'accesorios')`; el dashboard (`todos`)
+  no se parte así, allá manda la familia. Pruebas: `perfume.seccionTienda.bd.test.ts` y
+  `accesoriosTienda.e2e.test.ts`.
+- Página sin filtros de género ni de notas, con título y descripción propios.
+- **La entrada del menú (cabecera y pie) y la URL del sitemap solo aparecen si hay algún accesorio
+  publicado** (`useHayAccesorios`, una página de 1 con caché): un enlace a una página vacía resta.
+  Los accesorios nacen ocultos; el día que el dueño publique uno, la sección aparece sola.
+
 ## La capa HTTP del frontend (`infrastructure/api/`, 2026-08-14)
 
 **Ninguna pantalla vuelve a escribir una URL ni a saber con qué librería se pide.**

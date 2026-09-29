@@ -6,6 +6,7 @@ import PerfumeSpinner from '../components/PerfumeSpinner';
 
 const HomePage = lazyPagina(() => import('../pages/HomePage'));
 const PerfumesPage = lazyPagina(() => import('../pages/PerfumesPage'));
+const AccesoriosPage = lazyPagina(() => import('../pages/AccesoriosPage'));
 const PerfumeDetailPage = lazyPagina(() => import('../pages/PerfumeDetailPage'));
 const CombosPage = lazyPagina(() => import('../pages/CombosPage'));
 const ComboDetailPage = lazyPagina(() => import('../pages/ComboDetailPage'));
@@ -33,6 +34,7 @@ export default function AppRouter() {
       <Routes>
         <Route path="/" element={<HomePage isAdmin={isAdmin} />} />
         <Route path="/perfumes" element={<PerfumesPage />} />
+        <Route path="/accesorios" element={<AccesoriosPage />} />
         <Route path="/perfume/:slug" element={<PerfumeDetailPage />} />
         <Route path="/combos" element={<CombosPage />} />
         <Route path="/combo/:slug" element={<ComboDetailPage />} />

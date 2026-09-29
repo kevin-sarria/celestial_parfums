@@ -119,6 +119,11 @@ export const urls = {
      * que nadie puede listar lo oculto agregándolo a la URL.
      */
     todosConOcultos: '/parfums?todos=1',
+    /**
+     * ¿Hay algún accesorio publicado? Una página de 1 con el total: el menú de
+     * la tienda solo enseña "Accesorios" si hay algo que ver ahí.
+     */
+    hayAccesorios: '/parfums?page=1&limit=1&seccion=accesorios',
     /** La ficha pública de un perfume, por su slug. */
     porSlug: (slug: string) => `/parfums/by-slug/${encodeURIComponent(slug)}`,
     /** El "también te puede gustar" de esa misma ficha. */

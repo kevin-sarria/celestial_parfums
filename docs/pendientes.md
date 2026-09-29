@@ -23,48 +23,38 @@ contratipo de 30 ml, 10 unidades de 1.1, 0 originales; 60 de 150 clientes repite
 | 7 | Menú en el orden del día: Inicio, Ventas y créditos, Producción e inventario, Catálogo, Reportes, Página web, Ajustes, Mayoreo (`arquitectura.md`). Las 5 clasificaciones son una sola entrada con pestañas arriba | **hecho**, sin desplegar |
 | — | Nota del dueño: el negocio está estancado porque no sabe cómo publicitar bien. Candidato a trabajo de marketing aparte | anotado |
 
-## 📋 Lo que falta (lista corta, 2026-09-27)
+## 📋 Lo que falta (lista corta, al cierre del 2026-09-28)
 
-Todo lo hecho hasta el 27 de septiembre está en `main` y subido a GitHub (último commit `783db09`).
-El detalle de cada punto está más abajo en este archivo.
-
-**Del dueño, ya:**
+**Del dueño:**
 
 | # | Qué | Estado |
 |---|---|---|
-| 1 | Desplegar. **Lleva migración**: `git pull` → `npx prisma migrate deploy` → build de los dos lados → `pm2 restart` | pendiente |
-| 2 | En **Producciones**, pulsar **Corregir** en el aviso de accesorios (27 lotes 1.1, $54.300 en el respaldo del 22-sep) | pendiente, después del 1 |
-| 3 | Mirar en el iPhone el campo de fecha del modal de ventas (el WebKit de Windows no lo reproduce) | por confirmar |
-| 4 | Confirmar si las garantías y la maceración del 30 de agosto ya estaban desplegadas (quedan cubiertas con el 1) | por confirmar |
+| 1 | Desplegar lo del 28-sep en adelante. **Lleva migración** (`20260928140000_kit_del_combo`): `git pull` → `npx prisma migrate deploy` → build de los dos lados → `pm2 restart` | pendiente |
+| 2 | nginx: 404 en `/assets/` y sin caché la portada y `sw.js`. Comandos con respaldo y prueba en `deploy-migraciones.md` | pendiente (lo aplica él) |
+| 3 | Mirar en el iPhone el calendario, el historial de pagos e Inicio | él lo hace |
+| 4 | Guardar el teléfono de los clientes y enlazar las ventas a su cuenta: Recompra abre WhatsApp directo | él lo hace |
+| 5 | Talla de 4 ventas de agosto sin costo ($365.000): 1269, 1272, 1281, 1289 | él lo hace |
+| 6 | Publicar los accesorios que quiera vender en la tienda: `/accesorios` y su entrada en el menú aparecen solos en cuanto hay uno | cuando quiera |
 
-**Datos que solo él puede corregir (desde las pantallas):**
+Ya hechos por él el 2026-09-28: el **Corregir** de accesorios en Producciones, las fichas 1.1
+(en producción), el 212 VIP Black a maceración, y las esencias sin género / gama Diseñador / tallas
+200-250.
 
-| # | Qué |
-|---|---|
-| 5 | Talla de 4 ventas de agosto sin costo ($365.000): 1269, 1272, 1281, 1289. Para la 1281, antes crear la ficha Khamrah 1.1 |
-| 6 | Crear las fichas 1.1 desde el aviso de lotes por enlazar y fusionar los dos perfumeros (ids 9 y 11) |
-| 7 | Pasar el lote del 212 VIP Black a maceración |
-| 8 | 3 esencias sin género; la gama "Diseñador" sin esencias; separar "200/250 ML" en dos tallas con sus recetas |
-
-**Código que sigue (en este orden sugerido):**
+**Código que sigue:**
 
 | # | Qué |
 |---|---|
-| 9 | ~~Kit del combo~~ **hecho** el 2026-09-28, sin desplegar (lleva migración `20260928140000_kit_del_combo`; `reglas-negocio.md`) |
-| 10 | Tienda: `/accesorios` aparte y sacar los accesorios de `/perfumes` (Ola 3) |
-| 11 | Partir el dashboard con `import()` perezoso: el paquete pasa de 500 kB (no urge) |
-| 12 | Opcional: rebajar también el costo de las 11 ventas de frascos 1.1 que cargaron bolsa y perfumero. Hoy conservan el costo con que se vendieron, a propósito |
+| 7 | Originales y decants: el flujo botella → decants, con proveedor y factura por botella (**no es pronto**, dueño). La merma de 2 ml por decant ya está |
+| 8 | Marketing: el dueño dice que el negocio está estancado porque no sabe cómo publicitar. Candidato a la skill `catalogo-recompra` + plan de publicidad |
+| 9 | Partir el dashboard con `import()` perezoso: el paquete pasa de 500 kB (no urge) |
+| 10 | Opcional: rebajar el costo de las 11 ventas de frascos 1.1 que cargaron bolsa y perfumero (hoy conservan el costo con que se vendieron, a propósito) |
 
-**Decisiones del dueño (2026-09-28, todas cerradas):**
-
-| # | Pregunta | Decisión |
-|---|---|---|
-| 13 | ¿El cupón funciona igual en créditos que en ventas? | **Sí**: ya canjeado queda amarrado; solo borrar lo suelta (`reglas-negocio.md`) |
-| 14 | ¿Cuántos ml se pierden al trasvasar a decants? | **1 a 2 ml**; se toma 2 (`inventario-costeo.md`) |
-| 15 | ¿Guardar `precio_inicial`? | **No**: el costo sale siempre de las compras, promediadas |
+Hechos el 2026-09-28: kit del combo, `/accesorios` (Ola 3), clasificaciones en una entrada, y las
+tres decisiones del dueño: cupón igual en créditos y ventas, merma de 2 ml por decant, y sin
+`precio_inicial` (`reglas-negocio.md`, `inventario-costeo.md`).
 
 **Entorno local:** `celestial_prod_20260922` es la copia más reciente de producción (22-sep).
-`perfumes_db` ya tiene aplicada la migración del 27-sep.
+`perfumes_db` tiene aplicadas todas las migraciones hasta `20260928140000_kit_del_combo`.
 
 ## ✅ El abono doble — ARREGLADO (2026-09-27), sin desplegar
 

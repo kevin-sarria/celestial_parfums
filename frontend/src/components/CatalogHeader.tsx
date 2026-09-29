@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, Star, ShoppingBag, Heart, Newspaper, Info, Share2, type LucideIcon } from 'lucide-react';
+import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, Star, ShoppingBag, Heart, Newspaper, Info, Share2, Package, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { BrandMark } from '@/components/BrandMark';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { usePortalCredito } from '../application/hooks/usePortalCredito';
+import { useHayAccesorios } from '../application/hooks/useAccesorios';
 
 interface Props {
   isHome?: boolean;
@@ -47,8 +48,13 @@ export default function CatalogHeader({ isHome = false }: Props) {
   const { data: portalCredito } = usePortalCredito();
   // Grupo TIENDA: "Tu perfume ideal" (quiz que ayuda a decidir) cierra el embudo,
   // solo para registrados.
+  // "Accesorios" va después de Perfumes y antes de Combos (es complemento, no
+  // destino), y solo si hay alguno publicado: un enlace a una página vacía resta.
+  const hayAccesorios = useHayAccesorios();
   const grupoTienda: NavItem[] = [
-    ...NAV_TIENDA,
+    ...NAV_TIENDA.flatMap(item => (item.to === '/perfumes' && hayAccesorios
+      ? [item, { to: '/accesorios', label: 'Accesorios', icon: Package }]
+      : [item])),
     ...(user ? [{ to: '/perfume-ideal', label: 'Tu perfume ideal', icon: Sparkles }] : []),
   ];
   // Grupo MI CUENTA: exclusivo de registrados (recompensas, compras y crédito activo).

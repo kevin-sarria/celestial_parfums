@@ -173,12 +173,16 @@ export const sitemap = async (baseUrl: string) => {
   const [perfumes, combos] = await Promise.all([
     // Sin los despublicados: anunciarle a Google una página que responde
     // "no existe" son errores 404 en Search Console y posiciones perdidas.
-    prisma.perfume.findMany({ where: SOLO_PUBLICADOS, select: { nombre: true, updated_at: true } }),
+    prisma.perfume.findMany({ where: SOLO_PUBLICADOS, select: { nombre: true, updated_at: true, es_accesorio: true } }),
     prisma.combo.findMany({ where: { activo: true }, select: { nombre: true, updated_at: true } }),
   ]);
   const urlTag = (loc: string, lastmod?: Date) =>
     `  <url><loc>${escapeHtml(loc)}</loc>${lastmod ? `<lastmod>${lastmod.toISOString().slice(0, 10)}</lastmod>` : ''}</url>`;
-  const fijas = ['', '/perfumes', '/combos', '/contactame', '/legal', '/nosotros', '/blog'].map((r) => urlTag(`${baseUrl}${r}`));
+  // /accesorios solo si tiene algo que mostrar: una página vacía en el sitemap
+  // es contenido "pobre" para Google, igual que el enlace del menú de la tienda
+  const hayAccesorios = perfumes.some((p) => p.es_accesorio);
+  const fijas = ['', '/perfumes', ...(hayAccesorios ? ['/accesorios'] : []), '/combos', '/contactame', '/legal', '/nosotros', '/blog']
+    .map((r) => urlTag(`${baseUrl}${r}`));
   const productos = [
     ...perfumes.map((p) => urlTag(`${baseUrl}/perfume/${toSlug(p.nombre)}`, p.updated_at)),
     ...combos.map((c) => urlTag(`${baseUrl}/combo/${toSlug(c.nombre)}`, c.updated_at)),
