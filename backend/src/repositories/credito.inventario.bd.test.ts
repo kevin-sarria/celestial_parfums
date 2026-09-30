@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma';
 import {
   crearCliente, crearInsumo, estadoDe, limpiarBase, sembrarFabricacion30ml,
 } from '../test/baseDePrueba';
-import { createCredito, updateCredito } from './credito.repository';
+import { createCredito, deleteCredito, updateCredito } from './credito.repository';
 import { aplicarMovimientoTerminado } from './inventario.terminado';
 
 /**
@@ -163,5 +163,45 @@ describe('un crédito descuenta inventario igual que una venta', () => {
     expect(credito.productos).toEqual([
       { perfume_id: s.perfume.id, cantidad: 2, ml: 30, regalo: 1 },
     ]);
+  });
+});
+
+/**
+ * LA ÚNICA BOTELLA, DADA A CRÉDITO (dueño, 2026-09-30).
+ *
+ * "Si fue dada a crédito y era la única que había, tocaba dejarla como agotada:
+ * a pesar de ser a crédito, en el inventario ya no existe." Al registrar el
+ * crédito sí salía; lo que no pasaba era la vuelta: borrar el crédito borraba
+ * su venta sin devolver la mercancía.
+ */
+describe('la botella original de un crédito', () => {
+  beforeEach(limpiarBase);
+
+  const creditoDeLaBotella = async () => {
+    const botella = await crearInsumo('Nautica – Original 100 ml', { precio: 1000, stock: 100 });
+    await prisma.insumoCosto.update({ where: { id: botella.id }, data: { ml_botella: 100 } });
+    const talla = await prisma.presentacion.create({ data: { nombre: '100ML', ml: 100 } });
+    const original = await prisma.perfume.create({
+      data: {
+        nombre: 'Nautica Original', precio: 150000, tipo_producto: 'fraccionado', insumo_producto_id: botella.id,
+        presentaciones: { create: { presentacion_id: talla.id } },
+      },
+    });
+    const credito = await createCredito({
+      ...(await creditoBase()),
+      lineas: [{ perfume_id: original.id, ml: 100, cantidad: 1, regalo: 0 }],
+    });
+    return { botella, credito };
+  };
+
+  it('dar a crédito la única botella la saca del inventario', async () => {
+    const { botella } = await creditoDeLaBotella();
+    expect((await estadoDe(botella.id)).stock).toBe(0);
+  });
+
+  it('borrar el crédito devuelve la botella', async () => {
+    const { botella, credito } = await creditoDeLaBotella();
+    await deleteCredito(String(credito.id));
+    expect((await estadoDe(botella.id)).stock).toBe(100);
   });
 });

@@ -28,7 +28,7 @@ export const mapaFiltrosCreditos: MapaFiltros = {
 };
 import { buildPerfumeIndex, matchPerfumes } from '../utils/perfumeMatcher';
 import { canjearCodigoEnCredito, exigirCuponIntacto, liberarCodigoDeVenta } from '../services/anuncio.service';
-import { escribirVentaConConsumo } from './venta.repository';
+import { deleteVenta, escribirVentaConConsumo } from './venta.repository';
 import { lineasDeVenta } from '../schemas/venta.schema';
 
 /**
@@ -413,10 +413,12 @@ export const deleteCredito = async (id: string) => {
   const credito = await prisma.credito.delete({ where: { id: Number(id) } });
   // La venta nació con el crédito: si el crédito fue un error, la venta también.
   // El cupón se libera (vuelve a activo): borrar el crédito revierte la compra.
-  if (credito.venta_id) {
-    await liberarCodigoDeVenta(credito.venta_id);
-    await prisma.venta.delete({ where: { id: credito.venta_id } }).catch(() => {});
-  }
+  //
+  // Con `deleteVenta`, no con un `delete` a secas: es el único borrado que
+  // DEVUELVE al inventario lo que la venta sacó. Hasta el 2026-09-30 aquí se
+  // borraba la fila directo y la mercancía de un crédito borrado no volvía
+  // nunca (una botella original dada a crédito por error seguía "agotada").
+  if (credito.venta_id) await deleteVenta(String(credito.venta_id)).catch(() => {});
   return credito;
 };
 

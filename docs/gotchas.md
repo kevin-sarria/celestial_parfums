@@ -474,3 +474,18 @@ deploy, porque `pm2 restart` va después del build.
 
 Visto el 2026-08-23. Ojo con el atajo de `| tail`: `echo $?` devuelve el código de `tail`, no el
 de `npm`, así que un build roto parece exitoso. Hay que mirar el código del comando de verdad.
+
+## Un crédito no refrescaba la tienda, y borrarlo no devolvía la mercancía (2026-09-30)
+
+El dueño dio a crédito su única Nautica Voyage Original y la tienda la siguió mostrando disponible.
+Con su respaldo de ese día: la botella SÍ estaba en 0 ml y `mapPerfume` la daba agotada; lo que
+fallaba era que `credito.service.ts` no llamaba a `bustCatalogoCache()` (las ventas sí), así que el
+catálogo guardado seguía vigente hasta 5 minutos. **Todo lo que mueva inventario limpia el catálogo.**
+
+Al mirar ese código apareció otro: `deleteCredito` borraba la venta enlazada con `prisma.venta.delete`
+a secas, sin `revertirVenta`, y la mercancía no volvía. Ahora usa `deleteVenta`, el único borrado que
+revierte. En el respaldo no había ningún movimiento huérfano: no alcanzó a dañar datos.
+
+La primera hipótesis (que el formulario había elegido el decant de 3 ml en vez de la botella) era
+falsa y se descartó mirando los datos, no el código: **pedir el respaldo antes de suponer**.
+
