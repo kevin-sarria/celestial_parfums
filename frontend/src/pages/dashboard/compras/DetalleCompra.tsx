@@ -16,7 +16,7 @@ export interface LineaCompra {
   insumo_id: number;
   insumo_nombre: string;
   cantidad: string;
-  unidad_compra: 'ml' | 'g' | 'l' | 'kg' | 'unidad';
+  unidad_compra: 'ml' | 'g' | 'l' | 'kg' | 'unidad' | 'botella';
   subtotal: string;
 }
 
@@ -25,7 +25,7 @@ export interface LineaCompra {
  * ml y gramos van 1 a 1 (así factura el sector); los **litros multiplican por
  * 1000** — sin esto, "20 L" de alcohol se registraría como 20 ml.
  */
-const FACTOR: Record<LineaCompra['unidad_compra'], number> = { ml: 1, g: 1, l: 1000, kg: 1000, unidad: 1 };
+const FACTOR: Record<Exclude<LineaCompra['unidad_compra'], 'botella'>, number> = { ml: 1, g: 1, l: 1000, kg: 1000, unidad: 1 };
 
 interface Props {
   insumos: Insumo[];
@@ -64,10 +64,19 @@ export default function DetalleCompra({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const totalSinFlete = lineas.reduce((s, l) => s + (Number(l.subtotal) || 0), 0);
+  /** Cuántos ml trae la botella de ESE material (solo originales). */
+  const mlBotellaDe = (insumoId: number) => insumos.find((i) => i.id === insumoId)?.ml_botella ?? null;
+  /**
+   * Cuánto vale una unidad de compra en ml o piezas. La botella no tiene factor
+   * fijo: vale lo que trae la de ese original (100, 90…). El servidor hace la
+   * misma cuenta leyendo el tamaño de la base; esto es solo para verlo antes.
+   */
+  const factor = (l: LineaCompra) =>
+    l.unidad_compra === 'botella' ? (mlBotellaDe(l.insumo_id) ?? 0) : FACTOR[l.unidad_compra];
   /** Mismo prorrateo que hace el backend, para que veas el costo antes de guardar. */
   const costoConFlete = (l: LineaCompra) => {
     // Se divide entre la cantidad BASE: 20 L son 20.000 ml
-    const base = (Number(l.cantidad) || 0) * FACTOR[l.unidad_compra];
+    const base = (Number(l.cantidad) || 0) * factor(l);
     const sub = Number(l.subtotal) || 0;
     if (base <= 0) return 0;
     const parte = totalSinFlete > 0 ? (sub / totalSinFlete) * flete : 0;
@@ -75,13 +84,14 @@ export default function DetalleCompra({
   };
 
   /** Mete el insumo como línea nueva (o lo ignora si ya está). */
-  const agregarInsumo = (insumo: { id: number; nombre: string; unidad: string }) => {
+  const agregarInsumo = (insumo: { id: number; nombre: string; unidad: string; ml_botella?: number | null }) => {
     if (lineas.some((l) => l.insumo_id === insumo.id)) return;
     onLineas([...lineas, {
       insumo_id: insumo.id,
       insumo_nombre: insumo.nombre,
       cantidad: '',
-      unidad_compra: insumo.unidad === 'ml' ? 'ml' : 'unidad',
+      // Un original llega en botellas: es como viene en la factura
+      unidad_compra: insumo.ml_botella ? 'botella' : insumo.unidad === 'ml' ? 'ml' : 'unidad',
       subtotal: '',
     }]);
   };
@@ -200,6 +210,9 @@ export default function DetalleCompra({
                         <option value="l">litros</option>
                         <option value="kg">kilos</option>
                         <option value="unidad">unidades</option>
+                        {mlBotellaDe(l.insumo_id) && (
+                          <option value="botella">botellas de {mlBotellaDe(l.insumo_id)} ml</option>
+                        )}
                       </SelectSimple>
                     </label>
 
@@ -222,6 +235,11 @@ export default function DetalleCompra({
                       {l.unidad_compra === 'unidad' ? 'unidad' : 'ml'}
                       {flete > 0 && ' (ya con la parte del envío)'}
                       {/* Los litros se convierten: es donde más fácil se mete un error de 1000× */}
+                      {l.unidad_compra === 'botella' && (
+                        <span className="text-primary/80">
+                          {' '}— son {(Number(l.cantidad) * factor(l)).toLocaleString('es-CO')} ml
+                        </span>
+                      )}
                       {l.unidad_compra === 'l' && (
                         <span className="text-primary/80">
                           {' '}— son {(Number(l.cantidad) * 1000).toLocaleString('es-CO')} ml

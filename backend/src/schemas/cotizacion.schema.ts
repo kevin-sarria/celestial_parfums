@@ -46,6 +46,17 @@ export const insumoSchema = z.object({
    * lo que se COBRA. Confundirlos es vender a precio de costo sin darse cuenta.
    */
   precio_venta: z.number().nonnegative().optional(),
+  /**
+   * Solo la botella de un perfume ORIGINAL: cuántos ml trae. Con esto y
+   * `crear_perfume`, lo que nace es la ficha del original (decants + botella
+   * completa) en vez de una fragancia que se fabrica.
+   */
+  ml_botella: z.number().int().min(1).max(2000).nullish(),
+  /** Original: de qué perfume del catálogo copiar la ficha (foto, notas…). */
+  copiar_de_perfume_id: z.number().int().positive().nullish(),
+}).refine((d) => !d.ml_botella || d.unidad === 'ml', {
+  // Los decants se cortan en ml: una botella contada por piezas no se puede partir
+  message: 'Una botella original se lleva en ml', path: ['unidad'],
 });
 
 /** Accesorios que un tamaño incluye por defecto. */

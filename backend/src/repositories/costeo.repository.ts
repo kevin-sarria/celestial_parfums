@@ -5,6 +5,7 @@ import { badRequest } from '../utils/httpError';
 // el alta desde una compra y la pantalla de puesta al día.
 import { enlazarOCrearAccesorio, enlazarOCrearPerfume, sinSufijoEsencia } from './emparejarEsencias.repository';
 import { contarUsos, motivosQueRetienen } from './insumo.usos';
+import { crearOriginal } from './productoOriginal';
 import type {
   InsumoInput, FormulaInput, EscalaInput, CotizacionConfigInput, CondicionesComerciales,
 } from '../schemas/cotizacion.schema';
@@ -35,6 +36,8 @@ const mapInsumo = (i: InsumoRow) => ({
   gama_nombre: i.gama?.nombre ?? null,
   /** Para quién es la fragancia de esta esencia. Null = todavía sin decir. */
   genero: i.genero ?? null,
+  /** Solo botellas de un perfume original: cuántos ml trae UNA. */
+  ml_botella: i.ml_botella ?? null,
 });
 
 /**
@@ -131,7 +134,7 @@ const normalizarNombre = (s: string) =>
  * que evita que eso vuelva a pasar.
  */
 export const crearInsumo = async (data: InsumoInput) => {
-  const { crear_perfume, perfume_nombre, precio_venta, ...campos } = data;
+  const { crear_perfume, perfume_nombre, precio_venta, copiar_de_perfume_id, ...campos } = data;
 
   // Un material repetido parte el stock en dos registros y ninguno de los dos
   // dice cuánto hay de verdad; además el costo promedio se calcula sobre la
@@ -167,9 +170,13 @@ export const crearInsumo = async (data: InsumoInput) => {
   const nombrePerfume = (perfume_nombre ?? sinSufijoEsencia(insumo.nombre)).trim();
   let perfume = null;
   if (crear_perfume && nombrePerfume) {
-    perfume = insumo.tipo === 'accesorio'
-      ? await enlazarOCrearAccesorio(insumo.id, nombrePerfume.slice(0, 150), precio_venta ?? 0)
-      : await enlazarOCrearPerfume(insumo.id, nombrePerfume.slice(0, 150), insumo.genero ?? null);
+    perfume = insumo.ml_botella
+      ? await crearOriginal({
+        insumo_id: insumo.id, nombre: nombrePerfume, ml_botella: insumo.ml_botella, copiar_de_perfume_id,
+      })
+      : insumo.tipo === 'accesorio'
+        ? await enlazarOCrearAccesorio(insumo.id, nombrePerfume.slice(0, 150), precio_venta ?? 0)
+        : await enlazarOCrearPerfume(insumo.id, nombrePerfume.slice(0, 150), insumo.genero ?? null);
   }
 
   return { ...mapInsumo(insumo), perfume };
@@ -178,7 +185,7 @@ export const crearInsumo = async (data: InsumoInput) => {
 export const actualizarInsumo = (id: number, data: InsumoInput) => {
   // `crear_perfume`/`perfume_nombre`/`precio_venta` son del alta, no columnas:
   // pasárselos a Prisma reventaría con "Unknown argument".
-  const { crear_perfume: _c, perfume_nombre: _p, precio_venta: _pv, ...campos } = data;
+  const { crear_perfume: _c, perfume_nombre: _p, precio_venta: _pv, copiar_de_perfume_id: _cp, ...campos } = data;
   return prisma.insumoCosto.update({
     where: { id }, data: campos, include: INSUMO_INCLUDE,
   }).then(mapInsumo);

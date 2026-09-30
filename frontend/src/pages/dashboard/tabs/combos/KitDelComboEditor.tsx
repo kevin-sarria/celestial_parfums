@@ -1,10 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import BuscadorSelect from '../../../../components/BuscadorSelect';
-import type { Perfume } from '../../../../domain/entities/perfume.schema';
-import { http } from '../../../../infrastructure/api/http';
-import { urls } from '../../../../infrastructure/api/urls';
+import { useCatalogoCompleto } from '../../../../application/hooks/useCatalogoCompleto';
 
 export interface ItemDelKit { perfume_id: number; nombre: string; cantidad: number }
 
@@ -17,22 +15,8 @@ export interface ItemDelKit { perfume_id: number; nombre: string; cantidad: numb
  * cliente pide otra cosa, se ajusta la línea en la venta.
  */
 export function KitDelComboEditor({ valor, onChange }: { valor: ItemDelKit[]; onChange: (kit: ItemDelKit[]) => void }) {
-  const [accesorios, setAccesorios] = useState<Perfume[] | null>(null);
-  const [error, setError] = useState(false);
-
-  useEffect(() => {
-    let vivo = true;
-    (async () => {
-      try {
-        const res = await http.getCacheado<{ data: { data: Perfume[] } | Perfume[] }>(urls.perfumes.todosConOcultos);
-        // /api/parfums sin paginar responde { data: { data: [...] } }
-        const pf = res.cuerpo?.data;
-        const lista = Array.isArray(pf) ? pf : (pf?.data ?? []);
-        if (vivo) setAccesorios(lista.filter(p => p.es_accesorio).sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')));
-      } catch { if (vivo) setError(true); }
-    })();
-    return () => { vivo = false; };
-  }, []);
+  const { perfumes, error } = useCatalogoCompleto();
+  const accesorios = useMemo(() => perfumes?.filter(p => p.es_accesorio) ?? null, [perfumes]);
 
   const agregar = (id: number) => {
     const p = accesorios?.find(a => a.id === id);

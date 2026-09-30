@@ -390,6 +390,34 @@ costo. Editar o borrar una venta revierte el consumo (`revertirVenta`).
     se tomó el tope) + su envase. La misma cuenta decide cuándo un decant se agota: la botella
     tiene que alcanzar para uno más con su merma (`perfume.mapeo.ts`). El campo `ml_utiles` ya no
     se pregunta en la ficha: nunca entró en ninguna cuenta y la merma por decant lo reemplaza.
+  - **La botella completa de un original** (2026-09-29, opción A del dueño): es una talla más de
+    la misma ficha, con el mismo stock en ml. Se reconoce porque su `ml` es ≥ el
+    `insumos_costo.ml_botella` de la botella (`esBotellaCompleta`). Descuenta **exactamente** sus
+    ml —sin los 2 de merma: sale cerrada— y **no gasta envase**, aunque exista una "100ML" de
+    contratipo con su frasco en la receta. Sin esto, 100 ml en bodega nunca alcanzarían para la
+    botella de 100 y se daría por agotada con la botella en la mano.
+
+### Originales: cómo entran (2026-09-29)
+
+- **`insumos_costo.ml_botella`**: cuántos ml trae UNA botella de ese original. Solo en las
+  botellas de originales; null en todo lo demás. El stock sigue en ml.
+- **Compra en botellas**: la unidad `botella` (`compra_items.unidad_compra`) vale los
+  `ml_botella` de SU material. El servidor lee ese tamaño de la base (`conMlBotella` en
+  `pago.repository.ts`), no del formulario, y rechaza una línea en botellas de algo que no es
+  botella. "2 botellas" de 100 ml a $400.000 = 200 ml a $2.000 el ml.
+- **Alta desde la compra**: "Nuevo material" → "Perfume original (botella)" pide el nombre y los
+  ml. Crea el material "‹Fragancia› – Original 100 ml" (materia prima en ml, sin gama) y la
+  ficha "‹Fragancia› Original" (`productoOriginal.ts`): fraccionado, categoría Original, tallas
+  3/5/10 ml (`TALLAS_DECANT_ML`) + la botella, **sin precios y oculta**. "Original" va en el
+  nombre porque casi siempre existe ya el contratipo con el nombre pelado y la dirección de la
+  tienda sale del nombre.
+- **Copiar la ficha**: si ya vendía esa fragancia en contratipo, se propone sola (mismo nombre) y
+  se copian foto, descripción, notas, ocasiones, género, duración y proyección
+  (`fichaHeredada.ts`, compartido con el alta del 1.1). En la ficha hay además un botón
+  "Copiar ficha de otro perfume" que llena el formulario sin guardar (`CopiarFichaDe.tsx`).
+- **El costo por talla se ve al ponerle precio** (`TallasDelPerfume.tsx`): ml que salen × costo
+  por ml de la botella + el frasco del decant. La cuenta es copia de `utils/decants.ts`
+  (`frontend/src/domain/entities/decants.ts`); si cambia la merma, se cambia en los dos.
 - **GOTCHA que costó un ciclo**: `consumirPorVenta` saltaba toda línea sin `ml`, así que los
   comprados nunca descontaban. Solo los fabricados y fraccionados necesitan talla.
 - **Lo que se define en `perfume_presentacion` (`envase_insumo_id`, `accesorios`) MANDA** sobre

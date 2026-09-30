@@ -4,9 +4,13 @@ import { Field } from '../../ui';
 import { formatPrice } from '../../helpers';
 import type { Lookup, PerfumeForm } from '../../types';
 import { AccesoriosDeTalla, type OpcionAccesorio } from './AccesoriosDeTalla';
+import { esBotellaCompleta, mlQueSalenDeLaBotella } from '../../../../domain/entities/decants';
 
 /** Un insumo elegible como frasco de una talla. */
-interface Envase { id: number; nombre: string }
+interface Envase { id: number; nombre: string; precio?: number }
+
+/** La botella de un original: su costo por ml y cuánto trae. */
+export interface BotellaOriginal { precio: number; ml_botella?: number | null }
 
 /**
  * Qué tallas vende este perfume, a qué precio y en qué frasco.
@@ -20,7 +24,7 @@ interface Envase { id: number; nombre: string }
  * Recibe el formulario entero y su `setForm`: el dueño del estado sigue siendo
  * la pestaña, que es quien lo guarda.
  */
-export function TallasDelPerfume({ form, setForm, presentaciones, envases, accesorios, precioDeLista }: {
+export function TallasDelPerfume({ form, setForm, presentaciones, envases, accesorios, precioDeLista, botella }: {
   form: PerfumeForm;
   setForm: React.Dispatch<React.SetStateAction<PerfumeForm>>;
   presentaciones: Lookup[];
@@ -28,7 +32,25 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, acces
   accesorios: OpcionAccesorio[];
   /** Lo que ya cuesta esa talla por la lista de su categoría (null = sin precio). */
   precioDeLista: (presentacionId: number) => number | null;
+  /**
+   * Solo originales: la botella de la que salen. Con ella cada talla dice
+   * cuánto cuesta —el dueño pidió ver eso al lado del precio para no vender a
+   * pérdida (2026-09-29)— y cuál es la botella completa.
+   */
+  botella?: BotellaOriginal | null;
 }) {
+  /**
+   * Lo que cuesta UNA venta de esa talla: los ml que salen de la botella (con la
+   * pérdida del trasvase si es decant) más su frasco de decant, si tiene uno
+   * propio. Null = no hay con qué calcularlo (sin botella o sin costo aún).
+   */
+  const costoDe = (ml: number | null | undefined, presentacionId: number) => {
+    if (!botella || !(botella.precio > 0) || ml == null) return null;
+    const liquido = mlQueSalenDeLaBotella(ml, botella.ml_botella) * botella.precio;
+    const envase = esBotellaCompleta(ml, botella.ml_botella) ? 0
+      : envases.find(v => v.id === form.envases_talla[presentacionId])?.precio ?? 0;
+    return Math.round(liquido + envase);
+  };
   const toggleId = (ids: number[], id: number) => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id];
   return (
     <Field label="Presentaciones y precio">
@@ -59,6 +81,9 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, acces
                   }))}
                 />
                 {pr.nombre}
+                {botella && pr.ml != null && esBotellaCompleta(pr.ml, botella.ml_botella) && (
+                  <span className="text-[11.5px] font-medium text-primary">botella completa</span>
+                )}
               </label>
               {activa && (
                 <>
@@ -78,6 +103,11 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, acces
                         ? formatPrice(deLista)
                         : 'sin precio'}
                   </span>
+                  {costoDe(pr.ml, pr.id) != null && (
+                    <span className="w-28 shrink-0 text-[12px] text-muted-foreground">
+                      te cuesta <strong className="font-semibold text-foreground">{formatPrice(costoDe(pr.ml, pr.id)!)}</strong>
+                    </span>
+                  )}
                   {/* El frasco cambia según la referencia: un 1.1 de Sauvage
                       no usa el mismo que uno de Bleu. Vacío = el del tamaño. */}
                   {form.tipo_producto !== 'comprado' && (

@@ -66,7 +66,9 @@ costeoRouter.post('/insumos', validate(insumoSchema), h(async (req, res) => {
       ? `Insumo creado. "${p.nombre}" quedó en el catálogo, fuera de la tienda, para que lo completes.`
       : p.accion === 'enlazado'
         ? `Insumo creado y enlazado a "${p.nombre}", que ya estaba en el catálogo.`
-        : `Insumo creado. "${p.nombre}" ya existía y ya tenía su esencia: no se le cambió.`;
+        : p.accion === 'ya_existe'
+          ? `Insumo creado. Ya había un producto llamado "${p.nombre}": no se le cambió nada. Enlázalo desde su ficha si es este.`
+          : `Insumo creado. "${p.nombre}" ya existía y ya tenía su esencia: no se le cambió.`;
 
   res.status(201).json({ message, data });
 }));

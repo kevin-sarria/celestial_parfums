@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import { badRequest } from '../utils/httpError';
 import {
   aBase, costosConFlete, desglosarIva, type IvaCompra, type IvaModo,
 } from './inventario.compras';
@@ -137,6 +138,32 @@ const resolverIva = async (
 };
 
 /**
+ * Le pega a cada línea en botellas los ml que trae la botella de su material.
+ *
+ * Se lee de la base y no del formulario: si el navegador mandara el tamaño, una
+ * pestaña vieja podría meter 100 ml por botella a un material que ya se
+ * corrigió a 90. Una línea en botellas de algo que no es una botella se
+ * rechaza con nombre propio: convertirla con cero dejaría la compra sin stock.
+ */
+const conMlBotella = async <T extends NonNullable<CreatePagoDTO['items']>[number]>(
+  tx: Prisma.TransactionClient, items: T[],
+): Promise<(T & { ml_botella: number | null })[]> => {
+  const ids = items.filter((i) => i.unidad_compra === 'botella').map((i) => i.insumo_id);
+  const insumos = ids.length
+    ? await tx.insumoCosto.findMany({ where: { id: { in: ids } }, select: { id: true, nombre: true, ml_botella: true } })
+    : [];
+  const porId = new Map(insumos.map((i) => [i.id, i]));
+  return items.map((it) => {
+    if (it.unidad_compra !== 'botella') return { ...it, ml_botella: null };
+    const insumo = porId.get(it.insumo_id);
+    if (!insumo?.ml_botella) {
+      throw badRequest(`"${insumo?.nombre ?? 'Ese material'}" no es una botella de perfume original: cómpralo en ml o en unidades.`);
+    }
+    return { ...it, ml_botella: insumo.ml_botella };
+  });
+};
+
+/**
  * Crea las líneas de la compra y mete el material al inventario.
  * El flete y el IVA se reparten proporcional entre las líneas antes de valorar
  * la entrada: los dos son parte de lo que costó el material.
@@ -144,7 +171,7 @@ const resolverIva = async (
 const registrarItems = async (
   tx: Prisma.TransactionClient, pagoId: number, data: CreatePagoDTO, iva: IvaCompra,
 ) => {
-  const items = data.items ?? [];
+  const items = await conMlBotella(tx, data.items ?? []);
   if (items.length === 0) return;
   const costos = costosConFlete(items, data.coste_envio ?? 0, iva);
   const fecha = new Date(data.dia);
@@ -170,7 +197,7 @@ const registrarItems = async (
       insumo_id: it.insumo_id,
       tipo: 'compra',
       // Al inventario entra en la unidad base: 20 L de alcohol son 20.000 ml
-      cantidad: aBase(it.cantidad, it.unidad_compra),
+      cantidad: aBase(it.cantidad, it.unidad_compra, it.ml_botella),
       costo_unitario: costos[i],
       fecha,
       referencia_id: pagoId,

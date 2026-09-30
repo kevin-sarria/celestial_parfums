@@ -169,6 +169,22 @@ Reglas:
   criterio que `descuento`/`agotado`).
 - Un perfume creado desde una compra **nace `publicado = false`**: es una ficha sin precio, sin
   foto y sin categoría.
+- **No se publica nada con una talla en $0** (2026-09-29, `perfume.publicacion.ts`). Nació con los
+  originales, que nacen sin precio a propósito: un clic apurado en "publicar" los habría puesto
+  regalados. Despublicar nunca se bloquea.
+
+## Las líneas de la tienda: Contratipo, 1.1 y Original (2026-09-29)
+
+Cada tarjeta y cada ficha pública dicen a qué línea pertenece el producto, con su color: Original
+en tinta sólida, 1.1 en iris, Contratipo en lila suave (el de esencia premium conserva su
+distintivo). La línea (`linea` en la respuesta) la deduce el servidor en `lineaDe`
+(`perfume.mapeo.ts`) de **cómo se consigue**, nunca del nombre de la categoría: `es_accesorio` →
+accesorio, `solo_armado` → 1.1, `fraccionado` → original, `comprado` → producto (sin etiqueta: un
+splash no se sabe si es original), el resto → contratipo.
+
+En un original las tallas se nombran para el cliente "Decant 5 ml" y "Botella 100 ml", y el precio
+de portada dice "decants desde": sin eso, un decant de $21.000 junto a un contratipo de $60.000
+parece un error.
 
 ## Agotado AUTOMÁTICO: las tres categorías no se agotan igual
 

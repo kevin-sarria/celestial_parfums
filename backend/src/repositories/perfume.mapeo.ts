@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { accesoriosPropios } from './accesoriosDeFicha';
-import { mlPorDecant } from '../utils/decants';
+import { esBotellaCompleta, mlQueSalenDeLaBotella } from '../utils/decants';
 
 /**
  * CÓMO SE LEE UN PERFUME: de fila de base a lo que ve la tienda.
@@ -58,7 +58,40 @@ const resolverPrecios = (p: PerfumeRow) => {
      * saberlo talla por talla: el perfume puede estar disponible y ese tamaño no.
      */
     motivo_agotado: motivoAgotadoDeTalla(p, r),
+    /**
+     * Esta talla de un original es la botella entera, no un decant. La tienda
+     * la nombra distinto ("Botella completa") porque para el cliente son dos
+     * compras distintas aunque salgan del mismo stock.
+     */
+    botella_completa: p.tipo_producto === 'fraccionado'
+      && r.presentacion.ml != null && esBotellaCompleta(r.presentacion.ml, p.insumo_producto?.ml_botella),
   }));
+};
+
+/**
+ * A qué LÍNEA pertenece el producto: lo que la tienda le dice al cliente en la
+ * tarjeta para que no confunda un contratipo con un original.
+ *
+ * Se deduce de cómo se consigue, NO del nombre de su categoría: la categoría es
+ * un texto que el dueño edita, y el día que la renombrara, un original se
+ * anunciaría como contratipo sin que nadie lo notara (misma razón por la que
+ * `solo_armado` va en el perfume).
+ *
+ * - 1.1: se arma por adelantado con su envase premium.
+ * - Original: la botella original, entera o en decants (`fraccionado`).
+ * - Accesorio: no es una fragancia (perfumero, bolsa).
+ * - Producto: otra cosa que se compra hecha (un splash). No se le pone la
+ *   etiqueta de original porque no se sabe si lo es: mejor callar que mentir.
+ * - Contratipo: lo que se fabrica contra pedido.
+ */
+export type LineaProducto = 'contratipo' | '1.1' | 'original' | 'accesorio' | 'producto';
+
+export const lineaDe = (p: Pick<PerfumeRow, 'solo_armado' | 'es_accesorio' | 'tipo_producto'>): LineaProducto => {
+  if (p.es_accesorio) return 'accesorio';
+  if (p.solo_armado) return '1.1';
+  if (p.tipo_producto === 'fraccionado') return 'original';
+  if (p.tipo_producto === 'comprado') return 'producto';
+  return 'contratipo';
 };
 
 /**
@@ -163,7 +196,8 @@ const motivoConArmados = (p: PerfumeRow, armados: number, ml: number | null = nu
   // mirar, y marcarlo agotado lo escondería de la tienda sin motivo.
   if (tipo === 'fraccionado') {
     if (!p.insumo_producto || ml == null) return null;
-    return Number(p.insumo_producto.stock) >= mlPorDecant(ml) ? null : 'sin_producto';
+    const necesita = mlQueSalenDeLaBotella(ml, p.insumo_producto.ml_botella);
+    return Number(p.insumo_producto.stock) >= necesita ? null : 'sin_producto';
   }
 
   // Un frasco ya armado se vende aunque no quede ni gota de esencia: esa
@@ -224,6 +258,10 @@ export const mapPerfume = (p: PerfumeRow) => {
     tipo_producto: p.tipo_producto ?? 'fabricado',
     insumo_producto_id: p.insumo_producto_id ?? null,
     ml_utiles: p.ml_utiles ?? null,
+    /** Contratipo, 1.1, original o accesorio (ver `lineaDe`). */
+    linea: lineaDe(p),
+    /** Solo originales: cuántos ml trae la botella. Null en todo lo demás. */
+    ml_botella: p.insumo_producto?.ml_botella ?? null,
     insumo_esencia_nombre: p.insumo_esencia?.nombre ?? null,
     /// Costo real por ml de SU esencia (cada fragancia tiene la suya).
     insumo_esencia_precio: p.insumo_esencia ? Number(p.insumo_esencia.precio) : null,
@@ -296,7 +334,14 @@ export const perfumeInclude = {
   // aquí es lo que deja a `mapPerfume` puro y síncrono: cargarla aparte
   // obligaría a acordarse de aplicarla en cada consulta del catálogo, y la que
   // se olvidara mostraría como disponible algo que no se puede armar.
-  presentaciones: { include: { presentacion: { include: { formula: true } } } },
+  //
+  // De la más pequeña a la más grande: un original ofrece 3, 5 y 10 ml y su
+  // botella de 100, y las tallas nuevas tienen id mayor que la "100ML" vieja, así
+  // que sin orden la botella salía primero y el decant de 3 ml de último.
+  presentaciones: {
+    include: { presentacion: { include: { formula: true } } },
+    orderBy: { presentacion: { ml: { sort: 'asc', nulls: 'last' } } },
+  },
   // Esencia concreta del perfume: su costo real por ml (cada fragancia la suya)
   // y su GAMA, que es de donde el perfume hereda si es árabe, clásico o premium.
   insumo_esencia: { include: { gama: true } },

@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatPrice, finalPrice } from '@/lib/format';
 import Estrellas from './Estrellas';
+import EtiquetaLinea from './EtiquetaLinea';
 import AddToCartModal from './AddToCartModal';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useListas } from '../application/context/ListasContext';
@@ -112,22 +113,19 @@ export default function PerfumeCard({ perfume, vendidos }: Props) {
           <h3 className="line-clamp-2 font-display text-[17px] font-medium leading-snug text-ink">
             {perfume.nombre}
           </h3>
-          {/* El distintivo de esencia premium reemplaza a la categoría: dice más */}
-          {perfume.esencia_premium ? (
-            <Badge className="shrink-0 rounded-full border-none bg-ink px-2 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-background">
-              Esencia premium
-            </Badge>
-          ) : perfume.categoria && (
-            <Badge variant="outline" className="max-w-24 shrink-0 rounded-full text-[10.5px] font-medium text-muted-foreground">
-              <span className="truncate">{perfume.categoria}</span>
-            </Badge>
-          )}
+          {/* Contratipo, 1.1 u original: lo primero que el cliente tiene que
+              saber para comparar precios sin confundirse (2026-09-29) */}
+          <EtiquetaLinea linea={perfume.linea} esenciaPremium={perfume.esencia_premium} categoria={perfume.categoria} />
         </div>
 
         <div className="flex items-baseline gap-2">
           {/* Con varias tallas a distinto precio se anuncia el más barato */}
+          {/* En un original lo más barato es un decant: decirlo evita que el
+              cliente crea que la botella entera cuesta eso */}
           {perfume.varios_precios && (
-            <span className="text-[11.5px] text-muted-foreground">desde</span>
+            <span className="text-[11.5px] text-muted-foreground">
+              {perfume.linea === 'original' ? 'decants desde' : 'desde'}
+            </span>
           )}
           <span className="text-[15px] font-semibold tracking-tight text-primary">
             {formatPrice(precioFinal)}
@@ -214,6 +212,7 @@ export default function PerfumeCard({ perfume, vendidos }: Props) {
         genero: perfume.genero,
         presentaciones: perfume.presentaciones,
         esenciaPremium: perfume.esencia_premium,
+        linea: perfume.linea,
       }}
     />
     </>

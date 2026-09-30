@@ -1028,6 +1028,12 @@ model InsumoCosto {
   /// desmarca: que el sistema lo "gradúe" a la primera venta escondería la
   /// decisión justo cuando importa.
   en_prueba           Boolean                @default(false)
+  /// Solo las botellas de un perfume ORIGINAL: cuántos ml trae UNA botella
+  /// (100, 90, 125…). El stock del material sigue en ml —de ahí salen los
+  /// decants—, pero con esto la compra se teclea en botellas ("2 botellas" =
+  /// 200 ml) y la venta sabe cuándo se lleva la botella COMPLETA, que no pierde
+  /// los 2 ml del trasvase (ver `utils/decants.ts`). Null en todo lo demás.
+  ml_botella          Int?
   created_at          DateTime               @default(now())
   updated_at          DateTime               @updatedAt
   /// Fórmulas que usan este insumo como envase (impide borrarlo si está en uso).
@@ -1066,6 +1072,9 @@ enum UnidadCompra {
   l
   kg
   unidad
+  /// Botellas de un perfume original: cada una vale los `ml_botella` de su
+  /// material. Solo se acepta en un material que lo tenga.
+  botella
 }
 
 /// Por qué se movió el inventario. Cada movimiento guarda el costo unitario

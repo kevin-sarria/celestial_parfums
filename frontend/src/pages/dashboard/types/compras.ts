@@ -38,7 +38,7 @@ export interface Pago {
   /** Detalle de la compra; vacío en los pagos históricos. */
   items: {
     id: number; insumo_id: number; insumo_nombre: string;
-    cantidad: number; unidad_compra: 'ml' | 'g' | 'l' | 'kg' | 'unidad';
+    cantidad: number; unidad_compra: 'ml' | 'g' | 'l' | 'kg' | 'unidad' | 'botella';
     subtotal: number; costo_unitario_final: number;
     base_gravable: number | null; iva_valor: number | null;
   }[];

@@ -345,27 +345,8 @@ export const patchDescuentoPorCategoria = async (categoriaId: number, descuento:
 export const patchAgotadoPerfume = (id: string, agotado: boolean) =>
   prisma.perfume.update({ where: { id: Number(id) }, data: { agotado } });
 
-/** Saca un perfume de la tienda o lo devuelve, sin borrar nada. */
-export const patchPublicadoPerfume = (id: string, publicado: boolean) =>
-  prisma.perfume.update({ where: { id: Number(id) }, data: { publicado } });
-
-/**
- * Lo que hace falta para el aviso de "perfumes por revisar" del dashboard.
- *
- * `sin_esencia` cuenta los FABRICADOS sin esencia asignada: esos no descuentan
- * inventario al venderse y su costo entra en cero, así que la ganancia del mes
- * sale inflada. Se cuentan solo los que siguen publicados, que son los que de
- * verdad pueden venderse hoy.
- */
-export const resumenPublicacion = async () => {
-  const [ocultos, sinEsencia] = await Promise.all([
-    prisma.perfume.count({ where: { publicado: false } }),
-    prisma.perfume.count({
-      where: { publicado: true, tipo_producto: 'fabricado', insumo_esencia_id: null },
-    }),
-  ]);
-  return { ocultos, sin_esencia: sinEsencia };
-};
+// Publicar / despublicar y su resumen viven en `perfume.publicacion.ts`.
+export { patchPublicadoPerfume, resumenPublicacion } from './perfume.publicacion';
 
 /**
  * Asigna la misma esencia a varios perfumes de una vez.

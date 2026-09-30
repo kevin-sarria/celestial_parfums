@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { formatPrice, finalPrice } from '@/lib/format';
 import { Chip } from './catalog/FilterChips';
 import { useCart } from '../application/context/useCart';
+import { etiquetaTalla, type Linea } from '../domain/entities/linea';
 
 interface Props {
   open: boolean;
@@ -20,7 +21,10 @@ interface Props {
     nombre: string;
     precio: number;
     /** Precio de cada presentación; sin él se usa `precio` para todas. */
-    precios?: { presentacion: string; precio: number; motivo_agotado?: string | null }[];
+    precios?: {
+      presentacion: string; precio: number; motivo_agotado?: string | null;
+      ml?: number | null; botella_completa?: boolean;
+    }[];
     /** Descuento propio del producto (%): con él, los cupones no se acumulan. */
     descuento: number;
     imagen_url: string | null;
@@ -30,6 +34,8 @@ interface Props {
     presentaciones: string[];
     /** Contratipo esencia premium: nunca entra en el precio de combo. */
     esenciaPremium?: boolean;
+    /** Contratipo, 1.1 u original: en un original la talla se nombra "Decant 5 ml". */
+    linea?: Linea;
   };
 }
 
@@ -55,6 +61,14 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
    * Sin el dato (un combo, un producto sin `precios`) se deja pedir: marcar
    * agotado por falta de información esconde cosas que sí se tienen.
    */
+  /** "Decant 5 ml" / "Botella 100 ml" en un original; la etiqueta de siempre en lo demás. */
+  const nombreTalla = (p: string) => {
+    const t = producto.precios?.find((x) => x.presentacion === p);
+    return t && producto.linea
+      ? etiquetaTalla(producto.linea, { presentacion: p, ml: t.ml ?? null, botella_completa: !!t.botella_completa })
+      : p;
+  };
+
   const agotada = (p: string) =>
     !!producto.precios?.find((x) => x.presentacion === p)?.motivo_agotado;
 
@@ -120,7 +134,7 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
                 <Chip key={p} active={presentacion === p} disabled={agotada(p)}
                   title={agotada(p) ? `${p}: agotado por ahora` : undefined}
                   onClick={() => setPresentacion(p)}>
-                  {p} · {formatPrice(finalPrice(precioDe(p), producto.descuento))}
+                  {nombreTalla(p)} · {formatPrice(finalPrice(precioDe(p), producto.descuento))}
                   {agotada(p) && ' · agotado'}
                 </Chip>
               ))}

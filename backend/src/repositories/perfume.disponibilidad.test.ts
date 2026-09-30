@@ -31,11 +31,13 @@ const fila = (over: {
   solo_armado?: boolean;
   tallas?: ReturnType<typeof talla>[];
   productoStock?: number | null;
+  /** Cuántos ml trae la botella del original. */
+  mlBotella?: number | null;
 }) => ({
   tipo_producto: over.tipo_producto ?? 'fabricado',
   solo_armado: over.solo_armado ?? false,
   insumo_esencia: over.esencia == null ? null : { stock: over.esencia },
-  insumo_producto: over.productoStock == null ? null : { stock: over.productoStock },
+  insumo_producto: over.productoStock == null ? null : { stock: over.productoStock, ml_botella: over.mlBotella ?? null },
   presentaciones: over.tallas ?? [talla(30, 15)],
   // Un doble de prueba trae solo los campos que la regla mira; el resto de la
   // fila no influye en el resultado y armarla entera sería ruido.
@@ -116,6 +118,15 @@ describe('sinExistenciasParaUno — original (comprado)', () => {
     expect(motivoAgotadoDeTalla(p, p.presentaciones[1])).toBe('sin_producto');
     // Y el perfume sigue en la tienda: su talla chica todavía se puede vender
     expect(sinExistenciasParaUno(p)).toBe(false);
+  });
+
+  it('la botella completa se vende con lo justo: no pierde los 2 ml del trasvase', () => {
+    // 100 ml en bodega alcanzan para LA botella de 100, no para un decant de 100
+    const original = (stock: number) => fila({
+      tipo_producto: 'fraccionado', productoStock: stock, mlBotella: 100, tallas: [talla(100, null)],
+    });
+    expect(motivoAgotado(original(100))).toBe(null);
+    expect(motivoAgotado(original(99))).toBe('sin_producto');
   });
 
   it('un decant sin botella asignada no se marca agotado', () => {

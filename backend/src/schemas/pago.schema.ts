@@ -6,11 +6,15 @@ import { z } from 'zod/v4';
  * `unidad_compra` es solo para el registro: el proveedor factura ml y gramos
  * **1 a 1**, así que `g` entra como ml sin convertir por densidad (así se
  * cuadra contra su factura). No meter densidades aquí.
+ *
+ * `botella` es para los perfumes originales: cada una vale los ml que trae la
+ * botella de SU material (`insumos_costo.ml_botella`), y el servidor la
+ * convierte leyendo ese tamaño de la base.
  */
 export const compraItemSchema = z.object({
   insumo_id: z.number().int().positive('Elige el insumo'),
   cantidad: z.number().positive('La cantidad debe ser mayor a 0'),
-  unidad_compra: z.enum(['ml', 'g', 'l', 'kg', 'unidad']).default('unidad'),
+  unidad_compra: z.enum(['ml', 'g', 'l', 'kg', 'unidad', 'botella']).default('unidad'),
   subtotal: z.number().min(0, 'No puede ser negativo'),
 });
 

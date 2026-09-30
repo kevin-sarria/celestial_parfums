@@ -1,5 +1,21 @@
 # Dónde quedamos y qué sigue
 
+## 🆕 2026-09-29: perfumes originales
+
+**Hecho** (sin desplegar; **lleva migración**, `20260929120000_perfumes_originales`). Decisiones del
+dueño: opción A (una ficha por original, decants de 3/5/10 ml y la botella completa del mismo
+stock), precios los pone él talla por talla, nacen ocultos hasta que les ponga la info, y copiar
+la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: cómo entran*).
+
+| Qué | Estado |
+|---|---|
+| Comprar un original nuevo desde la factura ("Perfume original (botella)"), en botellas | hecho |
+| Su ficha nace sola con decants + botella, copiando la del contratipo | hecho |
+| Tarjetas y ficha pública con etiqueta Original / 1.1 / Contratipo, tallas "Decant 5 ml" / "Botella 100 ml" | hecho |
+| Costo de cada talla al lado del precio en la ficha | hecho |
+| No se publica nada con una talla en $0 | hecho |
+| Dueño: desplegar, registrar las compras de los 15 originales, ponerles precio y publicarlos | pendiente |
+
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 
 **Hecho** (sin desplegar; **lleva migración**, `20260928120000_abonos_dia_colombia`):
@@ -18,7 +34,7 @@ contratipo de 30 ml, 10 unidades de 1.1, 0 originales; 60 de 150 clientes repite
 | 2 | Reporte por línea: contratipo / 1.1 / original, con unidades, ventas y ganancia de cada una (`arquitectura.md`) | **hecho**, sin desplegar |
 | 3 | Ganancia por fragancia (no solo las más vendidas), en el mismo reporte | **hecho**, sin desplegar |
 | 4 | Lista de recompra con el ritmo de cada cliente y el punto medio para los de una compra (`arquitectura.md`, *Recompra*). Para mejorarla: guardar el teléfono de los clientes (hoy ninguno lo tiene) y enlazar las ventas a su cuenta | **hecho**, sin desplegar |
-| 5 | Originales y decants (flujo botella → decants, proveedor y factura por botella) | **pendiente, no es pronto** (dueño) |
+| 5 | Originales y decants (flujo botella → decants, proveedor y factura por botella) | **hecho** el 2026-09-29 (ver arriba) |
 | 6 | Mayoreo: no se quita; lo usará cuando el negocio crezca. En la reorganización puede ir a "Ajustes" | decidido |
 | 7 | Menú en el orden del día: Inicio, Ventas y créditos, Producción e inventario, Catálogo, Reportes, Página web, Ajustes, Mayoreo (`arquitectura.md`). Las 5 clasificaciones son una sola entrada con pestañas arriba | **hecho**, sin desplegar |
 | — | Nota del dueño: el negocio está estancado porque no sabe cómo publicitar bien. Candidato a trabajo de marketing aparte | anotado |

@@ -27,8 +27,14 @@ export const FACTOR_UNIDAD: Record<string, number> = {
   unidad: 1,
 };
 
-export const aBase = (cantidad: number, unidad: string) =>
-  r3(cantidad * (FACTOR_UNIDAD[unidad] ?? 1));
+/**
+ * Pasa la cantidad comprada a la unidad base. La `botella` no tiene factor fijo:
+ * vale los ml que trae la botella de ESE material (`ml_botella`), porque un
+ * original viene en 100 ml y otro en 90. Sin ese dato no se puede convertir, y
+ * quien llama tiene que rechazar la línea antes de llegar aquí.
+ */
+export const aBase = (cantidad: number, unidad: string, mlBotella?: number | null) =>
+  r3(cantidad * (unidad === 'botella' ? (mlBotella ?? 0) : (FACTOR_UNIDAD[unidad] ?? 1)));
 
 export type IvaModo = 'incluido' | 'agregado' | 'sin_iva';
 
@@ -67,7 +73,7 @@ export const desglosarIva = (subtotal: number, modo: IvaModo, tasa: number) => {
  * `iva` es opcional: sin él se comporta exactamente igual que antes.
  */
 export const costosConFlete = (
-  lineas: { cantidad: number; subtotal: number; unidad_compra?: string }[],
+  lineas: { cantidad: number; subtotal: number; unidad_compra?: string; ml_botella?: number | null }[],
   flete: number,
   iva?: IvaCompra,
 ): number[] => {
@@ -82,7 +88,7 @@ export const costosConFlete = (
   });
   const total = valores.reduce((s, v) => s + v, 0);
   return lineas.map((l, i) => {
-    const base = aBase(l.cantidad, l.unidad_compra ?? 'unidad');
+    const base = aBase(l.cantidad, l.unidad_compra ?? 'unidad', l.ml_botella);
     if (base <= 0) return 0;
     const parteFlete = total > 0 ? (valores[i] / total) * flete : 0;
     return r4((valores[i] + parteFlete) / base);

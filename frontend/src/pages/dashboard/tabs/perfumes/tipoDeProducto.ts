@@ -33,8 +33,11 @@ export const TIPOS_ALTA: OpcionTipo[] = [
     detalle: 'Splash, perfumero, bolsa, tarjeta.',
   },
   {
-    id: 'decant', emoji: '💧', titulo: 'Decants de una botella',
-    detalle: 'Compras el original y sacas frascos pequeños.',
+    // Sigue llamándose `decant` por dentro: es `fraccionado`, la botella de la
+    // que salen los decants. Desde el 2026-09-29 también vende la botella
+    // completa, y el dueño lo piensa como "un original".
+    id: 'decant', emoji: '💧', titulo: 'Un perfume original',
+    detalle: 'Vendes la botella completa y decants de ella.',
   },
 ];
 

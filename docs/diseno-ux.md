@@ -669,3 +669,12 @@ Nubank, los bloques de historial de transacciones de shadcn) es el que se tomó:
 - El modal de abonar quedó solo para abonar ("Lleva N pagos." en su frase de arriba). Borrar un
   abono equivocado se hace desde el historial, donde se ve cuál es.
 - La columna "Abonado" de la tabla dice debajo "N pagos".
+
+## Etiqueta de línea en la tienda (2026-09-29)
+
+`components/EtiquetaLinea.tsx` es la ÚNICA pieza que pinta la línea de un producto (tarjeta y
+ficha pública): **Original** en tinta sólida (`bg-ink`), **1.1** en iris (`bg-primary`),
+**Contratipo** en lila suave (`bg-accent`). El contratipo de esencia premium conserva su texto
+"Esencia premium", pero pasó de tinta sólida a **contorno de tinta**: la tinta sólida quedó para
+el original, que es la compra grande, y dos etiquetas negras iguales se confundían. Las tallas de
+un original se nombran con `etiquetaTalla` (`domain/entities/linea.ts`).

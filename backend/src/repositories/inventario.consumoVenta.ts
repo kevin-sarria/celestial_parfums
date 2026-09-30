@@ -5,7 +5,7 @@ import { aplicarMovimiento, revertirMovimientos } from './inventario.repository'
 import { revertirTerminado, sacarDeTerminado } from './inventario.terminado';
 import { idsDeMaterialesGenerales } from './materialesGenerales';
 import { accesoriosEfectivos, accesoriosPropios } from './accesoriosDeFicha';
-import { mlPorDecant } from '../utils/decants';
+import { esBotellaCompleta, mlQueSalenDeLaBotella } from '../utils/decants';
 
 /** Los Decimal de Prisma llegan como objeto; esto los baja a número. */
 const num = (v: unknown) => Number(v);
@@ -38,6 +38,8 @@ export const recetaDe = async (perfumeId: number, ml: number | null) => {
       select: {
         nombre: true, insumo_esencia_id: true,
         tipo_producto: true, insumo_producto_id: true, ml_utiles: true,
+        // Cuánto trae la botella: decide si esta venta es la botella entera
+        insumo_producto: { select: { ml_botella: true } },
       },
     }),
     ml
@@ -61,14 +63,20 @@ export const recetaDe = async (perfumeId: number, ml: number | null) => {
 
   const formula = presentacion?.formula;
 
-  // FRACCIONADO: sale el líquido de la botella original + el envase del decant.
-  // De la botella sale el decant MÁS lo que se pierde al trasvasar (dueño,
-  // 2026-09-28): así el costo es el real y la botella se agota cuando de
-  // verdad ya no da para otro (ver `utils/decants.ts`).
+  // FRACCIONADO (un original): sale el líquido de la botella + el envase del
+  // decant. De la botella sale el decant MÁS lo que se pierde al trasvasar
+  // (dueño, 2026-09-28): así el costo es el real y la botella se agota cuando
+  // de verdad ya no da para otro (ver `utils/decants.ts`).
   if (perfume.tipo_producto === 'fraccionado') {
     // Sin talla no se sabe cuántos ml lleva el decant: no se descuenta.
     if (!perfume.insumo_producto_id || !ml) return { sinEsencia: true, nombre: perfume.nombre, items: [] };
-    const items = [{ insumo_id: perfume.insumo_producto_id, cantidad: mlPorDecant(ml) }];
+    const mlBotella = perfume.insumo_producto?.ml_botella;
+    const items = [{ insumo_id: perfume.insumo_producto_id, cantidad: mlQueSalenDeLaBotella(ml, mlBotella) }];
+    // La botella completa sale en SU frasco: no gasta envase. Y la receta del
+    // tamaño no aplica aunque exista una "100ML" de contratipo — ese frasco es
+    // el del contratipo, y descontarlo por vender un original lo dejaría
+    // descuadrado sin que nadie lo tocara.
+    if (esBotellaCompleta(ml, mlBotella)) return { sinEsencia: false, nombre: perfume.nombre, items };
     const envaseDecant = presentacion?.perfumes?.[0]?.envase_insumo_id ?? formula?.envase_insumo_id;
     if (envaseDecant) items.push({ insumo_id: envaseDecant, cantidad: 1 });
     return { sinEsencia: false, nombre: perfume.nombre, items };

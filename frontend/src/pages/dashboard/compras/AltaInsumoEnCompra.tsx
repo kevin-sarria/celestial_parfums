@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,9 @@ import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import BuscadorSelect from '../../../components/BuscadorSelect';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
+import { useCatalogoCompleto } from '../../../application/hooks/useCatalogoCompleto';
+import { toSlug } from '../../../utils/slug';
+import { CamposOriginal } from './CamposOriginal';
 
 /**
  * Dar de alta un insumo SIN salir de la factura.
@@ -24,7 +27,13 @@ import type { Insumo } from '../../../domain/entities/cotizacion.types';
 
 interface NuevoInsumo {
   nombre: string;
-  tipo: 'materia_prima' | 'envase' | 'accesorio';
+  /**
+   * `original` no es un tipo de la base: es una materia prima en ml con el
+   * tamaño de su botella, que además estrena su ficha de original. Se ofrece
+   * aparte porque así lo piensa el dueño —"me llegó un perfume original"—, no
+   * como "materia prima sin gama".
+   */
+  tipo: 'materia_prima' | 'envase' | 'accesorio' | 'original';
   unidad: 'ml' | 'unidad';
   /** Gama de la esencia. Con gama elegida, el insumo ES una esencia. */
   gama_id: number | null;
@@ -34,6 +43,8 @@ interface NuevoInsumo {
   crear_perfume: boolean;
   /** Solo accesorios: a cuánto se le vende. Texto porque es un input. */
   precio_venta: string;
+  /** Solo originales: cuántos ml trae la botella. */
+  ml_botella: string;
 }
 
 const GENERO_TEXTO: Record<string, string> = {
@@ -52,6 +63,22 @@ const sinSufijoEsencia = (s: string) =>
  * "– Esencia" con el que están guardadas las otras 213, y el producto del
  * catálogo lleva el nombre limpio, que es el que ve el cliente.
  */
+/**
+ * Los nombres de un original: "Khamrah" → material "Khamrah – Original 100 ml"
+ * y ficha "Khamrah Original". El "Original" va en el nombre de la ficha porque
+ * casi siempre existe ya el contratipo "Khamrah", y dos fichas con el mismo
+ * nombre tendrían la misma dirección en la tienda.
+ */
+const sinSufijoOriginal = (s: string) => s.replace(/\s*[–—-]?\s*original\s*$/i, '').trim();
+const nombresDeOriginal = (escrito: string, ml: number) => {
+  const fragancia = sinSufijoOriginal(escrito.trim());
+  return {
+    fragancia,
+    insumo: fragancia ? `${fragancia} – Original${ml > 0 ? ` ${ml} ml` : ''}` : '',
+    producto: fragancia ? `${fragancia} Original` : '',
+  };
+};
+
 const nombresDe = (escrito: string) => {
   const limpio = escrito.trim();
   const fragancia = sinSufijoEsencia(limpio);
@@ -69,8 +96,10 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
 }) {
   const [nuevo, setNuevo] = useState<NuevoInsumo>({
     nombre: '', tipo: 'materia_prima', unidad: 'ml',
-    gama_id: null, genero: '', crear_perfume: true, precio_venta: '',
+    gama_id: null, genero: '', crear_perfume: true, precio_venta: '', ml_botella: '',
   });
+  /** De qué contratipo copiar la ficha del original. null = el que se sugiere solo. */
+  const [copiarDe, setCopiarDe] = useState<number | '' | null>(null);
   const [creando, setCreando] = useState(false);
   const [gamas, setGamas] = useState<Gama[]>([]);
 
@@ -86,6 +115,18 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
 
   /** Las gamas se piden al abrirlo: casi ninguna compra da de alta material. */
   useEffect(() => { void cargarGamas(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const esOriginal = nuevo.tipo === 'original';
+  const mlBotella = Number(nuevo.ml_botella);
+  const deOriginal = nombresDeOriginal(nuevo.nombre, mlBotella);
+  // El catálogo solo se pide si de verdad llegó un original
+  const { perfumes } = useCatalogoCompleto(esOriginal);
+  const fragancias = useMemo(
+    () => perfumes?.filter((p) => p.linea === 'contratipo' || p.linea === '1.1') ?? null, [perfumes],
+  );
+  /** Si ya vendes esa fragancia, se propone sola: es el caso de casi todos. */
+  const sugerido = fragancias?.find((p) => toSlug(p.nombre) === toSlug(deOriginal.fragancia));
+  const copiarEfectivo = copiarDe ?? sugerido?.id ?? '';
 
   /** Con gama elegida el material ES una esencia: solo entonces hay perfume. */
   const esEsencia = nuevo.tipo === 'materia_prima' && nuevo.gama_id !== null;
@@ -104,11 +145,21 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
     && !!nuevo.nombre.trim() && precioVenta > 0;
 
   /** Crea el insumo con precio 0: su costo lo fija ESTA compra al guardarse. */
+  /** Lo que viaja para una botella original: material en ml + su ficha. */
+  const cuerpoOriginal = () => ({
+    tipo: 'materia_prima', unidad: 'ml', nombre: deOriginal.insumo, gama_id: null, genero: null,
+    ml_botella: mlBotella, crear_perfume: true, perfume_nombre: deOriginal.producto,
+    copiar_de_perfume_id: copiarEfectivo || null, alcance: 'unidad', precio: 0,
+  });
+
   const crearInsumo = async () => {
-    if (!nombres.insumo) { toast.error('Ponle un nombre al insumo', { id: 'insumo-nuevo' }); return; }
+    if (esOriginal) {
+      if (!deOriginal.fragancia) { toast.error('Escribe qué perfume llegó', { id: 'insumo-nuevo' }); return; }
+      if (!(mlBotella > 0)) { toast.error('Escribe cuántos ml trae la botella', { id: 'insumo-nuevo' }); return; }
+    } else if (!nombres.insumo) { toast.error('Ponle un nombre al insumo', { id: 'insumo-nuevo' }); return; }
     setCreando(true);
     try {
-      const res = await http.post<{ message?: string; data: Insumo }>(urls.costeo.crearInsumo, {
+      const res = await http.post<{ message?: string; data: Insumo }>(urls.costeo.crearInsumo, esOriginal ? cuerpoOriginal() : {
         tipo: nuevo.tipo,
         unidad: nuevo.unidad,
         // El sufijo "– Esencia" solo se agrega cuando de verdad lo es
@@ -134,19 +185,22 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
     <div className="rounded-lg border border-primary/40 bg-card p-3">
       <p className="mb-2.5 text-[13px] font-medium text-foreground">Insumo nuevo</p>
       <FieldRow>
-        <Field label={esEsencia ? '¿Qué fragancia llegó?' : '¿Cómo se llama?'} className="min-w-52 flex-1">
-          <Input autoFocus value={nuevo.nombre} maxLength={120}
-            placeholder={esEsencia ? 'Ej: Khamrah, Eros Caballero' : 'Ej: Diluyente, Frasco luxury 30 ml'}
+        <Field label={esEsencia ? '¿Qué fragancia llegó?' : esOriginal ? '¿Qué perfume llegó?' : '¿Cómo se llama?'} className="min-w-52 flex-1">
+          <Input autoFocus value={nuevo.nombre} maxLength={100}
+            placeholder={esEsencia || esOriginal ? 'Ej: Khamrah, Eros Caballero' : 'Ej: Diluyente, Frasco luxury 30 ml'}
             onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} />
         </Field>
-        <Field label="¿Qué es?" className="w-44">
+        <Field label="¿Qué es?" className="w-56">
           <SelectSimple value={nuevo.tipo}
             onChange={(e) => setNuevo({ ...nuevo, tipo: e.target.value as NuevoInsumo['tipo'] })}>
             <option value="materia_prima">Materia prima (esencia, alcohol…)</option>
             <option value="envase">Envase (frasco, tapa)</option>
             <option value="accesorio">Accesorio (bolsa, tarjeta)</option>
+            <option value="original">Perfume original (botella)</option>
           </SelectSimple>
         </Field>
+        {/* Un original siempre se mide en ml: de ahí salen los decants */}
+        {!esOriginal && (
         <Field label="¿Cómo se mide?" className="w-40">
           <SelectSimple value={nuevo.unidad}
             onChange={(e) => setNuevo({ ...nuevo, unidad: e.target.value as NuevoInsumo['unidad'] })}>
@@ -154,6 +208,7 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
             <option value="unidad">Por unidad</option>
           </SelectSimple>
         </Field>
+        )}
         {/* La gama solo aplica a materia prima, y es lo que distingue una
             ESENCIA del diluyente o el sellador: con gama elegida el sistema
             ya sabe cuánto cuesta por ml esa calidad y puede cotizar al
@@ -186,6 +241,19 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
           </Field>
         )}
       </FieldRow>
+
+      {esOriginal && (
+        <div className="mt-2.5">
+          <CamposOriginal
+            mlBotella={nuevo.ml_botella}
+            onMlBotella={(v) => setNuevo({ ...nuevo, ml_botella: v })}
+            fragancias={fragancias}
+            copiarDe={copiarEfectivo}
+            onCopiarDe={setCopiarDe}
+            nombres={{ insumo: deOriginal.insumo, producto: deOriginal.producto }}
+          />
+        </div>
+      )}
 
       {/* Con gama elegida es una esencia, y toda esencia tiene su perfume.
           Crearlo aquí es lo que deja la cadena completa desde que llega el

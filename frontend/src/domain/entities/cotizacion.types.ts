@@ -19,6 +19,8 @@ export interface Insumo {
   gama_nombre?: string | null;
   /** Para quién es la fragancia de esta esencia. Null = todavía sin decir. */
   genero?: 'dama' | 'caballero' | 'unisex' | null;
+  /** Solo botellas de un perfume original: cuántos ml trae UNA. */
+  ml_botella?: number | null;
 }
 
 export interface EscalaPrecio {

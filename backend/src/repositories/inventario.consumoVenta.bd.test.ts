@@ -129,6 +129,26 @@ describe('venta de productos que no se fabrican', () => {
     expect(costo).toBe(2 * (12 * 6316 + 1200));
   });
 
+  it('la BOTELLA COMPLETA de un original sale entera: sin merma y sin frasco de decant', async () => {
+    const botella = await crearInsumo('Khamrah – Original 100 ml', { precio: 1500, stock: 200 });
+    await prisma.insumoCosto.update({ where: { id: botella.id }, data: { ml_botella: 100 } });
+    // Existe una "100ML" de contratipo con SU frasco: vender el original no lo toca
+    const frascoContratipo = await crearInsumo('Frasco contratipo 100 ml', { tipo: 'envase', precio: 3000, stock: 10 });
+    const formula = await prisma.formulaVolumen.create({
+      data: { nombre: '100 ml', ml_total: 100, esencia_ml: 50, envase_insumo_id: frascoContratipo.id },
+    });
+    await prisma.presentacion.create({ data: { nombre: '100ML', ml: 100, formula_volumen_id: formula.id } });
+    const original = await prisma.perfume.create({
+      data: { nombre: 'Khamrah Original', precio: 0, tipo_producto: 'fraccionado', insumo_producto_id: botella.id },
+    });
+
+    const { costo } = await vender([{ perfume_id: original.id, ml: 100, cantidad: 1 }]);
+
+    expect((await estadoDe(botella.id)).stock).toBe(100); // 200 − 100, sin los 2 del trasvase
+    expect((await estadoDe(frascoContratipo.id)).stock).toBe(10);
+    expect(costo).toBe(100 * 1500);
+  });
+
   it('un fraccionado SIN talla no se puede descontar: no se sabe cuántos ml lleva', async () => {
     const botella = await crearInsumo('Sauvage original 200 ml', { precio: 6316, stock: 95 });
     const decant = await prisma.perfume.create({

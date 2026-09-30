@@ -13,6 +13,8 @@ import AddToCartModal from '../components/AddToCartModal';
 import CartFab from '../components/CartFab';
 import CatalogHeader from '../components/CatalogHeader';
 import Estrellas from '../components/Estrellas';
+import EtiquetaLinea from '../components/EtiquetaLinea';
+import { etiquetaTalla } from '../domain/entities/linea';
 import ResenasProducto from '../components/resenas/ResenasProducto';
 import { usePerfumeDetail } from '../application/hooks/usePerfumeDetail';
 import { useAuthContext } from '../application/context/useAuthContext';
@@ -98,19 +100,8 @@ export default function PerfumeDetailPage() {
                     {GENERO_LABELS[perfume.genero]}
                   </span>
                 )}
-                {perfume.categoria && (
-                  <Badge variant="outline" className="rounded-full text-[11px] text-muted-foreground">
-                    {perfume.categoria}
-                  </Badge>
-                )}
-                {perfume.esencia_premium && (
-                  <Badge
-                    className="rounded-full border-none bg-ink px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-background"
-                    title="Elaborado con la esencia de mayor calidad del laboratorio"
-                  >
-                    Esencia premium
-                  </Badge>
-                )}
+                <EtiquetaLinea linea={perfume.linea} esenciaPremium={perfume.esencia_premium}
+                  categoria={perfume.categoria} className="px-3 py-1 text-[11px]" />
               </div>
 
               <div className="flex items-start justify-between gap-3">
@@ -139,7 +130,9 @@ export default function PerfumeDetailPage() {
 
               <div className="flex items-baseline gap-3">
                 {perfume.varios_precios && (
-                  <span className="text-[13px] text-muted-foreground">desde</span>
+                  <span className="text-[13px] text-muted-foreground">
+                    {perfume.linea === 'original' ? 'decants desde' : 'desde'}
+                  </span>
                 )}
                 <span className="font-display text-3xl font-medium text-primary">
                   {formatPrice(precioFinal)}
@@ -159,7 +152,7 @@ export default function PerfumeDetailPage() {
                       key={pp.presentacion}
                       className="rounded-full border border-border bg-card px-3 py-1 text-[12.5px] text-ink"
                     >
-                      {pp.presentacion} · <strong className="font-semibold text-primary">
+                      {etiquetaTalla(perfume.linea, pp)} · <strong className="font-semibold text-primary">
                         {formatPrice(finalPrice(pp.precio, perfume.descuento))}
                       </strong>
                     </span>
@@ -319,6 +312,7 @@ export default function PerfumeDetailPage() {
             genero: perfume.genero,
             presentaciones: perfume.presentaciones,
             esenciaPremium: perfume.esencia_premium,
+            linea: perfume.linea,
           }}
         />
       )}

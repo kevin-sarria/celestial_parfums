@@ -42,6 +42,8 @@ export const precioPresentacionSchema = z.object({
    * disponible, y al vender —que sí busca la talla exacta— no había nada.
    */
   motivo_agotado: z.enum(['sin_esencia', 'sin_armados', 'sin_producto']).nullable().default(null),
+  /** Esta talla de un original es la botella entera, no un decant. */
+  botella_completa: z.boolean().default(false),
 });
 
 export type PrecioPresentacion = z.infer<typeof precioPresentacionSchema>;
@@ -74,6 +76,13 @@ export const perfumeSchema = z.object({
   tipo_producto: z.enum(['fabricado', 'comprado', 'fraccionado']).default('fabricado'),
   insumo_producto_id: z.number().nullable().default(null),
   ml_utiles: z.number().nullable().default(null),
+  /**
+   * A qué línea pertenece: lo que la tarjeta le dice al cliente. La deduce el
+   * servidor de cómo se consigue el producto, no del nombre de su categoría.
+   */
+  linea: z.enum(['contratipo', '1.1', 'original', 'accesorio', 'producto']).default('contratipo'),
+  /** Solo originales: cuántos ml trae la botella. */
+  ml_botella: z.number().nullable().default(null),
   duracion: z.string().nullable(),
   proyeccion: z.string().nullable(),
   imagen_url: z.string().nullable(),

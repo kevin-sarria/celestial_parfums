@@ -1,6 +1,7 @@
 import { buildPerfumeIndex, matchPerfume } from '../utils/perfumeMatcher';
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
+import { fichaHeredada } from './fichaHeredada';
 
 /**
  * Emparejar esencias con su perfume del catálogo — la puesta al día.
@@ -28,7 +29,7 @@ const RUIDO = new Set([
   'for', 'and', 'y',
 ]);
 
-const palabras = (s: string) => s
+export const palabras = (s: string) => s
   .toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
   .replace(/[^a-z0-9]+/g, ' ')
   .split(' ')
@@ -303,28 +304,9 @@ export const crearProductoArmado = async (datos: {
   // "bon bón 1.1" como dos fichas con el stock partido.
   if (yaEsta) return { id: yaEsta.id, nombre: yaEsta.nombre, accion: 'ya_existe' as const };
 
-  /**
-   * La ficha se COPIA del perfume corriente, no se enlaza a él.
-   *
-   * Un 1.1 y su corriente son el mismo jugo: descripción, notas, ocasiones,
-   * género, duración y proyección son idénticas, y volver a escribirlas es
-   * justo la fricción que tiene al dueño con 229 perfumes y cero fichas 1.1.
-   * Copia y no enlace porque son dos productos que se venden distinto: el día
-   * que se separen, un enlace vivo obligaría a decidir cuál manda.
-   *
-   * Se copia en el SERVIDOR para que el alta por Excel y por API hereden igual,
-   * por la misma razón por la que `naceComoProducto` vive aquí y no en el
-   * formulario.
-   */
-  const origen = datos.copiar_de_perfume_id
-    ? await prisma.perfume.findUnique({
-      where: { id: datos.copiar_de_perfume_id },
-      include: {
-        tipos_aroma: { select: { tipo_aroma_id: true } },
-        ocasiones: { select: { ocasion_id: true } },
-      },
-    })
-    : null;
+  // La ficha se COPIA del perfume corriente (ver `fichaHeredada`). Se copia
+  // en el SERVIDOR para que el alta por Excel y por API hereden igual.
+  const heredado = await fichaHeredada(datos.copiar_de_perfume_id);
 
   const creado = await prisma.perfume.create({
     data: {
@@ -335,23 +317,7 @@ export const crearProductoArmado = async (datos: {
       tipo_producto: datos.comprado ? 'comprado' : 'fabricado',
       categoria_id: datos.categoria_id ?? null,
       insumo_esencia_id: datos.comprado ? null : (datos.insumo_esencia_id ?? null),
-      // Lo que comparten los dos. El precio, la foto y el envase NO: eso es lo
-      // único que de verdad cambia entre un 1.1 y su corriente.
-      descripcion: origen?.descripcion ?? null,
-      duracion: origen?.duracion ?? null,
-      proyeccion: origen?.proyeccion ?? null,
-      genero: origen?.genero ?? null,
-      // La FOTO también se hereda (decisión del dueño, 2026-08-25): es el mismo
-      // jugo y el mismo frasco de referencia, así que una ficha 1.1 sin imagen
-      // se vería rota en la tienda por una diferencia que al cliente no le
-      // importa. Se cambia luego si él le toma una foto propia.
-      imagen_url: origen?.imagen_url ?? null,
-      ...(origen?.tipos_aroma.length
-        ? { tipos_aroma: { create: origen.tipos_aroma.map((t) => ({ tipo_aroma_id: t.tipo_aroma_id })) } }
-        : {}),
-      ...(origen?.ocasiones.length
-        ? { ocasiones: { create: origen.ocasiones.map((o) => ({ ocasion_id: o.ocasion_id })) } }
-        : {}),
+      ...heredado,
       presentaciones: {
         create: {
           presentacion_id: datos.presentacion_id,

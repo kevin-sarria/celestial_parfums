@@ -12,6 +12,7 @@ import { CheckGroup } from './CheckGroup';
 import { SelectorTipoProducto } from './SelectorTipoProducto';
 import { CAMPOS_POR_TIPO, TIPOS_ALTA, tipoDeForm, valoresDeTipo } from './tipoDeProducto';
 import { TallasDelPerfume } from './TallasDelPerfume';
+import { CopiarFichaDe } from './CopiarFichaDe';
 import type { FichaPerfume } from './useFichaPerfume';
 
 interface FichaPerfumeModalProps {
@@ -63,7 +64,10 @@ export function FichaPerfumeModal({
     >
       {eligiendo ? (
         <SelectorTipoProducto onElegir={(t) => {
-          setForm(f => ({ ...f, ...valoresDeTipo(t) }));
+          // Un original nace en su categoría: sin ella la tienda no lo
+          // agruparía con los demás originales ni heredaría su descuento.
+          const original = t === 'decant' ? categorias.find(c => c.nombre.trim().toLowerCase() === 'original') : undefined;
+          setForm(f => ({ ...f, ...valoresDeTipo(t), ...(original ? { categoria_id: original.id } : {}) }));
           ficha.setTipoElegido(t);
         }} />
       ) : (
@@ -93,6 +97,11 @@ export function FichaPerfumeModal({
           </p>
         </Field>
       </FieldRow>
+      {/* Si esta fragancia ya tiene otra ficha (el contratipo de un original,
+          el corriente de un 1.1), no hay por qué volver a escribirla. */}
+      {campos.atributosDeFragancia && (
+        <CopiarFichaDe setForm={setForm} aromas={aromas} ocasiones={ocasiones} excluirId={ficha.modal.editId} />
+      )}
       <Field label="Descripción">
         <Textarea value={form.descripcion} onChange={setF('descripcion')} rows={2} maxLength={500} />
       </Field>
@@ -182,6 +191,9 @@ export function FichaPerfumeModal({
           envases={ficha.envases}
           accesorios={ficha.accesorios}
           precioDeLista={ficha.precioDeLista}
+          botella={tipo === 'decant'
+            ? ficha.insumosProducto.find(i => i.id === form.insumo_producto_id) ?? null
+            : null}
         />
       )}
 
