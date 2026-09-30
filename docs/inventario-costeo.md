@@ -397,6 +397,16 @@ costo. Editar o borrar una venta revierte el consumo (`revertirVenta`).
     contratipo con su frasco en la receta. Sin esto, 100 ml en bodega nunca alcanzarían para la
     botella de 100 y se daría por agotada con la botella en la mano.
 
+### Las ventas de 1.1 costeadas con accesorios que no llevaban (2026-09-29)
+
+El dueño eligió corregirlas (opción B). `ventasDe11Costo.ts` recorre el libro de frascos armados
+de cada 1.1 **en orden de registro (id)** —no de fecha: hay ventas anotadas con fecha anterior a su
+lote— y calcula el promedio como `aplicarMovimientoTerminado`. Donde una venta salió más cara que
+ese promedio, le baja el costo al movimiento y a `ventas.costo_mercancia`. Solo 1.1, solo baja, y
+si la venta no tenía frasco armado antes en el libro, no se toca. Se recalcula en cada consulta
+y va en el mismo aviso y botón de Producciones que los lotes (`accesoriosSobrantes.ts`), después
+de corregir los lotes. Por fecha, en vez de por id, el primer intento puso dos ventas en $0.
+
 ### Originales: cómo entran (2026-09-29)
 
 - **`insumos_costo.ml_botella`**: cuántos ml trae UNA botella de ese original. Solo en las

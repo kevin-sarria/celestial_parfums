@@ -4,6 +4,7 @@ import { r4 } from '../utils/redondeo';
 import { accesoriosDeLote } from './accesoriosDeFicha';
 import { revertirMovimientos } from './inventario.repository';
 import { recalcularPromedioTerminado, tallaDeFormula } from './inventario.terminado';
+import { corregirVentasDe11, revisarVentasDe11 } from './ventasDe11Costo';
 
 type Cliente = Prisma.TransactionClient | typeof prisma;
 const num = (v: unknown) => Number(v ?? 0);
@@ -21,9 +22,11 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
  * corregir, Producciones enseña el aviso; corregido, desaparece solo.
  *
  * Corregir un lote = devolver esos accesorios al inventario y bajarle su costo
- * al lote y a sus frascos. Las VENTAS que ya salieron de esos frascos conservan
- * el costo con el que se vendieron: su costo quedó congelado ese día, como
- * cualquier venta.
+ * al lote y a sus frascos. Desde el 2026-09-29 (decisión del dueño, opción B)
+ * el mismo botón corrige también las VENTAS que ya salieron de esos frascos
+ * (`ventasDe11Costo.ts`): antes conservaban el costo viejo y la ganancia de
+ * esos meses salía más baja de lo real. En producción los lotes ya se habían
+ * corregido el 28-sep, así que allá el aviso vuelve a salir solo por las ventas.
  */
 
 interface Sobrante {
@@ -76,6 +79,9 @@ export const revisarAccesoriosSobrantes = async (cli: Cliente = prisma) => {
     lotes: sobrantes,
     valor: r2(sobrantes.reduce((s, l) => s + l.valor, 0)),
     unidades: sobrantes.reduce((s, l) => s + l.insumos.reduce((t, i) => t + i.unidades, 0), 0),
+    // Solo las que se ven YA: con lotes sin corregir, sus ventas aparecen
+    // después de corregirlos (el promedio del libro todavía trae el sobrecosto).
+    ventas: await revisarVentasDe11(cli),
   };
 };
 
@@ -105,5 +111,7 @@ export const quitarAccesoriosSobrantes = () => prisma.$transaction(async (tx) =>
     }
   }
 
-  return { lotes: revision.lotes.length, valor: revision.valor, unidades: revision.unidades };
+  // DESPUÉS de los lotes: el costo real de cada frasco vendido sale del libro ya corregido
+  const ventas = await corregirVentasDe11(tx);
+  return { lotes: revision.lotes.length, valor: revision.valor, unidades: revision.unidades, ...ventas };
 }, { timeout: 60_000 });

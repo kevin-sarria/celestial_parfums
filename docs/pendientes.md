@@ -17,6 +17,8 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Dueño: desplegar, registrar las compras de los 15 originales, ponerles precio y publicarlos | pendiente |
 | Panel partido por pestañas (`pestanas.ts`): el archivo del panel pasó de 560 kB a 41 kB | hecho |
 | "¿Qué es?" se salía del recuadro en el alta de material (lo vio el dueño): `FieldRow` ya no deja desbordar | hecho |
+| Las 11 ventas de 1.1 costeadas con bolsa y perfumero: el mismo aviso de Producciones las muestra y "Corregir" les baja el costo (`ventasDe11Costo.ts`). Medido en el respaldo del 22-sep con los lotes ya corregidos: **11 ventas, $23.250**, y corregir dos veces no hace nada | hecho |
+| Dueño: tras desplegar, ir a Producciones y pulsar **Corregir** en el aviso de las ventas de 1.1 | pendiente |
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 
@@ -63,7 +65,6 @@ Ya hechos por él el 2026-09-28: el **Corregir** de accesorios en Producciones, 
 | # | Qué |
 |---|---|
 | 8 | Marketing: el dueño dice que el negocio está estancado porque no sabe cómo publicitar. Candidato a la skill `catalogo-recompra` + plan de publicidad |
-| 10 | Opcional: rebajar el costo de las 11 ventas de frascos 1.1 que cargaron bolsa y perfumero (hoy conservan el costo con que se vendieron, a propósito) |
 
 Hechos el 2026-09-28: kit del combo, `/accesorios` (Ola 3), clasificaciones en una entrada, y las
 tres decisiones del dueño: cupón igual en créditos y ventas, merma de 2 ml por decant, y sin
@@ -168,7 +169,7 @@ Pedido del dueño el 2026-08-30. El dueño eligió la **opción A** (se configur
   respaldo del 22-sep: 27 lotes 1.1, 27 bolsas + 27 perfumeros, **$54.300** de sobrecosto (la nota
   vieja decía 4 lotes y solo contaba la bolsa). En una copia del respaldo: las bolsas pasaron de 11
   a 38 y el lote 32 de $54.077 a $51.677.
-- Las 11 ventas de esos frascos que ya se hicieron conservan su costo (congelado ese día).
+- Las 11 ventas de esos frascos: el dueño decidió corregirlas (2026-09-29, opción B). Ver abajo.
 - Pruebas: `accesoriosDeFicha.bd.test.ts` (7). Una vez, en un recorrido temporal, el aviso no
   apareció en Producciones; no se pudo reproducir en tres corridas más. Si pasa, recargar la página.
 
