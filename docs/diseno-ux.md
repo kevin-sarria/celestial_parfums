@@ -670,6 +670,14 @@ Nubank, los bloques de historial de transacciones de shadcn) es el que se tomó:
   abono equivocado se hace desde el historial, donde se ve cuál es.
 - La columna "Abonado" de la tabla dice debajo "N pagos".
 
+## Campos en `FieldRow`: sin ancho fijo (2026-09-29)
+
+`FieldRow` es una cuadrícula de dos columnas. Un `Field` dentro de ella **no lleva `w-40`,
+`w-52`, `min-w-52`…**: la columna ya decide el ancho, y uno fijo más ancho que la columna
+empuja el campo fuera del recuadro (le pasó al dueño con "¿Qué es?" en el alta de material, en
+un modal angosto). `FieldRow` además pone `min-w-0` a sus hijos para que un desplegable con
+texto largo se recorte en vez de estirar la celda.
+
 ## Etiqueta de línea en la tienda (2026-09-29)
 
 `components/EtiquetaLinea.tsx` es la ÚNICA pieza que pinta la línea de un producto (tarjeta y

@@ -15,6 +15,8 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Costo de cada talla al lado del precio en la ficha | hecho |
 | No se publica nada con una talla en $0 | hecho |
 | Dueño: desplegar, registrar las compras de los 15 originales, ponerles precio y publicarlos | pendiente |
+| Panel partido por pestañas (`pestanas.ts`): el archivo del panel pasó de 560 kB a 41 kB | hecho |
+| "¿Qué es?" se salía del recuadro en el alta de material (lo vio el dueño): `FieldRow` ya no deja desbordar | hecho |
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 
@@ -60,9 +62,7 @@ Ya hechos por él el 2026-09-28: el **Corregir** de accesorios en Producciones, 
 
 | # | Qué |
 |---|---|
-| 7 | Originales y decants: el flujo botella → decants, con proveedor y factura por botella (**no es pronto**, dueño). La merma de 2 ml por decant ya está |
 | 8 | Marketing: el dueño dice que el negocio está estancado porque no sabe cómo publicitar. Candidato a la skill `catalogo-recompra` + plan de publicidad |
-| 9 | Partir el dashboard con `import()` perezoso: el paquete pasa de 500 kB (no urge) |
 | 10 | Opcional: rebajar el costo de las 11 ventas de frascos 1.1 que cargaron bolsa y perfumero (hoy conservan el costo con que se vendieron, a propósito) |
 
 Hechos el 2026-09-28: kit del combo, `/accesorios` (Ola 3), clasificaciones en una entrada, y las

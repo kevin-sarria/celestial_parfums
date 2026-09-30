@@ -41,8 +41,10 @@ beforeAll(async () => {
     },
   });
 
-  // El rol 1 es el administrador; cualquier otro es cliente.
-  const rolCliente = await prisma.role.create({ data: { id: 2, nombre: 'cliente' } });
+  // El rol 1 es el administrador; cualquier otro es cliente. `upsert` y no
+  // `create`: una corrida lo encontró ya creado (2026-09-29, intermitente) y el
+  // recorrido entero cayó antes de empezar por algo que no es lo que prueba.
+  const rolCliente = await prisma.role.upsert({ where: { id: 2 }, update: {}, create: { id: 2, nombre: 'cliente' } });
   const clienta = await prisma.user.create({
     data: {
       nombre: 'Clienta',

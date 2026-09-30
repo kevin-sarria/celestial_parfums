@@ -99,7 +99,11 @@ export function Field({ label, children, className }: FieldProps) {
 
 /** Fila de dos campos lado a lado (colapsa en móvil). */
 export function FieldRow({ children, className }: SectionProps) {
-  return <div className={cn('grid gap-3 sm:grid-cols-2', className)}>{children}</div>;
+  // `min-w-0` en cada hijo: una celda de cuadrícula no se encoge por debajo de
+  // su contenido, y un desplegable con texto largo empujaba el campo fuera del
+  // recuadro (2026-09-29, "¿Qué es?" en el alta de material). Por la misma
+  // razón los campos de aquí dentro NO llevan ancho fijo (w-40, w-52…).
+  return <div className={cn('grid gap-3 sm:grid-cols-2 [&>*]:min-w-0', className)}>{children}</div>;
 }
 
 /**

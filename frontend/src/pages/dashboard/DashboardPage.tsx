@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import type { Perfume } from '../../domain/entities/perfume.schema';
@@ -14,40 +14,43 @@ import { MenuLateral } from './MenuLateral';
 import { TAB_META, TAB_POR_DEFECTO, esClasificacion, esTabValido } from './navegacion';
 import { SelectorClasificaciones } from './SelectorClasificaciones';
 import CentroNotificaciones from './CentroNotificaciones';
-import { PerfumesTab } from './tabs/PerfumesTab';
-import { ProductosTab } from './tabs/ProductosTab';
-import { CombosTab } from './tabs/CombosTab';
-import { PreciosTab } from './tabs/PreciosTab';
-import { DescuentosTab } from './tabs/DescuentosTab';
-import { LookupTab, type ResultadoLookup } from './tabs/LookupTab';
-import { VentasTab } from './tabs/VentasTab';
-import { CreditosTab } from './tabs/CreditosTab';
-import { InicioTab } from './tabs/InicioTab';
-import { RecompraTab } from './tabs/RecompraTab';
-import { PagosTab } from './tabs/PagosTab';
-import { UsuariosTab } from './tabs/UsuariosTab';
-import { PublicidadTab } from './tabs/PublicidadTab';
-import { RecompensasTab } from './tabs/RecompensasTab';
-import { ResenasTab } from './tabs/ResenasTab';
-import { AvisosTab } from './tabs/AvisosTab';
-import { SobreNosotrosTab } from './tabs/SobreNosotrosTab';
-import { BlogTab } from './tabs/BlogTab';
-import { CotizacionesTab } from './tabs/CotizacionesTab';
-import { FormulasVolumenTab } from './tabs/FormulasVolumenTab';
-import { PreciosMayoreoTab } from './tabs/PreciosMayoreoTab';
-import { GamasTab } from './tabs/GamasTab';
-import { CostosProduccionTab } from './tabs/CostosProduccionTab';
-import { DevolucionesTab } from './tabs/DevolucionesTab';
-import { InventarioTab } from './tabs/InventarioTab';
-import { ReposicionTab } from './tabs/ReposicionTab';
-import { AlertasTab } from './tabs/AlertasTab';
+import {
+  PerfumesTab,
+  ProductosTab,
+  CombosTab,
+  PreciosTab,
+  DescuentosTab,
+  LookupTab,
+  VentasTab,
+  CreditosTab,
+  InicioTab,
+  RecompraTab,
+  PagosTab,
+  UsuariosTab,
+  PublicidadTab,
+  RecompensasTab,
+  ResenasTab,
+  AvisosTab,
+  SobreNosotrosTab,
+  BlogTab,
+  CotizacionesTab,
+  FormulasVolumenTab,
+  PreciosMayoreoTab,
+  GamasTab,
+  CostosProduccionTab,
+  DevolucionesTab,
+  InventarioTab,
+  ReposicionTab,
+  AlertasTab,
+  ProduccionesTab,
+  FrascosArmadosTab,
+  ReportesVentasTab,
+  ReportesComprasTab,
+  ReportesClientesTab,
+  RedesTab,
+} from './pestanas';
+import type { ResultadoLookup } from './tabs/LookupTab';
 import { AvisoAlertas } from './tabs/alertas/AvisoAlertas';
-import { ProduccionesTab } from './tabs/ProduccionesTab';
-import { FrascosArmadosTab } from './tabs/FrascosArmadosTab';
-import { ReportesVentasTab } from './tabs/ReportesVentasTab';
-import { ReportesComprasTab } from './tabs/ReportesComprasTab';
-import { ReportesClientesTab } from './tabs/ReportesClientesTab';
-import { RedesTab } from './tabs/RedesTab';
 import PerfumeSpinner from '../../components/PerfumeSpinner';
 import { BrandMark } from '../../components/BrandMark';
 
@@ -290,7 +293,8 @@ export default function DashboardPage() {
         {loading ? (
           <PerfumeSpinner />
         ) : (
-          <>
+          // Cada pestaña baja su propio archivo al abrirla (`pestanas.ts`)
+          <Suspense fallback={<PerfumeSpinner />}>
             {tab === 'perfumes' && (
               <PerfumesTab
                 perfumes={perfumes} page={perfumesPage} total={perfumesTotal} pageSize={perfumesPageSize}
@@ -393,7 +397,7 @@ export default function DashboardPage() {
             {tab === 'alertas' && <AlertasTab />}
             {tab === 'producciones' && <ProduccionesTab />}
             {tab === 'redes' && <RedesTab />}
-          </>
+          </Suspense>
         )}
       </main>
     </div>

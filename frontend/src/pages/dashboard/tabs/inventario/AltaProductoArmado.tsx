@@ -115,7 +115,7 @@ export function AltaProductoArmado({
       </div>
 
       <FieldRow>
-        <Field label="¿Qué talla armas?" className="w-48">
+        <Field label="¿Qué talla armas?">
           <BuscadorSelect
             value={presentacionId}
             placeholder="— Elige la talla —"

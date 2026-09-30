@@ -185,12 +185,12 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
     <div className="rounded-lg border border-primary/40 bg-card p-3">
       <p className="mb-2.5 text-[13px] font-medium text-foreground">Insumo nuevo</p>
       <FieldRow>
-        <Field label={esEsencia ? '¿Qué fragancia llegó?' : esOriginal ? '¿Qué perfume llegó?' : '¿Cómo se llama?'} className="min-w-52 flex-1">
+        <Field label={esEsencia ? '¿Qué fragancia llegó?' : esOriginal ? '¿Qué perfume llegó?' : '¿Cómo se llama?'}>
           <Input autoFocus value={nuevo.nombre} maxLength={100}
             placeholder={esEsencia || esOriginal ? 'Ej: Khamrah, Eros Caballero' : 'Ej: Diluyente, Frasco luxury 30 ml'}
             onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })} />
         </Field>
-        <Field label="¿Qué es?" className="w-56">
+        <Field label="¿Qué es?">
           <SelectSimple value={nuevo.tipo}
             onChange={(e) => setNuevo({ ...nuevo, tipo: e.target.value as NuevoInsumo['tipo'] })}>
             <option value="materia_prima">Materia prima (esencia, alcohol…)</option>
@@ -201,7 +201,7 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
         </Field>
         {/* Un original siempre se mide en ml: de ahí salen los decants */}
         {!esOriginal && (
-        <Field label="¿Cómo se mide?" className="w-40">
+        <Field label="¿Cómo se mide?">
           <SelectSimple value={nuevo.unidad}
             onChange={(e) => setNuevo({ ...nuevo, unidad: e.target.value as NuevoInsumo['unidad'] })}>
             <option value="ml">Por mililitro o gramo</option>
@@ -214,7 +214,7 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
             ya sabe cuánto cuesta por ml esa calidad y puede cotizar al
             mayoreo sin saber todavía qué fragancias van. */}
         {nuevo.tipo === 'materia_prima' && (
-          <Field label="¿De qué gama es?" className="w-52">
+          <Field label="¿De qué gama es?">
             <BuscadorSelect
               opciones={[
                 { id: 0, nombre: 'No es una esencia (diluyente, sellador…)' },
@@ -230,7 +230,7 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
         {/* Solo 3 opciones fijas: aquí el buscador estorbaría más de lo que
             ayuda (la regla del proyecto lo reserva para listas que crecen). */}
         {esEsencia && (
-          <Field label="¿Para quién es?" className="w-40">
+          <Field label="¿Para quién es?">
             <SelectSimple value={nuevo.genero}
               onChange={(e) => setNuevo({ ...nuevo, genero: e.target.value as NuevoInsumo['genero'] })}>
               <option value="">Todavía no sé</option>

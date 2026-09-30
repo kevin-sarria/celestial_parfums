@@ -27,11 +27,11 @@ export function CamposOriginal({ mlBotella, onMlBotella, fragancias, copiarDe, o
   return (
     <>
       <FieldRow>
-        <Field label="¿Cuántos ml trae la botella? *" className="w-52">
+        <Field label="¿Cuántos ml trae la botella? *">
           <Input type="number" min="1" max="2000" inputMode="numeric" value={mlBotella}
             placeholder="Ej: 100" onChange={(e) => onMlBotella(e.target.value)} />
         </Field>
-        <Field label="Copiar la ficha del contratipo" className="min-w-52 flex-1">
+        <Field label="Copiar la ficha del contratipo">
           <BuscadorSelect
             opciones={[
               { id: '', nombre: 'No, empezar la ficha en blanco' },
