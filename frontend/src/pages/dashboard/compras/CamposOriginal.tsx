@@ -54,7 +54,7 @@ export function CamposOriginal({ mlBotella, onMlBotella, fragancias, copiarDe, o
             decants de 3, 5 y 10 ml y la botella completa de {ml} ml
             {copiarDe !== '' && ', con la foto, notas y descripción del contratipo'}.
             Queda <strong className="font-medium text-primary">fuera de la tienda y sin precios</strong>:
-            ponlos en Productos y publícala cuando esté lista.
+            ponlos en Productos y publícala cuando quieras. Las tallas que sigan sin precio no salen en la tienda.
           </>
         ) : (
           'Escribe el nombre del perfume y los ml de la botella, y te digo cómo va a quedar.'

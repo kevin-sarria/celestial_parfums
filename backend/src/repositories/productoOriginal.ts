@@ -21,7 +21,8 @@ import { fichaHeredada } from './fichaHeredada';
  *  - con las tallas de decant de siempre MÁS la botella completa;
  *  - **sin precios y fuera de la tienda**: el dueño los pone talla por talla
  *    (cada original le costó distinto) y lo publica cuando la ficha esté
- *    completa. Publicar con una talla en $0 lo impide `patchPublicadoPerfume`.
+ *    completa. Puede publicarse con una sola talla con precio: las que siguen
+ *    en $0 la tienda las esconde (`mapPerfume`).
  *
  * Si ya vendías esa fragancia en contratipo, `copiar_de_perfume_id` trae su
  * ficha —foto, notas, descripción— para no volver a escribirla.

@@ -1,3 +1,5 @@
+import os from 'node:os';
+import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
 import { abrirDashboard, campo, cerrarNavegador, elegirProducto, irA } from './navegador';
@@ -90,5 +92,22 @@ describe('registrar una venta desde el dashboard', () => {
     expect(venta.perfumes).toHaveLength(1);
     expect(venta.perfumes[0].ml).toBe(30);
     expect(venta.perfumes[0].cantidad).toBe(2);
+  });
+
+  it('en el celular, tocar un producto avisa que entró al pedido', async () => {
+    const { contexto, pagina } = await abrirDashboard();
+    await pagina.setViewportSize({ width: 390, height: 844 });
+    await irA(pagina, '/dashboard/ventas');
+    await pagina.getByRole('button', { name: /registrar venta/i }).click();
+
+    // La lista queda fuera de la pantalla: el aviso es lo único que se ve
+    await elegirProducto(pagina, 'Ventas 1');
+    await pagina.getByText(/^Agregado: Ventas 1/).waitFor();
+    // El buscador sigue abierto en modo agregar: el segundo toque suma uno
+    await pagina.getByRole('option', { name: 'Ventas 1', exact: true }).click();
+    await pagina.getByText(/^Ventas 1.*: ahora van 2$/).waitFor();
+    await pagina.waitForTimeout(600); // que termine de entrar el aviso
+    await pagina.screenshot({ path: path.join(os.tmpdir(), 'celestial-venta-agregado.png') });
+    await contexto.close();
   });
 });

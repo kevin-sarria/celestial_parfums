@@ -31,8 +31,27 @@ const esNuevo = (created: Date) => Date.now() - created.getTime() < NUEVO_DIAS *
  * Así, subir el precio de la lista mueve a todos los perfumes de esa categoría
  * de una sola vez, sin tocar los que tienen precio propio.
  */
+const precioDeTalla = (p: PerfumeRow, r: PerfumeRow['presentaciones'][number]): number => {
+  const deLista = p.categoria?.precios.find((pr) => pr.presentacion_id === r.presentacion_id)?.precio;
+  return Number(r.precio ?? deLista ?? p.precio);
+};
+
+/**
+ * Lo que puede ver la TIENDA de un perfume: sus tallas con precio.
+ *
+ * Una talla en $0 todavía no tiene precio (los decants de un original nacen
+ * así; el dueño los pone uno por uno). Opción B del dueño, 2026-10-02: el
+ * perfume se publica igual y esas tallas se esconden hasta que tengan precio,
+ * en vez de bloquear la publicación entera. Se filtra la FILA antes de mapear
+ * para que el "desde $X", el agotado y la lista de tallas salgan ya sin ellas:
+ * filtrar solo `precios` dejaría un "desde $0" o un perfume disponible por una
+ * talla que el cliente no puede pedir.
+ */
+const soloTallasConPrecio = (p: PerfumeRow): PerfumeRow => ({
+  ...p, presentaciones: p.presentaciones.filter((r) => precioDeTalla(p, r) > 0),
+});
+
 const resolverPrecios = (p: PerfumeRow) => {
-  const lista = new Map((p.categoria?.precios ?? []).map((pr) => [pr.presentacion_id, Number(pr.precio)]));
   return p.presentaciones.map((r) => ({
     presentacion: r.presentacion.nombre,
     /**
@@ -42,7 +61,7 @@ const resolverPrecios = (p: PerfumeRow) => {
      * Null a propósito en las que no son talla ("200/250ML", "Combo Personalizado").
      */
     ml: r.presentacion.ml ?? null,
-    precio: Number(r.precio ?? lista.get(r.presentacion_id) ?? p.precio),
+    precio: precioDeTalla(p, r),
     /** true = ese precio es exclusivo del perfume, no viene de la lista */
     propio: r.precio != null,
     presentacion_id: r.presentacion_id,
@@ -227,7 +246,16 @@ export const motivoAgotado = (p: PerfumeRow): MotivoAgotado => {
 
 export const sinExistenciasParaUno = (p: PerfumeRow): boolean => motivoAgotado(p) !== null;
 
-export const mapPerfume = (p: PerfumeRow) => {
+/** Un perfume tal como lo ve la tienda: sin las tallas que aún están en $0. */
+export const mapPerfume = (p: PerfumeRow) => mapear(soloTallasConPrecio(p));
+
+/**
+ * Un perfume tal como lo ve el PANEL: con todas sus tallas, también las de $0,
+ * porque ahí es donde el dueño les pone precio (y vende por WhatsApp).
+ */
+export const mapPerfumePanel = (p: PerfumeRow) => mapear(p);
+
+const mapear = (p: PerfumeRow) => {
   const precios = resolverPrecios(p);
   const motivo = motivoAgotado(p);
   // El precio "de portada" (cards, PDF, SEO) es el más barato de sus

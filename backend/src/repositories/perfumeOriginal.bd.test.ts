@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma';
 import { estadoDe, limpiarBase } from '../test/baseDePrueba';
 import { crearInsumo } from './costeo.repository';
 import { createPago } from './pago.repository';
-import { patchPublicadoPerfume } from './perfume.repository';
+import { patchPublicadoPerfume, selectAllParfums } from './perfume.repository';
 
 /**
  * LOS PERFUMES ORIGINALES (dueño, 2026-09-29).
@@ -114,15 +114,33 @@ describe('comprar originales por botella', () => {
 describe('publicar un original', () => {
   beforeEach(async () => { await limpiarBase(); });
 
-  it('no deja publicarlo mientras una talla esté en $0, y sí cuando todas tienen precio', async () => {
+  it('no deja publicarlo sin ningún precio, y sí con una sola talla con precio', async () => {
     const res = await crearInsumo(botellaOriginal('Khamrah – Original 100 ml', { perfume_nombre: 'Khamrah Original' }));
     const id = res.perfume!.id;
 
-    await expect(patchPublicadoPerfume(String(id), true)).rejects.toThrow(/Ponle precio a/);
+    await expect(patchPublicadoPerfume(String(id), true)).rejects.toThrow(/al menos a una talla/);
 
-    await prisma.perfumePresentacion.updateMany({ where: { perfume_id: id }, data: { precio: 25000 } });
+    const decant5 = await prisma.presentacion.findFirstOrThrow({ where: { ml: 5 } });
+    await prisma.perfumePresentacion.updateMany({ where: { perfume_id: id, presentacion_id: decant5.id }, data: { precio: 25000 } });
     await patchPublicadoPerfume(String(id), true);
     expect((await prisma.perfume.findUniqueOrThrow({ where: { id } })).publicado).toBe(true);
+  });
+
+  it('la tienda esconde las tallas en $0 y el panel las sigue mostrando (opción B)', async () => {
+    const res = await crearInsumo(botellaOriginal('Khamrah – Original 100 ml', { perfume_nombre: 'Khamrah Original' }));
+    const id = res.perfume!.id;
+    const decant5 = await prisma.presentacion.findFirstOrThrow({ where: { ml: 5 } });
+    await prisma.perfumePresentacion.updateMany({ where: { perfume_id: id, presentacion_id: decant5.id }, data: { precio: 25000 } });
+    await patchPublicadoPerfume(String(id), true);
+
+    const tienda = (await selectAllParfums()).data.find((p) => p.id === id)!;
+    expect(tienda.precios.map((t) => t.ml)).toEqual([5]);
+    expect(tienda.precio).toBe(25000); // el "desde" no queda en $0
+    expect(tienda.presentaciones).toHaveLength(1);
+
+    const panel = (await selectAllParfums(true)).data.find((p) => p.id === id)!;
+    expect(panel.precios.length).toBeGreaterThan(1);
+    expect(panel.precios.filter((t) => t.precio === 0).length).toBe(panel.precios.length - 1);
   });
 
   it('sacarlo de la tienda nunca se bloquea', async () => {

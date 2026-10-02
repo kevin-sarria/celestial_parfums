@@ -9,7 +9,7 @@ import { badRequest, conflict } from '../utils/httpError';
 import { filtroEnum, filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
 // Cómo se lee un perfume (precio efectivo, agotado, frascos armados) vive en su
 // propio archivo: aquí solo se consulta y se escribe.
-import { mapPerfume, perfumeInclude, NUEVO_DIAS } from './perfume.mapeo';
+import { mapPerfume, mapPerfumePanel, perfumeInclude, NUEVO_DIAS } from './perfume.mapeo';
 // Las dos familias del dashboard (y la pregunta gemela para una ficha nueva)
 // viven en su propio archivo: no cabían aquí sin pasar las ~500 líneas.
 import { WHERE_FAMILIA, naceComoProducto, type FamiliaProducto } from './perfume.familia';
@@ -71,7 +71,8 @@ export const selectAllParfums = async (todos = false) => {
     include: perfumeInclude,
     orderBy: { nombre: 'asc' },
   });
-  return { data: await conRatings(perfumes.map(mapPerfume)) };
+  // El panel ve también las tallas en $0: es donde se les pone precio
+  return { data: await conRatings(perfumes.map(todos ? mapPerfumePanel : mapPerfume)) };
 };
 
 /** Filtros del catálogo público (por nombre, tal como los muestra el frontend). */
@@ -152,7 +153,7 @@ export const selectParfumsPaginated = async (
     prisma.perfume.findMany({ where, include: perfumeInclude, orderBy, skip, take: limit }),
     prisma.perfume.count({ where }),
   ]);
-  return paginatedResponse(await conRatings(rows.map(mapPerfume)), total, page, limit);
+  return paginatedResponse(await conRatings(rows.map(todos ? mapPerfumePanel : mapPerfume)), total, page, limit);
 };
 
 /** Perfumes por lista de ids, preservando el orden dado (favoritos, etc.). */

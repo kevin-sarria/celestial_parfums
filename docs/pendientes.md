@@ -13,12 +13,14 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Su ficha nace sola con decants + botella, copiando la del contratipo | hecho |
 | Tarjetas y ficha pública con etiqueta Original / 1.1 / Contratipo, tallas "Decant 5 ml" / "Botella 100 ml" | hecho |
 | Costo de cada talla al lado del precio en la ficha | hecho |
-| No se publica nada con una talla en $0 | hecho |
-| Dueño: desplegar, registrar las compras de los 15 originales, ponerles precio y publicarlos | pendiente |
+| Tallas en $0: la tienda las esconde y el perfume se publica igual con las que tengan precio (opción B del dueño, 2026-10-02; antes bloqueaba publicar) | hecho |
+| Al agregar un producto a una venta o crédito sale "Agregado: X" o "X: ahora van 2" (en el celular la lista queda fuera de la pantalla) | hecho |
+| Desplegado el 2026-10-02 (con el despliegue automático) | hecho |
+| Dueño: registrar las compras de los 15 originales, ponerles precio y publicarlos | pendiente |
 | Panel partido por pestañas (`pestanas.ts`): el archivo del panel pasó de 560 kB a 41 kB | hecho |
 | "¿Qué es?" se salía del recuadro en el alta de material (lo vio el dueño): `FieldRow` ya no deja desbordar | hecho |
 | Las 11 ventas de 1.1 costeadas con bolsa y perfumero: el mismo aviso de Producciones las muestra y "Corregir" les baja el costo (`ventasDe11Costo.ts`). Medido en el respaldo del 22-sep con los lotes ya corregidos: **11 ventas, $23.250**, y corregir dos veces no hace nada | hecho |
-| Dueño: tras desplegar, ir a Producciones y pulsar **Corregir** en el aviso de las ventas de 1.1 | pendiente |
+| Dueño: ir a Producciones y pulsar **Corregir** en el aviso de las ventas de 1.1 (ya desplegado) | pendiente |
 | Despliegue automático con GitHub Actions (opción B: cada push a main, con pruebas y respaldo) | **funcionando** desde el 2026-10-02 (servidor instalado, secretos puestos, primer despliegue `8a863a7` en verde). En el servidor ya no se edita ni se hace commit |
 | 2026-09-30: el crédito ya refresca la tienda y borrarlo devuelve la mercancía (`gotchas.md`). Respaldo del día cargado en local como `celestial_prod_20260930` | hecho |
 | Dueño: 11 originales están publicados con TODAS sus tallas al precio de respaldo (el decant de 3 ml vale lo mismo que la botella). Ponerle precio a cada decant o desmarcar esas tallas | pendiente, decide él |
@@ -52,7 +54,7 @@ contratipo de 30 ml, 10 unidades de 1.1, 0 originales; 60 de 150 clientes repite
 
 | # | Qué | Estado |
 |---|---|---|
-| 1 | Desplegar lo del 28-sep en adelante. **Lleva migración** (`20260928140000_kit_del_combo`): `git pull` → `npx prisma migrate deploy` → build de los dos lados → `pm2 restart` | pendiente |
+| 1 | Desplegar lo del 28-sep en adelante | hecho el 2026-10-02; desde entonces se despliega solo con cada push |
 | 2 | nginx: 404 en `/assets/` y sin caché la portada y `sw.js`. Comandos con respaldo y prueba en `deploy-migraciones.md` | pendiente (lo aplica él) |
 | 3 | Mirar en el iPhone el calendario, el historial de pagos e Inicio | él lo hace |
 | 4 | Guardar el teléfono de los clientes y enlazar las ventas a su cuenta: Recompra abre WhatsApp directo | él lo hace |

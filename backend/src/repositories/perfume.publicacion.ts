@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
-import { mapPerfume, perfumeInclude } from './perfume.mapeo';
+import { mapPerfumePanel, perfumeInclude } from './perfume.mapeo';
 
 /**
  * ESTAR O NO EN LA TIENDA.
@@ -12,20 +12,19 @@ import { mapPerfume, perfumeInclude } from './perfume.mapeo';
 /**
  * Saca un perfume de la tienda o lo devuelve, sin borrar nada.
  *
- * No se publica nada con una talla en $0. Nació con los originales
- * (2026-09-29): nacen sin precio a propósito —el dueño los pone talla por
- * talla— y un clic apurado en "publicar" los habría puesto en la tienda
- * regalados. Sacarlo de la tienda nunca se bloquea.
+ * Basta con que UNA talla tenga precio. Las que siguen en $0 no bloquean: la
+ * tienda las esconde hasta que tengan precio (`mapPerfume`, opción B del
+ * dueño, 2026-10-02). Antes (2026-09-29) se exigían todas, y un original con
+ * su botella ya puesta no salía mientras faltara un decant. Lo que sí se frena
+ * es publicar algo sin NINGÚN precio: saldría en $0 o como ficha sin tallas.
+ * Sacarlo de la tienda nunca se bloquea.
  */
 export const patchPublicadoPerfume = async (id: string, publicado: boolean) => {
   if (publicado) {
     const row = await prisma.perfume.findUnique({ where: { id: Number(id) }, include: perfumeInclude });
-    const p = row ? mapPerfume(row) : null;
-    const sinPrecio = p?.precios.filter((t) => !(t.precio > 0)) ?? [];
-    if (sinPrecio.length) {
-      throw badRequest(`Ponle precio a ${sinPrecio.map((t) => t.presentacion).join(', ')} antes de publicarlo: saldría en $0.`);
-    }
-    if (p && !(p.precio > 0)) throw badRequest('Ponle precio antes de publicarlo: saldría en $0.');
+    const p = row ? mapPerfumePanel(row) : null;
+    const conPrecio = p?.precios.length ? p.precios.some((t) => t.precio > 0) : (p?.precio ?? 0) > 0;
+    if (p && !conPrecio) throw badRequest('Ponle precio al menos a una talla antes de publicarlo: saldría en $0.');
   }
   return prisma.perfume.update({ where: { id: Number(id) }, data: { publicado } });
 };

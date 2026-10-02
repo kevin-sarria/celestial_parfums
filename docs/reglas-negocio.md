@@ -169,9 +169,14 @@ Reglas:
   criterio que `descuento`/`agotado`).
 - Un perfume creado desde una compra **nace `publicado = false`**: es una ficha sin precio, sin
   foto y sin categoría.
-- **No se publica nada con una talla en $0** (2026-09-29, `perfume.publicacion.ts`). Nació con los
-  originales, que nacen sin precio a propósito: un clic apurado en "publicar" los habría puesto
-  regalados. Despublicar nunca se bloquea.
+- **Las tallas en $0 no salen en la tienda** (opción B del dueño, 2026-10-02). Un original puede
+  publicarse con solo la botella o un decant con precio; los demás tamaños se esconden solos hasta
+  que tengan precio. Lo hace `mapPerfume` (vista de la tienda) filtrando la fila ANTES de mapear,
+  así el "desde $X" y el agotado ya salen sin esas tallas; el panel usa `mapPerfumePanel` y las ve
+  todas, porque ahí se les pone precio y se vende por WhatsApp. Lo único que bloquea
+  `perfume.publicacion.ts` es publicar algo sin NINGÚN precio. Antes (2026-09-29, opción A) se
+  exigían todas las tallas con precio, y un original no salía mientras faltara un decant.
+  Despublicar nunca se bloquea.
 
 ## Las líneas de la tienda: Contratipo, 1.1 y Original (2026-09-29)
 

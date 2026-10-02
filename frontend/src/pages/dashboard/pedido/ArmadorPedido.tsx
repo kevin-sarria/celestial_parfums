@@ -1,4 +1,5 @@
 import { X } from 'lucide-react';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { SelectSimple } from '@/components/ui/select-simple';
 import BuscadorSelect from '../../../components/BuscadorSelect';
@@ -35,6 +36,15 @@ interface ArmadorPedidoProps {
 const CONTROL = 'h-9 sm:h-8';
 
 /**
+ * Confirma que el producto entró al pedido. En el celular la lista queda debajo
+ * del buscador, fuera de la pantalla: sin esto no se veía que el toque hizo
+ * algo y se agregaba dos veces (2026-10-02). El mismo `id` hace que varios
+ * toques seguidos reemplacen el aviso en vez de apilarlos.
+ */
+const avisarAgregado = (texto: string) =>
+  toast.success(texto, { id: 'pedido-agregado', duration: 1800 });
+
+/**
  * El editor de líneas del pedido: un producto, su talla y cuántas van.
  *
  * Lo comparten Ventas y Créditos. La talla se elige de `perfume.precios[]`, que
@@ -69,10 +79,13 @@ export function ArmadorPedido({
     // regalo como número dentro de esa misma línea ya no hace falta el guarda
     // que antes evitaba mezclarla con la línea-regalo aparte.
     const i = lineas.findIndex(l => l.perfume_id === id && l.presentacion === presentacion);
+    const nombre = presentacion ? `${p.nombre} · ${presentacion}` : p.nombre;
     if (i >= 0) {
       onChange(lineas.map((l, k) => (k === i ? { ...l, cantidad: l.cantidad + 1 } : l)));
+      avisarAgregado(`${nombre}: ahora van ${lineas[i].cantidad + 1}`);
       return;
     }
+    avisarAgregado(`Agregado: ${nombre}`);
     onChange([...lineas, {
       key: `${id}-${presentacion ?? 'sin'}-${Date.now()}`,
       perfume_id: id,
