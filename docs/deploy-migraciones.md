@@ -15,7 +15,63 @@
 > (ver el recuadro de más abajo), y saltarse el build del frontend deja al dueño mirando la versión
 > vieja mientras todo parece correcto.
 
-## Runbook
+## Despliegue automático (GitHub Actions, desde el 2026-10-02)
+
+**Decisión del dueño: opción B.** Cada push a `main` corre todas las pruebas en GitHub (backend
+contra MariaDB 10.11 como producción, frontend con lint, pruebas y build) y, **solo si pasan**,
+despliega. Si una prueba falla, producción no se toca. También hay un botón "Run workflow" en la
+pestaña Actions para volver a desplegar sin subir nada.
+
+Piezas:
+
+| Archivo | Qué hace |
+|---|---|
+| `.github/workflows/desplegar.yml` | Pruebas → si pasan, SSH al servidor → comprueba que la tienda responde |
+| `deploy/celestial-desplegar` | La puerta, instalada en `/usr/local/bin`. Un despliegue a la vez (`flock`), `git merge --ff-only` y llama al script del repo. Vive fuera del repo porque un script que se reescribe mientras corre ejecuta pedazos del viejo y del nuevo |
+| `deploy/desplegar.sh` | El runbook de abajo hecho script: **respaldo** (`/root/respaldos-deploy`, se queda con 20, aborta si pesa menos de 50 KB) → `npm ci` solo si cambió el lock → `migrate deploy` → build → `pm2 restart` → espera a que el backend responda → build del frontend en `dist-nuevo` y cambio de golpe (si el build muere, la tienda sigue con el anterior). Bitácora en `/var/log/celestial-deploy.log` |
+
+**Seguridad: entra como root (decisión del dueño), pero la llave de GitHub solo puede desplegar.**
+En `authorized_keys` va con `command="/usr/local/bin/celestial-desplegar",restrict`: el servidor
+ignora lo que pida GitHub y ejecuta solo eso, sin terminal ni túneles. Si la llave se filtrara, lo
+único que alguien podría hacer es desplegar lo que ya está en `main`. `SSH_KNOWN_HOSTS` fija la
+huella del servidor: sin ella, cualquiera que se hiciera pasar por él recibiría la conexión.
+
+### Instalarlo (una sola vez)
+
+**En el servidor**, como root (reemplaza `TU_IP` por la IP del VPS y `22` si usas otro puerto):
+
+```bash
+cd /var/www/celestial-parfums && git pull
+install -m 755 deploy/celestial-desplegar /usr/local/bin/celestial-desplegar
+
+# Llave SOLO para GitHub, amarrada al despliegue
+ssh-keygen -t ed25519 -N "" -C "github-despliegue" -f /root/llave-github
+echo "command=\"/usr/local/bin/celestial-desplegar\",restrict $(cat /root/llave-github.pub)" >> /root/.ssh/authorized_keys
+
+# Esto es lo que va en el secreto SSH_PRIVATE_KEY (todo, con BEGIN y END)
+cat /root/llave-github
+
+# Esto va en SSH_KNOWN_HOSTS (con puerto distinto de 22 se escribe [TU_IP]:PUERTO)
+for f in /etc/ssh/ssh_host_*_key.pub; do echo "TU_IP $(cut -d' ' -f1,2 "$f")"; done
+
+# Ya copiada a GitHub, la privada no tiene por qué quedarse en el servidor
+rm /root/llave-github /root/llave-github.pub
+```
+
+**En GitHub**: el repositorio → Settings → Environments → New environment → `produccion` →
+Add environment secret, uno por uno: `SSH_HOST` (la IP, **no** el dominio: Cloudflare no deja
+pasar SSH), `SSH_PRIVATE_KEY`, `SSH_KNOWN_HOSTS` y, si el puerto no es 22, `SSH_PORT`.
+
+**Probarlo**: pestaña Actions → "Pruebas y despliegue" → Run workflow. Mientras falten los
+secretos, el paso de desplegar sale en rojo con el aviso "Faltan los secretos"; las pruebas corren
+igual.
+
+**Si un despliegue sale en rojo**: el registro de Actions dice en qué paso se detuvo, y en el
+servidor está entero en `/var/log/celestial-deploy.log`. Lo de antes de ese paso ya se aplicó; el
+respaldo de la base está en `/root/respaldos-deploy/`. Si fue el `--ff-only`, alguien editó
+archivos a mano en el servidor: `git status` en `/var/www/celestial-parfums` dice cuáles.
+
+## Runbook (a mano)
 
 ```bash
 # Local: commit + push

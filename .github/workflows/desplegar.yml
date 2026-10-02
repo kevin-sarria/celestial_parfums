@@ -1,0 +1,142 @@
+# =============================================================================
+# PRUEBAS Y DESPLIEGUE AUTOMÁTICO (dueño, 2026-10-02: opción B)
+#
+# Cada push a `main` corre todas las pruebas y, SOLO si pasan, despliega al
+# servidor. Si una prueba falla, producción no se toca.
+#
+# El servidor se encarga del resto (deploy/desplegar.sh): respaldo de la base,
+# migrate deploy, build, restart y verificación. La llave SSH de GitHub solo
+# puede ejecutar ese despliegue (ver docs/deploy-migraciones.md).
+#
+# Secretos del entorno `produccion` (Settings → Environments → produccion):
+#   SSH_HOST         IP del servidor (la directa, no el dominio de Cloudflare)
+#   SSH_PORT         puerto SSH (opcional, 22 si no está)
+#   SSH_PRIVATE_KEY  llave privada SOLO de despliegue
+#   SSH_KNOWN_HOSTS  huella del servidor (evita que alguien se haga pasar por él)
+# =============================================================================
+name: Pruebas y despliegue
+
+on:
+  push:
+    branches: [main]
+  # Botón "Run workflow" para volver a desplegar sin subir nada nuevo
+  workflow_dispatch:
+
+# Un despliegue a la vez y en orden: dos pushes seguidos no se pisan, y el
+# segundo espera al primero en vez de cancelarlo a mitad de una migración.
+concurrency:
+  group: produccion
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pruebas:
+    name: Pruebas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      # La misma base que producción (MariaDB 10.11, no MySQL)
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: prueba
+          MARIADB_DATABASE: perfumes_test
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    env:
+      # Las fechas del negocio son de Colombia: las pruebas también
+      TZ: America/Bogota
+      DATABASE_URL_TEST: mysql://root:prueba@127.0.0.1:3306/perfumes_test
+      # Valores de PRUEBA, no los del servidor
+      JWT_SECRET: solo-para-pruebas
+      REFRESH_SECRET: solo-para-pruebas-refresh
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Backend · dependencias
+        working-directory: backend
+        run: npm ci --no-audit --no-fund
+
+      - name: Backend · compila
+        working-directory: backend
+        run: npm run build
+
+      - name: Backend · pruebas (aritmética y base de datos)
+        working-directory: backend
+        run: npm test
+
+      - name: Frontend · dependencias
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Frontend · revisión de código
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Frontend · pruebas
+        working-directory: frontend
+        run: npm test
+
+      - name: Frontend · compila
+        working-directory: frontend
+        run: npm run build
+
+  desplegar:
+    name: Desplegar al servidor
+    needs: pruebas
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment: produccion
+    steps:
+      - name: Llave y huella del servidor
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+        run: |
+          if [ -z "$SSH_PRIVATE_KEY" ] || [ -z "$SSH_KNOWN_HOSTS" ] || [ -z "$SSH_HOST" ]; then
+            echo "::error::Faltan los secretos del entorno 'produccion' (SSH_HOST, SSH_PRIVATE_KEY, SSH_KNOWN_HOSTS). Ver docs/deploy-migraciones.md, 'Despliegue automático'."
+            exit 1
+          fi
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/despliegue
+          chmod 600 ~/.ssh/despliegue
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      # El comando lo decide el servidor (authorized_keys), no este archivo:
+      # la llave solo sabe ejecutar /usr/local/bin/celestial-desplegar.
+      - name: Desplegar
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          ssh -i ~/.ssh/despliegue -p "${SSH_PORT:-22}" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
+            "root@$SSH_HOST" desplegar
+
+      - name: ¿La tienda responde?
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS -o /dev/null "https://celestialparfums.com/api/parfums?page=1&limit=1"; then
+              echo "✓ La tienda responde"; exit 0
+            fi
+            sleep 3
+          done
+          echo "✗ La tienda no responde después de desplegar" >&2
+          exit 1
+
+      - name: Borrar la llave
+        if: always()
+        run: rm -f ~/.ssh/despliegue

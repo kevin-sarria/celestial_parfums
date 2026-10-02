@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# =============================================================================
+# PUERTA DE ENTRADA DEL DESPLIEGUE AUTOMÁTICO (se instala UNA vez en el servidor)
+#
+#   sudo install -m 755 deploy/celestial-desplegar /usr/local/bin/celestial-desplegar
+#
+# Es lo ÚNICO que puede ejecutar la llave SSH de GitHub: en
+# /root/.ssh/authorized_keys esa llave va con `command="/usr/local/bin/celestial-desplegar",restrict`,
+# así que aunque se filtrara no sirve para entrar al servidor ni para correr
+# otra cosa (ver docs/deploy-migraciones.md, "Despliegue automático").
+#
+# Vive FUERA del repositorio a propósito: el `git pull` de aquí abajo reemplaza
+# los archivos del repo, y un script de bash que se reescribe mientras corre
+# ejecuta pedazos del viejo y del nuevo. Este no cambia; el que hace el trabajo
+# (deploy/desplegar.sh) se lee ya actualizado.
+# =============================================================================
+set -Eeuo pipefail
+
+REPO=/var/www/celestial-parfums
+
+# Por SSH sin terminal no se carga el perfil de root: si Node vino con nvm,
+# `npm`, `npx` y `pm2` no existirían para el script. Se cargan aquí.
+export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"
+if [[ -s /root/.nvm/nvm.sh ]]; then
+  # nvm usa variables sin definir: con `set -u` se caería al cargarlo
+  set +u
+  # shellcheck disable=SC1091
+  . /root/.nvm/nvm.sh
+  set -u
+fi
+
+# Un despliegue a la vez: dos `git push` seguidos no se pisan
+exec 9>/var/lock/celestial-desplegar.lock
+if ! flock -n 9; then
+  echo "Ya hay un despliegue en curso. Este se cancela; el siguiente push lo hará." >&2
+  exit 1
+fi
+
+cd "$REPO"
+ANTES=$(git rev-parse HEAD)
+
+# --ff-only: si alguien editó archivos a mano en el servidor, se detiene en vez
+# de mezclarlos o borrarlos. Es mejor un despliegue rojo que un cambio perdido.
+git fetch --quiet origin main
+git merge --ff-only origin/main
+
+exec bash "$REPO/deploy/desplegar.sh" "$ANTES"
