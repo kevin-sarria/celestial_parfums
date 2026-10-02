@@ -43,9 +43,19 @@ export const limpiarBase = async () => {
 
   // Las llaves foráneas se apagan para no tener que borrar en orden topológico:
   // el orden correcto cambiaría cada vez que se agregue una relación.
-  await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
-  for (const t of tablas) await prisma.$executeRawUnsafe(`TRUNCATE TABLE \`${t}\``);
-  await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+  //
+  // TODO en una transacción, que es lo único que garantiza UNA sola conexión.
+  // `FOREIGN_KEY_CHECKS` vale solo para la conexión que lo pone, y Prisma
+  // reparte cada consulta suelta en su grupo de conexiones: el SET iba por una
+  // y los TRUNCATE por otras. En Windows funcionaba por suerte; en GitHub
+  // Actions (2026-10-02, más núcleos = más conexiones) falló con "Cannot
+  // truncate a table referenced in a foreign key constraint".
+  const lista = tablas;
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
+    for (const t of lista) await tx.$executeRawUnsafe(`TRUNCATE TABLE \`${t}\``);
+    await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+  }, { timeout: 60_000 });
 };
 
 type TipoInsumo = 'materia_prima' | 'envase' | 'accesorio';
