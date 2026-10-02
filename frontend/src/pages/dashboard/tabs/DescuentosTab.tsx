@@ -214,13 +214,14 @@ export function DescuentosTab({ onMutate }: DescuentosTabProps) {
             {totalConDescuento} activos
           </Badge>
         </SectionTitle>
+        {/* La principal va de última, como en todo el panel (ver `barraAcciones.ts`) */}
         <ToolbarActions>
-          <Button size="sm" onClick={abrirModal}>
-            <Plus className="size-4" /> Agregar descuento
-          </Button>
           <ExportButton entity="descuentos" />
           <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
             <Upload className="size-4" /> Importar
+          </Button>
+          <Button size="sm" onClick={abrirModal}>
+            <Plus className="size-4" /> Agregar descuento
           </Button>
         </ToolbarActions>
       </Toolbar>

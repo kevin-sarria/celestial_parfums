@@ -686,3 +686,31 @@ ficha pública): **Original** en tinta sólida (`bg-ink`), **1.1** en iris (`bg-
 "Esencia premium", pero pasó de tinta sólida a **contorno de tinta**: la tinta sólida quedó para
 el original, que es la compra grande, y dos etiquetas negras iguales se confundían. Las tallas de
 un original se nombran con `etiquetaTalla` (`domain/entities/linea.ts`).
+
+## El panel en el celular (revisión del 2026-10-02)
+
+Se recorrieron las 36 pantallas y los 4 formularios principales a 390 y 360 px con el respaldo de
+producción, midiendo qué se sale del ancho (no a ojo). Encontrado y corregido:
+
+- **Rejillas sin columna de celular** (21 en toda la app, Inicio la peor: 940 px). Regla en
+  `CLAUDE.md`: toda rejilla responsiva lleva `grid-cols-1`.
+- **`FranjaMetricas` va de a dos desde el celular** (antes de a una: el Reporte de ventas eran seis
+  cajas a todo lo ancho). `StatCard` baja la cifra a 20 px debajo de `sm` para que
+  "$ 24.637.217" quepa en media pantalla.
+- **El botón principal de una barra va de último** (a la derecha en el computador), y debajo de
+  `sm` pasa al frente a todo lo ancho (`components/table/barraAcciones.ts`, lo comparten
+  `ToolbarActions` y `SmartTable`). Si una barra nueva no tiene botón principal, su último botón
+  igual saldrá primero: ponlo en el orden correcto.
+- **Pedido sugerido**: la tabla (mínimo 544 px) escondía la casilla "Pide"; en el celular cada
+  material es una tarjeta con la casilla a 16 px y botones de 44 px con texto. Los "materiales en
+  prueba" van plegados (eran 61 etiquetas arriba del pedido).
+- **Gráfico de barras**: el carril arranca en el mes actual; empezaba en el más viejo y en el
+  celular solo se veían meses vacíos.
+
+Cómo repetir la revisión: un recorrido temporal en `backend/e2e/` que carga un respaldo en
+`perfumes_test`, entra como el admin de pruebas, visita `/dashboard/<pestaña>` con
+`isMobile: true` y mide en `main` los elementos cuyo borde derecho pasa el ancho de la ventana
+(saltando los que viven dentro de un contenedor con tabla y scroll propio). Hay que cerrar las
+DOS alertas de inventario que salen al entrar ("Cerrar por hoy"), y soltar el `overflow` de
+`main` para que la captura de página completa no salga cortada.
+

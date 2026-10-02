@@ -53,7 +53,7 @@ export default function PerfilCreditoModal({ open, onClose, perfil, cupoEdit, on
             </span>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="rounded-xl border border-border bg-secondary/40 p-3">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Cupo actual</p>
               <p className="mt-0.5 text-[17px] font-semibold text-foreground">{formatPrice(perfil.cupo)}</p>

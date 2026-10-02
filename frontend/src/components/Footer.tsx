@@ -43,7 +43,7 @@ export default function Footer() {
     : [e]));
   return (
     <footer className="border-t border-border bg-card/40 pb-24 pt-12 sm:pb-12">
-      <div className="mx-auto grid w-full max-w-7xl gap-10 px-5 md:px-8 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto grid grid-cols-1 w-full max-w-7xl gap-10 px-5 md:px-8 sm:grid-cols-2 lg:grid-cols-4">
         {/* Marca */}
         <div className="flex flex-col gap-3 sm:col-span-2 lg:col-span-1">
           <span className="inline-flex items-center gap-2 font-display text-[17px] font-medium tracking-wide text-ink">

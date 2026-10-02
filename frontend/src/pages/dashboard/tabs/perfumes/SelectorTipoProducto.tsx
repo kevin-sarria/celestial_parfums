@@ -20,7 +20,7 @@ export function SelectorTipoProducto({ onElegir }: Props) {
         Elige qué es: cada uno pide solo lo suyo.
       </p>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
         {TIPOS_ALTA.map((t) => (
           <button
             key={t.id}

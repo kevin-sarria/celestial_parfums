@@ -51,7 +51,7 @@ export default function BlogPage() {
               : 'Pronto publicaremos contenido aquí.'}
           </p>
         ) : (
-          <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {posts.map((p) => (
               <Link key={p.slug} to={`/blog/${p.slug}`}
                 className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:shadow-[0_20px_45px_-20px_rgb(0_0_0/0.18)]">

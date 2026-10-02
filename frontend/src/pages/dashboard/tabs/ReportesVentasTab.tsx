@@ -89,7 +89,7 @@ export function ReportesVentasTab() {
 
             <PorLineaYFragancia datos={datos} />
 
-            <div className="grid gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <PanelPerdidas p={datos.perdidas} />
               <Ranking
                 titulo="Los más vendidos"

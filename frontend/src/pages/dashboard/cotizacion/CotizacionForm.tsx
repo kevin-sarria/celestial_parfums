@@ -239,7 +239,7 @@ export default function CotizacionForm({ cotizacion, onVolver, onGuardada }: Pro
       </h2>
 
       {/* Tipo: define qué se le muestra al cliente en el PDF */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {([
           { v: 'detallada', t: 'Pedido concreto', d: 'Los perfumes que se va a llevar, con cantidades y total.' },
           { v: 'general', t: 'Lista de precios', d: 'Solo cuánto vale por cantidad, sin decir qué fragancias.' },
@@ -463,7 +463,7 @@ export default function CotizacionForm({ cotizacion, onVolver, onGuardada }: Pro
             <p className="mb-3 text-[12.5px] text-muted-foreground">
               Vienen de tu configuración; puedes ajustarlas solo para esta cotización.
             </p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {CAMPOS_CONDICIONES.map(({ k, label }) => (
                 <Field key={k} label={label}>
                   <Input value={condiciones[k] ?? ''} maxLength={500}

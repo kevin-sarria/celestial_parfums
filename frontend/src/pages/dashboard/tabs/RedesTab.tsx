@@ -392,7 +392,7 @@ export function RedesTab() {
             <p className="pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Estilo global de botones
             </p>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <Field label="Forma">
                 <SelectSimple value={form.boton_forma} onChange={e => set('boton_forma', e.target.value as ContactoForma)}>
                   <option value="redondo">Bordes redondos</option>

@@ -64,7 +64,7 @@ export function PorLineaYFragancia({ datos }: { datos: ReporteVentasRango }) {
 
   if (datos.por_linea.length === 0) return null;
   return (
-    <div className="grid gap-4 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
       <section className="min-w-0">
         <Titulo detalle="Solo lo pagado por completo. La ganancia, donde hay costo registrado.">Por línea</Titulo>
         <Tabla

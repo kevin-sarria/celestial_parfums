@@ -97,6 +97,10 @@ criterio general reutilizable.
 - **Ningún campo escribible con letra de menos de 16 px en el celular**: Safari del iPhone acerca
   la pantalla al darle foco. `Input` y los desplegables ya traen `text-base md:text-sm`; no se
   les pisa la letra.
+- **Toda rejilla que cambia de columnas declara la del celular**: `grid grid-cols-1 lg:grid-cols-2`,
+  nunca `grid lg:grid-cols-2` a secas. Sin `grid-cols-1`, la única columna del celular crece hasta
+  el texto más largo y la tarjeta se sale de la pantalla (Inicio medía 940 px en un teléfono de
+  390; ver `docs/diseno-ux.md`, 2026-10-02).
 - **Toasts con sonner**, nunca uno propio, nunca `richColors`. `window.alert()` está deprecado.
 - **Ninguna pantalla se entrega sin abrirla en un navegador y mirarla**, y **midiendo en vez de
   opinando** — "quedó más compacto" no se verifica, "pasó de 55 renglones a 41 píxeles" sí.

@@ -47,7 +47,7 @@ export default function ComboDetailPage() {
 
       {!loading && combo && (
         <>
-          <main className="mx-auto grid w-full max-w-6xl gap-10 px-5 pb-16 pt-6 md:px-8 lg:grid-cols-2 lg:gap-14 animate-fade-up">
+          <main className="mx-auto grid grid-cols-1 w-full max-w-6xl gap-10 px-5 pb-16 pt-6 md:px-8 lg:grid-cols-2 lg:gap-14 animate-fade-up">
             <div className="relative overflow-hidden rounded-3xl border border-border bg-secondary">
               {combo.imagen_url ? (
                 <img src={combo.imagen_url} alt={combo.nombre} className="aspect-4/5 h-full w-full object-cover" />

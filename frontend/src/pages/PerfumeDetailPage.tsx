@@ -63,7 +63,7 @@ export default function PerfumeDetailPage() {
 
       {!loading && perfume && (
         <>
-          <main className="mx-auto grid w-full max-w-6xl gap-10 px-5 pb-28 pt-6 md:grid-cols-2 md:px-8 md:pb-16 lg:gap-14 animate-fade-up">
+          <main className="mx-auto grid grid-cols-1 w-full max-w-6xl gap-10 px-5 pb-28 pt-6 md:grid-cols-2 md:px-8 md:pb-16 lg:gap-14 animate-fade-up">
             <div className="relative overflow-hidden rounded-3xl border border-border bg-white">
               {perfume.imagen_url ? (
                 <img

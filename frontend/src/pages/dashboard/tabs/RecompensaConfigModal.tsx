@@ -80,7 +80,7 @@ export default function RecompensaConfigModal({ open, onClose, config, onChange,
 
           <div className="pt-1">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Colores de la tarjeta</p>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <ColorField label="Fondo" value={config.color_fondo} onChange={v => set('color_fondo', v)} />
               <ColorField label="Líneas y sellos" value={config.color_lineas} onChange={v => set('color_lineas', v)} />
               <ColorField label="Texto" value={config.color_texto} onChange={v => set('color_texto', v)} />

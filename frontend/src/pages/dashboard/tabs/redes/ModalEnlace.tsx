@@ -149,7 +149,7 @@ export function ModalEnlace({ abierto, editando, form, cambiar, onGuardar, onCer
               Usar el estilo global de botones
             </label>
             {!form.usarGlobal && (
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 <Field label="Forma">
                   <SelectSimple value={form.forma} onChange={e => cambiar('forma', e.target.value as ContactoForma)}>
                     <option value="redondo">Bordes redondos</option>

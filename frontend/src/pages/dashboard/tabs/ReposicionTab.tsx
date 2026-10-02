@@ -238,12 +238,17 @@ export function ReposicionTab() {
           desmarca desde aquí. Una decisión temporal que cuesta deshacer se
           vuelve permanente sola. */}
       {datos.en_prueba.length > 0 && (
-        <div className="rounded-xl border border-border bg-secondary/40 px-3.5 py-3">
-          <p className="text-[12.5px] text-muted-foreground">
+        // Plegado (2026-10-02): con 61 materiales en prueba eran 61 etiquetas
+        // arriba del pedido, media pantalla del celular antes de llegar a lo que
+        // se vino a hacer. Se ve el número; la lista, al abrirla.
+        <details className="rounded-xl border border-border bg-secondary/40 px-3.5 py-3">
+          <summary className="cursor-pointer text-[12.5px] text-muted-foreground">
             <strong className="text-foreground">{datos.en_prueba.length}</strong>{' '}
             {datos.en_prueba.length === 1 ? 'material está en prueba' : 'materiales están en prueba'}
-            {' '}y no te los estoy sugiriendo. Toca uno para devolverlo a la lista.
-          </p>
+            {' '}y no te los estoy sugiriendo.{' '}
+            <span className="font-medium text-primary">Ver y devolver</span>
+          </summary>
+          <p className="mt-2 text-[12px] text-muted-foreground">Toca uno para devolverlo a la lista.</p>
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {datos.en_prueba.map((m) => (
               <li key={m.id}>
@@ -255,7 +260,7 @@ export function ReposicionTab() {
               </li>
             ))}
           </ul>
-        </div>
+        </details>
       )}
 
       <TablaPedido titulo="Esencias" onEnPrueba={marcarEnPrueba} filas={datos.esencias}

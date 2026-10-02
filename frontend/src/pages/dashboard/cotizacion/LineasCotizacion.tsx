@@ -204,7 +204,7 @@ export default function LineasCotizacion({
                     : `Costo interno · utilidad ${formatPrice(rent.utilidad)} (${rent.margenPct}%)`}
                 </button>
                 {abierto && (
-                  <div className="mt-2 grid gap-x-6 gap-y-1 rounded-lg bg-secondary/50 px-3 py-2.5 text-[12px] text-muted-foreground sm:grid-cols-2">
+                  <div className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 rounded-lg bg-secondary/50 px-3 py-2.5 text-[12px] text-muted-foreground sm:grid-cols-2">
                     <span>Esencia: <strong className="text-foreground">{formatPrice(l.desglose_costo.esencia)}</strong></span>
                     <span>Diluyente: <strong className="text-foreground">{formatPrice(l.desglose_costo.diluyente)}</strong></span>
                     <span>Sellador: <strong className="text-foreground">{formatPrice(l.desglose_costo.sellador)}</strong></span>

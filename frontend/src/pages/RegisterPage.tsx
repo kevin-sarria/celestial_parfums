@@ -89,7 +89,7 @@ export default function RegisterPage() {
         </div>
       ) : (
         <form className="space-y-4" onSubmit={handleSubmit} noValidate>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label htmlFor="nombre">Nombre</Label>
               <Input

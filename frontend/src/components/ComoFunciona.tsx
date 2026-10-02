@@ -26,7 +26,7 @@ export default function ComoFunciona() {
       <h2 className="mb-10 text-center font-display text-2xl font-light tracking-tight text-ink">
         Comprar es así de fácil
       </h2>
-      <div className="mx-auto grid max-w-4xl gap-10 sm:grid-cols-3">
+      <div className="mx-auto grid grid-cols-1 max-w-4xl gap-10 sm:grid-cols-3">
         {PASOS.map((p) => (
           <div key={p.titulo} className="flex flex-col items-center gap-2.5 text-center">
             <span className="flex size-11 items-center justify-center rounded-full bg-brand-soft text-primary">

@@ -47,7 +47,7 @@ export function ReportesComprasTab() {
             </Panel>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Ranking
               titulo="A quién le compras más"
               filas={datos.por_proveedor.map((p) => ({

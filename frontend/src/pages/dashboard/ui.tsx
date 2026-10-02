@@ -2,6 +2,7 @@ import { useId, useMemo, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { CampoEtiquetaContext, type RegistroDeCampo } from '@/components/ui/campoEtiqueta';
 import { cn } from '@/lib/utils';
+import { BARRA_ACCIONES } from '../../components/table/barraAcciones';
 
 /**
  * Primitivas de layout del dashboard.
@@ -58,7 +59,7 @@ export function Toolbar({ children, className }: SectionProps) {
 
 /** Grupo de acciones (botones de exportar/importar/crear). */
 export function ToolbarActions({ children }: { children: ReactNode }) {
-  return <div className="flex flex-wrap items-center gap-2">{children}</div>;
+  return <div className={BARRA_ACCIONES}>{children}</div>;
 }
 
 interface FieldProps {
@@ -103,7 +104,7 @@ export function FieldRow({ children, className }: SectionProps) {
   // su contenido, y un desplegable con texto largo empujaba el campo fuera del
   // recuadro (2026-09-29, "¿Qué es?" en el alta de material). Por la misma
   // razón los campos de aquí dentro NO llevan ancho fijo (w-40, w-52…).
-  return <div className={cn('grid gap-3 sm:grid-cols-2 [&>*]:min-w-0', className)}>{children}</div>;
+  return <div className={cn('grid grid-cols-1 gap-3 sm:grid-cols-2 [&>*]:min-w-0', className)}>{children}</div>;
 }
 
 /**
@@ -176,11 +177,13 @@ interface StatCardProps {
  */
 export function StatCard({ label, value, nota }: StatCardProps) {
   return (
-    <div className="rounded-xl border border-border bg-card px-4 py-3.5 shadow-[0_1px_3px_rgb(0_0_0/0.04)]">
+    <div className="min-w-0 rounded-xl border border-border bg-card px-3.5 py-3 shadow-[0_1px_3px_rgb(0_0_0/0.04)] sm:px-4 sm:py-3.5">
       <span className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </span>
-      <span className="mt-1.5 block font-display text-2xl font-medium text-foreground">{value}</span>
+      {/* 20 px en el celular: a dos por fila quedan ~140 px y "$ 24.637.217"
+          a 24 px no cabía (2026-10-02). */}
+      <span className="mt-1.5 block font-display text-xl font-medium text-foreground sm:text-2xl">{value}</span>
       {nota && <span className="mt-1 block text-[12px] leading-snug text-muted-foreground">{nota}</span>}
     </div>
   );
@@ -222,7 +225,11 @@ export function EncabezadoPagina({ titulo, count, children }: {
  * Rejilla de métricas sobre el fondo de la página.
  * Rejilla y no `flex-wrap`: así las tarjetas quedan del mismo ancho, en vez de
  * dejar sobras al final de la fila.
+ *
+ * DOS por fila desde el celular (2026-10-02): de a una, el Reporte de ventas
+ * eran seis cajas a todo lo ancho y había que bajar dos pantallas para llegar a
+ * la tabla. Es como ya se veía Inicio.
  */
 export function FranjaMetricas({ children }: { children: ReactNode }) {
-  return <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{children}</div>;
+  return <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">{children}</div>;
 }

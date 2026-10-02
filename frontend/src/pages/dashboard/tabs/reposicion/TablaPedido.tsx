@@ -2,6 +2,7 @@ import { Check, ClipboardCopy, FlaskConical, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Section } from '../../ui';
+import { useMediaQuery } from '../../../../components/table/useMediaQuery';
 import { formatPrice } from '../../helpers';
 import type { useAjustesPedido } from './useAjustesPedido';
 
@@ -50,7 +51,67 @@ interface Props {
   onEnPrueba: (f: Fila) => void;
 }
 
+/** De dónde sale el número de "Pide", o cuál era si el dueño lo cambió. */
+const origenDe = (f: Fila, ajustes: Props['ajustes']) => (ajustes.fueTocado(f.id)
+  ? `sugería ${cantidad(f.sugerido, f.unidad)}`
+  : f.base === 'consumo' ? 'por lo que gastas' : 'para el colchón');
+
+const costoDe = (f: Fila, ajustes: Props['ajustes']) =>
+  formatPrice(Math.round(ajustes.cantidadDe(f.id, f.sugerido) * f.costo_promedio));
+
+/**
+ * Un material del pedido como TARJETA, para el celular (2026-10-02).
+ *
+ * La tabla mide 544 px como mínimo: en un teléfono de 390 se deslizaba de lado y
+ * escondía justo la casilla "Pide", que es lo único que se toca aquí. En la
+ * tarjeta todo queda a la vista, y los botones llevan texto y 44 px de alto
+ * porque se tocan con el pulgar (skill `dashboard-interno-ux`, defecto 6).
+ */
+function TarjetaPedido({ f, ajustes, onEnPrueba }: { f: Fila; ajustes: Props['ajustes']; onEnPrueba: (f: Fila) => void }) {
+  return (
+    <li className="py-3">
+      <p className="text-[13.5px] font-medium text-foreground">{f.nombre}</p>
+      <p className="text-[12px] text-muted-foreground">
+        {f.gama && <>{f.gama} · </>}
+        Te queda <span className="font-medium tabular-nums text-destructive">{cantidad(f.stock, f.unidad)}</span>
+        {' '}· mínimo {cantidad(f.minimo, f.unidad)}{f.minimo_heredado && ' (de su gama)'}
+      </p>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <label className="block">
+          <span className="mb-1 block text-[11.5px] font-medium text-muted-foreground">Pide</span>
+          <span className="flex items-center gap-1.5">
+            <Input
+              type="number" min="0" step="any" inputMode="decimal"
+              aria-label={`Cuánto pedir de ${f.nombre}`}
+              className="h-11 w-28 text-right tabular-nums"
+              value={ajustes.cantidadDe(f.id, f.sugerido)}
+              onChange={(e) => ajustes.fijarCantidad(f.id, e.target.value === '' ? null : Number(e.target.value))}
+            />
+            <span className="text-[12px] text-muted-foreground">{f.unidad === 'ml' ? 'ml' : 'u'}</span>
+          </span>
+          <span className="mt-0.5 block text-[11px] text-muted-foreground">{origenDe(f, ajustes)}</span>
+        </label>
+        <p className="pb-6 text-right text-[12px] text-muted-foreground">
+          te costará
+          <strong className="block text-[14px] font-semibold tabular-nums text-foreground">{costoDe(f, ajustes)}</strong>
+        </p>
+      </div>
+      <div className="mt-2 flex gap-2">
+        <Button type="button" variant="outline" className="h-11 flex-1" onClick={() => onEnPrueba(f)}
+          title="En prueba: no me lo vuelvas a sugerir hasta que yo lo desmarque">
+          <FlaskConical className="size-4" /> En prueba
+        </Button>
+        <Button type="button" variant="outline" className="h-11 flex-1" onClick={() => ajustes.quitar(f.id)}>
+          <X className="size-4" /> Sacar del pedido
+        </Button>
+      </div>
+    </li>
+  );
+}
+
 export function TablaPedido({ titulo, filas, nota, ajustes, copiado, onCopiar, onEnPrueba }: Props) {
+  // Una sola de las dos vistas, nunca las dos con una escondida (ver SmartTable)
+  const esMovil = useMediaQuery('(max-width: 639px)');
   // Lo quitado sale de la tabla pero NO desaparece: se lista abajo para poder
   // devolverlo. Dejar caer algo en silencio es justo lo que no se hace aquí.
   const visibles = filas.filter((f) => !ajustes.estaQuitado(f.id));
@@ -75,6 +136,10 @@ export function TablaPedido({ titulo, filas, nota, ajustes, copiado, onCopiar, o
         <p className="rounded-lg border border-border bg-secondary/40 px-3 py-4 text-center text-[12.5px] text-muted-foreground">
           {filas.length === 0 ? 'Nada por pedir aquí.' : 'Sacaste todo de esta lista.'}
         </p>
+      ) : esMovil ? (
+        <ul className="divide-y divide-border/60">
+          {visibles.map((f) => <TarjetaPedido key={f.id} f={f} ajustes={ajustes} onEnPrueba={onEnPrueba} />)}
+        </ul>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-136 border-collapse text-[12.5px]">
@@ -122,13 +187,11 @@ export function TablaPedido({ titulo, filas, nota, ajustes, copiado, onCopiar, o
                       </span>
                     </div>
                     <span className="block text-[10.5px] font-normal text-muted-foreground">
-                      {ajustes.fueTocado(f.id)
-                        ? `sugería ${cantidad(f.sugerido, f.unidad)}`
-                        : f.base === 'consumo' ? 'por lo que gastas' : 'para el colchón'}
+                      {origenDe(f, ajustes)}
                     </span>
                   </td>
                   <td className="py-1.5 pr-2 text-right tabular-nums text-muted-foreground">
-                    {formatPrice(Math.round(ajustes.cantidadDe(f.id, f.sugerido) * f.costo_promedio))}
+                    {costoDe(f, ajustes)}
                   </td>
                   <td className="py-1.5 text-right">
                     <button

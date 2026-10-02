@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /**
  * Paleta de series. Validada con el script del design system contra superficie
@@ -55,6 +55,15 @@ export default function GraficoBarras({ datos, series, titulo, formato, nota }: 
    */
   const [ancla, setAncla] = useState<{ x: number; y: number } | null>(null);
   const marco = useRef<HTMLDivElement>(null);
+  /**
+   * El carril arranca en el MES ACTUAL, no en el más viejo (2026-10-02). En el
+   * celular caben unos 7 de 12 meses, y empezando por la izquierda el dueño veía
+   * noviembre a mayo —vacíos— con lo reciente escondido a la derecha.
+   */
+  const carril = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (carril.current) carril.current.scrollLeft = carril.current.scrollWidth;
+  }, [datos.length]);
 
   /**
    * Dónde va el tooltip de la barra apuntada, en coordenadas del marco.
@@ -134,7 +143,7 @@ export default function GraficoBarras({ datos, series, titulo, formato, nota }: 
         </div>
       )}
 
-      <div className="flex items-end gap-1.5 overflow-x-auto pb-1" style={{ height: 190 }}>
+      <div ref={carril} className="flex items-end gap-1.5 overflow-x-auto pb-1" style={{ height: 190 }}>
         {datos.map((d, i) => {
           const total = totalDe(d);
           const alto = (total / tope) * 150;

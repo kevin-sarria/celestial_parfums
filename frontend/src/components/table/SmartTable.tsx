@@ -13,6 +13,7 @@ import { useMediaQuery } from './useMediaQuery';
 import { FilaTarjeta } from './FilaTarjeta';
 import { ColumnFilterPopover } from './ColumnFilterPopover';
 import { PaginadorTabla } from './PaginadorTabla';
+import { BARRA_ACCIONES } from './barraAcciones';
 
 
 /**
@@ -318,7 +319,7 @@ export function SmartTable<T>({
           </span>
         </div>
 
-        {acciones && <div className="flex flex-wrap items-center gap-2">{acciones}</div>}
+        {acciones && <div className={BARRA_ACCIONES}>{acciones}</div>}
       </div>
 
       {/* ── Tarjetas (celular) o tabla (el resto) ── */}
