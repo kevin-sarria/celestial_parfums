@@ -19,7 +19,7 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | "¿Qué es?" se salía del recuadro en el alta de material (lo vio el dueño): `FieldRow` ya no deja desbordar | hecho |
 | Las 11 ventas de 1.1 costeadas con bolsa y perfumero: el mismo aviso de Producciones las muestra y "Corregir" les baja el costo (`ventasDe11Costo.ts`). Medido en el respaldo del 22-sep con los lotes ya corregidos: **11 ventas, $23.250**, y corregir dos veces no hace nada | hecho |
 | Dueño: tras desplegar, ir a Producciones y pulsar **Corregir** en el aviso de las ventas de 1.1 | pendiente |
-| Despliegue automático con GitHub Actions (opción B: cada push a main, con pruebas y respaldo) | hecho; falta que el dueño haga la instalación de una sola vez (`deploy-migraciones.md`) |
+| Despliegue automático con GitHub Actions (opción B: cada push a main, con pruebas y respaldo) | **funcionando** desde el 2026-10-02 (servidor instalado, secretos puestos, primer despliegue `8a863a7` en verde). En el servidor ya no se edita ni se hace commit |
 | 2026-09-30: el crédito ya refresca la tienda y borrarlo devuelve la mercancía (`gotchas.md`). Respaldo del día cargado en local como `celestial_prod_20260930` | hecho |
 | Dueño: 11 originales están publicados con TODAS sus tallas al precio de respaldo (el decant de 3 ml vale lo mismo que la botella). Ponerle precio a cada decant o desmarcar esas tallas | pendiente, decide él |
 

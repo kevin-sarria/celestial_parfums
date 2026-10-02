@@ -126,7 +126,10 @@ jobs:
             -o BatchMode=yes -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 \
             "root@$SSH_HOST" desplegar
 
-      - name: ¿La tienda responde?
+      # Solo un aviso: Cloudflare puede frenar a las máquinas de GitHub como
+      # robots (2026-10-02: desplegó bien y este paso salió rojo). La prueba
+      # que manda es la del servidor, que pregunta al backend por dentro.
+      - name: ¿La tienda responde desde fuera?
         run: |
           for i in $(seq 1 10); do
             if curl -fsS -o /dev/null "https://celestialparfums.com/api/parfums?page=1&limit=1"; then
@@ -134,8 +137,7 @@ jobs:
             fi
             sleep 3
           done
-          echo "✗ La tienda no responde después de desplegar" >&2
-          exit 1
+          echo "::warning::Desde GitHub no se pudo abrir la tienda (Cloudflare suele bloquear estas máquinas). El servidor ya comprobó el backend por dentro; ábrela tú para confirmar."
 
       - name: Borrar la llave
         if: always()
