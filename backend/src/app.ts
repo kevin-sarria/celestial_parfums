@@ -79,7 +79,20 @@ const corsOrigin = (
   cb(new Error(`Origen no permitido por CORS: ${origin}`));
 };
 
-app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+// La CSP se ajustó a mano en el servidor y vivió solo allá hasta el 2026-10-02,
+// cuando el despliegue automático obligó a traerla al repositorio.
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
+      scriptSrc: ["'self'", "'report-sample'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      objectSrc: ["'none'"],
+    },
+  },
+}));
 app.use(cors({
   origin: corsOrigin,
   credentials: true,

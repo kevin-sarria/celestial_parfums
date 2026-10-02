@@ -496,3 +496,14 @@ falsa y se descartó mirando los datos, no el código: **pedir el respaldo antes
 backend usa 4000 por defecto), así que `grep '^PORT='` devolvió 1 y tumbó el despliegue justo
 después del `pm2 restart`: backend nuevo, frontend viejo. En un script con `pipefail`, todo `grep`
 que puede no encontrar nada lleva `|| true`.
+
+## 2026-10-02 · El servidor tenía su propia historia de git (y por eso el `Ctrl + O`)
+
+Cada `git pull` en el servidor abría nano pidiendo el mensaje de una mezcla: allá se habían hecho
+commits a mano ("avances") para arreglar el import de Prisma, y desde entonces la rama del
+servidor y la de GitHub iban separadas. El despliegue automático usa `git merge --ff-only` y se
+negó (exit 128). Lo único con valor de esos commits era la CSP de helmet en `app.ts`, que se trajo
+al repo; lo demás (imports de Prisma, `noEmitOnError: false` que ya es el valor por defecto, un
+`tsconfig.json.save` de nano) sobraba. El servidor se dejó idéntico a GitHub con
+`git reset --hard origin/main`. **En el servidor no se edita ni se hace commit: todo cambio va por
+el repo.**
