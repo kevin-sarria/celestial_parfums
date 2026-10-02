@@ -489,3 +489,10 @@ revierte. En el respaldo no había ningún movimiento huérfano: no alcanzó a d
 La primera hipótesis (que el formulario había elegido el decant de 3 ml en vez de la botella) era
 falsa y se descartó mirando los datos, no el código: **pedir el respaldo antes de suponer**.
 
+
+## 2026-10-02 · El despliegue automático murió buscando `PORT` en el `.env`
+
+`deploy/desplegar.sh` corre con `set -o pipefail`. El `.env` de producción no tiene `PORT` (el
+backend usa 4000 por defecto), así que `grep '^PORT='` devolvió 1 y tumbó el despliegue justo
+después del `pm2 restart`: backend nuevo, frontend viejo. En un script con `pipefail`, todo `grep`
+que puede no encontrar nada lleva `|| true`.

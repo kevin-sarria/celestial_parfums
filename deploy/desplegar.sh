@@ -79,7 +79,9 @@ npm run build
 paso "Backend: pm2 restart"
 pm2 restart celestial-backend --update-env
 
-PUERTO=$(grep -E '^PORT=' .env | head -1 | cut -d= -f2- | tr -d '"'"' ")
+# Sin `|| true`, un .env sin PORT (el de producción no lo tiene) hace que grep
+# devuelva 1 y `pipefail` tumbe el despliegue después del restart (2026-10-02).
+PUERTO=$(grep -E '^PORT=' .env | head -1 | cut -d= -f2- | tr -d '"'"' " || true)
 PUERTO=${PUERTO:-4000}
 paso "Backend: ¿responde?"
 for i in $(seq 1 20); do
