@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Gift, Sparkles } from 'lucide-react';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
@@ -13,6 +12,7 @@ import { urls } from '../infrastructure/api/urls';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useMiTarjeta } from '../application/hooks/useMiTarjeta';
 import { useSeo } from '../application/hooks/useSeo';
+import { useIrALogin } from '../application/hooks/useIrALogin';
 
 /**
  * Portal del cliente: su tarjeta de recompensas (sellos y premio). Los sellos se
@@ -21,7 +21,7 @@ import { useSeo } from '../application/hooks/useSeo';
  */
 export default function MisRecompensasPage() {
   useSeo('Mis recompensas');
-  const navigate = useNavigate();
+  const irALogin = useIrALogin();
   const { user } = useAuthContext();
   const { data, loading, error } = useMiTarjeta();
   const [entregas, setEntregas] = useState<EntregaCliente[]>([]);
@@ -33,9 +33,9 @@ export default function MisRecompensasPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) navigate('/login', { replace: true });
+    if (!user) irALogin(true);
     else cargarEntregas();
-  }, [user, navigate, cargarEntregas]);
+  }, [user, irALogin, cargarEntregas]);
 
   const nombre = user ? `${user.nombre} ${user.apellido}` : '';
 

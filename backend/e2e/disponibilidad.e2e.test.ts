@@ -49,7 +49,7 @@ describe('un producto que solo se vende armado', () => {
     await pagina.getByRole('button', { name: /Sin asignar/ }).click();
     await pagina.getByRole('option', { name: /Herod by Parfums de Marly/ }).click();
 
-    await pagina.getByRole('checkbox', { name: '30ml' }).check();
+    await pagina.getByRole('group', { name: 'Tallas que vendes' }).getByRole('button', { name: /^30ml/i }).click();
     await pagina.screenshot({ path: foto('form-1punto1') });
     await pagina.getByRole('button', { name: 'Crear producto' }).click();
 

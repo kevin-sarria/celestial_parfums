@@ -12,6 +12,7 @@ const CombosPage = lazyPagina(() => import('../pages/CombosPage'));
 const ComboDetailPage = lazyPagina(() => import('../pages/ComboDetailPage'));
 const ContactPage = lazyPagina(() => import('../pages/ContactPage'));
 const MiCreditoPage = lazyPagina(() => import('../pages/MiCreditoPage'));
+const MiCuentaPage = lazyPagina(() => import('../pages/MiCuentaPage'));
 const MisRecompensasPage = lazyPagina(() => import('../pages/MisRecompensasPage'));
 const MisComprasPage = lazyPagina(() => import('../pages/MisComprasPage'));
 const MisFavoritosPage = lazyPagina(() => import('../pages/MisFavoritosPage'));
@@ -39,6 +40,7 @@ export default function AppRouter() {
         <Route path="/combos" element={<CombosPage />} />
         <Route path="/combo/:slug" element={<ComboDetailPage />} />
         <Route path="/contactame" element={<ContactPage />} />
+        <Route path="/mi-cuenta" element={<MiCuentaPage />} />
         <Route path="/mi-credito" element={<MiCreditoPage />} />
         <Route path="/mis-recompensas" element={<MisRecompensasPage />} />
         <Route path="/mis-compras" element={<MisComprasPage />} />

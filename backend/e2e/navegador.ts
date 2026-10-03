@@ -197,10 +197,22 @@ export const elegirTipoDeAlta = (pagina: Page, tipo: RegExp) =>
   pagina.getByRole('button', { name: tipo }).click();
 
 /**
- * Cierra el popup de anuncios si aparece. En la tienda real sale encima de
- * todo y tapa justo los botones que el recorrido necesita tocar.
+ * Cierra los popups de anuncios si aparecen. En la tienda real salen encima de
+ * todo y tapan justo los botones que el recorrido necesita tocar.
+ *
+ * Llegan DESPUÉS de cargar la página (se piden aparte) y en COLA: al cerrar uno
+ * sale el siguiente. Mirar una sola vez y al instante fallaba de vez en cuando
+ * en la corrida completa, donde otros recorridos dejan anuncios creados: el
+ * popup llegaba medio segundo tarde y, mientras está abierto, el diálogo
+ * esconde el resto de la página a los lectores de pantalla y a `getByRole`
+ * (2026-10-02).
  */
 export const cerrarPopup = async (pagina: Page) => {
-  const boton = pagina.getByRole('button', { name: /entendido/i });
-  if (await boton.count()) await boton.first().click().catch(() => {});
+  const boton = pagina.getByRole('button', { name: /entendido/i }).first();
+  for (let i = 0; i < 5; i++) {
+    const aparecio = await boton.waitFor({ state: 'visible', timeout: i === 0 ? 1500 : 800 })
+      .then(() => true, () => false);
+    if (!aparecio) return;
+    await boton.click().catch(() => {});
+  }
 };

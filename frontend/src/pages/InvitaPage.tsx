@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Copy, Check, Users, Gift } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CatalogHeader from '../components/CatalogHeader';
@@ -9,6 +8,7 @@ import { http } from '../infrastructure/api/http';
 import { urls } from '../infrastructure/api/urls';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
+import { useIrALogin } from '../application/hooks/useIrALogin';
 
 interface Referido { nombre: string; fecha: string; compro: boolean }
 interface Data { codigo: string; referidos: Referido[] }
@@ -18,7 +18,7 @@ const fmt = (iso: string) => new Date(iso).toLocaleDateString('es-CO', { day: 'n
 /** Portal "Invita y gana": link de referido + amigos invitados y su estado. */
 export default function InvitaPage() {
   useSeo('Invita y gana');
-  const navigate = useNavigate();
+  const irALogin = useIrALogin();
   const { user } = useAuthContext();
   const [data, setData] = useState<Data | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -34,9 +34,9 @@ export default function InvitaPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) { navigate('/login', { replace: true }); return; }
+    if (!user) { irALogin(true); return; }
     cargar();
-  }, [user, navigate, cargar]);
+  }, [user, irALogin, cargar]);
 
   const link = data ? `${window.location.origin}/register?ref=${data.codigo}` : '';
   const copiar = () => {

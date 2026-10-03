@@ -1,6 +1,5 @@
 import { useSeo } from '../application/hooks/useSeo';
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, RotateCcw, Sparkles } from 'lucide-react';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
@@ -16,6 +15,7 @@ import {
   usePerfumeIdeal, filtrosVacios,
   type FiltrosIdeal, type RecomendacionGuardada,
 } from '../application/hooks/usePerfumeIdeal';
+import { useIrALogin } from '../application/hooks/useIrALogin';
 
 interface Lookup { id: number; nombre: string }
 
@@ -69,7 +69,7 @@ function OpcionCard({ activa, titulo, detalle, emoji, onClick }: {
  * El resultado queda guardado en la cuenta: al volver NO se recalcula.
  */
 export default function PerfumeIdealPage() {
-  const navigate = useNavigate();
+  const irALogin = useIrALogin();
   const { user } = useAuthContext();
   useSeo('Tu perfume ideal', 'Responde unas preguntas y descubre los perfumes que mejor te quedan.');
   const { guardada, loading, calcular } = usePerfumeIdeal();
@@ -83,8 +83,8 @@ export default function PerfumeIdealPage() {
 
   // Solo para usuarios registrados correctamente
   useEffect(() => {
-    if (!user) navigate('/login', { replace: true });
-  }, [user, navigate]);
+    if (!user) irALogin(true);
+  }, [user, irALogin]);
 
   // Al entrar: si ya hay un cálculo guardado se muestra tal cual (sin recalcular)
   useEffect(() => {

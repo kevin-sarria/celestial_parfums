@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { CalendarDays, HandCoins, History } from 'lucide-react';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
@@ -11,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { usePortalCredito, type CreditoPortal } from '../application/hooks/usePortalCredito';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
+import { useIrALogin } from '../application/hooks/useIrALogin';
 
 /**
  * Portal del cliente: consulta de SU crédito (deuda y cuotas pagadas).
@@ -18,15 +18,15 @@ import { useSeo } from '../application/hooks/useSeo';
  */
 export default function MiCreditoPage() {
   useSeo('Mi crédito');
-  const navigate = useNavigate();
+  const irALogin = useIrALogin();
   const { user } = useAuthContext();
   const { data, loading } = usePortalCredito();
   /** El crédito cuyo historial de pagos está abierto; null = cerrado. */
   const [viendo, setViendo] = useState<CreditoPortal | null>(null);
 
   useEffect(() => {
-    if (!user) navigate('/login', { replace: true });
-  }, [user, navigate]);
+    if (!user) irALogin(true);
+  }, [user, irALogin]);
 
   const creditos = data?.creditos ?? [];
 

@@ -16,6 +16,9 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Tallas en $0: la tienda las esconde y el perfume se publica igual con las que tengan precio (opción B del dueño, 2026-10-02; antes bloqueaba publicar) | hecho |
 | Al agregar un producto a una venta o crédito sale "Agregado: X" o "X: ahora van 2" (en el celular la lista queda fuera de la pantalla) | hecho |
 | Descripciones con formato (negrita, cursiva, listas) en perfumes, combos y Contáctame, con el editor del blog (opción B del dueño). Lo escrito antes con `**` sale en negrita solo (`diseno-ux.md`) | hecho |
+| Revisión de la app (2026-10-02). Primera tanda hecha: "Presentaciones y precio" rediseñada; el cliente sabe que entró (saludo, iniciales, Mi cuenta, franja en la portada, vuelve a donde estaba). Arreglado de paso: "Hola undefined undefined" en el menú | hecho |
+| Segunda tanda: buscador general del panel (Ctrl+K), meta del mes en Inicio, beneficios de crear cuenta en login/registro | pendiente, aprobada |
+| Tercera tanda: historial de cambios y empleados con permisos (cuando piense contratar) | pendiente, aprobada |
 | Desplegado el 2026-10-02 (con el despliegue automático) | hecho |
 | Dueño: registrar las compras de los 15 originales, ponerles precio y publicarlos | pendiente |
 | Panel partido por pestañas (`pestanas.ts`): el archivo del panel pasó de 560 kB a 41 kB | hecho |

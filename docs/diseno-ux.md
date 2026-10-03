@@ -733,3 +733,31 @@ descripción: perfumes y productos, combos y Contáctame.
   saneo. Al leer, el texto de antes del editor se convierte: `**x**` → negrita, línea en blanco →
   párrafo. No hubo migración de datos: se convierte cada vez (se recalcula, no se guarda).
 - Google y WhatsApp (`seo.service.ts`) reciben `textoPlano`: sin etiquetas ni asteriscos.
+
+## "Presentaciones y precio": tallas como botones, un renglón por talla (2026-10-02)
+
+El dueño la llamó "poco intuitiva y estorbosa". Medido: las tallas salían en orden de texto (100,
+10, 125, 3, 30…) y cada talla marcada abría tres renglones (precio, frasco, accesorios); con cuatro
+tallas eran doce controles, ocho de ellos casi nunca tocados. Ahora (`TallasDelPerfume.tsx`):
+
+1. **Las tallas son botones** ordenados por ml (lo que no es tamaño, al final) y se marcan de un toque.
+2. **Un renglón por talla marcada**: precio, *te cuesta* y *ganas* (en rojo si es pérdida). El
+   placeholder dice el precio que ya tiene y de dónde sale ("$25.000 (lista)" o "(general)"), en la
+   misma cascada que el servidor; sin ninguno, avisa "Sin precio: no sale en la tienda". *Te cuesta*
+   y *ganas* hoy solo existen para originales (de la botella); en el celular bajan bajo el precio.
+3. **Frasco y accesorios distintos, plegados** (`FrascosPorTalla.tsx`). Arranca abierto si la ficha
+   ya usa uno distinto, para no esconder lo que cuenta; el "Ninguno" de un 1.1 no cuenta.
+
+## El cliente sabe que entró (2026-10-02)
+
+Antes, iniciar sesión no cambiaba nada visible: la portada era la del visitante y todo lo de la cuenta
+vivía dentro del ☰ (dueño: *"no sienten algo super wow cuando ingresan"*). Ahora:
+
+- **Saludo** al entrar (`components/auth/bienvenida.ts`), con botón a Mi cuenta. Solo clientes.
+- **Iniciales** junto al ☰ en toda la tienda, que llevan a Mi cuenta; sin sesión, un "Entrar".
+- **Mi cuenta** (`/mi-cuenta`): una tarjeta por cosa que se le abrió, cada una diciendo cómo va
+  (sellos, compras, favoritos, saldo del crédito si tiene). Si un dato no carga, la tarjeta sale igual.
+- **Franja en la portada** (`FranjaCliente`): su nombre y los sellos que le faltan. Es lo que hace volver.
+- **Vuelve a donde estaba** al iniciar sesión (`useIrALogin`): el origen viaja en el `state` de la
+  navegación, no en la URL, y `destinoTrasLogin` solo acepta rutas internas (no se puede armar un
+  enlace de login que mande a otro sitio). El dueño sigue yendo a su panel.

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, Star, ShoppingBag, Heart, Newspaper, Info, Share2, Package, type LucideIcon } from 'lucide-react';
+import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, Star, ShoppingBag, Heart, Newspaper, Info, Share2, Package, UserRound, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -15,6 +15,7 @@ import { BrandMark } from '@/components/BrandMark';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { usePortalCredito } from '../application/hooks/usePortalCredito';
 import { useHayAccesorios } from '../application/hooks/useAccesorios';
+import { useIrALogin } from '../application/hooks/useIrALogin';
 
 interface Props {
   isHome?: boolean;
@@ -40,8 +41,13 @@ const NAV_TIENDA: NavItem[] = [
   { to: '/blog', label: 'Blog', icon: Newspaper },
 ];
 
+/** "Laura Gómez" → "LG". Sin apellido, la primera letra; sin nada, un punto. */
+const iniciales = (nombre?: string, apellido?: string) =>
+  ((nombre?.trim()[0] ?? '') + (apellido?.trim()[0] ?? '')).toUpperCase() || '•';
+
 export default function CatalogHeader({ isHome = false }: Props) {
   const navigate = useNavigate();
+  const irALogin = useIrALogin();
   const { user, logout } = useAuthContext();
   const [drawerOpen, setDrawerOpen] = useState(false);
   // "Mi crédito" solo aparece si el cliente tiene un crédito activo con el negocio
@@ -60,6 +66,7 @@ export default function CatalogHeader({ isHome = false }: Props) {
   // Grupo MI CUENTA: exclusivo de registrados (recompensas, compras y crédito activo).
   const grupoCuenta: NavItem[] = user
     ? [
+        { to: '/mi-cuenta', label: 'Mi cuenta', icon: UserRound },
         { to: '/mis-favoritos', label: 'Mis favoritos', icon: Heart },
         { to: '/mis-recompensas', label: 'Mis recompensas', icon: Star },
         { to: '/mis-compras', label: 'Mis compras', icon: ShoppingBag },
@@ -97,6 +104,29 @@ export default function CatalogHeader({ isHome = false }: Props) {
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-5 md:px-8">
         {Brand}
+
+        <div className="flex items-center gap-2">
+        {/* Se ve en toda la tienda si hay sesión: sus iniciales, que llevan a
+            Mi cuenta. Antes todo vivía dentro del ☰ y el cliente no sabía si
+            había entrado (dueño, 2026-10-02). Sin sesión, la puerta para entrar. */}
+        {user ? (
+          <Link
+            to="/mi-cuenta"
+            aria-label="Mi cuenta"
+            title="Mi cuenta"
+            className="flex size-9 items-center justify-center rounded-full bg-primary text-[12.5px] font-semibold tracking-wide text-primary-foreground transition-opacity hover:opacity-90"
+          >
+            {iniciales(user.nombre, user.apellido)}
+          </Link>
+        ) : (
+          <button
+            type="button"
+            onClick={() => irALogin()}
+            className="h-9 rounded-full px-3.5 text-[13px] font-medium text-foreground transition-colors hover:bg-secondary"
+          >
+            Entrar
+          </button>
+        )}
 
         {/* ── Burger + drawer (todas las pantallas) ── */}
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -177,7 +207,7 @@ export default function CatalogHeader({ isHome = false }: Props) {
                     className="w-full rounded-full"
                     onClick={() => {
                       setDrawerOpen(false);
-                      navigate('/login');
+                      irALogin();
                     }}
                   >
                     Iniciar sesión
@@ -186,6 +216,7 @@ export default function CatalogHeader({ isHome = false }: Props) {
               </div>
             </SheetContent>
           </Sheet>
+        </div>
       </div>
     </header>
   );

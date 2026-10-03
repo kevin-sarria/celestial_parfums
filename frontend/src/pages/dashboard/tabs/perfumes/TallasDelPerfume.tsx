@@ -1,25 +1,35 @@
+import { Check } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { SelectSimple } from '@/components/ui/select-simple';
+import { cn } from '@/lib/utils';
 import { Field } from '../../ui';
 import { formatPrice } from '../../helpers';
 import type { Lookup, PerfumeForm } from '../../types';
-import { AccesoriosDeTalla, type OpcionAccesorio } from './AccesoriosDeTalla';
+import type { OpcionAccesorio } from './AccesoriosDeTalla';
+import { FrascosPorTalla, type Envase } from './FrascosPorTalla';
 import { esBotellaCompleta, mlQueSalenDeLaBotella } from '../../../../domain/entities/decants';
-
-/** Un insumo elegible como frasco de una talla. */
-interface Envase { id: number; nombre: string; precio?: number }
 
 /** La botella de un original: su costo por ml y cuánto trae. */
 export interface BotellaOriginal { precio: number; ml_botella?: number | null }
 
 /**
+ * De la más pequeña a la más grande, y lo que no es tamaño ("200/250ML",
+ * "Combo Personalizado") al final. Antes salían en el orden del texto —100,
+ * 10, 125, 3, 30…— y el dueño tenía que buscar la talla en la lista
+ * (2026-10-02).
+ */
+const porTamano = (a: Lookup, b: Lookup) =>
+  (a.ml ?? Infinity) - (b.ml ?? Infinity) || a.nombre.localeCompare(b.nombre);
+
+/**
  * Qué tallas vende este perfume, a qué precio y en qué frasco.
  *
- * Salió de `PerfumesTab.tsx` (iba en 547 líneas) porque es lo más enredado del
- * formulario y lo que menos tiene que ver con el resto de la ficha: aquí se
- * cruzan tres cosas por cada talla —si se vende, si cuesta distinto de lo que
- * dice la lista de precios, y con qué frasco se arma—, y cada una vive en un
- * campo distinto del formulario.
+ * Rediseñada el 2026-10-02 porque al dueño le parecía "poco intuitiva y
+ * estorbosa": cada talla marcada abría tres renglones (precio, frasco y
+ * accesorios) aunque el frasco y los accesorios casi nunca se cambian.
+ * Ahora son tres piezas, de lo diario a lo raro:
+ *   1. Las tallas como botones, ordenadas por tamaño: se marcan de un toque.
+ *   2. Un renglón por talla marcada: su precio, lo que cuesta y lo que deja.
+ *   3. Frasco y accesorios distintos, plegados (`FrascosPorTalla`).
  *
  * Recibe el formulario entero y su `setForm`: el dueño del estado sigue siendo
  * la pestaña, que es quien lo guarda.
@@ -39,102 +49,120 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, acces
    */
   botella?: BotellaOriginal | null;
 }) {
+  const ordenadas = [...presentaciones].sort(porTamano);
+  const activas = ordenadas.filter(pr => form.presentaciones.includes(pr.id));
+  const esBotella = (pr: Lookup) => !!botella && pr.ml != null && esBotellaCompleta(pr.ml, botella.ml_botella);
+
   /**
    * Lo que cuesta UNA venta de esa talla: los ml que salen de la botella (con la
    * pérdida del trasvase si es decant) más su frasco de decant, si tiene uno
    * propio. Null = no hay con qué calcularlo (sin botella o sin costo aún).
    */
-  const costoDe = (ml: number | null | undefined, presentacionId: number) => {
-    if (!botella || !(botella.precio > 0) || ml == null) return null;
-    const liquido = mlQueSalenDeLaBotella(ml, botella.ml_botella) * botella.precio;
-    const envase = esBotellaCompleta(ml, botella.ml_botella) ? 0
-      : envases.find(v => v.id === form.envases_talla[presentacionId])?.precio ?? 0;
+  const costoDe = (pr: Lookup) => {
+    if (!botella || !(botella.precio > 0) || pr.ml == null) return null;
+    const liquido = mlQueSalenDeLaBotella(pr.ml, botella.ml_botella) * botella.precio;
+    const envase = esBotella(pr) ? 0 : envases.find(v => v.id === form.envases_talla[pr.id])?.precio ?? 0;
     return Math.round(liquido + envase);
   };
-  const toggleId = (ids: number[], id: number) => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id];
+
+  /**
+   * El precio con que sale HOY, en la misma cascada que usa el servidor
+   * (`perfume.mapeo.ts`): el propio, si no el de la lista, si no el general
+   * del perfume. 0 = esa talla no sale en la tienda (opción B, 2026-10-02).
+   */
+  const heredado = (pr: Lookup) => {
+    const deLista = precioDeLista(pr.id);
+    return deLista != null
+      ? { valor: deLista, de: 'lista' }
+      : { valor: Number(form.precio) || 0, de: 'general' };
+  };
+  const precioDe = (pr: Lookup) => Number(form.precios_propios[pr.id]) || heredado(pr).valor;
+
+  const alternar = (id: number) => setForm(f => ({
+    ...f,
+    presentaciones: f.presentaciones.includes(id) ? f.presentaciones.filter(x => x !== id) : [...f.presentaciones, id],
+    // Un 1.1 NO lleva bolsa ni perfumero: la talla nueva arranca en "Ninguno"
+    // (el dueño la cambia si ese sí los lleva).
+    accesorios_talla: f.solo_armado && !(id in f.accesorios_talla)
+      ? { ...f.accesorios_talla, [id]: [] }
+      : f.accesorios_talla,
+  }));
+
+  const hayCostos = activas.some(pr => costoDe(pr) != null);
+
   return (
     <Field label="Presentaciones y precio">
-      <div className="space-y-1.5 rounded-lg border border-border bg-secondary/30 p-2.5">
-        <p className="text-[12px] text-muted-foreground">
-          Marca las tallas que vendes. Cada una cobra el precio de la lista de su
-          categoría; escribe un valor solo si ESTE perfume cuesta distinto.
-        </p>
-        {presentaciones.map(pr => {
-          const activa = form.presentaciones.includes(pr.id);
-          const deLista = precioDeLista(pr.id);
-          return (
-            // `flex-wrap`: en celular los cuatro controles (nombre, precio,
-            // nota y frasco) no caben en una línea y la fila se desbordaba
-            // por fuera del modal. Bajan de renglón en vez de salirse.
-            <div key={pr.id} className="flex flex-wrap items-center gap-2">
-              <label className="flex min-w-28 flex-1 cursor-pointer items-center gap-2 text-[13px] text-foreground">
-                <input
-                  type="checkbox" className="size-4 accent-primary" checked={activa}
-                  onChange={() => setForm(f => ({
-                    ...f,
-                    presentaciones: toggleId(f.presentaciones, pr.id),
-                    // Un 1.1 NO lleva bolsa ni perfumero: la talla nueva arranca
-                    // en "Ninguno" (el dueño la cambia si ese sí los lleva).
-                    accesorios_talla: f.solo_armado && !(pr.id in f.accesorios_talla)
-                      ? { ...f.accesorios_talla, [pr.id]: [] }
-                      : f.accesorios_talla,
-                  }))}
-                />
-                {pr.nombre}
-                {botella && pr.ml != null && esBotellaCompleta(pr.ml, botella.ml_botella) && (
-                  <span className="text-[11.5px] font-medium text-primary">botella completa</span>
+      <div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-3">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tallas que vendes">
+          {ordenadas.map(pr => {
+            const activa = form.presentaciones.includes(pr.id);
+            return (
+              <button
+                key={pr.id} type="button" aria-pressed={activa} onClick={() => alternar(pr.id)}
+                className={cn(
+                  'inline-flex h-9 items-center gap-1 rounded-full border px-3 text-[13px] transition-colors sm:h-8',
+                  activa
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-card text-foreground hover:border-primary/50',
                 )}
-              </label>
-              {activa && (
-                <>
-                  <Input
-                    type="number" min="0" className="h-8 max-w-32 text-[13px]"
-                    placeholder={deLista != null ? `Lista: ${deLista}` : 'Precio'}
-                    value={form.precios_propios[pr.id] ?? ''}
-                    onChange={e => setForm(f => ({
-                      ...f,
-                      precios_propios: { ...f.precios_propios, [pr.id]: e.target.value },
-                    }))}
-                  />
-                  <span className="w-24 shrink-0 text-[12px] text-muted-foreground">
-                    {form.precios_propios[pr.id]
-                      ? 'precio propio'
-                      : deLista != null
-                        ? formatPrice(deLista)
-                        : 'sin precio'}
-                  </span>
-                  {costoDe(pr.ml, pr.id) != null && (
-                    <span className="w-28 shrink-0 text-[12px] text-muted-foreground">
-                      te cuesta <strong className="font-semibold text-foreground">{formatPrice(costoDe(pr.ml, pr.id)!)}</strong>
-                    </span>
-                  )}
-                  {/* El frasco cambia según la referencia: un 1.1 de Sauvage
-                      no usa el mismo que uno de Bleu. Vacío = el del tamaño. */}
-                  {form.tipo_producto !== 'comprado' && (
-                    <SelectSimple
-                      className="h-8 max-w-48"
-                      value={form.envases_talla[pr.id] ?? ''}
-                      onChange={e => setForm(f => ({
-                        ...f,
-                        envases_talla: { ...f.envases_talla, [pr.id]: Number(e.target.value) || '' },
-                      }))}
-                    >
-                      <option value="">Frasco del tamaño</option>
-                      {envases.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
-                    </SelectSimple>
-                  )}
-                  {form.tipo_producto !== 'comprado' && (
-                    <AccesoriosDeTalla
-                      valor={form.accesorios_talla[pr.id] ?? null}
-                      opciones={accesorios}
-                      onCambio={v => setForm(f => ({ ...f, accesorios_talla: { ...f.accesorios_talla, [pr.id]: v } }))}
-                    />
-                  )}
-                </>
-              )}
+              >
+                {activa && <Check className="size-3.5" />}
+                {pr.nombre}
+                {esBotella(pr) && <span className={activa ? 'opacity-80' : 'text-primary'}>· botella</span>}
+              </button>
+            );
+          })}
+        </div>
+
+        {activas.length === 0 ? (
+          <p className="text-[12.5px] text-muted-foreground">Toca las tallas que vendes.</p>
+        ) : (
+          <div className="overflow-hidden rounded-md border border-border bg-card">
+            <div className="hidden grid-cols-[5.5rem_minmax(0,1fr)_7rem_7rem] gap-3 border-b border-border bg-secondary/40 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground sm:grid">
+              <span>Talla</span><span>Precio</span>
+              <span className="text-right">{hayCostos ? 'Te cuesta' : ''}</span>
+              <span className="text-right">{hayCostos ? 'Ganas' : ''}</span>
             </div>
-          );
-        })}
+            {activas.map(pr => {
+              const base = heredado(pr);
+              const precio = precioDe(pr);
+              const costo = costoDe(pr);
+              return (
+                <div key={pr.id}
+                  className="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-3 gap-y-1 border-b border-border px-3 py-2 last:border-b-0 sm:grid-cols-[5.5rem_minmax(0,1fr)_7rem_7rem]">
+                  <span className="text-[13px] font-medium text-foreground">
+                    {pr.nombre}
+                    {esBotella(pr) && <span className="block text-[11px] font-normal text-primary">botella completa</span>}
+                  </span>
+                  <div className="min-w-0">
+                    <Input
+                      type="number" min="0" className="h-9 sm:h-8"
+                      aria-label={`Precio de ${pr.nombre}`}
+                      placeholder={base.valor > 0 ? `${formatPrice(base.valor)} (${base.de})` : 'Sin precio'}
+                      value={form.precios_propios[pr.id] ?? ''}
+                      onChange={e => setForm(f => ({ ...f, precios_propios: { ...f.precios_propios, [pr.id]: e.target.value } }))}
+                    />
+                    {!(precio > 0) && (
+                      <span className="mt-0.5 block text-[11.5px] text-amber-700">Sin precio: no sale en la tienda</span>
+                    )}
+                  </div>
+                  {/* En el celular el costo y la ganancia bajan debajo del precio */}
+                  <span className="col-start-2 text-[12px] tabular-nums text-muted-foreground sm:col-start-auto sm:text-right">
+                    {costo != null && <><span className="sm:hidden">te cuesta </span>{formatPrice(costo)}</>}
+                  </span>
+                  <span className={cn('col-start-2 text-[12.5px] font-semibold tabular-nums sm:col-start-auto sm:text-right',
+                    costo != null && precio > 0 && precio - costo < 0 ? 'text-destructive' : 'text-foreground')}>
+                    {costo != null && precio > 0 && <><span className="font-normal text-muted-foreground sm:hidden">ganas </span>{formatPrice(precio - costo)}</>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {form.tipo_producto !== 'comprado' && activas.length > 0 && (
+          <FrascosPorTalla form={form} setForm={setForm} tallas={activas} envases={envases} accesorios={accesorios} />
+        )}
       </div>
     </Field>
   );

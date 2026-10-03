@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Heart } from 'lucide-react';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeCard from '../components/PerfumeCard';
@@ -13,11 +12,12 @@ import { urls } from '../infrastructure/api/urls';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useListas } from '../application/context/ListasContext';
 import { useSeo } from '../application/hooks/useSeo';
+import { useIrALogin } from '../application/hooks/useIrALogin';
 
 /** Portal del cliente: los perfumes que guardó como favoritos. */
 export default function MisFavoritosPage() {
   useSeo('Mis favoritos');
-  const navigate = useNavigate();
+  const irALogin = useIrALogin();
   const { user } = useAuthContext();
   const { favoritos } = useListas();
   const [items, setItems] = useState<Perfume[]>([]);
@@ -33,9 +33,9 @@ export default function MisFavoritosPage() {
   }, []);
 
   useEffect(() => {
-    if (!user) { navigate('/login', { replace: true }); return; }
+    if (!user) { irALogin(true); return; }
     cargar();
-  }, [user, navigate, cargar]);
+  }, [user, irALogin, cargar]);
 
   // Al quitar un favorito desde una card, refresca la lista (sale de la vista)
   const visibles = items.filter((p) => favoritos.has(p.id));

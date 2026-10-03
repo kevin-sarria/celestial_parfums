@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ShoppingBag } from 'lucide-react';
 import CatalogHeader from '../components/CatalogHeader';
 import PerfumeSpinner from '../components/PerfumeSpinner';
@@ -10,6 +9,7 @@ import { http } from '../infrastructure/api/http';
 import { urls } from '../infrastructure/api/urls';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
+import { useIrALogin } from '../application/hooks/useIrALogin';
 
 /**
  * Portal del cliente: "Mis compras". Lista los perfumes que ya compró (ventas
@@ -17,12 +17,12 @@ import { useSeo } from '../application/hooks/useSeo';
  */
 export default function MisComprasPage() {
   useSeo('Mis compras');
-  const navigate = useNavigate();
+  const irALogin = useIrALogin();
   const { user } = useAuthContext();
   const [productos, setProductos] = useState<ProductoComprado[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => { if (!user) navigate('/login', { replace: true }); }, [user, navigate]);
+  useEffect(() => { if (!user) irALogin(true); }, [user, irALogin]);
 
   const cargar = useCallback(async () => {
     const res = await http.get<{ data: ProductoComprado[] }>(urls.resenas.misCompras);

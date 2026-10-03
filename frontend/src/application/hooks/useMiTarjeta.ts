@@ -49,3 +49,13 @@ export function useMiTarjeta() {
 
   return { data, loading, error, refresh };
 }
+
+/**
+ * La tarjeta en una frase, para lo que no tiene sitio para pintarla entera
+ * (Mi cuenta, la franja de la portada). Null = el programa no está activo.
+ */
+export const fraseDeSellos = (t: MiTarjeta | null): string | null => {
+  if (!t?.activo) return null;
+  if (t.premio_listo) return '¡Tienes un premio listo! Reclámalo en tu próxima compra';
+  return `Te ${t.faltan === 1 ? 'falta' : 'faltan'} ${t.faltan} ${t.faltan === 1 ? 'sello' : 'sellos'} para ${t.premio}`;
+};

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,10 +12,14 @@ import { urls } from '../infrastructure/api/urls';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
 import { useAuthContext } from '../application/context/useAuthContext';
 import { useSeo } from '../application/hooks/useSeo';
+import { destinoTrasLogin } from '../application/hooks/useIrALogin';
+import { darBienvenida } from '@/components/auth/bienvenida';
+import type { AuthUser } from '../domain/entities/auth.schema';
 
 export default function LoginPage() {
   useSeo('Iniciar sesión');
   const navigate = useNavigate();
+  const { state } = useLocation();
   const auth = useAuthContext();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -45,7 +49,7 @@ export default function LoginPage() {
        * marca el interceptor pediría refresco, **reenviaría el login solo** y
        * al fallar te sacaría a `/login` en vez de decirte que la clave no es.
        */
-      const res = await http.post<{ data: { token: string; user: { rol_id?: number } } }>(
+      const res = await http.post<{ data: { token: string; user: AuthUser } }>(
         urls.auth.login, { ...parsed.data, captcha }, { sesionOpcional: true },
       );
 
@@ -54,8 +58,10 @@ export default function LoginPage() {
         return;
       }
 
-      auth.login(res.cuerpo!.data.token, res.cuerpo!.data.user as never);
-      navigate(res.cuerpo!.data.user?.rol_id === 1 ? '/dashboard' : '/');
+      const user = res.cuerpo!.data.user;
+      auth.login(res.cuerpo!.data.token, user);
+      navigate(destinoTrasLogin(state, user.rol_id));
+      if (user.rol_id !== 1) darBienvenida(user.nombre, () => navigate('/mi-cuenta'));
     } catch (err) {
       if (err instanceof Error && err.message === 'reCAPTCHA no cargado') {
         setError('Verificación de seguridad no disponible. Recarga la página.');

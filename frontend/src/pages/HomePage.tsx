@@ -10,6 +10,7 @@ import AnunciosPopups from '../components/AnunciosPopups';
 import ComoFunciona from '../components/ComoFunciona';
 import EnvioPagos from '../components/EnvioPagos';
 import CatalogHeader from '../components/CatalogHeader';
+import { FranjaCliente } from '../components/cuenta/FranjaCliente';
 import LandingHero from '../components/catalog/LandingHero';
 import GaleriaGanadores from '../components/recompensas/GaleriaGanadores';
 import { CardCarousel, CarouselItem } from '../components/catalog/CardCarousel';
@@ -97,6 +98,7 @@ export default function HomePage({ isAdmin = false, adminPreview = false }: Prop
       )}
 
       <CatalogHeader isHome />
+      <FranjaCliente />
 
       <LandingHero
         search={search}

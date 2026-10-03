@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { http } from '../../infrastructure/api/http';
 import { urls } from '../../infrastructure/api/urls';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import type { AuthUser } from '../../domain/entities/auth.schema';
+import { destinoTrasLogin } from '../../application/hooks/useIrALogin';
+import { darBienvenida } from './bienvenida';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined;
 const GSI_SRC = 'https://accounts.google.com/gsi/client';
@@ -67,6 +69,8 @@ interface Props {
 export function GoogleAuthButton({ text = 'continue_with', onError }: Props) {
   const navigate = useNavigate();
   const auth = useAuthContext();
+  // En una ref: el botón de Google se monta una vez y no debe rehacerse por esto
+  const origen = useRef(useLocation().state);
   const containerRef = useRef<HTMLDivElement>(null);
   const [unavailable, setUnavailable] = useState(false);
 
@@ -94,7 +98,8 @@ export function GoogleAuthButton({ text = 'continue_with', onError }: Props) {
       }
       const user = r.cuerpo.data.user;
       auth.login(r.cuerpo.data.token, user);
-      navigate(user.rol_id === 1 ? '/dashboard' : '/');
+      navigate(destinoTrasLogin(origen.current, user.rol_id));
+      if (user.rol_id !== 1) darBienvenida(user.nombre, () => navigate('/mi-cuenta'));
     };
 
     loadGsiScript()

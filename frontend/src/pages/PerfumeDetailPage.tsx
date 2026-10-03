@@ -23,6 +23,7 @@ import { GENERO_LABELS } from '../domain/entities/perfume.schema';
 import { aromaColor } from '../domain/entities/aroma.colors';
 import { TextoEnriquecido } from '../components/TextoEnriquecido';
 import { textoPlano } from '../utils/textoPlano';
+import { useIrALogin } from '../application/hooks/useIrALogin';
 
 const GENERO_PILL_STYLES: Record<string, string> = {
   caballero: 'border-sky-200 bg-sky-50 text-sky-600',
@@ -33,6 +34,7 @@ const GENERO_PILL_STYLES: Record<string, string> = {
 export default function PerfumeDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const irALogin = useIrALogin();
   const { perfume, related, loading, error } = usePerfumeDetail(slug);
   const [cartModal, setCartModal] = useState(false);
   const [resenasOpen, setResenasOpen] = useState(false);
@@ -244,7 +246,7 @@ export default function PerfumeDetailPage() {
               ) : (
                 <p className="mt-2 rounded-xl border border-border bg-secondary/50 px-4 py-3 text-[13.5px] text-muted-foreground">
                   Agotado por ahora.{' '}
-                  <button type="button" onClick={() => navigate('/login')} className="font-medium text-primary underline underline-offset-2">
+                  <button type="button" onClick={() => irALogin()} className="font-medium text-primary underline underline-offset-2">
                     Inicia sesión
                   </button>{' '}
                   y te avisamos cuando vuelva.
