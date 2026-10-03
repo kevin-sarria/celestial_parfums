@@ -524,3 +524,11 @@ Sí marcaba el texto (`<i>`), pero **Manrope no tiene versión cursiva** y `html
 y `.texto-enriquecido` se permite (`font-synthesis-style: auto`). Si un día se cambia la letra o se
 carga una con cursiva propia, esto sobra. De paso, la negrita del texto con formato pasó de 600 a
 700: con 600 casi no se distinguía del texto normal en el editor.
+
+## 2026-10-02 · "Hola undefined undefined" en el menú del cliente
+
+`/api/auth/me` devolvía el contenido del token (id, correo, rol), que no trae el nombre. La app
+solo tenía el nombre en la copia de `localStorage` que guarda al iniciar sesión, y Safari la borra
+a los 7 días mientras la cookie sigue viva: el cliente seguía dentro, pero el menú lo saludaba
+como `undefined undefined`. Ahora `/me` lee el usuario de la base (y responde 401 si la cuenta ya
+no está activa), y la app usa siempre lo que dice el servidor.

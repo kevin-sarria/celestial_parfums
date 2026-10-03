@@ -22,7 +22,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const res = await http.get<{ data?: AuthUser }>(urls.auth.yo, { sesionOpcional: true });
       const perfil = res.cuerpo?.data;
       if (perfil) {
-        setUser(prev => prev ?? perfil);
+        // Manda el servidor: la copia guardada puede faltar o estar vieja
+        authStorage.save('', perfil);
+        setUser(perfil);
         setIsAdmin(perfil.rol_id === 1);
       } else if (res.status === 401) {
         // El servidor CONFIRMA que no hay sesión: se limpia lo que quedara.

@@ -10,6 +10,7 @@ import {
   REFRESH_TOKEN_MAX_AGE,
 } from '../services/auth.service';
 import { mensajeSeguro } from '../utils/errorSeguro';
+import { prisma } from '../config/prisma';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -68,8 +69,20 @@ export const logout = async (_req: Request, res: Response) => {
   res.json({ message: 'Sesión cerrada' });
 };
 
+/**
+ * Quién soy, LEÍDO DE LA BASE. Antes devolvía el token tal cual (id, correo y
+ * rol, sin nombre): con el navegador sin la copia guardada —Safari la borra a
+ * los 7 días; la cookie dura más— el menú saludaba "Hola undefined undefined"
+ * (2026-10-02). De la base, además, sale el nombre si el cliente lo cambió.
+ */
 export const me = async (req: Request, res: Response) => {
-  res.json({ data: req.jwtUser });
+  const user = await prisma.user.findUnique({
+    where: { id: req.jwtUser!.id },
+    select: { id: true, nombre: true, apellido: true, email: true, rol_id: true, activo: true },
+  });
+  if (!user?.activo) { res.status(401).json({ error: 'Sesión no válida' }); return; }
+  const { activo: _activo, ...perfil } = user;
+  res.json({ data: perfil });
 };
 
 export const registerAdmin = async (req: Request, res: Response) => {
