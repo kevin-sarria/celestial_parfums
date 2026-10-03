@@ -6,10 +6,12 @@ import { BrandMark } from '@/components/BrandMark';
 interface AuthCardProps {
   subtitle?: string;
   children: ReactNode;
+  /** Debajo de la caja: lo que se gana creando una cuenta. */
+  pie?: ReactNode;
 }
 
 /** Layout centrado de las páginas de autenticación con la marca arriba. */
-export function AuthCard({ subtitle, children }: AuthCardProps) {
+export function AuthCard({ subtitle, children, pie }: AuthCardProps) {
   return (
     <div className="flex min-h-svh items-center justify-center bg-background px-4 py-10">
       <div className="w-full max-w-sm animate-fade-up">
@@ -26,6 +28,7 @@ export function AuthCard({ subtitle, children }: AuthCardProps) {
         <div className="rounded-2xl border border-border bg-card p-6 shadow-[0_8px_30px_-12px_rgb(0_0_0/0.12)] sm:p-7">
           {children}
         </div>
+        {pie}
         <div className="mt-5 text-center">
           <Link
             to="/"

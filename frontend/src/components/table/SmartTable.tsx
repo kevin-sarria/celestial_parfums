@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import type { ColumnDef, FilterValue, FiltersState } from './tableTypes';
 import { useTableControls } from './useTableControls';
 import { useMediaQuery } from './useMediaQuery';
+import { useBuscarDeUrl } from './useBuscarDeUrl';
 import { FilaTarjeta } from './FilaTarjeta';
 import { ColumnFilterPopover } from './ColumnFilterPopover';
 import { PaginadorTabla } from './PaginadorTabla';
@@ -166,6 +167,9 @@ export function SmartTable<T>({
       debounceRef.current = setTimeout(() => onServerSearch!(value.trim()), SERVER_SEARCH_DEBOUNCE_MS);
     }
   };
+
+  // `?buscar=` en la URL (el buscador general del panel) abre la tabla filtrada
+  useBuscarDeUrl(handleSearchChange);
 
   const handleSearchClear = () => {
     volverAlPrincipio();

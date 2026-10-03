@@ -12,6 +12,7 @@ import { http } from '../infrastructure/api/http';
 import { urls } from '../infrastructure/api/urls';
 import { executeRecaptcha, showRecaptchaBadge, hideRecaptchaBadge } from '../infrastructure/recaptcha';
 import { useSeo } from '../application/hooks/useSeo';
+import { BeneficiosCuenta } from '@/components/auth/BeneficiosCuenta';
 
 export default function RegisterPage() {
   useSeo('Crear cuenta');
@@ -78,7 +79,10 @@ export default function RegisterPage() {
   };
 
   return (
-    <AuthCard subtitle={success ? undefined : 'Crea tu cuenta'}>
+    <AuthCard
+      subtitle={success ? undefined : 'Crea tu cuenta'}
+      pie={success ? undefined : <BeneficiosCuenta titulo="Lo que ganas al crearla" />}
+    >
       {success ? (
         <div className="space-y-4 text-center">
           <BrandMark className="mx-auto size-14" />

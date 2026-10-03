@@ -14,6 +14,7 @@ import { MenuLateral } from './MenuLateral';
 import { TAB_META, TAB_POR_DEFECTO, esClasificacion, esTabValido } from './navegacion';
 import { SelectorClasificaciones } from './SelectorClasificaciones';
 import CentroNotificaciones from './CentroNotificaciones';
+import BuscadorGeneral from './BuscadorGeneral';
 import {
   PerfumesTab,
   ProductosTab,
@@ -266,6 +267,7 @@ export default function DashboardPage() {
           {/* Lo único que queda a la derecha en pantalla pequeña: lo que está
               pendiente. El respaldo se movió al menú lateral porque los dos
               juntos truncaban el nombre de la tienda. */}
+          <BuscadorGeneral />
           <CentroNotificaciones />
           {/* En celular estas acciones viven dentro del drawer */}
           <div className="hidden items-center gap-1.5 sm:flex">

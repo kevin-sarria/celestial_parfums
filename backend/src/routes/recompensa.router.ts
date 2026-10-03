@@ -42,6 +42,16 @@ recompensaRouter.get('/ganadores', h(async (_req, res) => {
   res.json({ data: await entregaRepo.galeriaGanadores() });
 }));
 
+/**
+ * Público: si hay programa de sellos y qué premio da. Lo usan el login y el
+ * registro para decir qué se gana creando una cuenta sin prometer un premio
+ * que el dueño apagó (2026-10-02). La compra mínima va porque cambia la promesa.
+ */
+recompensaRouter.get('/programa', h(async (_req, res) => {
+  const c = await repo.getConfig();
+  res.json({ data: { activo: c.activo, sellos_objetivo: c.sellos_objetivo, premio: c.premio, min_compra: c.min_compra } });
+}));
+
 // ── Cliente logueado ─────────────────────────────────────────────────────────
 recompensaRouter.get('/mi-tarjeta', requireAuth, h(async (req, res) => {
   res.json({ data: await repo.calcularTarjeta(req.jwtUser!.id) });

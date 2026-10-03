@@ -303,6 +303,8 @@ export const urls = {
   /** La tarjeta de sellos: configuración, progreso de cada cliente y entregas. */
   recompensas: {
     config: '/recompensas/config',
+    /** Público: si hay sellos y qué premio dan (para el login y el registro). */
+    programa: '/recompensas/programa',
     clientes: '/recompensas/clientes',
     /** Premio entregado: la tarjeta del cliente se reinicia. */
     entregar: (clienteId: number) => `/recompensas/clientes/${clienteId}/entregar`,
@@ -339,6 +341,9 @@ export const urls = {
   notificaciones: '/notificaciones',
 
   reportes: (ruta: string) => `/reportes/${ruta}`,
+
+  /** El buscador general del panel: catálogo, clientes, ventas, créditos y materiales. */
+  buscar: (q: string) => `/buscar?q=${encodeURIComponent(q)}`,
 
   blog: {
     /** La lista pública de entradas publicadas, paginada. */

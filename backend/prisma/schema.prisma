@@ -639,6 +639,16 @@ model Empresa {
   @@map("empresas")
 }
 
+/// Meta de ventas de un mes ("2026-10"), la que pone el dueño en Inicio.
+/// Una fila por mes: cambiar la de este mes no toca las de antes.
+model MetaMensual {
+  mes        String   @id @db.Char(7)
+  monto      Decimal  @db.Decimal(12, 2)
+  updated_at DateTime @updatedAt
+
+  @@map("metas_mensuales")
+}
+
 /// Configuración tributaria del negocio (fila única, patrón ContactoConfig).
 model NegocioConfig {
   id              Int      @id @default(1)

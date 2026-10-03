@@ -4,6 +4,7 @@ import { requireAdmin } from '../middleware/auth.middleware';
 import { h } from '../middleware/error.middleware';
 import { reporteVentasRango } from '../repositories/reporteVentasRango';
 import { resumenInicio } from '../repositories/inicio.repository';
+import { ponerMeta } from '../repositories/metaMensual';
 import { listaRecompra } from '../repositories/recompra';
 import { badRequest } from '../utils/httpError';
 import { hoyEnColombia } from '../utils/fechas';
@@ -40,6 +41,11 @@ reporteRouter.get('/ventas', h(async (req, res) => {
 /** La pantalla de Inicio: el mes contra el anterior, la cartera y lo que hay que atender. */
 reporteRouter.get('/inicio', h(async (_req, res) => {
   res.json({ data: await resumenInicio() });
+}));
+
+/** La meta de ventas de un mes: { mes: 'AAAA-MM', monto }. Con 0 se quita. */
+reporteRouter.patch('/meta', h(async (req, res) => {
+  res.json({ data: await ponerMeta(req.body?.mes, req.body?.monto) });
 }));
 
 /** A qué cliente ya se le debería estar acabando el perfume, por su propio ritmo de compra. */

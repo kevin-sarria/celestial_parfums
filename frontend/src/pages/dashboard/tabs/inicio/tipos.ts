@@ -43,6 +43,17 @@ export interface VentaReciente {
   referencia_perfume: string;
 }
 
+export interface MetaMes {
+  /** "2026-10" */
+  mes: string;
+  /** null = todavía no se puso meta este mes. */
+  monto: number | null;
+  /** La última que se puso, para proponerla. */
+  sugerida: number | null;
+  dia: number;
+  dias_del_mes: number;
+}
+
 export interface ResumenInicio {
   hoy: string;
   mes: { desde: string; hasta: string; ventas: ResumenVentas; invertido: number };
@@ -55,6 +66,8 @@ export interface ResumenInicio {
     creditos_vencidos: number;
     abonado_mes: number;
   };
+  /** La meta de ventas del mes (ver `backend/src/repositories/metaMensual.ts`). */
+  meta: MetaMes;
   pendientes: Pendiente[];
   frascos_11: { total_armados: number; referencias: number; sin_armar: Frasco11[]; dias: number };
   esencias: { total: number; filas: EsenciaPorAcabarse[] };

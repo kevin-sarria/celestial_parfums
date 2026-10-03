@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { AuthCard } from '@/components/auth/AuthCard';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { GoogleAuthButton } from '@/components/auth/GoogleAuthButton';
+import { BeneficiosCuenta } from '@/components/auth/BeneficiosCuenta';
 import { loginSchema } from '../domain/entities/auth.schema';
 import { http } from '../infrastructure/api/http';
 import { urls } from '../infrastructure/api/urls';
@@ -74,7 +75,7 @@ export default function LoginPage() {
   };
 
   return (
-    <AuthCard subtitle="Inicia sesión en tu cuenta">
+    <AuthCard subtitle="Inicia sesión en tu cuenta" pie={<BeneficiosCuenta titulo="Con tu cuenta" />}>
       <form className="space-y-4" onSubmit={handleSubmit} noValidate>
         <div className="space-y-1.5">
           <Label htmlFor="email">Correo electrónico</Label>

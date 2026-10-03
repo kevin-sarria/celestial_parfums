@@ -8,6 +8,7 @@ import {
   ClientesParaEscribir, EsenciasPorAcabarse, Frascos11SinArmar, ListaPendientes, PanelInicio, UltimasVentas,
 } from './inicio/Paneles';
 import type { ResumenInicio } from './inicio/tipos';
+import { MetaDelMes } from './inicio/MetaDelMes';
 
 /**
  * INICIO: lo primero que ve el dueño al entrar al panel (2026-09-28).
@@ -71,6 +72,8 @@ export function InicioTab() {
             <p className="-mt-2 text-[13px] text-muted-foreground">
               {mes}, del 1 al {leerFecha(d.mes.hasta.slice(0, 10))?.dia}. Solo cuenta lo pagado por completo.
             </p>
+
+            <MetaDelMes key={d.meta.mes} meta={d.meta} vendido={v.vendido} mes={mes} />
 
             <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
               <Metrica

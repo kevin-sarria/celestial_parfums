@@ -761,3 +761,18 @@ vivía dentro del ☰ (dueño: *"no sienten algo super wow cuando ingresan"*). A
 - **Vuelve a donde estaba** al iniciar sesión (`useIrALogin`): el origen viaja en el `state` de la
   navegación, no en la URL, y `destinoTrasLogin` solo acepta rutas internas (no se puede armar un
   enlace de login que mande a otro sitio). El dueño sigue yendo a su panel.
+
+## Segunda tanda de la revisión (2026-10-02)
+
+- **Buscador general** (`BuscadorGeneral.tsx`, lupa en el encabezado o Ctrl+K): busca a la vez en
+  catálogo, clientes, ventas (también por `#número`), créditos y materiales
+  (`busqueda.repository.ts`, 5 por grupo). Elegir un resultado lleva a la pestaña con `?buscar=`,
+  y `SmartTable` (vía `useBuscarDeUrl`) escribe ese texto en su buscador y lo quita de la URL, para
+  que recargar no lo vuelva a escribir encima. Se maneja con ↑ ↓ y Enter.
+- **Meta del mes** en Inicio (`MetaDelMes.tsx`, tabla `metas_mensuales`, una fila por mes): cuánto
+  lleva, cuánto falta, cuánto por día y a qué ritmo cerraría (solo cuando ya hay ventas). Cuenta lo
+  vendido y pagado, como la tarjeta de al lado: lo fiado no da la meta por cumplida. Sin meta, la
+  pide ahí mismo proponiendo la última que puso.
+- **Lo que se gana con una cuenta**, debajo del login y del registro (`BeneficiosCuenta.tsx`). Los
+  sellos solo salen si el programa está encendido, con el premio y la compra mínima configurados
+  (`GET /api/recompensas/programa`, público): nada de prometer un premio apagado.

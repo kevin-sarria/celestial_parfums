@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { hoyEnColombia } from '../utils/fechas';
+import { metaDelMes } from './metaMensual';
 import { reporteVentasRango } from './reporteVentasRango';
 import { getCreditoTotales } from './credito.repository';
 import { calcularNotificaciones } from './notificacion.repository';
@@ -114,7 +115,7 @@ export const resumenInicio = async () => {
   const hoy = hoyEnColombia();
   const p = periodosComparables(hoy);
 
-  const [mes, anterior, cartera, pendientes, frascos, esencias, ventas, recompra] = await Promise.all([
+  const [mes, anterior, cartera, pendientes, frascos, esencias, ventas, recompra, meta] = await Promise.all([
     reporteVentasRango(p.desde, p.hasta),
     reporteVentasRango(p.desdeAnterior, p.hastaAnterior),
     getCreditoTotales(),
@@ -123,6 +124,7 @@ export const resumenInicio = async () => {
     esenciasPorAcabarse(),
     ultimasVentas(),
     listaRecompra(),
+    metaDelMes(hoy),
   ]);
 
   return {
@@ -130,6 +132,8 @@ export const resumenInicio = async () => {
     mes: { desde: p.desde, hasta: p.hasta, ventas: mes.ventas, invertido: mes.invertido.total },
     anterior: { desde: p.desdeAnterior, hasta: p.hastaAnterior, ventas: anterior.ventas },
     cartera,
+    /** La meta que se puso el dueño para este mes (ver `metaMensual.ts`). */
+    meta,
     pendientes,
     frascos_11: frascos,
     esencias,
