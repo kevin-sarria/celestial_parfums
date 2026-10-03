@@ -55,13 +55,21 @@ describe('descripciones con formato', () => {
     await pagina.keyboard.type('Tres perfumes a elegir');
     await pagina.keyboard.press('Control+A');
     await pagina.getByTitle('Negrita').click();
+    await pagina.keyboard.press('End');
+    await pagina.getByTitle('Cursiva').click();
+    await pagina.keyboard.type(' y en cursiva');
+    // Manrope no tiene cursiva y la página prohíbe inventarla: sin permitirlo
+    // aquí, el botón marcaba el texto pero no se veía nada (dueño, 2026-10-02).
+    expect(await editor.evaluate((el) => getComputedStyle(el).getPropertyValue('font-synthesis-style'))).toBe('auto');
+    await editor.locator('i, em').first().screenshot({ path: captura('descripcion-cursiva') });
     await pagina.screenshot({ path: captura('descripcion-editor') });
 
     await pagina.getByRole('button', { name: 'Guardar cambios' }).click();
     await pagina.getByText('Editar combo').waitFor({ state: 'detached' });
 
     const guardado = await prisma.combo.findUniqueOrThrow({ where: { id: combo.id } });
-    expect(guardado.descripcion).toMatch(/<(b|strong)>Tres perfumes a elegir<\/(b|strong)>/);
+    expect(guardado.descripcion).toMatch(/<(b|strong)>Tres perfumes a elegir/);
+    expect(guardado.descripcion).toMatch(/<(i|em)>\s?y en cursiva<\/(i|em)>/);
     await contexto.close();
   });
 });

@@ -147,6 +147,11 @@
 }
 
 /* Contenido del blog (HTML saneado) y del editor */
+/* La cursiva. Manrope no trae versión inclinada y `html` prohíbe al navegador
+   inventarla (`font-synthesis: none`), así que el botón Cursiva del editor no
+   hacía nada visible (dueño, 2026-10-02). En el texto con formato sí se deja
+   que la incline. */
+.blog-contenido, .texto-enriquecido { font-synthesis-style: auto; }
 .blog-contenido { color: var(--foreground); }
 .blog-contenido h2 { font-family: var(--font-display, inherit); font-size: 1.6rem; font-weight: 400; line-height: 1.25; margin: 1.6rem 0 0.6rem; color: var(--ink, inherit); }
 .blog-contenido h3 { font-size: 1.2rem; font-weight: 600; margin: 1.2rem 0 0.4rem; }
@@ -166,7 +171,7 @@
 .texto-enriquecido p { margin: 0.5rem 0; }
 .texto-enriquecido > :first-child { margin-top: 0; }
 .texto-enriquecido > :last-child { margin-bottom: 0; }
-.texto-enriquecido strong, .texto-enriquecido b { font-weight: 600; }
+.texto-enriquecido strong, .texto-enriquecido b { font-weight: 700; }
 .texto-enriquecido ul, .texto-enriquecido ol { margin: 0.5rem 0 0.5rem 1.25rem; }
 .texto-enriquecido ul { list-style: disc; }
 .texto-enriquecido ol { list-style: decimal; }

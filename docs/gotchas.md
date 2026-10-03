@@ -516,3 +516,11 @@ muere con exit 128 antes de tocar nada. `celestial-desplegar` ahora cancela esa 
 (en el servidor no se trabaja, no hay nada que perder). **Ojo: ese archivo vive en
 `/usr/local/bin`; al cambiarlo hay que reinstalarlo** con
 `install -m 755 deploy/celestial-desplegar /usr/local/bin/celestial-desplegar`.
+
+## 2026-10-02 · El botón Cursiva "no hacía nada"
+
+Sí marcaba el texto (`<i>`), pero **Manrope no tiene versión cursiva** y `html` lleva
+`font-synthesis: none`, que le prohíbe al navegador inclinarla por su cuenta. En `.blog-contenido`
+y `.texto-enriquecido` se permite (`font-synthesis-style: auto`). Si un día se cambia la letra o se
+carga una con cursiva propia, esto sobra. De paso, la negrita del texto con formato pasó de 600 a
+700: con 600 casi no se distinguía del texto normal en el editor.
