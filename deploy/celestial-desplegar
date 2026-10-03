@@ -37,6 +37,16 @@ if ! flock -n 9; then
 fi
 
 cd "$REPO"
+
+# Un `git pull` a mano que abrió nano y se cerró sin guardar deja una mezcla a
+# medias, y con ella git se niega a todo lo demás (2026-10-02, exit 128). En el
+# servidor no se trabaja (todo va por GitHub), así que no hay nada que perder:
+# se cancela y se sigue.
+if [[ -f .git/MERGE_HEAD ]]; then
+  echo "Había una mezcla de git a medias (un git pull a mano). Se cancela y se sigue."
+  git merge --abort
+fi
+
 ANTES=$(git rev-parse HEAD)
 
 # --ff-only: si alguien editó archivos a mano en el servidor, se detiene en vez

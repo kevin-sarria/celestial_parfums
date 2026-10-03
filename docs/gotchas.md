@@ -507,3 +507,12 @@ al repo; lo demás (imports de Prisma, `noEmitOnError: false` que ya es el valor
 `tsconfig.json.save` de nano) sobraba. El servidor se dejó idéntico a GitHub con
 `git reset --hard origin/main`. **En el servidor no se edita ni se hace commit: todo cambio va por
 el repo.**
+
+## 2026-10-02 · Una mezcla de git a medias en el servidor frenó el despliegue
+
+`git status` en el servidor decía "All conflicts fixed but you are still merging": un `git pull`
+a mano abrió nano y se cerró sin guardar, y dejó `MERGE_HEAD`. Con eso `git merge --ff-only`
+muere con exit 128 antes de tocar nada. `celestial-desplegar` ahora cancela esa mezcla sola
+(en el servidor no se trabaja, no hay nada que perder). **Ojo: ese archivo vive en
+`/usr/local/bin`; al cambiarlo hay que reinstalarlo** con
+`install -m 755 deploy/celestial-desplegar /usr/local/bin/celestial-desplegar`.
