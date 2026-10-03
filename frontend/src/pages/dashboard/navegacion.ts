@@ -2,7 +2,7 @@ import {
   SprayCan, PackageCheck, Package, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText,
   BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX,
-  ChartColumn, Layers, Coins, TriangleAlert, House, Repeat, type LucideIcon,
+  ChartColumn, Layers, Coins, TriangleAlert, House, Repeat, History, type LucideIcon,
 } from 'lucide-react';
 import type { Tab } from './types';
 
@@ -52,6 +52,7 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   precios_mayoreo: { label: 'Precios al mayoreo', icon: Coins },
   formulas: { label: 'Tamaños y fórmulas', icon: FlaskConical },
   costos: { label: 'Costos de producción', icon: Calculator },
+  historial: { label: 'Historial de cambios', icon: History },
 };
 
 // Menú del dashboard agrupado en secciones colapsables (drawer con burger)
@@ -82,7 +83,7 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'pagina', label: 'Página web', tabs: ['publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
   // `aromas` es la puerta a las cinco clasificaciones (ver CLASIFICACIONES)
-  { id: 'ajustes', label: 'Ajustes', tabs: ['usuarios', 'aromas'] },
+  { id: 'ajustes', label: 'Ajustes', tabs: ['usuarios', 'aromas', 'historial'] },
   { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'precios_mayoreo'] },
 ];
 

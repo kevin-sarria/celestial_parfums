@@ -37,6 +37,8 @@ import { devolucionRouter } from './routes/devolucion.router';
 import { inventarioRouter } from './routes/inventario.router';
 import { reporteRouter } from './routes/reporte.router';
 import { busquedaRouter } from './routes/busqueda.router';
+import { registroCambios } from './middleware/registroCambios';
+import { historialRouter } from './routes/historial.router';
 import { notificacionRouter } from './routes/notificacion.router';
 import { seoRouter } from './routes/seo.router';
 import { backupRouter } from './routes/backup.router';
@@ -177,6 +179,8 @@ app.get('/', (_req, res) => {
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/google', authLimiter);
+// Historial de cambios: cada cambio aceptado en el panel deja rastro (quién, qué, cuándo)
+app.use('/api', registroCambios);
 app.use('/api/parfums', perfumeRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/upload', uploadRouter);
@@ -203,6 +207,7 @@ app.use('/api/devoluciones', devolucionRouter);
 app.use('/api/inventario', inventarioRouter);
 app.use('/api/reportes', reporteRouter);
 app.use('/api/buscar', busquedaRouter);
+app.use('/api/historial', historialRouter);
 app.use('/api/notificaciones', notificacionRouter);
 app.use('/api/backup', backupRouter);
 

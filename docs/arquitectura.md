@@ -748,3 +748,16 @@ Pestaña `recompra` en "Ventas y créditos" y un bloque "Clientes para escribirl
 - **Nada de símbolos raros en el PDF**: Helvetica no tiene ♀ ♂ ⚥ y salían como "&Bp
   Caballero". Se imprime solo la palabra. Misma familia que el guion tipográfico `−`
   (U+2212), que tampoco existe. En la WEB sí se usan los símbolos.
+
+## Historial de cambios (2026-10-03)
+
+`middleware/registroCambios.ts`, montado en `/api` ANTES de los routers: al terminar cada
+POST/PATCH/DELETE que el servidor aceptó (2xx) y que hizo el dueño (`jwtUser.rol_id === 1`),
+escribe una fila en `registro_cambios` con quién, cuándo, módulo (del primer tramo de la URL),
+un resumen en palabras ("Editó en Catálogo #12 · Khamrah") y el cuerpo de la petición **sin
+secretos** (`pass|token|captcha|secret|totp|credential|clave`) y con los textos recortados.
+Es un middleware y no una línea por endpoint para que lo nuevo quede registrado sin acordarse.
+Se ignoran `/api/auth` y `/api/notificaciones`. Si escribir el registro falla, la operación ya
+está hecha: se anota en el log del servidor. Pantalla: Ajustes → Historial de cambios
+(`GET /api/historial`, paginado y con búsqueda). Cuando existan empleados, el filtro por rol del
+middleware tendrá que incluirlos (hoy solo el admin puede cambiar algo).

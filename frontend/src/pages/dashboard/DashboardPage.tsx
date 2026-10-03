@@ -28,6 +28,7 @@ import {
   RecompraTab,
   PagosTab,
   UsuariosTab,
+  HistorialTab,
   PublicidadTab,
   RecompensasTab,
   ResenasTab,
@@ -382,6 +383,7 @@ export default function DashboardPage() {
             {tab === 'rep_clientes' && <ReportesClientesTab />}
             {tab === 'pagos' && <PagosTab />}
             {tab === 'usuarios' && <UsuariosTab />}
+            {tab === 'historial' && <HistorialTab />}
             {tab === 'publicidad' && <PublicidadTab categorias={categorias} />}
             {tab === 'recompensas' && <RecompensasTab />}
             {tab === 'resenas' && <ResenasTab />}

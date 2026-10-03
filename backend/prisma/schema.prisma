@@ -639,6 +639,25 @@ model Empresa {
   @@map("empresas")
 }
 
+/// Historial de cambios del panel: quién cambió qué y cuándo. Lo escribe solo
+/// `middleware/registroCambios.ts`. Sin relación con User a propósito: si un
+/// usuario se borra, su rastro se queda (por eso también guarda el nombre).
+model RegistroCambio {
+  id         Int      @id @default(autoincrement())
+  user_id    Int?
+  usuario    String   @db.VarChar(150)
+  metodo     String   @db.VarChar(6)
+  ruta       String   @db.VarChar(200)
+  modulo     String   @db.VarChar(40)
+  resumen    String   @db.VarChar(300)
+  datos      Json?
+  created_at DateTime @default(now())
+
+  @@index([created_at])
+  @@index([user_id])
+  @@map("registro_cambios")
+}
+
 /// Meta de ventas de un mes ("2026-10"), la que pone el dueño en Inicio.
 /// Una fila por mes: cambiar la de este mes no toca las de antes.
 model MetaMensual {

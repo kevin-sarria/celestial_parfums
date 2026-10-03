@@ -342,6 +342,9 @@ export const urls = {
 
   reportes: (ruta: string) => `/reportes/${ruta}`,
 
+  /** Historial de cambios del panel: quién cambió qué y cuándo. */
+  historial: '/historial',
+
   /** El buscador general del panel: catálogo, clientes, ventas, créditos y materiales. */
   buscar: (q: string) => `/buscar?q=${encodeURIComponent(q)}`,
 
