@@ -24,6 +24,14 @@ describe('un perfume original de punta a punta', () => {
     const contratipo = await prisma.perfume.create({
       data: { nombre: FRAGANCIA, precio: 60000, descripcion: 'Dátil, canela y praliné', genero: 'unisex' },
     });
+    // Creado directo en la base, el servidor no se entera y sigue sirviendo el
+    // catálogo que guardó en memoria (5 min): en la corrida completa otro
+    // recorrido ya lo había pedido y el contratipo no aparecía para sugerirse.
+    // Pasar por un endpoint del panel limpia esa memoria, como en la vida real.
+    const limpiar = await fetch(`${URL_API}/api/parfums/${contratipo.id}/publicado`, {
+      method: 'PATCH', headers: await cabeceraAdmin(), body: JSON.stringify({ publicado: contratipo.publicado }),
+    });
+    expect(limpiar.ok).toBe(true);
 
     const { contexto, pagina } = await abrirDashboard();
 

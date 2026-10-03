@@ -532,3 +532,29 @@ solo tenía el nombre en la copia de `localStorage` que guarda al iniciar sesió
 a los 7 días mientras la cookie sigue viva: el cliente seguía dentro, pero el menú lo saludaba
 como `undefined undefined`. Ahora `/me` lee el usuario de la base (y responde 401 si la cuenta ya
 no está activa), y la app usa siempre lo que dice el servidor.
+
+## 2026-10-03 · MySQL de XAMPP no arrancaba: "Aria recovery failed"
+
+Tras apagar el equipo con MySQL prendido, `mysql_error.log` decía `Cannot find checkpoint record at
+LSN` y `Aria recovery failed. Please run aria_chk -r … and delete all aria_log.######## files`.
+Lo dañado era el **registro de recuperación de Aria**, no los datos (`perfumes_db` salió intacta).
+Arreglo, en este orden:
+
+1. **Mover** (no borrar) `data/aria_log.*` y `data/aria_log_control` a `data/_aria_logs_<fecha>`.
+2. Arrancar `mysqld --standalone` **como tarea de fondo que sobreviva** (un `Start-Process` lanzado
+   desde una consola que se cierra muere con ella, sin dejar error en el log).
+3. `mysqlcheck -uroot --all-databases`; lo que salga mal se arregla con `REPAIR TABLE` (ese día:
+   `mysql.proc`, `mysql.global_priv`, `mysql.roles_mapping`) y `FLUSH PRIVILEGES`. Comprobar que
+   `mysql.user` conserva a `root` y a `pma`.
+
+## 2026-10-03 · Dos recorridos que fallaban solo en la corrida completa
+
+- **`perfumeOriginal`**: creaba el contratipo directo con Prisma, y el servidor seguía sirviendo el
+  catálogo que tenía en memoria (5 min) desde un recorrido anterior: el contratipo no aparecía
+  para sugerirse. Un recorrido que siembra con Prisma algo que la pantalla lee del catálogo tiene
+  que limpiar esa memoria pasando por un endpoint del panel (aquí, `PATCH /publicado`).
+- **`listaPrecios`**: esperaba 1,5 s fijos a que se guardara el precio. Se espera a verlo
+  guardado en la base (`expect.poll`), nunca un tiempo fijo.
+- **`menuLateral`** (mide milisegundos de bloqueo, límite 50): una vez dio 53 al final de la
+  corrida completa, con el equipo cargado; sola pasa siempre. Si se repite, mirar si algo nuevo
+  se monta al abrir el cajón antes de tocar el límite.

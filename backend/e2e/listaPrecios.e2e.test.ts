@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
+import { prisma } from '../src/config/prisma';
 import { abrirDashboard, abrirTienda, cerrarNavegador, cerrarPopup, irA } from './navegador';
 import { PRECIOS } from './tienda';
 
@@ -41,9 +42,13 @@ describe('la lista de precios manda sobre toda su categoría', () => {
     const casilla = fila.locator('input[type="number"]').first();
     await casilla.fill(String(PRECIOS.nuevo));
     await casilla.press('Enter');
-    // El visto de "guardado" es la confirmación de que el servidor respondió.
-    await fila.locator('svg').first().waitFor({ timeout: 15_000 }).catch(() => {});
-    await admin.pagina.waitForTimeout(1500);
+    // Se espera a que el precio esté GUARDADO, no un tiempo fijo: con 1,5 s
+    // fijos, en la corrida completa la tienda se miraba antes de que el
+    // servidor terminara y fallaba de vez en cuando (2026-10-03).
+    await expect.poll(
+      async () => (await prisma.precioLista.count({ where: { precio: PRECIOS.nuevo } })) > 0,
+      { timeout: 15_000 },
+    ).toBe(true);
     await admin.contexto.close();
 
     // ── Después: la tienda ya cobra el nuevo precio ──
