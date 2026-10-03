@@ -3,7 +3,6 @@ import { Plus, Upload, FileDown, FileUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { SelectSimple } from '@/components/ui/select-simple';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { ContactoLinktree } from '../../../components/contacto/ContactoLinktree';
@@ -15,6 +14,7 @@ import { subirImagenAdmin } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import type { ContactoConfig, ContactoForma, ContactoLink } from '../../../domain/entities/contacto.schema';
+import EditorHtml from '../../../components/EditorHtml';
 
 
 
@@ -321,11 +321,8 @@ export function RedesTab() {
               </Field>
             </FieldRow>
             <Field label="Descripción corta">
-              <Textarea
-                value={form.descripcion} maxLength={500} rows={2}
-                placeholder="Ej: Fragancias que elevan tus sentidos, encuentra la tuya."
-                onChange={e => set('descripcion', e.target.value)}
-              />
+              <EditorHtml modo="descripcion" etiqueta="Descripción corta" value={form.descripcion}
+                onChange={html => set('descripcion', html)} />
             </Field>
 
             <p className="pt-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Fondo</p>

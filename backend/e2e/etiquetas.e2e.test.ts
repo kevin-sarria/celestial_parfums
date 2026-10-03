@@ -43,7 +43,10 @@ describe('las etiquetas de los formularios del dashboard', () => {
       const ids = [...dialogo.querySelectorAll('[id]')].map((e) => e.id);
       return {
         etiquetas: etiquetas.length,
-        conControl: etiquetas.filter((l) => l.control).length,
+        // Un `contentEditable` (el editor de la descripción, 2026-10-02) no se
+        // puede señalar con `htmlFor`: lo enlaza él citando la etiqueta.
+        conControl: etiquetas.filter((l) => l.control
+          || (l.id && dialogo.querySelector(`[aria-labelledby~="${l.id}"]`))).length,
         rotas: conFor.filter((l) => !document.getElementById(l.htmlFor)).length,
         idsRepetidos: ids.length - new Set(ids).size,
       };

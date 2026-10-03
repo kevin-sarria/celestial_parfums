@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { Combo } from '../../domain/entities/combo.schema';
 import { http } from '../../infrastructure/api/http';
 import { urls } from '../../infrastructure/api/urls';
+import { textoPlano } from '../../utils/textoPlano';
 
 export const COMBOS_PAGE_SIZE = 12;
 
@@ -37,7 +38,7 @@ export function useCombos() {
     return combos.filter((c) =>
       (!search ||
         c.nombre.toLowerCase().includes(q) ||
-        (c.descripcion ?? '').toLowerCase().includes(q)) &&
+        textoPlano(c.descripcion).toLowerCase().includes(q)) &&
       (activeComboCantidades.size === 0 || activeComboCantidades.has(c.cantidad)),
     );
   }, [combos, search, activeComboCantidades]);

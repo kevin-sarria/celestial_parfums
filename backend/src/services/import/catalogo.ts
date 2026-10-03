@@ -2,6 +2,7 @@ import { prisma } from '../../config/prisma';
 import { clampPct, fmtDate, lowerMap, splitList, toBool, toNullNum, toNullStr, toNum, toStr, Celda, FilaExcel } from './core';
 import type { EntityImportResult } from './core';
 import { textoDeError } from '../../utils/errorSeguro';
+import { descripcionHtml } from '../../utils/textoEnriquecido';
 // La regla que separa Perfumes de Productos vive en un solo sitio.
 import { WHERE_FAMILIA, type FamiliaProducto } from '../../repositories/perfume.familia';
 
@@ -148,7 +149,7 @@ export const importarCatalogo = async (
         await prisma.perfume.create({
           data: {
             nombre,
-            descripcion: toNullStr(r['descripcion']),
+            descripcion: descripcionHtml(toNullStr(r['descripcion'])),
             precio: toNum(r['precio']),
             duracion: toNullStr(r['duracion']),
             proyeccion: toNullStr(r['proyeccion']),
@@ -203,7 +204,7 @@ export const importarCatalogo = async (
         await prisma.combo.create({
           data: {
             nombre,
-            descripcion: toNullStr(r['descripcion']),
+            descripcion: descripcionHtml(toNullStr(r['descripcion'])),
             imagen_url: toNullStr(r['image_url']),
             categoria_id: catMap.get(toStr(r['categoria']).toLowerCase()) ?? null,
             cantidad,

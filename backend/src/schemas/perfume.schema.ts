@@ -1,9 +1,10 @@
 import { z } from 'zod/v4';
+import { campoDescripcion } from '../utils/textoEnriquecido';
 
 export const createPerfumeSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio').max(150),
   // Campos opcionales: aceptan texto, null o ausente (el formulario envía null al vaciarlos)
-  descripcion: z.string().max(5000).nullish(),
+  descripcion: campoDescripcion(),
   precio: z.number().positive('El precio debe ser mayor a 0'),
   duracion: z.string().max(50).nullish(),
   proyeccion: z.string().max(50).nullish(),

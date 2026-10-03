@@ -3,6 +3,7 @@ import path from 'path';
 import { prisma } from '../config/prisma';
 import { cacheGet, cacheSet } from '../utils/cache';
 import { toSlug } from '../utils/slug';
+import { textoPlano } from '../utils/textoEnriquecido';
 import { SOLO_PUBLICADOS } from '../repositories/perfume.repository';
 import * as perfumeService from './perfume.service';
 import * as comboService from './combo.service';
@@ -104,7 +105,7 @@ export const paginaPerfume = async (slug: string, baseUrl: string) => {
     p.tipos_aroma.length && `notas ${p.tipos_aroma.slice(0, 3).join(', ').toLowerCase()}`,
   ].filter(Boolean);
   const descripcion = resumen(
-    p.descripcion || `${p.nombre}: ${partes.join(' · ') || 'fragancia'} en ${SITE_NAME}. Pide el tuyo por WhatsApp.`,
+    textoPlano(p.descripcion) || `${p.nombre}: ${partes.join(' · ') || 'fragancia'} en ${SITE_NAME}. Pide el tuyo por WhatsApp.`,
   );
   const url = `${baseUrl}/perfume/${toSlug(p.nombre)}`;
   const imagen = imagenAbsoluta(p.imagen_url, baseUrl);
@@ -138,7 +139,7 @@ export const paginaCombo = async (slug: string, baseUrl: string) => {
   const c = await comboService.getComboBySlug(slug).catch(() => null);
   if (!c || !c.activo) return null;
   const descripcion = resumen(
-    c.descripcion || `${c.nombre}: combo de ${c.cantidad} perfumes en ${SITE_NAME}. Pide el tuyo por WhatsApp.`,
+    textoPlano(c.descripcion) || `${c.nombre}: combo de ${c.cantidad} perfumes en ${SITE_NAME}. Pide el tuyo por WhatsApp.`,
   );
   const url = `${baseUrl}/combo/${toSlug(c.nombre)}`;
   const imagen = imagenAbsoluta(c.imagen_url, baseUrl);

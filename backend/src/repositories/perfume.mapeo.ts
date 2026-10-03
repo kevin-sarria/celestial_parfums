@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { accesoriosPropios } from './accesoriosDeFicha';
 import { esBotellaCompleta, mlQueSalenDeLaBotella } from '../utils/decants';
+import { descripcionHtml } from '../utils/textoEnriquecido';
 
 /**
  * CÓMO SE LEE UN PERFUME: de fila de base a lo que ve la tienda.
@@ -264,7 +265,8 @@ const mapear = (p: PerfumeRow) => {
   return {
     id:           p.id,
     nombre:       p.nombre,
-    descripcion:  p.descripcion ?? null,
+    /** HTML ya limpio (ver `textoEnriquecido.ts`); el texto de antes sale convertido. */
+    descripcion:  descripcionHtml(p.descripcion),
     precio:       desde,
     /** Precio de cada presentación ya resuelto (lista o excepción del perfume). */
     precios,

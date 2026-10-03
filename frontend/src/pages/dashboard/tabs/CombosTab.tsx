@@ -2,7 +2,6 @@ import { useRef, useState } from 'react';
 import { Pencil, Trash2, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
@@ -20,6 +19,7 @@ import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormEr
 import type { Lookup, ComboForm } from '../types';
 import { emptyComboForm } from '../types';
 import { KitDelComboEditor } from './combos/KitDelComboEditor';
+import EditorHtml from '../../../components/EditorHtml';
 
 interface CombosTabProps {
   combos: Combo[];
@@ -163,8 +163,8 @@ export function CombosTab({
             onChange={e => setForm(f => ({ ...f, nombre: e.target.value }))} />
         </Field>
         <Field label="Descripción">
-          <Textarea rows={2} value={form.descripcion}
-            onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))} />
+          <EditorHtml modo="descripcion" etiqueta="Descripción" value={form.descripcion}
+            onChange={html => setForm(f => ({ ...f, descripcion: html }))} />
         </Field>
         <Field label="Imagen">
           <div className="mb-2 inline-flex rounded-lg border border-border p-0.5">

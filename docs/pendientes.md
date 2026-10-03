@@ -15,6 +15,7 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Costo de cada talla al lado del precio en la ficha | hecho |
 | Tallas en $0: la tienda las esconde y el perfume se publica igual con las que tengan precio (opción B del dueño, 2026-10-02; antes bloqueaba publicar) | hecho |
 | Al agregar un producto a una venta o crédito sale "Agregado: X" o "X: ahora van 2" (en el celular la lista queda fuera de la pantalla) | hecho |
+| Descripciones con formato (negrita, cursiva, listas) en perfumes, combos y Contáctame, con el editor del blog (opción B del dueño). Lo escrito antes con `**` sale en negrita solo (`diseno-ux.md`) | hecho |
 | Desplegado el 2026-10-02 (con el despliegue automático) | hecho |
 | Dueño: registrar las compras de los 15 originales, ponerles precio y publicarlos | pendiente |
 | Panel partido por pestañas (`pestanas.ts`): el archivo del panel pasó de 560 kB a 41 kB | hecho |

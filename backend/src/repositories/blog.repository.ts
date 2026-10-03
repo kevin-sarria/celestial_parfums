@@ -1,29 +1,14 @@
-import sanitizeHtml from 'sanitize-html';
 import type { Post } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { toSlug } from '../utils/slug';
 import { paginatedResponse } from '../utils/pagination';
+import { sanearHtml } from '../utils/textoEnriquecido';
 
 /**
  * Blog. El contenido llega como HTML del editor y SIEMPRE se sanea en el backend
- * antes de guardar (anti-XSS): solo se permiten etiquetas de formato seguras, sin
- * scripts, estilos ni manejadores de eventos. Nunca se confía en el cliente.
+ * antes de guardar (anti-XSS). Las reglas viven en `utils/textoEnriquecido.ts`,
+ * compartidas con las descripciones.
  */
-const OPCIONES_SANEO: sanitizeHtml.IOptions = {
-  allowedTags: ['p', 'br', 'strong', 'b', 'em', 'i', 'u', 's', 'h2', 'h3', 'h4',
-    'ul', 'ol', 'li', 'blockquote', 'a', 'img', 'hr'],
-  allowedAttributes: {
-    a: ['href', 'target', 'rel'],
-    img: ['src', 'alt'],
-  },
-  allowedSchemes: ['http', 'https', 'mailto'],
-  // Fuerza rel seguro en enlaces que abren en otra pestaña
-  transformTags: {
-    a: sanitizeHtml.simpleTransform('a', { rel: 'noopener noreferrer nofollow' }),
-  },
-};
-
-export const sanearHtml = (html: string) => sanitizeHtml(html ?? '', OPCIONES_SANEO);
 
 const mapPost = (p: Post) => ({
   id: p.id,

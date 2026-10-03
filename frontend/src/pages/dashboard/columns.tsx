@@ -7,6 +7,7 @@ import type { Venta, Credito, Pago, InventarioInsumo, Produccion, FrascoArmado }
 import { formatPrice, fmtDate } from './helpers';
 import { EstadoPerfume, faltaParaVender } from './tabs/perfumes/EstadoPerfume';
 import { finalPrice } from '@/lib/format';
+import { textoPlano } from '../../utils/textoPlano';
 
 /** Clases reutilizables para celdas. */
 const cellName = 'whitespace-nowrap font-medium text-foreground';
@@ -378,7 +379,7 @@ export const combosColumns: ColumnDef<Combo>[] = [
     render: c => (
       <span>
         {c.nombre}
-        {c.descripcion && <SubText>{c.descripcion}</SubText>}
+        {c.descripcion && <SubText>{textoPlano(c.descripcion)}</SubText>}
       </span>
     ),
     className: cellName },

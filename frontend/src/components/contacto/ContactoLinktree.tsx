@@ -2,6 +2,7 @@ import { cn } from '@/lib/utils';
 import { readableTextOn } from '@/lib/color';
 import type { ContactoConfig, ContactoLink } from '../../domain/entities/contacto.schema';
 import { getRedIcon, getRedLabel } from './redIcons';
+import { TextoEnriquecido } from '../TextoEnriquecido';
 
 interface Props {
   config: ContactoConfig;
@@ -73,9 +74,8 @@ export function ContactoLinktree({ config, links, className }: Props) {
           </h1>
 
           {config.descripcion && (
-            <p className="mt-1.5 max-w-xs text-center text-[13.5px] leading-relaxed opacity-85">
-              {config.descripcion}
-            </p>
+            <TextoEnriquecido html={config.descripcion}
+              className="mt-1.5 max-w-xs text-center text-[13.5px] leading-relaxed opacity-85" />
           )}
 
           {botones.length > 0 && (

@@ -1,4 +1,5 @@
 import { prisma } from '../config/prisma';
+import { descripcionHtml } from '../utils/textoEnriquecido';
 import { ContactoConfigInput, ContactoImportInput, ContactoLinkInput } from '../schemas/contacto.schema';
 
 interface ConfigRow {
@@ -31,7 +32,7 @@ const DEFAULT_CONFIG: ConfigRow = {
 const mapConfig = (c: ConfigRow) => ({
   avatar_url: c.avatar_url ?? null,
   nombre: c.nombre,
-  descripcion: c.descripcion ?? null,
+  descripcion: descripcionHtml(c.descripcion),
   fondo_tipo: c.fondo_tipo,
   fondo_valor: c.fondo_valor ?? null,
   boton_forma: c.boton_forma,

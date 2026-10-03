@@ -1,8 +1,9 @@
 import { z } from 'zod/v4';
+import { campoDescripcion } from '../utils/textoEnriquecido';
 
 export const createComboSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio').max(150),
-  descripcion: z.string().max(5000).nullish(),
+  descripcion: campoDescripcion(),
   imagen_url: z.string().url().nullish().or(z.literal('')),
   categoria_id: z.number().int().positive().nullable().optional(),
   // Presentación de los perfumes del combo (para detectarlo en el carrito)

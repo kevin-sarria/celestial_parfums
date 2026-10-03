@@ -714,3 +714,22 @@ Cómo repetir la revisión: un recorrido temporal en `backend/e2e/` que carga un
 DOS alertas de inventario que salen al entrar ("Cerrar por hoy"), y soltar el `overflow` de
 `main` para que la captura de página completa no salga cortada.
 
+
+## Descripciones con formato: `EditorHtml` en modo `descripcion` (2026-10-02)
+
+El dueño escribía `**negrita**` en las descripciones y la tienda le enseñaba los asteriscos. Eligió
+la opción B (editor tipo Word, no asteriscos con botones) y que sea el mismo en todo sitio con
+descripción: perfumes y productos, combos y Contáctame.
+
+- **Editar**: `EditorHtml modo="descripcion"`, el editor del blog sin títulos (negrita, cursiva,
+  listas y enlace). Letra de 16 px en el celular. Dentro de un `Field` se nombra con
+  `aria-labelledby` (un `contentEditable` no admite `htmlFor`). Repinta cuando el valor cambia
+  desde fuera ("Copiar ficha de…") pero no mientras tiene el foco, o el cursor salta al inicio.
+- **Mostrar**: `<TextoEnriquecido html=…>` donde cabe formato (ficha del perfume y del combo,
+  Contáctame); `textoPlano()` donde no (tarjeta recortada a 2 renglones, búsqueda, `useSeo`).
+- **Servidor** (`utils/textoEnriquecido.ts`, la misma regla del blog): sanea al guardar
+  (`campoDescripcion` en los esquemas y en la importación) **y al leer** (`descripcionHtml` en
+  `mapPerfume`, `mapCombo`, `mapConfig`), porque las descripciones viejas nunca pasaron por el
+  saneo. Al leer, el texto de antes del editor se convierte: `**x**` → negrita, línea en blanco →
+  párrafo. No hubo migración de datos: se convierte cada vez (se recalcula, no se guarda).
+- Google y WhatsApp (`seo.service.ts`) reciben `textoPlano`: sin etiquetas ni asteriscos.

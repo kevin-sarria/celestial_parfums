@@ -21,6 +21,8 @@ import { useAuthContext } from '../application/context/useAuthContext';
 import { useListas } from '../application/context/ListasContext';
 import { GENERO_LABELS } from '../domain/entities/perfume.schema';
 import { aromaColor } from '../domain/entities/aroma.colors';
+import { TextoEnriquecido } from '../components/TextoEnriquecido';
+import { textoPlano } from '../utils/textoPlano';
 
 const GENERO_PILL_STYLES: Record<string, string> = {
   caballero: 'border-sky-200 bg-sky-50 text-sky-600',
@@ -36,7 +38,7 @@ export default function PerfumeDetailPage() {
   const [resenasOpen, setResenasOpen] = useState(false);
   const { user } = useAuthContext();
   const { favoritos, avisos, toggleFavorito, toggleAviso } = useListas();
-  useSeo(perfume?.nombre, perfume?.descripcion ?? undefined);
+  useSeo(perfume?.nombre, textoPlano(perfume?.descripcion) || undefined);
 
   const precioFinal = perfume ? finalPrice(perfume.precio, perfume.descuento) : 0;
 
@@ -161,9 +163,8 @@ export default function PerfumeDetailPage() {
               )}
 
               {perfume.descripcion && (
-                <p className="max-w-prose text-[15px] leading-relaxed text-muted-foreground">
-                  {perfume.descripcion}
-                </p>
+                <TextoEnriquecido html={perfume.descripcion}
+                  className="max-w-prose text-[15px] leading-relaxed text-muted-foreground" />
               )}
 
               {perfume.tipos_aroma.length > 0 && (

@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { formatPrice, finalPrice } from '@/lib/format';
 import type { Combo } from '../domain/entities/combo.schema';
 import { toSlug } from '../utils/slug';
+import { textoPlano } from '../utils/textoPlano';
 
 interface Props {
   combo: Combo;
@@ -65,7 +66,7 @@ export default function ComboCard({ combo: c }: Props) {
 
         {c.descripcion && (
           <p className="line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
-            {c.descripcion}
+            {textoPlano(c.descripcion)}
           </p>
         )}
 

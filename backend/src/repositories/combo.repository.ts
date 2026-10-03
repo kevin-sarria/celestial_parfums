@@ -2,6 +2,7 @@ import { prisma } from '../config/prisma';
 import { Prisma } from '@prisma/client';
 import { paginatedResponse } from '../utils/pagination';
 import { toSlug } from '../utils/slug';
+import { descripcionHtml } from '../utils/textoEnriquecido';
 import { borrarImagenSiCambio, borrarImagenSubida } from '../utils/imagenes';
 import { filtroNumero, filtroTexto, type MapaFiltros } from '../utils/filtros';
 
@@ -25,7 +26,7 @@ import { CreateComboDTO } from '../types/combo.type';
 const mapCombo = (c: ComboRow) => ({
   id:              c.id,
   nombre:          c.nombre,
-  descripcion:     c.descripcion ?? null,
+  descripcion:     descripcionHtml(c.descripcion),
   imagen_url:      c.imagen_url ?? null,
   categoria_id:    c.categoria_id ?? null,
   categoria:       c.categoria?.nombre ?? null,
@@ -103,7 +104,7 @@ export const createCombo = async (data: CreateComboDTO) => prisma.$transaction(a
   const combo = await tx.combo.create({
     data: {
       nombre:          data.nombre,
-      descripcion:     data.descripcion ?? null,
+      descripcion:     data.descripcion || null,
       imagen_url:      data.imagen_url ?? null,
       categoria_id:    data.categoria_id ?? null,
       presentacion_id: data.presentacion_id ?? null,
@@ -127,7 +128,7 @@ export const updateCombo = async (id: string, data: CreateComboDTO) => {
       where: { id: Number(id) },
       data: {
         nombre:          data.nombre,
-        descripcion:     data.descripcion ?? null,
+        descripcion:     data.descripcion || null,
         imagen_url:      data.imagen_url ?? null,
         categoria_id:    data.categoria_id ?? null,
         presentacion_id: data.presentacion_id ?? null,

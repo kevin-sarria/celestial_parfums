@@ -1,6 +1,5 @@
 import { useRef } from 'react';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
 import Modal from '../../../../components/Modal';
@@ -14,6 +13,7 @@ import { CAMPOS_POR_TIPO, TIPOS_ALTA, tipoDeForm, valoresDeTipo } from './tipoDe
 import { TallasDelPerfume } from './TallasDelPerfume';
 import { CopiarFichaDe } from './CopiarFichaDe';
 import type { FichaPerfume } from './useFichaPerfume';
+import EditorHtml from '../../../../components/EditorHtml';
 
 interface FichaPerfumeModalProps {
   ficha: FichaPerfume;
@@ -103,7 +103,8 @@ export function FichaPerfumeModal({
         <CopiarFichaDe setForm={setForm} aromas={aromas} ocasiones={ocasiones} excluirId={ficha.modal.editId} />
       )}
       <Field label="Descripción">
-        <Textarea value={form.descripcion} onChange={setF('descripcion')} rows={2} maxLength={500} />
+        <EditorHtml modo="descripcion" etiqueta="Descripción" value={form.descripcion}
+          onChange={html => setForm(f => ({ ...f, descripcion: html }))} />
       </Field>
       {campos.atributosDeFragancia && (
       <FieldRow>

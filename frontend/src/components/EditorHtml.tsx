@@ -3,11 +3,22 @@ import { Bold, Italic, Heading2, Heading3, List, ListOrdered, Link2, Pilcrow } f
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useIdDeEtiqueta } from '@/components/ui/campoEtiqueta';
 
 interface Props {
   value: string;
   onChange: (html: string) => void;
+  /**
+   * `blog`: todo, títulos incluidos. `descripcion`: negrita, cursiva, listas y
+   * enlace — una descripción con títulos de blog se comería la ficha.
+   */
+  modo?: 'blog' | 'descripcion';
+  /** Nombre del campo para lectores de pantalla (y para las pruebas). */
+  etiqueta?: string;
 }
+
+/** Lo que deja el navegador al borrarlo todo (`<br>`, `<p><br></p>`) cuenta como vacío. */
+const sinTexto = (el: HTMLElement) => !el.textContent?.trim() && !el.querySelector('img');
 
 /**
  * Un botón de la barra de herramientas.
@@ -36,10 +47,21 @@ function Btn({ onClick, title, children }: { onClick: () => void; title: string;
 /**
  * Editor de texto enriquecido ligero (contentEditable + toolbar), sin dependencia
  * externa. El HTML resultante SIEMPRE se sanea en el backend antes de guardar
- * (sanitize-html), así que no se confía en lo que produzca el navegador.
+ * (`backend/src/utils/textoEnriquecido.ts`), así que no se confía en lo que
+ * produzca el navegador.
+ *
+ * Nació para el blog; desde el 2026-10-02 es también el campo Descripción de
+ * perfumes, combos y Contáctame (opción B del dueño: verlo como en Word en vez
+ * de escribir asteriscos).
  */
-export default function EditorHtml({ value, onChange }: Props) {
+export default function EditorHtml({ value, onChange, modo = 'blog', etiqueta = 'Contenido' }: Props) {
   const ref = useRef<HTMLDivElement>(null);
+  /**
+   * Un `contentEditable` no es un control que un `<label>` pueda señalar con
+   * `htmlFor`: dentro de un `Field` se nombra citando su etiqueta, y fuera usa
+   * `etiqueta`.
+   */
+  const idEtiqueta = useIdDeEtiqueta();
   const iniciado = useRef(false);
   const [pidiendoUrl, setPidiendoUrl] = useState(false);
   const [url, setUrl] = useState('');
@@ -52,15 +74,23 @@ export default function EditorHtml({ value, onChange }: Props) {
    */
   const seleccion = useRef<Range | null>(null);
 
-  // Solo se pinta el valor inicial una vez (re-escribir innerHTML mueve el cursor)
+  /**
+   * Se pinta el valor cuando cambia DESDE FUERA: al abrir la ficha, o al copiar
+   * la de otro perfume ("Copiar ficha de…"). Mientras se escribe NO: reescribir
+   * `innerHTML` manda el cursor al principio. Por eso se compara con lo que ya
+   * tiene y se respeta el foco.
+   */
   useEffect(() => {
-    if (ref.current && !iniciado.current) {
-      ref.current.innerHTML = value || '';
+    const el = ref.current;
+    if (!el) return;
+    if (!iniciado.current || (document.activeElement !== el && el.innerHTML !== (value || ''))) {
+      el.innerHTML = value || '';
       iniciado.current = true;
     }
   }, [value]);
 
-  const emitir = () => { if (ref.current) onChange(ref.current.innerHTML); };
+  const emitir = () => { if (ref.current) onChange(sinTexto(ref.current) ? '' : ref.current.innerHTML); };
+  const esBlog = modo === 'blog';
   const exec = (cmd: string, val?: string) => { document.execCommand(cmd, false, val); ref.current?.focus(); emitir(); };
   /**
    * Se pide la URL en la propia pantalla y no con `window.prompt`: aquel abre
@@ -101,10 +131,14 @@ export default function EditorHtml({ value, onChange }: Props) {
         <Btn title="Negrita" onClick={() => exec('bold')}><Bold className="size-4" /></Btn>
         <Btn title="Cursiva" onClick={() => exec('italic')}><Italic className="size-4" /></Btn>
         <span className="mx-1 w-px bg-border" />
-        <Btn title="Título" onClick={() => exec('formatBlock', 'h2')}><Heading2 className="size-4" /></Btn>
-        <Btn title="Subtítulo" onClick={() => exec('formatBlock', 'h3')}><Heading3 className="size-4" /></Btn>
-        <Btn title="Párrafo" onClick={() => exec('formatBlock', 'p')}><Pilcrow className="size-4" /></Btn>
-        <span className="mx-1 w-px bg-border" />
+        {esBlog && (
+          <>
+            <Btn title="Título" onClick={() => exec('formatBlock', 'h2')}><Heading2 className="size-4" /></Btn>
+            <Btn title="Subtítulo" onClick={() => exec('formatBlock', 'h3')}><Heading3 className="size-4" /></Btn>
+            <Btn title="Párrafo" onClick={() => exec('formatBlock', 'p')}><Pilcrow className="size-4" /></Btn>
+            <span className="mx-1 w-px bg-border" />
+          </>
+        )}
         <Btn title="Lista" onClick={() => exec('insertUnorderedList')}><List className="size-4" /></Btn>
         <Btn title="Lista numerada" onClick={() => exec('insertOrderedList')}><ListOrdered className="size-4" /></Btn>
         <Btn title="Enlace" onClick={abrirEnlace}><Link2 className="size-4" /></Btn>
@@ -134,7 +168,12 @@ export default function EditorHtml({ value, onChange }: Props) {
         onInput={emitir}
         role="textbox"
         aria-multiline="true"
-        className="blog-contenido max-h-[45vh] min-h-48 overflow-y-auto p-3 text-[14px] leading-relaxed focus:outline-none"
+        aria-labelledby={idEtiqueta}
+        aria-label={idEtiqueta ? undefined : etiqueta}
+        // 16 px en el celular: con menos, Safari del iPhone acerca la pantalla al tocarlo
+        className={esBlog
+          ? 'blog-contenido max-h-[45vh] min-h-48 overflow-y-auto p-3 text-[14px] leading-relaxed focus:outline-none'
+          : 'texto-enriquecido max-h-[40vh] min-h-28 overflow-y-auto p-3 text-base leading-relaxed focus:outline-none md:text-sm'}
       />
     </div>
   );

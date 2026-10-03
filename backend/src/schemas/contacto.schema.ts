@@ -1,4 +1,5 @@
 import { z } from 'zod/v4';
+import { campoDescripcion } from '../utils/textoEnriquecido';
 
 const hexColor = z
   .string()
@@ -9,7 +10,7 @@ const formaSchema = z.enum(['redondo', 'cuadrado']);
 export const contactoConfigSchema = z.object({
   avatar_url: z.string().url('La URL del avatar no es válida').max(2000).nullish().or(z.literal('')),
   nombre: z.string().min(1, 'El nombre es obligatorio').max(100),
-  descripcion: z.string().max(500).nullish().or(z.literal('')),
+  descripcion: campoDescripcion(2000),
   fondo_tipo: z.enum(['color', 'imagen']),
   fondo_valor: z.string().max(500).nullish().or(z.literal('')),
   boton_forma: formaSchema,
@@ -40,7 +41,7 @@ export const contactoImportSchema = z.object({
   config: z.object({
     avatar_url: z.string().max(2000).nullable().optional(),
     nombre: z.string().min(1, 'El nombre es obligatorio').max(100),
-    descripcion: z.string().max(500).nullable().optional(),
+    descripcion: campoDescripcion(2000),
     fondo_tipo: z.enum(['color', 'imagen']),
     fondo_valor: z.string().max(500).nullable().optional(),
     boton_forma: formaSchema,

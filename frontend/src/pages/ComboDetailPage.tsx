@@ -10,12 +10,14 @@ import PerfumeSpinner from '../components/PerfumeSpinner';
 import CartFab from '../components/CartFab';
 import CatalogHeader from '../components/CatalogHeader';
 import { useComboDetail } from '../application/hooks/useComboDetail';
+import { TextoEnriquecido } from '../components/TextoEnriquecido';
+import { textoPlano } from '../utils/textoPlano';
 
 export default function ComboDetailPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { combo, related, loading, error } = useComboDetail(slug);
-  useSeo(combo?.nombre, combo?.descripcion ?? undefined);
+  useSeo(combo?.nombre, textoPlano(combo?.descripcion) || undefined);
 
   // El combo no se agrega como item: la persona elige sus perfumes en el
   // catálogo y el carrito arma el combo (y su precio) automáticamente
@@ -87,7 +89,8 @@ export default function ComboDetailPage() {
               </div>
 
               {combo.descripcion && (
-                <p className="max-w-prose text-[15px] leading-relaxed text-muted-foreground">{combo.descripcion}</p>
+                <TextoEnriquecido html={combo.descripcion}
+                  className="max-w-prose text-[15px] leading-relaxed text-muted-foreground" />
               )}
 
               <Button
