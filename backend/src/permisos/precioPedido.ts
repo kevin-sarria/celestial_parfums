@@ -22,66 +22,107 @@ import { mapPerfumePanel, perfumeInclude } from '../repositories/perfume.mapeo';
 const finalPrice = (precio: number, descuento: number) =>
   descuento > 0 ? Math.round(precio * (1 - descuento / 100)) : precio;
 
-interface Unidad { categoria: string; presentacion: string; precio: number; descuento: number; premium: boolean }
-interface ComboLite { categoria: string | null; presentacion: string | null; cantidad: number; precio: number; descuento: number }
+export interface Unidad {
+  categoria: string; presentacion: string; precio: number; descuento: number; premium: boolean;
+  /** Índice de la línea del pedido de la que sale (para saber cuántas suyas cayeron en combo). */
+  linea?: number;
+}
+export interface ComboLite {
+  id?: number; categoria: string | null; presentacion: string | null; cantidad: number; precio: number; descuento: number;
+}
 
-/** Lo que se ahorra armando combos (misma regla que la tienda y el panel). */
-export const ahorroPorCombos = (unidades: Unidad[], combos: ComboLite[]) => {
-  const grupos = new Map<string, number[]>();
+export interface DeteccionServidor {
+  ahorro: number;
+  /** Índice de línea → unidades suyas que quedaron dentro de un combo. */
+  enCombo: Map<number, number>;
+  /** Cada combo que se armó y cuántas veces (para su kit). */
+  armados: { comboId: number; veces: number }[];
+}
+
+/** Qué combos arma el pedido, cuánto se ahorra y qué unidades cubre (misma regla que la tienda y el panel). */
+export const detectarCombosServidor = (unidades: Unidad[], combos: ComboLite[]): DeteccionServidor => {
+  const grupos = new Map<string, Unidad[]>();
   for (const u of unidades) {
     // Con descuento propio o esencia premium no entran: los descuentos no se acumulan
     if (u.descuento > 0 || u.premium) continue;
     const k = `${u.categoria}||${u.presentacion}`;
-    grupos.set(k, [...(grupos.get(k) ?? []), u.precio]);
+    grupos.set(k, [...(grupos.get(k) ?? []), u]);
   }
   let ahorro = 0;
-  for (const [k, precios] of grupos) {
+  const enCombo = new Map<number, number>();
+  const veces = new Map<number, number>();
+  for (const [k, grupo] of grupos) {
     const [categoria, presentacion] = k.split('||');
-    const sueltas = [...precios].sort((a, b) => b - a); // las más caras primero
+    const sueltas = [...grupo].sort((a, b) => b.precio - a.precio); // las más caras primero
     const candidatos = combos
       .filter((c) => c.categoria === categoria && (c.presentacion == null || c.presentacion === presentacion) && c.cantidad >= 2)
       .sort((a, b) => b.cantidad - a.cantidad);
     for (const c of candidatos) {
       const precioCombo = finalPrice(c.precio, c.descuento);
       while (sueltas.length >= c.cantidad) {
-        const suelto = sueltas.slice(0, c.cantidad).reduce((s, p) => s + p, 0);
+        const tomadas = sueltas.slice(0, c.cantidad);
+        const suelto = tomadas.reduce((s, u) => s + u.precio, 0);
         if (precioCombo >= suelto) break;
         sueltas.splice(0, c.cantidad);
         ahorro += suelto - precioCombo;
+        for (const u of tomadas) if (u.linea != null) enCombo.set(u.linea, (enCombo.get(u.linea) ?? 0) + 1);
+        if (c.id != null) veces.set(c.id, (veces.get(c.id) ?? 0) + 1);
       }
     }
   }
-  return ahorro;
+  return { ahorro, enCombo, armados: [...veces].map(([comboId, n]) => ({ comboId, veces: n })) };
 };
+
+/** Lo que se ahorra armando combos. */
+export const ahorroPorCombos = (unidades: Unidad[], combos: ComboLite[]) =>
+  detectarCombosServidor(unidades, combos).ahorro;
 
 export interface LineaPrecio { perfume_id: number; ml?: number | null; cantidad: number }
 
-export const precioNormalDelPedido = async (lineas: LineaPrecio[]) => {
+/** Los perfumes del pedido (vista del panel) y los combos activos, con su kit. */
+export const cargarPedido = async (lineas: { perfume_id: number }[]) => {
   const ids = [...new Set(lineas.map((l) => l.perfume_id))];
   const [filas, combos] = await Promise.all([
     prisma.perfume.findMany({ where: { id: { in: ids } }, include: perfumeInclude }),
-    prisma.combo.findMany({ where: { activo: true }, include: { categoria: true, presentacion: true } }),
+    prisma.combo.findMany({ where: { activo: true }, include: { categoria: true, presentacion: true, contenido: true } }),
   ]);
-  const porId = new Map(filas.map((f) => [f.id, mapPerfumePanel(f)]));
+  return {
+    porId: new Map(filas.map((f) => [f.id, mapPerfumePanel(f)])),
+    combos: combos.map((c) => ({
+      id: c.id, categoria: c.categoria?.nombre ?? null, presentacion: c.presentacion?.nombre ?? null,
+      cantidad: c.cantidad, precio: Number(c.precio), descuento: c.descuento,
+      kit: c.contenido.map((k) => ({ perfume_id: k.perfume_id, cantidad: k.cantidad })),
+    })),
+  };
+};
+export type PedidoCargado = Awaited<ReturnType<typeof cargarPedido>>;
 
+/** La talla de una línea y el precio de una unidad suya, con el descuento de la página. */
+export const tallaYPrecio = (p: ReturnType<typeof mapPerfumePanel>, ml: number | null | undefined) => {
+  const talla = ml != null ? p.precios.find((t) => t.ml === ml) : undefined;
+  return { talla, precio: finalPrice(talla?.precio ?? p.precio, p.descuento) };
+};
+
+/** Una unidad por cada unidad de cada línea, en el formato de la detección de combos. */
+export const unidadesDelPedido = (lineas: LineaPrecio[], { porId }: PedidoCargado) => {
   const unidades: Unidad[] = [];
-  let subtotal = 0;
-  for (const l of lineas) {
+  lineas.forEach((l, i) => {
     const p = porId.get(l.perfume_id);
-    if (!p) continue;
-    const talla = l.ml != null ? p.precios.find((t) => t.ml === l.ml) : undefined;
-    const precio = finalPrice(talla?.precio ?? p.precio, p.descuento);
-    subtotal += precio * l.cantidad;
-    for (let i = 0; i < l.cantidad; i++) {
+    if (!p) return;
+    const { talla, precio } = tallaYPrecio(p, l.ml);
+    for (let n = 0; n < l.cantidad; n++) {
       unidades.push({
         categoria: p.categoria ?? '', presentacion: talla?.presentacion ?? '',
-        precio, descuento: p.descuento, premium: p.esencia_premium,
+        precio, descuento: p.descuento, premium: p.esencia_premium, linea: i,
       });
     }
-  }
-  const ahorro = ahorroPorCombos(unidades, combos.map((c) => ({
-    categoria: c.categoria?.nombre ?? null, presentacion: c.presentacion?.nombre ?? null,
-    cantidad: c.cantidad, precio: Number(c.precio), descuento: c.descuento,
-  })));
-  return Math.max(0, subtotal - ahorro);
+  });
+  return unidades;
+};
+
+export const precioNormalDelPedido = async (lineas: LineaPrecio[], cargado?: PedidoCargado) => {
+  const pedido = cargado ?? await cargarPedido(lineas);
+  const unidades = unidadesDelPedido(lineas, pedido);
+  const subtotal = unidades.reduce((s, u) => s + u.precio, 0);
+  return Math.max(0, subtotal - ahorroPorCombos(unidades, pedido.combos));
 };

@@ -95,12 +95,17 @@ describe('subtotalDeLineas y unidadesDeLineas', () => {
      * duplicado y el día que no coincidiera ganaba el número tecleado, o sea
      * que se guardaba una mentira.
      */
-    expect(unidadesDeLineas([linea({ perfume_id: 1, cantidad: 3 }), linea({ perfume_id: 2, cantidad: 2 })])).toBe(5);
+    expect(unidadesDeLineas([linea({ perfume_id: 1, cantidad: 3 }), linea({ perfume_id: 2, cantidad: 2 })], indice(p1, p2))).toBe(5);
+  });
+
+  it('los accesorios no son perfumes: la bolsa del empaque no sube la cuenta', () => {
+    const bolsa = perfume({ id: 9, nombre: 'Bolsa', es_accesorio: true } as never);
+    expect(unidadesDeLineas([linea({ perfume_id: 1, cantidad: 2 }), linea({ perfume_id: 9, cantidad: 2, regalo: 2 })], indice(p1, bolsa))).toBe(2);
   });
 
   it('un pedido vacío suma cero', () => {
     expect(subtotalDeLineas([], indice(p1))).toBe(0);
-    expect(unidadesDeLineas([])).toBe(0);
+    expect(unidadesDeLineas([], indice(p1))).toBe(0);
   });
 });
 
@@ -175,7 +180,7 @@ describe('regalo por línea — qué se cobra', () => {
   });
 
   it('las unidades siguen contando lo FÍSICO: el inventario descuenta lo regalado también', () => {
-    expect(unidadesDeLineas([linea({ perfume_id: 1, cantidad: 2, regalo: 1 })])).toBe(2);
+    expect(unidadesDeLineas([linea({ perfume_id: 1, cantidad: 2, regalo: 1 })], indiceEros)).toBe(2);
   });
 });
 

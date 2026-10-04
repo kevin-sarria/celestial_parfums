@@ -7,7 +7,6 @@ import { registrarProduccion } from './inventario.producciones';
 import { revertirTerminado } from './inventario.terminado';
 import { idsDeMaterialesGenerales } from './materialesGenerales';
 import { costoDelFrasco, costoPorMl, escalarReceta, saldoDeTanda } from './maceracion.calculo';
-import { consumosDeAccesorios } from './accesoriosDeFicha';
 
 /**
  * MACERAR: la primera mitad de producir.
@@ -26,7 +25,7 @@ import { consumosDeAccesorios } from './accesoriosDeFicha';
  * Reglas que gobiernan este archivo (decididas con el dueño el 2026-08-24):
  *
  * 1. En el frasco va TODO mezclado desde el primer día, así que **el granel se
- *    costea al mezclar** y envasar solo añade el envase y los accesorios.
+ *    costea al mezclar** y envasar solo añade el envase (el empaque sale al vender).
  * 2. **Cada tanda va por separado.** Con diez graneles en curso, lo que importa
  *    es cuál lleva más tiempo reposando; un saldo único promediado lo borra.
  * 3. **El saldo no se guarda**: se recalcula. Así, corregir un envasado viejo
@@ -251,9 +250,9 @@ export interface EnvasadoInput {
 }
 
 /**
- * Envasa frascos de una tanda: gasta envases y accesorios, **no esencia**.
+ * Envasa frascos de una tanda: gasta envases, **no esencia** (ni empaque: sale al vender).
  *
- * El costo de cada frasco = ml de la talla × costo del ml + envase + accesorios.
+ * El costo de cada frasco = ml de la talla × costo del ml + envase.
  * Esa suma tiene que dar **lo mismo que armar directo**; hay una prueba de
  * aritmética que lo fija con los números reales del lote del 11 de agosto.
  *
@@ -274,10 +273,8 @@ export const envasar = async (data: EnvasadoInput) => {
   const mlQueSalen = num(formula.ml_total) * data.cantidad;
 
   /**
-   * Lo que gasta un envasado: el envase de ESTA vez y los accesorios de la
-   * receta. Se descubrió midiendo el lote real que los accesorios (bolsa
-   * organza, perfumero) son $11.400 de los $37.000 del envasado: dejarlos fuera
-   * es la diferencia entre devolver bien o mal el inventario.
+   * Lo que gasta un envasado: el envase de ESTA vez. La bolsa y el perfumero
+   * ya no (2026-10-04): son el empaque y salen al VENDER (`empaque/`).
    *
    * Lo demás —crear el lote, congelar el costo y sumar los frascos armados— lo
    * hace `registrarProduccion`, que es el ÚNICO sitio donde se aplica un lote.
@@ -295,9 +292,6 @@ export const envasar = async (data: EnvasadoInput) => {
     nota: data.nota ?? null,
     consumos: [
       ...(envaseId ? [{ insumo_id: envaseId, cantidad: data.cantidad }] : []),
-      // Los de ESTA ficha, no los de la receta a secas: un 1.1 envasado no
-      // lleva bolsa ni perfumero (ver `accesoriosDeFicha.ts`).
-      ...await consumosDeAccesorios(prisma, data.formula_volumen_id, data.perfume_id ?? null, data.cantidad),
     ],
   });
 

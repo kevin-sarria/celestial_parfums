@@ -190,7 +190,6 @@ export function FichaPerfumeModal({
           setForm={setForm}
           presentaciones={presentaciones}
           envases={ficha.envases}
-          accesorios={ficha.accesorios}
           precioDeLista={ficha.precioDeLista}
           botella={tipo === 'decant'
             ? ficha.insumosProducto.find(i => i.id === form.insumo_producto_id) ?? null

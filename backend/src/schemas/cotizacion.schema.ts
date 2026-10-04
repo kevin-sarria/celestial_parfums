@@ -59,11 +59,6 @@ export const insumoSchema = z.object({
   message: 'Una botella original se lleva en ml', path: ['unidad'],
 });
 
-/** Accesorios que un tamaño incluye por defecto. */
-export const accesoriosFormulaSchema = z.object({
-  insumo_ids: z.array(z.number().int().positive()).max(20),
-});
-
 /** Con qué material bueno se fusiona el duplicado (el de la URL). */
 export const fusionInsumoSchema = z.object({
   destino_id: z.number({ message: 'Elige con cuál material se fusiona' }).int().positive(),

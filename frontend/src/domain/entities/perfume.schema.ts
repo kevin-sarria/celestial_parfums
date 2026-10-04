@@ -30,8 +30,6 @@ export const precioPresentacionSchema = z.object({
   propio: z.boolean().default(false),
       presentacion_id: z.number().default(0),
       envase_insumo_id: z.number().nullable().default(null),
-      /** null = los de la receta del tamaño; [] = ninguno. */
-      accesorios: z.array(z.number()).nullable().default(null),
   /** Frascos armados de ESTA talla (no la suma de todas). */
   armados: z.number().default(0),
   /**
@@ -44,6 +42,11 @@ export const precioPresentacionSchema = z.object({
   motivo_agotado: z.enum(['sin_esencia', 'sin_armados', 'sin_producto']).nullable().default(null),
   /** Esta talla de un original es la botella entera, no un decant. */
   botella_completa: z.boolean().default(false),
+  /**
+   * Lo que se regala con esta talla (la bolsa, el perfumero): "Incluye …".
+   * Solo viene en la ficha pública; sale del empaque por línea (2026-10-04).
+   */
+  incluye: z.array(z.object({ nombre: z.string(), cantidad: z.number() })).default([]),
 });
 
 export type PrecioPresentacion = z.infer<typeof precioPresentacionSchema>;

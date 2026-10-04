@@ -4,7 +4,6 @@ import { r3, r4 } from '../utils/redondeo';
 import { aplicarMovimiento, revertirMovimientos } from './inventario.repository';
 import { revertirTerminado, sacarDeTerminado } from './inventario.terminado';
 import { idsDeMaterialesGenerales } from './materialesGenerales';
-import { accesoriosEfectivos, accesoriosPropios } from './accesoriosDeFicha';
 import { esBotellaCompleta, mlQueSalenDeLaBotella } from '../utils/decants';
 
 /** Los Decimal de Prisma llegan como objeto; esto los baja a número. */
@@ -26,7 +25,9 @@ const num = (v: unknown) => Number(v);
  * Qué insumos gasta UNA unidad de un perfume en una talla, y cuánto cuesta.
  *
  * La esencia sale del PERFUME (cada fragancia tiene la suya, con su costo); el
- * envase y los accesorios, de la receta de la talla. Si el perfume no tiene
+ * envase, de la receta de la talla. La bolsa y el perfumero ya NO salen de
+ * aquí (2026-10-04): son el empaque, que la venta regala a la vista como
+ * líneas de accesorio (`empaque/`), y esas líneas los descuentan. Si el perfume no tiene
  * esencia asignada devuelve null: no se descuenta nada y se lista aparte, que
  * es lo acordado — usar una esencia genérica descuadraría ese insumo y daría
  * un costo falso.
@@ -46,7 +47,7 @@ export const recetaDe = async (perfumeId: number, ml: number | null) => {
       ? prisma.presentacion.findFirst({
           where: { ml },
           include: {
-            formula: { include: { accesorios: true } },
+            formula: true,
             // Frasco y accesorios propios de ESTE perfume en ESTA talla
             perfumes: { where: { perfume_id: perfumeId } },
           },
@@ -103,11 +104,7 @@ export const recetaDe = async (perfumeId: number, ml: number | null) => {
   add(generales.feromonas, fero);
   // El frasco y la caja de ESTA referencia mandan sobre los de la receta:
   // un 1.1 de Sauvage no usa el mismo frasco que uno de Bleu.
-  const propio = presentacion?.perfumes?.[0];
-  add(propio?.envase_insumo_id ?? formula.envase_insumo_id, 1);
-  // null = los de la receta; [] = ninguno (ver `accesoriosDeFicha.ts`)
-  accesoriosEfectivos(accesoriosPropios(propio?.accesorios), formula.accesorios.map((a) => a.insumo_id))
-    .forEach((id) => add(id, 1));
+  add(presentacion?.perfumes?.[0]?.envase_insumo_id ?? formula.envase_insumo_id, 1);
   return { sinEsencia: false, nombre: perfume.nombre, items };
 };
 

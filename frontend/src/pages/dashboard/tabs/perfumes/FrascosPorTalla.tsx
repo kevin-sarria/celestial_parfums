@@ -1,41 +1,36 @@
 import { SelectSimple } from '@/components/ui/select-simple';
 import type { Lookup, PerfumeForm } from '../../types';
-import { AccesoriosDeTalla, type OpcionAccesorio } from './AccesoriosDeTalla';
 
 /** Un insumo elegible como frasco de una talla. */
 export interface Envase { id: number; nombre: string; precio?: number }
 
 /**
- * ¿Esta ficha ya usa un frasco o accesorios distintos de los del tamaño?
- * Si sí, la sección arranca abierta para que no quede escondido lo que cuenta.
- * El "Ninguno" de un 1.1 no cuenta: es su valor de siempre (ver `alternar` en
- * `TallasDelPerfume`).
+ * ¿Esta ficha ya usa un frasco distinto del del tamaño? Si sí, la sección
+ * arranca abierta para que no quede escondido lo que cuenta.
  */
-const tieneDistintos = (form: PerfumeForm, tallas: Lookup[]) => tallas.some(pr =>
-  !!form.envases_talla[pr.id]
-  || (form.accesorios_talla[pr.id] != null && !(form.solo_armado && form.accesorios_talla[pr.id]!.length === 0)));
+const tieneDistintos = (form: PerfumeForm, tallas: Lookup[]) => tallas.some(pr => !!form.envases_talla[pr.id]);
 
 /**
- * Frasco y accesorios por talla, plegados.
+ * El frasco por talla, plegado. La bolsa y el perfumero ya no van aquí
+ * (2026-10-04): son el empaque por línea, en Catálogo → Empaque.
  *
- * Casi siempre van los del tamaño (los de la receta), así que esto vive
+ * Casi siempre va el del tamaño (el de la receta), así que esto vive
  * cerrado: antes eran dos desplegables por talla siempre a la vista, y una
  * ficha con cuatro tallas eran ocho controles que nadie tocaba (dueño,
  * 2026-10-02). El frasco sí cambia a veces según la referencia: un 1.1 de
  * Sauvage no usa el mismo que uno de Bleu.
  */
-export function FrascosPorTalla({ form, setForm, tallas, envases, accesorios }: {
+export function FrascosPorTalla({ form, setForm, tallas, envases }: {
   form: PerfumeForm;
   setForm: React.Dispatch<React.SetStateAction<PerfumeForm>>;
   tallas: Lookup[];
   envases: Envase[];
-  accesorios: OpcionAccesorio[];
 }) {
   return (
     <details className="group text-[12.5px]" open={tieneDistintos(form, tallas) || undefined}>
       <summary className="cursor-pointer font-medium text-primary">
-        Frasco y accesorios distintos por talla
-        <span className="font-normal text-muted-foreground"> · si no, van los del tamaño</span>
+        Frasco distinto por talla
+        <span className="font-normal text-muted-foreground"> · si no, va el del tamaño</span>
       </summary>
       <div className="mt-2 space-y-2.5">
         {tallas.map(pr => (
@@ -55,11 +50,6 @@ export function FrascosPorTalla({ form, setForm, tallas, envases, accesorios }: 
                 {envases.map(v => <option key={v.id} value={v.id}>{v.nombre}</option>)}
               </SelectSimple>
             </div>
-            <AccesoriosDeTalla
-              valor={form.accesorios_talla[pr.id] ?? null}
-              opciones={accesorios}
-              onCambio={v => setForm(f => ({ ...f, accesorios_talla: { ...f.accesorios_talla, [pr.id]: v } }))}
-            />
           </div>
         ))}
       </div>

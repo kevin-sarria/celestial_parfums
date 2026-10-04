@@ -489,6 +489,8 @@ model Perfume {
   maceraciones       Maceracion[]
   terminado          MovimientoTerminado[]
   en_kits            ComboContenido[]
+  /// Empaque por línea y talla en el que va este accesorio.
+  en_empaques        EmpaqueLinea[]
 
   @@index([categoria_id])
   @@index([genero])
@@ -554,6 +556,7 @@ model Presentacion {
   perfumes           PerfumePresentacion[]
   combos             Combo[]
   precios            PrecioLista[]
+  empaques           EmpaqueLinea[]
   terminado          MovimientoTerminado[]
 
   @@index([ml])
@@ -571,9 +574,6 @@ model PerfumePresentacion {
   /// frasco que uno de Bleu), así que no basta con el de la receta del tamaño.
   /// null = usa el envase por defecto de la fórmula.
   envase_insumo_id Int?
-  /// Ids de los accesorios propios de esta combinación (caja, tarjeta…).
-  /// Vacío o null = usa los accesorios por defecto del tamaño.
-  accesorios       Json?
   /// Frascos YA ARMADOS de este perfume en esta talla.
   ///
   /// Es una PROYECCIÓN de `movimientos_terminado`, igual que
@@ -1123,7 +1123,6 @@ model InsumoCosto {
   /// Fórmulas que usan este insumo como esencia (normal, premium…).
   esencia_de          FormulaVolumen[]       @relation("EsenciaDeFormula")
   /// Tamaños que lo incluyen por defecto (bolsa, perfumero…).
-  incluido_en         FormulaAccesorio[]
   /// Líneas de compra y movimientos de inventario de este insumo.
   compras             CompraItem[]
   movimientos         MovimientoInventario[]
@@ -1263,20 +1262,6 @@ model MovimientoInventario {
   @@map("movimientos_inventario")
 }
 
-// Accesorios que un tamaño incluye POR DEFECTO. Al cotizar vienen marcados y se
-// pueden quitar o agregar otros para ese cliente: el set es un punto de partida,
-// no una regla fija (mañana puede ser una tarjeta personalizada en vez de bolsa).
-model FormulaAccesorio {
-  formula_volumen_id Int
-  insumo_id          Int
-  formula            FormulaVolumen @relation(fields: [formula_volumen_id], references: [id], onDelete: Cascade)
-  insumo             InsumoCosto    @relation(fields: [insumo_id], references: [id], onDelete: Cascade)
-
-  @@id([formula_volumen_id, insumo_id])
-  @@index([insumo_id])
-  @@map("formula_accesorios")
-}
-
 // Tamaño fabricable (30/50/100 ml…) con su fórmula. El diluyente NO se guarda:
 // siempre se calcula como ml_total − esencia − sellador − feromonas, para que no
 // pueda quedar desincronizado si se edita el volumen total.
@@ -1300,7 +1285,6 @@ model FormulaVolumen {
   esencia           InsumoCosto?       @relation("EsenciaDeFormula", fields: [esencia_insumo_id], references: [id], onDelete: SetNull)
   escalas           EscalaPrecio[]
   items             CotizacionItem[]
-  accesorios        FormulaAccesorio[]
   producciones      Produccion[]
   maceraciones      Maceracion[]
   presentaciones    Presentacion[]
@@ -1605,4 +1589,37 @@ model Maceracion {
 
   @@index([cerrada_en])
   @@map("maceraciones")
+}
+
+/// La línea de un producto para decidir su empaque. Un original se parte en dos
+/// porque el decant y la botella entera se entregan distinto.
+enum LineaEmpaque {
+  contratipo
+  uno_uno
+  decant
+  botella_completa
+  producto
+}
+
+/// EMPAQUE POR LÍNEA Y TALLA (dueño, 2026-10-04): lo que se regala con cada
+/// unidad vendida de esa línea en esa talla (bolsa de organza, perfumero…).
+/// Un combo armado manda sobre esto con su kit (`combo_contenido`). Al vender,
+/// la pantalla lo ofrece marcado y entra como líneas de REGALO: ya no se
+/// descuenta por debajo. Diseño en
+/// `docs/superpowers/specs/2026-10-04-empaque-por-linea-design.md`.
+model EmpaqueLinea {
+  id              Int           @id @default(autoincrement())
+  linea           LineaEmpaque
+  /// null solo en `botella_completa`: vale para cualquier botella entera.
+  presentacion_id Int?
+  /// Solo accesorios (`es_accesorio`); se valida en el servidor.
+  perfume_id      Int
+  cantidad        Int           @default(1) @db.UnsignedSmallInt
+  presentacion    Presentacion? @relation(fields: [presentacion_id], references: [id], onDelete: Cascade)
+  /// Restrict: un accesorio que está en un empaque no se borra sin sacarlo antes.
+  perfume         Perfume       @relation(fields: [perfume_id], references: [id], onDelete: Restrict)
+
+  @@unique([linea, presentacion_id, perfume_id])
+  @@index([perfume_id])
+  @@map("empaque_linea")
 }

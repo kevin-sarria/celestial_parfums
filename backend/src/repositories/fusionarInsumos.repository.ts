@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
 import { hoyEnColombia } from '../utils/fechas';
 import { aplicarMovimiento } from './inventario.repository';
-import { contarUsos, idsDeJson, tallasConAccesorio, type UsosDeInsumo } from './insumo.usos';
+import { contarUsos, type UsosDeInsumo } from './insumo.usos';
 
 /**
  * FUSIONAR DOS REGISTROS DEL MISMO MATERIAL.
@@ -42,53 +42,6 @@ export const vistaPreviaFusion = async (origenId: number) => {
   });
   if (!origen) throw badRequest('Ese material ya no existe');
   return { origen: { ...origen, stock: Number(origen.stock) }, movidos: await contarUsos(origenId) };
-};
-
-/**
- * Muda las líneas de accesorios de una receta, esquivando la clave duplicada.
- *
- * `formula_accesorios` tiene clave (receta, insumo): si la receta ya incluye al
- * bueno, mudar la del duplicado reventaría. Se borra en su lugar — el resultado
- * es el mismo, esa receta incluye un perfumero.
- */
-const mudarAccesoriosDeRecetas = async (
-  tx: Prisma.TransactionClient, origenId: number, destinoId: number,
-) => {
-  const [delOrigen, delDestino] = await Promise.all([
-    tx.formulaAccesorio.findMany({ where: { insumo_id: origenId }, select: { formula_volumen_id: true } }),
-    tx.formulaAccesorio.findMany({ where: { insumo_id: destinoId }, select: { formula_volumen_id: true } }),
-  ]);
-  const yaLoTiene = new Set(delDestino.map((f) => f.formula_volumen_id));
-
-  for (const { formula_volumen_id } of delOrigen) {
-    const clave = { formula_volumen_id_insumo_id: { formula_volumen_id, insumo_id: origenId } };
-    if (yaLoTiene.has(formula_volumen_id)) await tx.formulaAccesorio.delete({ where: clave });
-    else await tx.formulaAccesorio.update({ where: clave, data: { insumo_id: destinoId } });
-  }
-};
-
-/**
- * Reescribe el id dentro de la lista JSON de accesorios de cada talla.
- *
- * `inventario.consumoVenta.ts` lee esta lista VIVA en cada venta para saber qué
- * descontar. Si aquí quedara el id del duplicado, la siguiente venta de esa
- * talla reventaría con "El insumo no existe" — en la caja, delante del cliente.
- */
-const mudarListasDeAccesorios = async (
-  tx: Prisma.TransactionClient, origenId: number, destinoId: number,
-) => {
-  for (const fila of await tallasConAccesorio(origenId, tx)) {
-    // Sin duplicar: si la talla ya llevaba los dos, queda uno.
-    const ids = [...new Set(idsDeJson(fila.accesorios).map((x) => (x === origenId ? destinoId : x)))];
-    await tx.perfumePresentacion.update({
-      where: {
-        perfume_id_presentacion_id: {
-          perfume_id: fila.perfume_id, presentacion_id: fila.presentacion_id,
-        },
-      },
-      data: { accesorios: ids },
-    });
-  }
 };
 
 export const fusionarInsumos = async (
@@ -161,7 +114,6 @@ export const fusionarInsumos = async (
     await tx.formulaVolumen.updateMany({
       where: { esencia_insumo_id: origenId }, data: { esencia_insumo_id: destinoId },
     });
-    await mudarAccesoriosDeRecetas(tx, origenId, destinoId);
     await tx.perfume.updateMany({
       where: { insumo_esencia_id: origenId }, data: { insumo_esencia_id: destinoId },
     });
@@ -171,7 +123,6 @@ export const fusionarInsumos = async (
     await tx.perfumePresentacion.updateMany({
       where: { envase_insumo_id: origenId }, data: { envase_insumo_id: destinoId },
     });
-    await mudarListasDeAccesorios(tx, origenId, destinoId);
 
     /**
      * El rastro, en el sitio donde el dueño lo va a buscar: el historial del

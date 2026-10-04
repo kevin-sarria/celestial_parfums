@@ -5,7 +5,9 @@ export const createPerfumeSchema = z.object({
   nombre: z.string().min(1, 'El nombre es obligatorio').max(150),
   // Campos opcionales: aceptan texto, null o ausente (el formulario envía null al vaciarlos)
   descripcion: campoDescripcion(),
-  precio: z.number().positive('El precio debe ser mayor a 0'),
+  // > 0, salvo un accesorio: la bolsa del empaque se regala y puede valer 0
+  // (se revisa abajo, en el superRefine).
+  precio: z.number().min(0, 'El precio debe ser mayor a 0'),
   duracion: z.string().max(50).nullish(),
   proyeccion: z.string().max(50).nullish(),
   imagen_url: z.string().url().nullish().or(z.literal('')),
@@ -39,12 +41,11 @@ export const createPerfumeSchema = z.object({
   presentaciones: z.array(z.number().int().positive()).default([]),
   // Excepciones a la lista de precios: solo las presentaciones que NO usan el
   // precio estándar de su categoría (los de esencia premium suelen llevar una por talla)
-  /// Frasco y accesorios propios por talla: [{presentacion_id, envase_insumo_id, accesorios}]
+  /// Frasco propio por talla: [{presentacion_id, envase_insumo_id}]. La bolsa y el
+  /// perfumero ya no van aquí: son el empaque por línea (`empaque/`, 2026-10-04).
   envases_talla: z.array(z.object({
     presentacion_id: z.number().int().positive(),
     envase_insumo_id: z.number().int().positive().nullish(),
-    /// null = los de la receta; [] = ninguno; [ids] = los suyos (`accesoriosDeFicha.ts`)
-    accesorios: z.array(z.number().int().positive()).max(20).nullish(),
   })).optional(),
   precios_propios: z
     .array(
@@ -63,6 +64,11 @@ export const createPerfumeSchema = z.object({
       code: 'custom', path: ['es_accesorio'],
       message: 'Un accesorio debe ser "Lo compro hecho y lo revendo" (comprado), no tiene receta ni talla',
     });
+  }
+  // Solo un accesorio puede valer 0: es lo que se regala en el empaque
+  // (2026-10-04). Un perfume en 0 se vendería gratis en la tienda.
+  if (v.precio <= 0 && !v.es_accesorio) {
+    ctx.addIssue({ code: 'custom', path: ['precio'], message: 'El precio debe ser mayor a 0' });
   }
 });
 

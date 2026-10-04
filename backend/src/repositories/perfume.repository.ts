@@ -174,9 +174,9 @@ export const selectPerfumesByIds = async (ids: number[]) => {
  * Enlaces perfume→presentación con su precio propio cuando lo tienen.
  * Sin precio propio quedan en null y heredan el de la lista de su categoría.
  */
-const enlacesPresentacion = (data: CreatePerfumeDTO, alCrear = false) => {
+const enlacesPresentacion = (data: CreatePerfumeDTO) => {
   const propios = new Map((data.precios_propios ?? []).map((p) => [p.presentacion_id, p.precio]));
-  // Frasco y accesorios de ESTE perfume en ESTA talla (mandan sobre la receta)
+  // Frasco de ESTE perfume en ESTA talla (manda sobre el de la receta)
   const envases = new Map((data.envases_talla ?? []).map((e) => [e.presentacion_id, e]));
   return (data.presentaciones ?? []).map((id) => {
     const e = envases.get(id);
@@ -184,13 +184,6 @@ const enlacesPresentacion = (data: CreatePerfumeDTO, alCrear = false) => {
       presentacion_id: id,
       precio: propios.get(id) ?? null,
       envase_insumo_id: e?.envase_insumo_id ?? null,
-      /**
-       * null/ausente = los de la receta (se guarda NULL); [] = ninguno. Antes la
-       * lista vacía se convertía en "los de la receta" y no había forma de decir
-       * "ninguno". Un 1.1 NUEVO nace sin accesorios si nadie dijo otra cosa;
-       * al editar no se adivina: manda lo que llegue.
-       */
-      accesorios: e?.accesorios ?? (alCrear && data.solo_armado ? [] : undefined),
     };
   });
 };
@@ -225,7 +218,7 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       ocasiones: {
         create: (data.ocasiones ?? []).map((id) => ({ ocasion_id: id })),
       },
-      presentaciones: { create: enlacesPresentacion(data, true) },
+      presentaciones: { create: enlacesPresentacion(data) },
     },
   });
   return { id: perfume.id };
@@ -308,7 +301,6 @@ export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
             update: {
               precio: e.precio,
               envase_insumo_id: e.envase_insumo_id,
-              accesorios: e.accesorios ?? Prisma.DbNull,
             },
           })),
         },

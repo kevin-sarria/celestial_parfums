@@ -219,17 +219,39 @@ export const eliminarInsumo = async (id: number) => {
 // ── Fórmulas por volumen ────────────────────────────────────────────────────
 /**
  * Todo lo que una receta necesita traer consigo: su envase, su esencia, los
- * accesorios que incluye por defecto y sus escalas de precio. Estaba copiado en
+ * accesorios que incluye por defecto (el empaque del contratipo en sus tallas)
+ * y sus escalas de precio. Estaba copiado en
  * las cuatro consultas de abajo; ahora se escribe una vez y de él sale el tipo
  * de la fila, que es lo que reemplaza al `f: any` del mapeador.
  */
 const FORMULA_INCLUDE = {
   envase: true,
   esencia: true,
-  accesorios: { include: { insumo: true } },
+  // Los accesorios de un tamaño son el empaque del CONTRATIPO en esa talla
+  // (2026-10-04): una sola configuración para vender y para cotizar.
+  presentaciones: {
+    select: {
+      empaques: {
+        where: { linea: 'contratipo' },
+        select: { cantidad: true, perfume: { select: { insumo_producto: true } } },
+      },
+    },
+  },
   escalas: { orderBy: { cantidad_min: 'asc' } },
 } as const;
 type FormulaRow = Prisma.FormulaVolumenGetPayload<{ include: typeof FORMULA_INCLUDE }>;
+
+/** El empaque del contratipo en las tallas de esta receta, como materiales (sin repetir). */
+const accesoriosDeReceta = (f: FormulaRow) => {
+  const vistos = new Map<number, { insumo_id: number; nombre: string; precio: number }>();
+  for (const p of f.presentaciones) {
+    for (const e of p.empaques) {
+      const i = e.perfume.insumo_producto;
+      if (i && !vistos.has(i.id)) vistos.set(i.id, { insumo_id: i.id, nombre: i.nombre, precio: num(i.precio) });
+    }
+  }
+  return [...vistos.values()];
+};
 
 const mapFormula = (f: FormulaRow) => {
   const esencia = num(f.esencia_ml);
@@ -254,10 +276,9 @@ const mapFormula = (f: FormulaRow) => {
     activo: f.activo,
     orden: f.orden,
     escalas: (f.escalas ?? []).map(mapEscala),
-    // Accesorios que este tamaño incluye por defecto (punto de partida al cotizar)
-    accesorios_default: (f.accesorios ?? []).map((a) => ({
-      insumo_id: a.insumo_id, nombre: a.insumo?.nombre ?? '', precio: num(a.insumo?.precio ?? 0),
-    })),
+    // Accesorios que este tamaño incluye por defecto (punto de partida al
+    // cotizar): el empaque del contratipo en sus tallas, como materiales.
+    accesorios_default: accesoriosDeReceta(f),
   };
 };
 
@@ -339,22 +360,6 @@ export const actualizarFormula = async (id: number, data: FormulaInput) => {
 };
 
 export const eliminarFormula = (id: number) => prisma.formulaVolumen.delete({ where: { id } });
-
-/** Reemplaza los accesorios que un tamaño incluye por defecto. */
-export const setAccesoriosFormula = async (formulaId: number, insumoIds: number[]) => {
-  await prisma.$transaction([
-    prisma.formulaAccesorio.deleteMany({ where: { formula_volumen_id: formulaId } }),
-    prisma.formulaAccesorio.createMany({
-      data: insumoIds.map((id) => ({ formula_volumen_id: formulaId, insumo_id: id })),
-      skipDuplicates: true,
-    }),
-  ]);
-  const row = await prisma.formulaVolumen.findUnique({
-    where: { id: formulaId },
-    include: FORMULA_INCLUDE,
-  });
-  return row ? mapFormula(row) : null;
-};
 
 // ── Escalas de precio ───────────────────────────────────────────────────────
 const mapEscala = (e: EscalaPrecio) => ({

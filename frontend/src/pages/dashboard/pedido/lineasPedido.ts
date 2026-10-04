@@ -67,8 +67,9 @@ export const subtotalDeLineas = (lineas: LineaPedido[], porId: Map<number, Perfu
  * mano junto a las líneas: era un dato duplicado que había que cuadrar, y el día
  * que no coincidiera ganaba el número tecleado y se guardaba una mentira.
  */
-export const unidadesDeLineas = (lineas: LineaPedido[]) =>
-  lineas.reduce((s, l) => s + l.cantidad, 0);
+export const unidadesDeLineas = (lineas: LineaPedido[], porId: Map<number, Perfume>) =>
+  // Los accesorios no son perfumes: la bolsa del empaque no sube la cuenta (2026-10-04)
+  lineas.reduce((s, l) => s + (porId.get(l.perfume_id)?.es_accesorio ? 0 : l.cantidad), 0);
 
 /**
  * Líneas como items de carrito, para reutilizar la detección de combos.

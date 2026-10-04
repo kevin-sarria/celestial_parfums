@@ -51,7 +51,6 @@ export const urls = {
     minimosGama: '/inventario/minimos-gama',
     producciones: '/inventario/producciones',
     /** Accesorios de UN frasco de esa receta para esa ficha (?formula&perfume). */
-    accesoriosDeLote: '/inventario/accesorios-de-lote',
     /** Lotes que cargaron accesorios que su ficha no lleva. Solo lee. */
     accesoriosSobrantes: '/inventario/producciones/accesorios-sobrantes',
     corregirAccesoriosSobrantes: '/inventario/producciones/accesorios-sobrantes/corregir',
@@ -85,7 +84,6 @@ export const urls = {
     crearFormula: '/costeo/formulas',
     formula: (id: number) => `/costeo/formulas/${id}`,
     /** Los accesorios fijos de un tamaño (van con cada frasco de ese tamaño). */
-    accesoriosFormula: (id: number) => `/costeo/formulas/${id}/accesorios`,
     /** Precio mayorista por cantidad ("de 10 a 49 unidades, tanto"). */
     escalas: '/costeo/escalas',
     escala: (id: number) => `/costeo/escalas/${id}`,
@@ -343,6 +341,9 @@ export const urls = {
   notificaciones: '/notificaciones',
 
   reportes: (ruta: string) => `/reportes/${ruta}`,
+
+  /** Empaque por línea y talla: lo lee quien vende, lo cambia el dueño. */
+  empaque: '/empaque',
 
   /** Roles del personal y sus permisos (solo el dueño). */
   roles: {

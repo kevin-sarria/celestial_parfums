@@ -78,19 +78,6 @@ export function ProduccionModal({
       .then((r) => { if (r.ok && r.cuerpo?.data) setPresentaciones(r.cuerpo.data); });
   }, []);
 
-  /** Accesorios que lleva UN frasco de esta receta para esta ficha; null = aún no se sabe. */
-  const [accesoriosLote, setAccesoriosLote] = useState<number[] | null>(null);
-  useEffect(() => {
-    setAccesoriosLote(null);
-    if (!formulaId) return;
-    let vigente = true;
-    http.get<{ data: number[] }>(urls.inventario.accesoriosDeLote, {
-      params: { formula: formulaId, ...(perfumeId ? { perfume: perfumeId } : {}) },
-    }).then((r) => { if (vigente && r.ok && r.cuerpo) setAccesoriosLote(r.cuerpo.data); });
-    // Si el dueño cambia de ficha rápido, la respuesta vieja no pisa la nueva.
-    return () => { vigente = false; };
-  }, [formulaId, perfumeId]);
-
   const catalogoPerfumes = [...creados, ...perfumes];
 
   const perfumeElegido = perfumes.find((p) => p.id === perfumeId) ?? null;
@@ -120,10 +107,7 @@ export function ProduccionModal({
     suma(porNombre(catalogo, 'sellador')?.id, f.sellador_ml);
     suma(porNombre(catalogo, 'feromonas')?.id, f.feromonas_ml);
     suma(envaseId || f.envase_insumo_id, 1);
-    // Los de ESTA ficha (un 1.1 no lleva ninguno). Mientras el servidor
-    // contesta, los de la receta. Solo sirve para estimar: al guardar, el
-    // servidor los vuelve a poner él (`conAccesoriosDeFicha`).
-    (accesoriosLote ?? (f.accesorios_default ?? []).map((a) => a.insumo_id)).forEach((id) => suma(id, 1));
+    // Ni bolsa ni perfumero: el empaque sale al VENDER, no al armar (2026-10-04)
     return lista;
   };
 

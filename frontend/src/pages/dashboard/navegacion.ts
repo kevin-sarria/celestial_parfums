@@ -25,6 +25,7 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   presentaciones: { label: 'Presentaciones', icon: Ruler },
   gamas: { label: 'Gamas de esencia', icon: Layers },
   combos: { label: 'Combos', icon: Gift },
+  empaque: { label: 'Empaque', icon: Package },
   precios: { label: 'Precios', icon: Tags },
   descuentos: { label: 'Descuentos', icon: BadgePercent },
   ventas: { label: 'Ventas', icon: CircleDollarSign },
@@ -81,7 +82,7 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
    */
   { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'solicitudes', 'recompra', 'devoluciones', 'pagos'] },
   { id: 'operacion', label: 'Producción e inventario', tabs: ['producciones', 'armados', 'inventario', 'reposicion', 'alertas', 'formulas', 'costos'] },
-  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'productos', 'combos', 'precios', 'descuentos'] },
+  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'productos', 'combos', 'empaque', 'precios', 'descuentos'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'pagina', label: 'Página web', tabs: ['publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
   // `aromas` es la puerta a las cinco clasificaciones (ver CLASIFICACIONES)

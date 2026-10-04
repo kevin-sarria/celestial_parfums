@@ -1,7 +1,9 @@
 import type { NextFunction, Request, Response } from 'express';
 import { prisma } from '../config/prisma';
 import { puede } from '../permisos/permisos';
-import { precioNormalDelPedido } from '../permisos/precioPedido';
+import { cargarPedido, precioNormalDelPedido } from '../permisos/precioPedido';
+import { empaqueParaPedido } from '../empaque/empaque.repository';
+import { regaloDeEmpaque } from '../empaque/regaloDeEmpaque';
 import { lineasDeVenta } from '../schemas/venta.schema';
 import { pedirDescuento } from '../repositories/solicitud.repository';
 
@@ -11,7 +13,9 @@ import { pedirDescuento } from '../repositories/solicitud.repository';
  *
  * Quien tiene `descuentos.aplicar` (y el dueño) pasa sin más. A los demás se
  * les recalcula el precio normal en el servidor; hay descuento si cobran
- * menos, si regalan unidades o si traen un cupón. Entonces:
+ * menos, si regalan unidades o si traen un cupón. Regalar el EMPAQUE que le
+ * toca al pedido (la bolsa, el perfumero, el kit del combo) no cuenta: es lo
+ * que la venta lleva (2026-10-04, `empaque/`). Entonces:
  * - al REGISTRAR, no se registra: se crea una solicitud y la venta espera al
  *   dueño (responde 202 con `pendiente: true`);
  * - al CORREGIR, se rechaza: bajar el precio de algo ya registrado no se pide
@@ -29,9 +33,14 @@ export const controlPrecio = (que: 'venta' | 'credito', accion: 'registrar' | 'c
       if (await puede(quien.rol_id, 'descuentos.aplicar')) { next(); return; }
 
       const lineas = lineasDeVenta(cuerpo);
-      const normal = await precioNormalDelPedido(lineas);
+      const cargado = await cargarPedido(lineas);
+      // Lo regalado que ES su empaque sale gratis sin pedir permiso: ni cuenta
+      // como regalo ni suma al precio normal.
+      const deEmpaque = regaloDeEmpaque(lineas, await empaqueParaPedido(lineas, cargado));
+      const cobrables = lineas.map((l, i) => ({ ...l, cantidad: l.cantidad - deEmpaque[i], regalo: l.regalo - deEmpaque[i] }));
+      const normal = await precioNormalDelPedido(cobrables, cargado);
       const pedido = Number(que === 'venta' ? cuerpo.valor_venta : cuerpo.deuda_inicial);
-      const regala = lineas.some((l) => l.regalo > 0);
+      const regala = cobrables.some((l) => l.regalo > 0);
       const cupon = !!cuerpo.codigo_descuento?.trim();
       if (!regala && !cupon && pedido >= normal - TOLERANCIA) { next(); return; }
 

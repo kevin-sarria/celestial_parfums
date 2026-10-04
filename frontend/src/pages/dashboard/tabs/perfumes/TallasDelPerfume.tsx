@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 import { Field } from '../../ui';
 import { formatPrice } from '../../helpers';
 import type { Lookup, PerfumeForm } from '../../types';
-import type { OpcionAccesorio } from './AccesoriosDeTalla';
 import { FrascosPorTalla, type Envase } from './FrascosPorTalla';
 import { esBotellaCompleta, heredaPrecioGeneral, mlQueSalenDeLaBotella } from '../../../../domain/entities/decants';
 
@@ -25,21 +24,21 @@ const porTamano = (a: Lookup, b: Lookup) =>
  *
  * Rediseñada el 2026-10-02 porque al dueño le parecía "poco intuitiva y
  * estorbosa": cada talla marcada abría tres renglones (precio, frasco y
- * accesorios) aunque el frasco y los accesorios casi nunca se cambian.
+ * accesorios) aunque casi nunca se cambian. La bolsa y el perfumero ya no
+ * van aquí desde el 2026-10-04: son el empaque por línea (Catálogo → Empaque).
  * Ahora son tres piezas, de lo diario a lo raro:
  *   1. Las tallas como botones, ordenadas por tamaño: se marcan de un toque.
  *   2. Un renglón por talla marcada: su precio, lo que cuesta y lo que deja.
- *   3. Frasco y accesorios distintos, plegados (`FrascosPorTalla`).
+ *   3. El frasco distinto por talla, plegado (`FrascosPorTalla`).
  *
  * Recibe el formulario entero y su `setForm`: el dueño del estado sigue siendo
  * la pestaña, que es quien lo guarda.
  */
-export function TallasDelPerfume({ form, setForm, presentaciones, envases, accesorios, precioDeLista, botella }: {
+export function TallasDelPerfume({ form, setForm, presentaciones, envases, precioDeLista, botella }: {
   form: PerfumeForm;
   setForm: React.Dispatch<React.SetStateAction<PerfumeForm>>;
   presentaciones: Lookup[];
   envases: Envase[];
-  accesorios: OpcionAccesorio[];
   /** Lo que ya cuesta esa talla por la lista de su categoría (null = sin precio). */
   precioDeLista: (presentacionId: number) => number | null;
   /**
@@ -83,11 +82,6 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, acces
   const alternar = (id: number) => setForm(f => ({
     ...f,
     presentaciones: f.presentaciones.includes(id) ? f.presentaciones.filter(x => x !== id) : [...f.presentaciones, id],
-    // Un 1.1 NO lleva bolsa ni perfumero: la talla nueva arranca en "Ninguno"
-    // (el dueño la cambia si ese sí los lleva).
-    accesorios_talla: f.solo_armado && !(id in f.accesorios_talla)
-      ? { ...f.accesorios_talla, [id]: [] }
-      : f.accesorios_talla,
   }));
 
   const hayCostos = activas.some(pr => costoDe(pr) != null);
@@ -163,7 +157,7 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, acces
         )}
 
         {form.tipo_producto !== 'comprado' && activas.length > 0 && (
-          <FrascosPorTalla form={form} setForm={setForm} tallas={activas} envases={envases} accesorios={accesorios} />
+          <FrascosPorTalla form={form} setForm={setForm} tallas={activas} envases={envases} />
         )}
       </div>
     </Field>

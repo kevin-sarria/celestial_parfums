@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { formatPrice, finalPrice } from '@/lib/format';
 import { Chip } from './catalog/FilterChips';
 import { useCart } from '../application/context/useCart';
-import { etiquetaTalla, type Linea } from '../domain/entities/linea';
+import { etiquetaTalla, textoIncluye, type Linea } from '../domain/entities/linea';
 
 interface Props {
   open: boolean;
@@ -24,6 +24,8 @@ interface Props {
     precios?: {
       presentacion: string; precio: number; motivo_agotado?: string | null;
       ml?: number | null; botella_completa?: boolean;
+      /** Lo que se regala con esta talla (solo en la ficha pública). */
+      incluye?: { nombre: string; cantidad: number }[];
     }[];
     /** Descuento propio del producto (%): con él, los cupones no se acumulan. */
     descuento: number;
@@ -68,6 +70,9 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
       ? etiquetaTalla(producto.linea, { presentacion: p, ml: t.ml ?? null, botella_completa: !!t.botella_completa })
       : p;
   };
+
+  /** "Incluye bolsa organza…" de la talla elegida; vacío si no incluye nada. */
+  const incluyeTalla = textoIncluye(producto.precios?.find((x) => x.presentacion === presentacion)?.incluye);
 
   const agotada = (p: string) =>
     !!producto.precios?.find((x) => x.presentacion === p)?.motivo_agotado;
@@ -139,6 +144,7 @@ export default function AddToCartModal({ open, onClose, producto }: Props) {
                 </Chip>
               ))}
             </div>
+            {incluyeTalla && <p className="mt-2 text-[12.5px] text-primary">{incluyeTalla}</p>}
           </div>
         )}
 

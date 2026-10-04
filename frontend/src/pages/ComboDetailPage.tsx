@@ -12,6 +12,7 @@ import CatalogHeader from '../components/CatalogHeader';
 import { useComboDetail } from '../application/hooks/useComboDetail';
 import { TextoEnriquecido } from '../components/TextoEnriquecido';
 import { textoPlano } from '../utils/textoPlano';
+import { textoIncluye } from '../domain/entities/linea';
 
 export default function ComboDetailPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -87,6 +88,11 @@ export default function ComboDetailPage() {
                   <span className="text-base text-muted-foreground line-through">{formatPrice(combo.precio)}</span>
                 )}
               </div>
+
+              {/* Su kit es su empaque: lo que se regala con el combo (2026-10-04) */}
+              {textoIncluye(combo.contenido) && (
+                <p className="text-[13px] text-primary">{textoIncluye(combo.contenido)}</p>
+              )}
 
               {combo.descripcion && (
                 <TextoEnriquecido html={combo.descripcion}

@@ -119,15 +119,28 @@ liberaba):
 - La referencia visible de la venta lo dice: `2× Perfumero Recargable [1 regalo]`.
 
 
-### El kit del combo (ola 2, 2026-09-28)
+### El empaque: por línea y talla, o el kit del combo (2026-10-04, decisiones del dueño)
 
-- Cada combo puede traer accesorios por defecto (`combo_contenido`): se configuran en Combos, en
-  "¿Qué trae este combo por defecto?". **Solo accesorios** y cada uno una vez (lo valida el
-  servidor); una combinación por combo: si el cliente pide otra, se ajusta la línea en la venta.
-- Al registrar una venta o un crédito que **arma** el combo, aparece "Combo … trae: 1 perfumero →
-  Agregar como regalo". Un clic los agrega con `regalo = cantidad` (salen del inventario, no se
-  cobran); si ya había una línea de ese accesorio, se fusiona. Un combo armado dos veces trae su
-  kit dos veces, y lo que ya se regaló cuenta como puesto (`pedido/kitDelCombo.calculo.ts`).
+Antes la bolsa y el perfumero se descontaban por debajo según la receta del tamaño, también en
+los 1.1 (*"no tenerlo como actualmente que sí o sí hasta con los 1.1 les descuenta la bolsa de
+organza y el perfumero"*). Ahora:
+
+- **Catálogo → Empaque**: cada línea (contratipo, 1.1, decant, botella completa, producto) y
+  talla dice qué accesorios lleva. Arrancó igual que las recetas: contratipo 30 y 100 ml = bolsa +
+  perfumero, 75 ml = bolsa; el resto, nada.
+- **Un combo manda** con su kit (`combo_contenido`, en su ficha) y reemplaza el empaque de los
+  perfumes que lo arman. Cada combo lleva lo que el dueño quiera (bolsa y perfumero, solo
+  perfumero…). Los 4 "+ Obsequio" arrancaron con 1 perfumero: el obsequio es el perfumero vacío.
+- **Al vender** sale "Este pedido lleva: Bolsa ×2 · Perfumero ×2" marcado; desmarcado no va,
+  marcado entra como regalo al guardar. Lo ya regalado a mano cuenta como puesto. Al corregir una
+  venta viene desmarcado: su empaque se decidió al registrarla.
+- **El personal** puede regalar el empaque que toca sin pedir permiso; regalar de más sigue siendo
+  un descuento que espera al dueño (`controlPrecio.ts` + `empaque/regaloDeEmpaque.ts`).
+- **La tienda** dice bajo la talla "Incluye bolsa organza y perfumero recargable 6 ml", y en el
+  combo lo que trae su kit: sale del mismo dato que se regala, así que no puede prometer de más.
+- Los accesorios no son perfumes: no cuentan en `cantidad_perfumes` ni arman combos.
+- Cada combo puede traer accesorios por defecto: **solo accesorios** y cada uno una vez (lo valida
+  el servidor).
 - Se ofrece lo que exista en el catálogo de Ventas, **publicado o no**: un perfumero de regalo no
   tiene por qué venderse al público, y un accesorio recién creado nace oculto.
 - Un accesorio que está en un kit **no se puede borrar** sin sacarlo antes (el mensaje dice de qué

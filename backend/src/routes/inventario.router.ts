@@ -6,7 +6,7 @@ import * as maceracion from '../repositories/inventario.maceracion';
 import * as reposicion from '../repositories/reposicion.repository';
 import { alertasDisparadas, borrarAlerta, guardarAlerta, listarAlertas } from '../repositories/alertas.repository';
 import { cargaInicialArmados, listarTerminado } from '../repositories/inventario.terminado';
-import { accesoriosDeLote, conAccesoriosDeFicha } from '../repositories/accesoriosDeFicha';
+import { sinEmpaque } from '../empaque/sinEmpaque';
 import { quitarAccesoriosSobrantes, revisarAccesoriosSobrantes } from '../repositories/accesoriosSobrantes';
 import { prisma } from '../config/prisma';
 import { badRequest } from '../utils/httpError';
@@ -247,18 +247,6 @@ inventarioRouter.delete('/maceraciones/:id', h(async (req, res) => {
 }));
 
 /**
- * Los accesorios que lleva UN frasco de esta receta para esta ficha. La pantalla
- * de "armé directo" los pide para estimar el costo; al guardar, el servidor los
- * vuelve a poner él (`conAccesoriosDeFicha`), así que la estimación no manda.
- */
-inventarioRouter.get('/accesorios-de-lote', h(async (req, res) => {
-  const formula = Number(req.query.formula);
-  const perfume = req.query.perfume ? Number(req.query.perfume) : null;
-  if (!(formula > 0)) throw badRequest('Falta el tamaño');
-  res.json({ data: await accesoriosDeLote(prisma, formula, perfume && perfume > 0 ? perfume : null) });
-}));
-
-/**
  * Lotes que cargaron accesorios que su ficha no lleva (los 1.1 con la bolsa de
  * la receta). Solo mira: la cifra se le enseña al dueño antes de corregir.
  */
@@ -275,7 +263,7 @@ inventarioRouter.post('/producciones/accesorios-sobrantes/corregir', h(async (_r
 
 /** Registra un lote armado y descuenta sus insumos. */
 inventarioRouter.post('/producciones', validate(produccionSchema), h(async (req, res) => {
-  const data = await producciones.registrarProduccion(await conAccesoriosDeFicha(prisma, req.body));
+  const data = await producciones.registrarProduccion(await sinEmpaque(prisma, req.body));
   bustCatalogoCache();
   res.status(201).json({ message: 'Producción registrada', data });
 }));
@@ -296,7 +284,7 @@ inventarioRouter.post('/terminado/carga-inicial', validate(cargaInicialArmadosSc
  * PATCH y no PUT: el CORS del proyecto solo permite GET/POST/PATCH/DELETE.
  */
 inventarioRouter.patch('/producciones/:id', validate(produccionEdicionSchema), h(async (req, res) => {
-  const data = await producciones.editarProduccion(Number(req.params.id), await conAccesoriosDeFicha(prisma, req.body));
+  const data = await producciones.editarProduccion(Number(req.params.id), await sinEmpaque(prisma, req.body));
   bustCatalogoCache();
   res.json({ message: 'Lote corregido: el material y los frascos quedaron al día', data });
 }));

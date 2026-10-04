@@ -33,3 +33,14 @@ export const etiquetaTalla = (
   if (linea !== 'original' || t.ml == null) return t.presentacion;
   return t.botella_completa ? `Botella ${t.ml} ml` : `Decant ${t.ml} ml`;
 };
+
+/**
+ * "Incluye bolsa organza y 2 perfumeros…": lo que se regala con una talla,
+ * dicho para el cliente. Vacío = no incluye nada (y no se pinta la línea).
+ */
+export const textoIncluye = (incluye: { nombre: string; cantidad: number }[] = []) => {
+  if (incluye.length === 0) return '';
+  const partes = incluye.map((i) => (i.cantidad > 1 ? `${i.cantidad} × ${i.nombre}` : i.nombre).toLowerCase());
+  const lista = partes.length > 1 ? `${partes.slice(0, -1).join(', ')} y ${partes[partes.length - 1]}` : partes[0];
+  return `Incluye ${lista}`;
+};

@@ -21,7 +21,10 @@ export const createVentaSchema = z.object({
   persona: z.string().min(1, 'La persona es obligatoria').max(150),
   // Enlace opcional con la persona registrada (usuario o ficha)
   user_id: z.number().int().positive().nullable().optional(),
-  cantidad_perfumes: z.number().int().min(1, 'La cantidad debe ser al menos 1'),
+  // Cuenta PERFUMES: los accesorios (la bolsa del empaque, un perfumero vendido
+  // suelto) no suman (2026-10-04), así que una venta de solo un perfumero va en 0.
+  // Que la venta lleve algo lo exigen sus líneas.
+  cantidad_perfumes: z.number().int().min(0, 'La cantidad no puede ser negativa'),
   /**
    * Resumen de tallas. Dejó de ser obligatorio: la talla real vive en cada
    * línea (`lineas[].ml`) y este campo se deriva de ellas si llega vacío. Se

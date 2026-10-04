@@ -8,9 +8,10 @@ import { sembrarCategoria } from './tienda';
 /**
  * RECORRIDO — el kit del combo (2026-09-28, ola 2 de los regalos).
  *
- * Un combo puede traer accesorios por defecto. Cuando la venta arma ese combo,
- * aparece "Combo … trae: 1 perfumero" con un botón, y un clic los agrega como
- * REGALO: salen del inventario y no se cobran. Lo que guarda el servidor está
+ * Un combo puede traer accesorios por defecto (su empaque). Cuando la venta
+ * arma ese combo, sale en "Este pedido lleva" ya marcado, y al guardar entra
+ * como REGALO: sale del inventario y no se cobra (empaque por línea,
+ * 2026-10-04: el kit es un caso más del empaque). Lo que guarda el servidor está
  * probado en `combo.kit.bd.test.ts`; aquí se vigila la pantalla de Ventas.
  */
 
@@ -41,7 +42,7 @@ beforeAll(async () => {
 });
 
 describe('el kit del combo', () => {
-  it('al armar el combo en una venta, ofrece su kit y lo agrega como regalo', async () => {
+  it('al armar el combo en una venta, su kit sale marcado y entra como regalo al guardar', async () => {
     const { contexto, pagina } = await abrirDashboard();
     await irA(pagina, '/dashboard/ventas');
     await pagina.getByRole('button', { name: /registrar venta/i }).click();
@@ -51,10 +52,9 @@ describe('el kit del combo', () => {
     await elegirProducto(pagina, 'Kit 1');
     await pagina.getByLabel('Cantidad').fill('3');
 
-    await pagina.getByText(/Combo 3 Kit trae: 1 Perfumero Kit/).waitFor();
-    await pagina.getByRole('button', { name: 'Agregar como regalo' }).click();
-    // Ya agregado, el aviso desaparece: no se ofrece dos veces
-    await expect.poll(() => pagina.getByRole('button', { name: 'Agregar como regalo' }).count()).toBe(0);
+    const kit = pagina.getByRole('checkbox', { name: /Perfumero Kit ×1/ });
+    await kit.waitFor();
+    expect(await kit.isChecked()).toBe(true);
 
     await campo(pagina, 'Valor de la venta (COP) *').fill('150000');
     await pagina.getByRole('button', { name: /^Registrar$/ }).click();

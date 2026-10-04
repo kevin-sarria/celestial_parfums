@@ -273,10 +273,9 @@ la pantalla que los administra pide `?todos=1` (si no, no habría cómo reencend
 ### Producción
 
 `POST /inventario/producciones`: "armé N de 30 ml" descuenta esencia, diluyente, sellador,
-feromonas, envase y accesorios. **Los accesorios los pone el SERVIDOR** (`conAccesoriosDeFicha`,
-desde el 2026-09-27): quita los de la receta que mande la pantalla y pone los de la ficha, para
-que una pestaña con la versión vieja tampoco cobre una bolsa que no se usó. La pantalla los pide
-a `GET /inventario/accesorios-de-lote` solo para estimar. Lo demás, **el frontend calcula qué se consume** con el mismo
+feromonas y envase. **Ningún lote gasta empaque** (2026-10-04, `empaque/sinEmpaque.ts`): el
+servidor quita la bolsa y el perfumero aunque los mande una pestaña con la versión vieja; el
+empaque sale al VENDER. Lo demás, **el frontend calcula qué se consume** con el mismo
 motor puro de las cotizaciones y lo manda; el backend valida y aplica (no se reimplementa la
 fórmula en dos lenguajes). El modal avisa si no alcanza el stock. Borrar un lote devuelve los
 insumos. El historial vive en la pestaña **Producciones**.
@@ -376,8 +375,9 @@ diría que algo va mal cuando no va mal nada.
 
 ## La venta consume inventario
 
-`consumirPorVenta` descuenta esencia (la DEL PERFUME), diluyente, sellador, feromonas, envase y
-accesorios según la receta de la talla × unidades, y congela el costo en `ventas.costo_mercancia`.
+`consumirPorVenta` descuenta esencia (la DEL PERFUME), diluyente, sellador, feromonas y envase
+según la receta de la talla × unidades (el empaque lo descuentan sus propias líneas de regalo,
+desde el 2026-10-04), y congela el costo en `ventas.costo_mercancia`.
 `getVentaTotales` expone `costo_mercancia_mes` y **`ganancia_mes`** = ingresos − devoluciones −
 costo. Editar o borrar una venta revierte el consumo (`revertirVenta`).
 
@@ -430,27 +430,12 @@ de corregir los lotes. Por fecha, en vez de por id, el primer intento puso dos v
   (`frontend/src/domain/entities/decants.ts`); si cambia la merma, se cambia en los dos.
 - **GOTCHA que costó un ciclo**: `consumirPorVenta` saltaba toda línea sin `ml`, así que los
   comprados nunca descontaban. Solo los fabricados y fraccionados necesitan talla.
-- **Lo que se define en `perfume_presentacion` (`envase_insumo_id`, `accesorios`) MANDA** sobre
-  el envase/accesorios de la receta del tamaño, que pasan a ser el valor por defecto. La receta
-  queda como lo que es: las PROPORCIONES.
-- **Accesorios por talla: `null` = los de la receta; `[]` = NINGUNO; `[ids]` = los suyos**
-  (2026-09-27, `accesoriosDeFicha.ts`, la regla en UN sitio para venta, envasado y lote). Antes la
-  lista vacía volvía a la receta, así que no había forma de decir "ninguno", y cada camino decidía
-  distinto: la venta miraba la ficha, el envasado solo la receta y el lote lo armaba la pantalla.
-  - **Un 1.1 no lleva bolsa ni perfumero** (dueño, 2026-08-30) y nace con `[]`
-    (`crearProductoArmado` y `createPerfume` con `solo_armado`). La migración
-    `20260927120000_accesorios_11_ninguno` pasó a `[]` los 1.1 que estaban en NULL.
-  - La ficha manda `null` para "los del tamaño". Antes mandaba SIEMPRE `[]`: con el significado
-    nuevo, eso le habría quitado los accesorios a todo perfume que se guardara.
-  - **El perfumero está registrado como `envase`, no como `accesorio`**: la lista de opciones de
-    la ficha son los de tipo accesorio MÁS lo que alguna receta ya usa como accesorio. Una
-    consulta que solo mire `tipo = 'accesorio'` lo pierde (así se midió mal la primera vez:
-    $8.100 en vez de $54.300).
-  - **Lo ya armado se corrige desde el aviso de Producciones** (`accesoriosSobrantes.ts`): devuelve
-    los accesorios que la ficha no lleva, baja el costo del lote y de sus frascos y rehace el
-    promedio de la ficha. Las ventas ya hechas conservan su costo (quedó congelado ese día).
-    Medido contra el respaldo del 22 de septiembre: 27 lotes 1.1, 27 bolsas + 27 perfumeros,
-    **$54.300**. Se recalcula: corregido, el aviso desaparece y corregir dos veces no hace nada.
+- **El frasco que se define en `perfume_presentacion.envase_insumo_id` MANDA** sobre el envase de
+  la receta del tamaño, que pasa a ser el valor por defecto. La receta queda como lo que es: las
+  PROPORCIONES.
+- **La bolsa y el perfumero YA NO salen de aquí** (2026-10-04): son el EMPAQUE, y lo regala la
+  venta a la vista como líneas de accesorio (ver *Empaque por línea* abajo). Se retiraron
+  `formula_accesorios`, la columna `perfume_presentacion.accesorios` y `accesoriosDeFicha.ts`.
 - **Un perfume fabricado sin esencia no descuenta NADA al venderse** (se salta la línea entera) y
   su costo entra en cero → la ganancia del mes sale inflada. Por eso importa el enlace.
 - **El consumo NO es retroactivo, por diseño**: las ventas históricas sin talla por línea no
@@ -797,10 +782,10 @@ Sirve para cotizarle a quien quiere **revender**. Vive en el dashboard, sección
 - **Accesorios: NADA estático** (el dueño lo pidió explícito — *"qué tal que mañana no sea el
   perfumero sino una tarjeta personalizada"*). Son `insumos_costo` de tipo `accesorio` y su
   columna `alcance` decide dónde pesan:
-  - `unidad` (perfumero, bolsa de organza, tarjeta): cuesta por CADA perfume. Cada tamaño guarda
-    los suyos por defecto en `formula_accesorios` (`PATCH /costeo/formulas/:id/accesorios`); al
-    agregar una línea vienen ya marcados y se pueden ajustar para ese cliente. La marca es
-    **optimista** y se revierte sola con un toast si el guardado falla.
+  - `unidad` (perfumero, bolsa de organza, tarjeta): cuesta por CADA perfume. Los de cada tamaño
+    salen del **empaque del contratipo** en esa talla (Catálogo → Empaque, 2026-10-04): una sola
+    configuración para vender y para cotizar. Al agregar una línea vienen ya marcados y se pueden
+    ajustar para ese cliente.
   - `pedido` (caja de envío, un obsequio único): se cobra UNA vez por cotización completa. Vive en
     `cotizaciones.extras_pedido` (JSON) y NO entra en el costo unitario.
   - La impresora y demás equipo NO se costean aquí: amortizar activos fijos en el costo unitario
@@ -1126,3 +1111,24 @@ usa (`FormulaVolumen.envase_insumo_id`) es genérico aunque también esté asign
 (`esFrascoDeFragancia`). Sin fila guardada su mínimo es 0: no se piden. Un frasco de 1.1 que no
 esté asignado a su perfume sigue contando como genérico. La opción C (mínimo por velocidad de
 venta) quedó para después.
+
+## Empaque por línea, talla y combo (2026-10-04)
+
+Diseño completo y decisiones del dueño: `docs/superpowers/specs/2026-10-04-empaque-por-linea-design.md`.
+
+- **El empaque son productos accesorio** (`es_accesorio`, comprados, ligados a su material): la
+  migración `20261006120000_empaque_por_linea` creó "Bolsa Organza" y "Perfumero recargable 6 ml",
+  ocultos y en $0 (un accesorio puede valer 0: se regala; un perfume no).
+- **`empaque_linea`**: línea (`contratipo`, `uno_uno`, `decant`, `botella_completa`, `producto`) ×
+  talla → accesorio × cantidad. `botella_completa` va sin talla. La línea sale de `lineaDe()` más
+  la talla (`empaque/lineaEmpaque.ts`): no hay campo nuevo en el perfume.
+- **La cuenta** (`empaqueDelPedido`, copiada en `backend/src/empaque/` y
+  `frontend/.../pedido/empaque.calculo.ts` con las mismas pruebas): lo que cae en un combo lleva
+  el KIT del combo × veces; cada unidad suelta (cobrada), el empaque de su línea y talla.
+- **Al vender** sale "Este pedido lleva", marcado al registrar y desmarcado al corregir; lo marcado
+  entra como líneas de regalo y las descuenta el inventario como cualquier comprado.
+- **Los lotes no gastan empaque** (`sinEmpaque`). Los lotes viejos de 1.1 que cargaron bolsa se
+  siguen corrigiendo desde Producciones con la regla congelada: un 1.1 nunca debió llevar empaque;
+  los de los demás lo cargaban por receta y se respetan.
+- **Sin talla no hay empaque**: un producto comprado sin talla (un splash suelto) no encuentra
+  regla; si lleva bolsa, se agrega a mano en la venta.

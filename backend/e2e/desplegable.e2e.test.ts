@@ -43,11 +43,11 @@ const abrirFrascoDelTamano = async (ancho: number) => {
   await elegirTipoDeAlta(pagina, /Una fragancia que fabrico/);
 
   // El selector de frasco solo aparece con una talla marcada, y desde el
-  // 2026-10-02 vive plegado en "Frasco y accesorios distintos por talla".
+  // 2026-10-02 vive plegado en "Frasco distinto por talla".
   const talla = pagina.getByRole('group', { name: 'Tallas que vendes' }).getByRole('button').first();
   await talla.scrollIntoViewIfNeeded();
   await talla.click();
-  await pagina.getByText('Frasco y accesorios distintos por talla').click();
+  await pagina.getByText('Frasco distinto por talla').click();
 
   // El nombre accesible es "Frasco de <talla>"; el texto visible, "Frasco del tamaño"
   const boton = pagina.getByRole('button', { name: /^Frasco de / }).first();

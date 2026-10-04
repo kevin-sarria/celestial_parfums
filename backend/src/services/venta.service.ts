@@ -9,9 +9,8 @@ export const getAllVentas = (
 export const createVenta = async (data: CreateVentaDTO) => {
   if (!data.dia || !data.persona || !data.valor_venta)
     throw new Error('Día, persona y valor son obligatorios');
-  // La validación real está en Zod (acepta líneas nuevas o ids antiguos)
-  if (data.cantidad_perfumes < 1)
-    throw new Error('La cantidad de perfumes debe ser al menos 1');
+  // La validación real está en Zod (acepta líneas nuevas o ids antiguos). Aquí
+  // había otra copia de "al menos 1 perfume" que impedía vender solo un perfumero.
   const result = await repo.createVenta(data);
   bustCatalogoCache(); // las ventas alimentan "los más vendidos"
   return result;

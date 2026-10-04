@@ -5,7 +5,7 @@ import { requireAdmin } from '../middleware/auth.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { h } from '../middleware/error.middleware';
 import {
-  insumoSchema, gamaSchema, formulaSchema, escalaSchema, cotizacionConfigSchema, accesoriosFormulaSchema,
+  insumoSchema, gamaSchema, formulaSchema, escalaSchema, cotizacionConfigSchema,
   fusionInsumoSchema,
 } from '../schemas/cotizacion.schema';
 import { fusionarInsumos, vistaPreviaFusion } from '../repositories/fusionarInsumos.repository';
@@ -122,13 +122,6 @@ costeoRouter.delete('/formulas/:id', h(async (req, res) => {
   res.json({ message: 'Tamaño eliminado' });
 }));
 
-/** Accesorios que este tamaño incluye por defecto (bolsa, perfumero…). */
-// PATCH (no PUT): el CORS de la app solo permite GET/POST/PATCH/DELETE, así que
-// un PUT desde el navegador muere en el preflight.
-costeoRouter.patch('/formulas/:id/accesorios', validate(accesoriosFormulaSchema), h(async (req, res) => {
-  const data = await repo.setAccesoriosFormula(Number(req.params.id), req.body.insumo_ids);
-  res.json({ message: 'Accesorios actualizados', data });
-}));
 
 // ── Escalas de precio mayorista ─────────────────────────────────────────────
 costeoRouter.post('/escalas', validate(escalaSchema), h(async (req, res) => {

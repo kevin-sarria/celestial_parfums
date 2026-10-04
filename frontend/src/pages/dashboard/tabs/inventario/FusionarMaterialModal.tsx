@@ -12,10 +12,8 @@ interface MovidosPorFusion {
   compras: number;
   comoEnvase: number;
   comoEsencia: number;
-  enAccesorios: number;
   enPerfumes: number;
   enTallas: number;
-  enListasDeAccesorios: number;
   total: number;
 }
 
@@ -57,9 +55,9 @@ export function FusionarMaterialModal({ material, insumos, onClose, onGuardado }
   const detalle = movidos ? ([
     [movidos.movimientos, 'movimiento'],
     [movidos.compras, 'compra'],
-    [movidos.comoEnvase + movidos.comoEsencia + movidos.enAccesorios, 'receta'],
+    [movidos.comoEnvase + movidos.comoEsencia, 'receta'],
     [movidos.enPerfumes, 'perfume'],
-    [movidos.enTallas + movidos.enListasDeAccesorios, 'talla'],
+    [movidos.enTallas, 'talla'],
   ] as const).filter(([n]) => n > 0) : [];
 
   const fusionar = async (e: { preventDefault(): void }) => {

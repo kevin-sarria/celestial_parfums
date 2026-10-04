@@ -35,7 +35,9 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Alertas: los frascos de los 1.1 tienen su propia familia ("Frascos de una fragancia", opción A del dueño, 2026-10-03). **Lleva migración** `20261005120000_frascos_fragancia` | hecho |
 | Alertas opción C: el mínimo sale de la velocidad de venta (avisar cuando lo que hay alcanza para menos de X semanas), en vez de un número fijo | pendiente (el dueño la eligió para después de A) |
 | Precios sugeridos de decants (opción B del dueño: margen mínimo, sugerido por talla y botón para ponerlo a todos los que no tienen precio), en su propio apartado | pendiente: va dentro del rediseño del núcleo de producto |
-| **Rediseño del núcleo de producto** (dueño, 2026-10-03): tres líneas —contratipo, 1.1, original (botella + decants)— más productos sueltos; qué acompaña a cada venta (bolsa, perfumero) configurable por producto/combo, no por categoría ni en general | diseño en curso, decide él |
+| Rediseño del núcleo, proyecto 1: **empaque por línea, talla y combo** (Catálogo → Empaque; "Este pedido lleva" en la venta; la tienda dice qué incluye). **Lleva migración** `20261006120000_empaque_por_linea` | hecho |
+| Dueño: revisar Catálogo → Empaque y el kit de sus 4 combos (arrancaron con 1 perfumero) | pendiente |
+| Rediseño, proyecto 2: apartado de precios sugeridos · proyecto 3: panel por línea · proyecto 4: alertas por velocidad | pendiente, en ese orden |
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 

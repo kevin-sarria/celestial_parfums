@@ -31,6 +31,7 @@ import {
   HistorialTab,
   RolesTab,
   SolicitudesTab,
+  EmpaqueTab,
   PublicidadTab,
   RecompensasTab,
   ResenasTab,
@@ -396,6 +397,7 @@ export default function DashboardPage() {
             {tab === 'historial' && <HistorialTab />}
             {tab === 'roles' && <RolesTab />}
             {tab === 'solicitudes' && <SolicitudesTab />}
+            {tab === 'empaque' && <EmpaqueTab />}
             {tab === 'publicidad' && <PublicidadTab categorias={categorias} />}
             {tab === 'recompensas' && <RecompensasTab />}
             {tab === 'resenas' && <ResenasTab />}

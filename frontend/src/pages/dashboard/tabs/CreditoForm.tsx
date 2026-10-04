@@ -10,7 +10,7 @@ import { detectarCombos } from '../../../application/hooks/useComboDetector';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { CuponAmarrado } from '../pedido/CuponAmarrado';
-import { KitDelCombo } from '../pedido/KitDelCombo';
+import { EmpaqueDelPedido, useEmpaqueDelPedido } from '../pedido/EmpaqueDelPedido';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
 import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
@@ -179,6 +179,7 @@ export function CreditoForm({
   }, [deudaCalculada, form.deuda_manual, form.lineas.length]);
 
   const textoArticulos = articulosDeLineas(form.lineas, porId);
+  const empaque = useEmpaqueDelPedido({ abierto: open, lineas: form.lineas, porId, combos, editando: !!credito });
 
   const validarCodigo = async () => {
     const codigo = form.codigo_descuento.trim();
@@ -213,7 +214,9 @@ export function CreditoForm({
 
     if (!userId) { setError('Selecciona o registra una persona'); setGuardando(false); return; }
 
-    const articulos = (form.lineas.length ? textoArticulos : form.articulos).trim();
+    // Lo marcado en "Este pedido lleva" entra como regalo
+    const lineas = empaque.conEmpaque(form.lineas);
+    const articulos = (lineas.length ? articulosDeLineas(lineas, porId) : form.articulos).trim();
     if (!articulos) { setError('Agrega al menos un producto o describe los artículos'); setGuardando(false); return; }
 
     try {
@@ -224,10 +227,10 @@ export function CreditoForm({
         // Líneas con su talla: es lo que deja al crédito descontar inventario.
         // Antes iban ids repetidos y sin talla, así que la mercancía salía por la
         // puerta y el sistema seguía contándola en bodega.
-        lineas: form.lineas.map(l => ({
+        lineas: lineas.map(l => ({
           perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad, regalo: l.regalo,
         })),
-        presentacion: presentacionResumen(form.lineas) || null,
+        presentacion: presentacionResumen(lineas) || null,
         // Valor FINAL: las líneas, el combo y el cupón ya están aplicados aquí
         deuda_inicial: descuentaLibre ? Number(form.deuda_inicial) : deudaPersonal,
         ...(descuentaLibre ? {} : { motivo_descuento: motivo.trim() || null }),
@@ -324,8 +327,7 @@ export function CreditoForm({
           permitirExtras
           placeholder="Buscar y agregar perfume…"
         />
-        <KitDelCombo lineas={form.lineas} combos={combos} porId={porId}
-          onChange={lineas => setForm(f => ({ ...f, lineas, deuda_manual: false }))} />
+        <EmpaqueDelPedido {...empaque} />
 
         {form.lineas.length > 0 && combos.length > 0 && (
           <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-secondary/30 px-2.5 py-2 text-[12.5px] text-foreground">

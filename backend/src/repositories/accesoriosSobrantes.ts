@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { r4 } from '../utils/redondeo';
-import { accesoriosDeLote } from './accesoriosDeFicha';
+import { insumosDeEmpaque } from '../empaque/sinEmpaque';
 import { revertirMovimientos } from './inventario.repository';
 import { recalcularPromedioTerminado, tallaDeFormula } from './inventario.terminado';
 import { corregirVentasDe11, revisarVentasDe11 } from './ventasDe11Costo';
@@ -17,6 +17,11 @@ const r2 = (n: number) => Math.round(n * 100) / 100;
  * aunque la ficha dijera otra cosa (ver `accesoriosDeFicha.ts`). Medido contra
  * el respaldo del 22 de septiembre: los 27 lotes 1.1 cargaron una bolsa de
  * organza que nunca usaron — $8.100 y 27 bolsas fuera de la bodega.
+ *
+ * Desde el 2026-10-04 la regla quedó CONGELADA así: un lote de 1.1 nunca debió
+ * llevar empaque (bolsa, perfumero); los lotes de los demás lo cargaban por
+ * receta y eso fue verdad en su día, así que se respetan. Ya ningún lote nuevo
+ * carga empaque (`empaque/sinEmpaque.ts`): esto solo limpia lo de antes.
  *
  * Se recalcula en cada consulta (nada se guarda): mientras quede algo que
  * corregir, Producciones enseña el aviso; corregido, desaparece solo.
@@ -39,23 +44,19 @@ interface Sobrante {
 }
 
 export const revisarAccesoriosSobrantes = async (cli: Cliente = prisma) => {
-  const lotes = await cli.produccion.findMany({
-    where: { perfume_id: { not: null } },
-    select: {
-      id: true, fecha: true, cantidad: true, formula_volumen_id: true, perfume_id: true,
-      perfume: { select: { nombre: true } },
-      formula: { select: { accesorios: { select: { insumo_id: true } } } },
-    },
-    orderBy: { fecha: 'asc' },
-  });
+  const [lotes, empaque] = await Promise.all([
+    cli.produccion.findMany({
+      where: { perfume: { solo_armado: true } },
+      select: { id: true, fecha: true, cantidad: true, perfume: { select: { nombre: true } } },
+      orderBy: { fecha: 'asc' },
+    }),
+    insumosDeEmpaque(cli),
+  ]);
+  const sobran = [...empaque];
 
   const sobrantes: Sobrante[] = [];
+  if (sobran.length === 0) return { lotes: sobrantes, valor: 0, unidades: 0, ventas: await revisarVentasDe11(cli) };
   for (const l of lotes) {
-    const deLaReceta = l.formula.accesorios.map((a) => a.insumo_id);
-    if (deLaReceta.length === 0) continue;
-    const lleva = new Set(await accesoriosDeLote(cli, l.formula_volumen_id, l.perfume_id));
-    const sobran = deLaReceta.filter((id) => !lleva.has(id));
-    if (sobran.length === 0) continue;
 
     const movs = await cli.movimientoInventario.findMany({
       where: { tipo: 'produccion', referencia_id: l.id, insumo_id: { in: sobran } },

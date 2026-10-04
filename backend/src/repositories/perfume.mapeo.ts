@@ -1,5 +1,4 @@
 import { Prisma } from '@prisma/client';
-import { accesoriosPropios } from './accesoriosDeFicha';
 import { esBotellaCompleta, heredaPrecioGeneral, mlQueSalenDeLaBotella } from '../utils/decants';
 import { descripcionHtml } from '../utils/textoEnriquecido';
 
@@ -69,8 +68,6 @@ const resolverPrecios = (p: PerfumeRow) => {
     presentacion_id: r.presentacion_id,
     /** Frasco propio de esta combinación; null = el de la receta del tamaño. */
     envase_insumo_id: r.envase_insumo_id ?? null,
-    /** null = los de la receta; [] = ninguno (ver `accesoriosDeFicha.ts`). */
-    accesorios: accesoriosPropios(r.accesorios),
     /** Frascos armados de ESTA talla (no la suma de todas). */
     armados: armadosDeTalla(r),
     /**

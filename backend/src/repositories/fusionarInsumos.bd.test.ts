@@ -111,12 +111,9 @@ describe('fusionar dos registros del mismo material', () => {
       },
     });
 
-    // Una receta que lo usa como envase y otra que lo incluye como accesorio.
-    const formula = await prisma.formulaVolumen.create({
+    // Una receta que lo usa como envase.
+    await prisma.formulaVolumen.create({
       data: { nombre: '6 ml', ml_total: 6, esencia_ml: 3, envase_insumo_id: origen.id },
-    });
-    await prisma.formulaAccesorio.create({
-      data: { formula_volumen_id: formula.id, insumo_id: origen.id },
     });
 
     // Un perfume que lo vende como producto y una talla que lo declara envase.
@@ -129,8 +126,6 @@ describe('fusionar dos registros del mismo material', () => {
         perfume_id: perfume.id,
         presentacion_id: presentacion.id,
         envase_insumo_id: origen.id,
-        // La lista viva de accesorios: `consumoVenta` la lee en cada venta.
-        accesorios: [origen.id],
       },
     });
 
@@ -139,35 +134,8 @@ describe('fusionar dos registros del mismo material', () => {
     expect(await prisma.insumoCosto.findUnique({ where: { id: origen.id } })).toBeNull();
     expect(await prisma.compraItem.count({ where: { insumo_id: destino.id } })).toBe(1);
     expect(await prisma.formulaVolumen.count({ where: { envase_insumo_id: destino.id } })).toBe(1);
-    expect(await prisma.formulaAccesorio.count({ where: { insumo_id: destino.id } })).toBe(1);
     expect(await prisma.perfume.count({ where: { insumo_producto_id: destino.id } })).toBe(1);
     expect(await prisma.perfumePresentacion.count({ where: { envase_insumo_id: destino.id } })).toBe(1);
-
-    // El id de dentro del JSON también se muda: si no, la próxima venta de esa
-    // talla reventaría con "El insumo no existe".
-    const talla = await prisma.perfumePresentacion.findFirstOrThrow({
-      where: { perfume_id: perfume.id },
-    });
-    expect(talla.accesorios).toEqual([destino.id]);
-  });
-
-  it('si una receta incluía a los DOS, queda una sola línea', async () => {
-    const { origen, destino } = await sembrarDuplicados();
-    const formula = await prisma.formulaVolumen.create({
-      data: { nombre: '6 ml', ml_total: 6, esencia_ml: 3 },
-    });
-    await prisma.formulaAccesorio.createMany({
-      data: [
-        { formula_volumen_id: formula.id, insumo_id: origen.id },
-        { formula_volumen_id: formula.id, insumo_id: destino.id },
-      ],
-    });
-
-    await fusionarInsumos(origen.id, destino.id);
-
-    // Una receta no puede incluir dos veces el mismo perfumero: la clave es
-    // (receta, insumo). Mudar a ciegas reventaría con clave duplicada.
-    expect(await prisma.formulaAccesorio.count({ where: { formula_volumen_id: formula.id } })).toBe(1);
   });
 
   it('no deja fusionar un registro consigo mismo', async () => {

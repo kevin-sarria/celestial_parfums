@@ -1,3 +1,4 @@
+import { conIncluye } from '../empaque/empaque.repository';
 import * as perfumeRepository from '../repositories/perfume.repository';
 import type { FamiliaProducto } from '../repositories/perfume.familia';
 import * as emparejar from '../repositories/emparejarEsencias.repository';
@@ -65,7 +66,9 @@ export const allPerfumesPaginated = async (
 };
 
 export const createPerfume = async (data: CreatePerfumeDTO) => {
-  if (!data?.nombre || !data?.precio) throw new Error('Nombre y precio son obligatorios');
+  // El precio lo valida el esquema (> 0, o 0 en un accesorio de regalo): una
+  // regla repetida aquí decía otra cosa y no dejaba crear la bolsa del empaque.
+  if (!data?.nombre || data.precio == null) throw new Error('Nombre y precio son obligatorios');
   // Aroma y ocasión ya NO son obligatorios: el catálogo dejó de ser solo
   // perfumes (una gorra no tiene notas olfativas) y al crear un producto al
   // vuelo desde una venta se completa la ficha después, con calma.
@@ -170,7 +173,8 @@ export const getPerfumeBySlug = async (slug: string) => {
   const normalizedSlug = slug.toLowerCase().trim();
   const perfume = await perfumeRepository.findPerfumeBySlug(normalizedSlug);
   if (!perfume) throw new Error('Perfume no encontrado');
-  return perfume;
+  // Bajo cada talla, lo que incluye (la bolsa, el perfumero): `empaque/`
+  return conIncluye(perfume);
 };
 
 export const getRelatedPerfumes = async (slug: string) => {

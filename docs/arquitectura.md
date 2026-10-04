@@ -800,3 +800,15 @@ trabaja con él (Usuarios → Rol). El código pregunta por el **permiso**, no p
   `requireAdmin`. Editar el catálogo sigue siendo solo del dueño.
 - **Pruebas**: `e2e/permisosPersonal.e2e.test.ts` (contra el servidor: lo que no se puede saltar)
   y `e2e/personalPantalla.e2e.test.ts` (en pantalla).
+
+## Empaque por línea (2026-10-04)
+
+- Módulo `backend/src/empaque/`: la cuenta pura (`empaqueDelPedido.ts`), la línea
+  (`lineaEmpaque.ts`), la base (`empaque.repository.ts`, con `conIncluye` para la ficha
+  pública), lo que se regala sin ser descuento (`regaloDeEmpaque.ts`) y la regla de los lotes
+  (`sinEmpaque.ts`).
+- API: `GET /api/empaque` (quien registra ventas o créditos) y `PATCH /api/empaque` (dueño,
+  reemplaza una línea entera). `GET /api/parfums/by-slug/:slug` trae `incluye` por talla.
+- Panel: pestaña `empaque` en Catálogo (solo dueño), `tabs/EmpaqueTab.tsx` + `tabs/empaque/`;
+  en Ventas y Créditos, `pedido/EmpaqueDelPedido.tsx` (reemplazó a `KitDelCombo.tsx`).
+- Se retiraron `PATCH /costeo/formulas/:id/accesorios` y `GET /inventario/accesorios-de-lote`.

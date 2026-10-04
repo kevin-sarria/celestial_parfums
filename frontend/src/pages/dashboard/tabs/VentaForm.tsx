@@ -11,7 +11,7 @@ import { detectarCombos } from '../../../application/hooks/useComboDetector';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { CuponAmarrado } from '../pedido/CuponAmarrado';
-import { KitDelCombo } from '../pedido/KitDelCombo';
+import { EmpaqueDelPedido, useEmpaqueDelPedido } from '../pedido/EmpaqueDelPedido';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
 import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
@@ -149,7 +149,8 @@ export function VentaForm({
 
   // ── Números del pedido ────────────────────────────────────────────────────
   const subtotal = subtotalDeLineas(form.lineas, porId);
-  const unidades = unidadesDeLineas(form.lineas);
+  const unidades = unidadesDeLineas(form.lineas, porId);
+  const empaque = useEmpaqueDelPedido({ abierto: open, lineas: form.lineas, porId, combos, editando: !!venta });
 
   /**
    * Al contado el precio de combo SIEMPRE aplica: no es una promoción, es la
@@ -230,14 +231,16 @@ export function VentaForm({
       } catch { setError('No se pudo crear la persona'); setGuardando(false); return; }
     }
 
+    // Lo marcado en "Este pedido lleva" entra como regalo
+    const lineas = empaque.conEmpaque(form.lineas);
     const body = {
       dia: form.dia,
       persona: form.persona.trim(),
       user_id: userId,
       // Se deriva de las líneas: antes era una casilla aparte que tocaba cuadrar
       cantidad_perfumes: unidades,
-      presentacion: presentacionResumen(form.lineas),
-      lineas: form.lineas.map(l => ({
+      presentacion: presentacionResumen(lineas),
+      lineas: lineas.map(l => ({
         perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad, regalo: l.regalo,
       })),
       valor_venta: descuentaLibre ? Number(form.valor_venta) : valorPersonal,
@@ -340,7 +343,7 @@ export function VentaForm({
           // Crear una ficha del catálogo es del dueño (el servidor también lo exige)
           onCrearProducto={puede('catalogo.editar') ? () => setNuevoProd({ nombre: '', precio: '' }) : undefined}
         />
-        <KitDelCombo lineas={form.lineas} onChange={lineas => setForm(f => ({ ...f, lineas }))} combos={combos} porId={porId} />
+        <EmpaqueDelPedido {...empaque} />
 
         {nuevoProd && (
           <div className="space-y-2 rounded-lg border border-primary/25 bg-brand-soft/40 p-3">

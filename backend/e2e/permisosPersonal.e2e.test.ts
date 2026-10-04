@@ -91,6 +91,32 @@ describe('el vendedor', () => {
     expect(r.status).toBe(201);
   });
 
+  it('regala el empaque que toca sin pedir nada; regalar de más espera al dueño', async () => {
+    // Un contratipo de 77 ml que lleva una bolsa (empaque por línea, 2026-10-04)
+    const talla = await prisma.presentacion.create({ data: { nombre: 'EMP77', ml: 77 } });
+    const contratipo = await prisma.perfume.create({ data: { nombre: `${PERFUME} 77`, precio: 50000, tipo_producto: 'fabricado' } });
+    await prisma.perfumePresentacion.create({ data: { perfume_id: contratipo.id, presentacion_id: talla.id } });
+    const bolsa = await prisma.perfume.create({ data: { nombre: `${PERFUME} bolsa`, precio: 0, tipo_producto: 'comprado', es_accesorio: true } });
+    await prisma.empaqueLinea.create({ data: { linea: 'contratipo', presentacion_id: talla.id, perfume_id: bolsa.id, cantidad: 1 } });
+    const pedido = (bolsas: number) => venta(50000, {
+      lineas: [
+        { perfume_id: contratipo.id, ml: 77, cantidad: 1, regalo: 0 },
+        { perfume_id: bolsa.id, ml: null, cantidad: bolsas, regalo: bolsas },
+      ],
+    });
+    try {
+      expect((await api('/ventas', { method: 'POST', body: JSON.stringify(pedido(1)) })).status).toBe(201);
+      // Tres bolsas cuando toca una: es un regalo de más, pide motivo para el dueño
+      expect((await api('/ventas', { method: 'POST', body: JSON.stringify(pedido(3)) })).status).toBe(400);
+    } finally {
+      const ventas = await prisma.venta.findMany({ where: { perfumes: { some: { perfume_id: contratipo.id } } }, select: { id: true } });
+      for (const v of ventas) await comoDueno(`/ventas/${v.id}`, { method: 'DELETE' });
+      await prisma.empaqueLinea.deleteMany({ where: { perfume_id: bolsa.id } });
+      await prisma.perfume.deleteMany({ where: { id: { in: [contratipo.id, bolsa.id] } } });
+      await prisma.presentacion.delete({ where: { id: talla.id } });
+    }
+  });
+
   it('si cobra menos, la venta espera al dueño; aprobada sale con el descuento, rechazada a precio normal', async () => {
     const antes = await prisma.venta.count({ where: { persona: 'Cliente del vendedor' } });
     const sinMotivo = await api('/ventas', { method: 'POST', body: JSON.stringify(venta(40000)) });

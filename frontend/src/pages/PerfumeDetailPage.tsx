@@ -14,7 +14,7 @@ import CartFab from '../components/CartFab';
 import CatalogHeader from '../components/CatalogHeader';
 import Estrellas from '../components/Estrellas';
 import EtiquetaLinea from '../components/EtiquetaLinea';
-import { etiquetaTalla } from '../domain/entities/linea';
+import { etiquetaTalla, textoIncluye } from '../domain/entities/linea';
 import ResenasProducto from '../components/resenas/ResenasProducto';
 import { usePerfumeDetail } from '../application/hooks/usePerfumeDetail';
 import { useAuthContext } from '../application/context/useAuthContext';
@@ -43,6 +43,15 @@ export default function PerfumeDetailPage() {
   useSeo(perfume?.nombre, textoPlano(perfume?.descripcion) || undefined);
 
   const precioFinal = perfume ? finalPrice(perfume.precio, perfume.descuento) : 0;
+  /**
+   * Lo que incluye cada talla, agrupado: "30ML y 100ML: Incluye bolsa organza y
+   * perfumero". Si todas incluyen lo mismo, sin las tallas delante.
+   */
+  const incluye = [...(perfume?.precios ?? []).reduce((m, t) => {
+    const texto = textoIncluye(t.incluye);
+    if (texto) m.set(texto, [...(m.get(texto) ?? []), etiquetaTalla(perfume!.linea, t)]);
+    return m;
+  }, new Map<string, string[]>())];
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
@@ -162,6 +171,14 @@ export default function PerfumeDetailPage() {
                     </span>
                   ))}
                 </div>
+              )}
+
+              {incluye.length > 0 && (
+                <ul className="space-y-0.5 text-[13px] text-primary">
+                  {incluye.map(([texto, tallas]) => (
+                    <li key={texto}>{incluye.length > 1 || tallas.length < perfume.precios.length ? `${tallas.join(' y ')}: ` : ''}{texto}</li>
+                  ))}
+                </ul>
               )}
 
               {perfume.descripcion && (

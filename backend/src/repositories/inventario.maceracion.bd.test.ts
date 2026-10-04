@@ -253,10 +253,8 @@ describe('convertir un lote viejo en maceración', () => {
   /** El caso real del 212 VIP Black: un lote armado que en realidad reposa. */
   const loteViejo = async () => {
     const s = await sembrar();
+    // Un lote de ANTES del 2026-10-04, cuando el armado todavía cargaba la bolsa
     const bolsa = await crearInsumo('Bolsa Organza', { tipo: 'accesorio', precio: 300, stock: 100 });
-    await prisma.formulaAccesorio.create({
-      data: { formula_volumen_id: s.formula.id, insumo_id: bolsa.id },
-    });
     const lote = await registrarProduccion({
       fecha: FECHA, formula_volumen_id: s.formula.id, cantidad: 5,
       perfume_id: s.perfume.id, envase_insumo_id: s.frasco.id,

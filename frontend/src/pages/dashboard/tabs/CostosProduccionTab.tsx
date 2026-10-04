@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Info, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import CostoDeProduccion from '../cotizacion/CostoDeProduccion';
 import MargenPorFragancia from '../cotizacion/MargenPorFragancia';
@@ -66,33 +66,6 @@ export function CostosProduccionTab() {
   };
   useEffect(() => { load(); }, []);
 
-  /**
-   * Guarda qué accesorios incluye este tamaño por defecto. La marca cambia al
-   * instante (optimista) y se revierte sola si el guardado falla: así el costo
-   * y los márgenes se ven de una, sin esperar al servidor.
-   */
-  const guardarAccesorios = async (formulaId: number, ids: number[]) => {
-    const previas = formulas;
-    setFormulas((prev) => prev.map((f) => (f.id === formulaId
-      ? { ...f, accesorios_default: accesoriosDe(ids) }
-      : f)));
-    const res = await http.patch<{ data: FormulaVolumen }>(urls.costeo.accesoriosFormula(formulaId), {
-      insumo_ids: ids,
-    });
-    if (!res.ok || !res.cuerpo) {
-      setFormulas(previas);
-      toast.error(res.error || 'No se pudo guardar los accesorios', { id: 'accesorios-formula' });
-      return;
-    }
-    setFormulas((prev) => prev.map((f) => (f.id === formulaId ? res.cuerpo!.data : f)));
-  };
-
-  /** Convierte ids de insumo en el formato congelado que usa el costeo. */
-  const accesoriosDe = (ids: number[]) => ids.flatMap((id) => {
-    const i = insumos.find((x) => x.id === id);
-    return i ? [{ insumo_id: i.id, nombre: i.nombre, precio: i.precio }] : [];
-  });
-
   const porPedido = insumos.filter((i) => i.tipo === 'accesorio' && i.alcance === 'pedido');
 
   if (loading) return <Section><PerfumeSpinner /></Section>;
@@ -104,9 +77,10 @@ export function CostosProduccionTab() {
       <p className="flex items-start gap-2 rounded-xl border border-primary/25 bg-brand-soft/60 px-3.5 py-3 text-[13px] leading-relaxed text-primary">
         <Info className="mt-0.5 size-4 shrink-0" />
         <span>
-          Cuánto te cuesta producir cada presentación, ya con los accesorios que la acompañan.
-          Marca lo que lleva cada tamaño y el costo se recalcula al instante. Si mañana cambias
-          de obsequio (una tarjeta en vez de la bolsa), solo lo marcas aquí.
+          Cuánto te cuesta producir cada presentación, ya con el empaque que la acompaña (la bolsa,
+          el perfumero). Ese empaque se cambia en{' '}
+          <Link to="/dashboard/empaque" className="font-semibold underline underline-offset-2">Empaque</Link>
+          , y aquí el costo se recalcula solo.
         </span>
       </p>
 
@@ -157,7 +131,6 @@ export function CostosProduccionTab() {
               <CostoDeProduccion
                 formula={f}
                 insumos={insumos}
-                onAccesorios={(ids) => guardarAccesorios(f.id, ids)}
                 abiertoPorDefecto
                 esenciaPrecio={gamaElegida?.promedio ?? null}
                 esenciaEtiqueta={gamaElegida?.gama}

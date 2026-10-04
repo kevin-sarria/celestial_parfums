@@ -56,7 +56,7 @@ export function ArmadorPedido({
   permitirSinDescuento, permitirExtras, onCrearProducto,
   placeholder = 'Buscar y agregar producto…',
 }: ArmadorPedidoProps) {
-  const unidades = unidadesDeLineas(lineas);
+  const unidades = unidadesDeLineas(lineas, porId);
 
   /**
    * Sin `permitirExtras` el buscador de siempre sigue mostrando TODO el
