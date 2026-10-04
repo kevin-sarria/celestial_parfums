@@ -6,6 +6,9 @@ import { urls } from '../../infrastructure/api/urls';
 
 export const PERFUMES_PAGE_SIZE = 24;
 
+/** Las claves de la dirección que maneja el catálogo (`categoria` es la vieja, la del combo). */
+const CLAVES_CATALOGO = ['q', 'genero', 'categoria', 'categorias', 'aromas', 'ocasiones', 'sort', 'page'];
+
 interface Lookup {
   id: number;
   nombre: string;
@@ -25,28 +28,53 @@ export function usePerfumes() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // ?q=... preselecciona la búsqueda (la manda el buscador del landing);
-  // ?categoria=X preselecciona el filtro (lo usa "Elegir mis perfumes" de un combo)
-  const [searchParams] = useSearchParams();
+  // La URL es la fuente de la vista inicial y adónde se escribe cada cambio:
+  // un enlace compartido reproduce la búsqueda, los filtros, el orden y la página.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const listaDeUrl = (clave: string) => (searchParams.get(clave) ?? '').split(',').map((s) => s.trim()).filter(Boolean);
   const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
   // La búsqueda va al servidor con un pequeño debounce para no disparar una
   // petición por tecla
   const [searchQuery, setSearchQuery] = useState(() => (searchParams.get('q') ?? '').trim());
-  const [activeAromas, setActiveAromas] = useState<Set<string>>(new Set());
-  const [activeOcasiones, setActiveOcasiones] = useState<Set<string>>(new Set());
-  const [activeGenero, setActiveGenero] = useState<Genero | ''>('');
+  const [activeAromas, setActiveAromas] = useState<Set<string>>(() => new Set(listaDeUrl('aromas')));
+  const [activeOcasiones, setActiveOcasiones] = useState<Set<string>>(() => new Set(listaDeUrl('ocasiones')));
+  const [activeGenero, setActiveGenero] = useState<Genero | ''>(() => {
+    const g = searchParams.get('genero');
+    return g === 'dama' || g === 'caballero' || g === 'unisex' ? g : '';
+  });
   const [activeCategorias, setActiveCategorias] = useState<Set<string>>(() => {
-    const c = searchParams.get('categoria');
-    return c ? new Set([c]) : new Set();
+    const c = searchParams.get('categoria') ?? searchParams.get('categorias') ?? '';
+    return new Set(c.split(',').map((s) => s.trim()).filter(Boolean));
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [orden, setOrden] = useState('destacados');
-  const [page, setPage] = useState(1);
+  const [orden, setOrden] = useState(() => searchParams.get('sort') ?? 'destacados');
+  const [page, setPage] = useState(() => {
+    const p = Number(searchParams.get('page'));
+    return Number.isInteger(p) && p > 0 ? p : 1;
+  });
 
   useEffect(() => {
     const t = setTimeout(() => setSearchQuery(search.trim()), 300);
     return () => clearTimeout(t);
   }, [search]);
+
+  // Refleja la vista en la URL para poder compartirla y marcarla. `replace` no
+  // ensucia el historial del navegador. Solo se escribe si algo cambió de verdad.
+  useEffect(() => {
+    // Se parte de la dirección actual y solo se tocan las claves del catálogo:
+    // lo demás que traiga (las marcas de TikTok, un código de invitado) se queda.
+    const next = new URLSearchParams(searchParams);
+    for (const clave of CLAVES_CATALOGO) next.delete(clave);
+    if (searchQuery) next.set('q', searchQuery);
+    if (activeGenero) next.set('genero', activeGenero);
+    if (activeCategorias.size) next.set('categorias', [...activeCategorias].join(','));
+    if (activeAromas.size) next.set('aromas', [...activeAromas].join(','));
+    if (activeOcasiones.size) next.set('ocasiones', [...activeOcasiones].join(','));
+    if (orden && orden !== 'destacados') next.set('sort', orden);
+    if (page > 1) next.set('page', String(page));
+    if (next.toString() === searchParams.toString()) return;
+    setSearchParams(next, { replace: true });
+  }, [searchQuery, activeGenero, activeCategorias, activeAromas, activeOcasiones, orden, page, searchParams, setSearchParams]);
 
   // Opciones de los filtros (con caché en memoria: al navegar no se repiten)
   useEffect(() => {

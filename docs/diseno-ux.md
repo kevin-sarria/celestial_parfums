@@ -776,3 +776,15 @@ vivía dentro del ☰ (dueño: *"no sienten algo super wow cuando ingresan"*). A
 - **Lo que se gana con una cuenta**, debajo del login y del registro (`BeneficiosCuenta.tsx`). Los
   sellos solo salen si el programa está encendido, con el premio y la compra mínima configurados
   (`GET /api/recompensas/programa`, público): nada de prometer un premio apagado.
+
+## Los filtros de la tienda viven en la dirección (2026-10-04)
+
+`usePerfumes.ts`: la búsqueda (`q`), el género, las categorías, aromas, ocasiones, el orden (`sort`)
+y la página se leen de la dirección al entrar y se escriben en ella al cambiar (con `replace`, sin
+ensuciar el historial). Así el dueño puede mandar por WhatsApp un enlace como
+`/perfumes?genero=dama&categorias=Árabes` y el cliente lo abre ya filtrado.
+
+**Solo se tocan esas claves** (`CLAVES_CATALOGO`): la primera versión reescribía la dirección desde
+cero y borraba lo demás, como las marcas `utm_*` de los enlaces de TikTok o un código de invitado.
+Prueba: `e2e/tiendaFiltrosUrl.e2e.test.ts`.
+

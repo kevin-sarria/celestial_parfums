@@ -42,7 +42,7 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | "Te cuesta" de la ficha de un original = el de Precios de originales: lo calcula el servidor (`POST /api/precios-originales/costos`) | hecho |
 | Precios de originales rehecha (el dueño no quedó contento): una fila por talla, paginada, filtros rápidos, precio editable en la celda, meta propia en ventana; el botón en bloque nunca baja precios | hecho |
 | Rediseño, proyecto 3: catálogo con una pestaña por línea (Contratipos · 1.1 · Originales · Productos y accesorios). Hecho en otra sesión, revisado y corregido antes de publicar (`57785fe`, ver la spec) | hecho y desplegado |
-| Decide el dueño: la otra sesión cambió también el buscador de la tienda para guardar búsqueda, filtros y página en la dirección (para compartir un enlace con los filtros puestos). No se pidió; quedó apartado sin publicar | pendiente, decide él |
+| Tienda: la búsqueda, los filtros, el orden y la página viven en la dirección (un enlace compartido abre ya filtrado; recargar no pierde nada). Aprobado por el dueño. Corregido antes de publicar: borraba las marcas de TikTok y cualquier otro dato del enlace | hecho y desplegado |
 | Posdata 1: la URL del catálogo guarde búsqueda, filtros y página (`?q`, filtros, `page`, con `replace`). Parámetro `q` confirmado (opción A) | hecho, sin verificar |
 | Posdata 2: auditoría de mejoras (lógica + diseño). 21 hallazgos priorizados (9 tienda/SEO + 12 panel/lógica), entregados en el chat | hecho |
 
