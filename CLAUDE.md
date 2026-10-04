@@ -22,6 +22,7 @@ automáticamente: ábrelos con Read cuando el trabajo los toque.
 
 | Archivo | Qué contiene | Léelo cuando… |
 |---|---|---|
+| [`docs/como-pensar.md`](docs/como-pensar.md) | El criterio: quién decide qué, cuándo algo está terminado, qué nunca se hace, cómo revisar el trabajo de otro | **Siempre al empezar una sesión**, sobre todo si eres un agente nuevo |
 | [`docs/pendientes.md`](docs/pendientes.md) | Dónde quedamos, qué sigue, decisiones esperando al dueño | **Siempre al empezar una sesión** |
 | [`docs/arquitectura.md`](docs/arquitectura.md) | Stack, páginas públicas, dashboard, `SmartTable`, notificaciones, reportes, import/export, rendimiento, seguridad | Toques estructura, rutas, endpoints o el dashboard |
 | [`docs/diseno-ux.md`](docs/diseno-ux.md) | Design system, desplegables, modales, toasts, maquetación de pestañas, formularios | Toques cualquier pantalla |

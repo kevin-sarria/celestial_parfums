@@ -272,6 +272,8 @@ Están todas detalladas en `CLAUDE.md`, pero estas son las que se repiten:
 
 ## 7. Skills y documentos de apoyo
 
+**Antes que nada, lee [`docs/como-pensar.md`](docs/como-pensar.md)**: el criterio de cómo se decide y se trabaja aquí (quién decide qué, cuándo algo está terminado, qué nunca se hace).
+
 En `~/.claude/skills/` (fuera del repositorio, en la máquina del dueño) viven tres métodos
 reutilizables. **Si trabajas desde otro entorno puede que no los tengas**; el criterio que
 contienen está resumido en `CLAUDE.md`:
