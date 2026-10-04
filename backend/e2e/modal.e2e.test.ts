@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { elegirTipoDeAlta, abrirDashboard, cerrarNavegador, irA } from './navegador';
+import { abrirDashboard, cerrarNavegador, irA } from './navegador';
 
 /**
  * RECORRIDO 6 — el modal tiene encabezado y pie anclados.
@@ -20,12 +20,11 @@ afterAll(cerrarNavegador);
 describe('los modales del dashboard', () => {
   it('mantienen el título, la X y los botones al desplazar un formulario largo', async () => {
     const { contexto, pagina } = await abrirDashboard();
-    await irA(pagina, '/dashboard/perfumes');
+    await irA(pagina, '/dashboard/contratipos');
     await pagina.waitForSelector('text=+ Nuevo perfume');
     await pagina.getByRole('button', { name: '+ Nuevo perfume' }).click();
-    // El alta pregunta primero qué es (2026-08-25): se elige la puerta y de ahí
+    // La pestaña abre su tipo ya elegido (2026-10-04); antes se elegía la puerta y de ahí
     // sale el formulario con los campos que aplican.
-    await elegirTipoDeAlta(pagina, /Una fragancia que fabrico/);
 
     const dialogo = pagina.getByRole('dialog');
     await dialogo.waitFor();

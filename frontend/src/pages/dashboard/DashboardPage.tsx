@@ -11,13 +11,12 @@ import { http, type Respuesta } from '../../infrastructure/api/http';
 import { urls, type Clasificacion } from '../../infrastructure/api/urls';
 import type { Tab, Lookup } from './types';
 import { MenuLateral } from './MenuLateral';
-import { TAB_META, TAB_POR_DEFECTO, esClasificacion, esTabValido, primeraPermitida, tabPermitida } from './navegacion';
+import { TAB_META, TAB_POR_DEFECTO, esClasificacion, esTabValido, primeraPermitida, tabPermitida, LINEAS_CATALOGO, PESTANAS_RENOMBRADAS } from './navegacion';
 import { SelectorClasificaciones } from './SelectorClasificaciones';
 import CentroNotificaciones from './CentroNotificaciones';
 import BuscadorGeneral from './BuscadorGeneral';
 import {
-  PerfumesTab,
-  ProductosTab,
+  LineaTab,
   CombosTab,
   PreciosTab,
   DescuentosTab,
@@ -59,7 +58,22 @@ import type { ResultadoLookup } from './tabs/LookupTab';
 import { AvisoAlertas } from './tabs/alertas/AvisoAlertas';
 import PerfumeSpinner from '../../components/PerfumeSpinner';
 import { BrandMark } from '../../components/BrandMark';
+import type { LineaCatalogo } from './tabs/perfumes/tipoDeProducto';
 
+
+/** Estado de UNA línea del catálogo (items + su paginación, búsqueda y filtros). */
+interface EstadoLinea {
+  items: Perfume[];
+  page: number;
+  total: number;
+  pageSize: number;
+  search: string;
+  filtros: FiltersState;
+}
+
+const estadoVacio = (): EstadoLinea => ({
+  items: [], page: 1, total: 0, pageSize: DEFAULT_PAGE_SIZE, search: '', filtros: {},
+});
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -72,19 +86,14 @@ export default function DashboardPage() {
   useSeo(`${TAB_META[tab].label} — Dashboard`);
 
   const [loading, setLoading] = useState(true);
-  const [perfumes, setPerfumes] = useState<Perfume[]>([]);
-  const [perfumesPage, setPerfumesPage] = useState(1);
-  const [perfumesTotal, setPerfumesTotal] = useState(0);
-  const [perfumesPageSize, setPerfumesPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [perfumesSearch, setPerfumesSearch] = useState('');
-  const [perfumesFiltros, setPerfumesFiltros] = useState<FiltersState>({});
-
-  const [productos, setProductos] = useState<Perfume[]>([]);
-  const [productosPage, setProductosPage] = useState(1);
-  const [productosTotal, setProductosTotal] = useState(0);
-  const [productosPageSize, setProductosPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [productosSearch, setProductosSearch] = useState('');
-  const [productosFiltros, setProductosFiltros] = useState<FiltersState>({});
+  // Las 4 líneas del catálogo en UNA estructura: antes eran 12 useState y dos
+  // funciones `load…` casi idénticas; con cuatro pestañas serían 24 estados.
+  const [catalogo, setCatalogo] = useState<Record<LineaCatalogo, EstadoLinea>>(() => ({
+    contratipo: estadoVacio(),
+    uno_uno: estadoVacio(),
+    original: estadoVacio(),
+    producto: estadoVacio(),
+  }));
 
   const [combos, setCombos] = useState<Combo[]>([]);
   const [combosPage, setCombosPage] = useState(1);
@@ -104,6 +113,10 @@ export default function DashboardPage() {
   // /dashboard, una pestaña inexistente o una que su rol no abre → la primera
   // que sí. `replace` para no ensuciar el historial del navegador.
   useEffect(() => {
+    // La pestaña que se llamaba Perfumes es hoy Contratipos (2026-10-04): un
+    // enlace guardado no debe caer en Inicio sin explicación.
+    const renombrada = tabParam ? PESTANAS_RENOMBRADAS[tabParam] : undefined;
+    if (renombrada) { navigate(`/dashboard/${renombrada}${location.search}`, { replace: true }); return; }
     if (!esTabValido(tabParam) || !tabPermitida(tabParam, isAdmin, puede)) {
       navigate(`/dashboard/${primeraPermitida(isAdmin, puede)}`, { replace: true });
     }
@@ -122,42 +135,28 @@ export default function DashboardPage() {
     setPresentaciones(conNotaDeTalla(pRes.cuerpo?.data ?? []));
   };
 
-  const loadPerfumes = async (
-    page = perfumesPage, size = perfumesPageSize, search = perfumesSearch, filtros = perfumesFiltros,
+  const cargarLinea = async (
+    linea: LineaCatalogo,
+    page?: number, size?: number, search?: string, filtros?: FiltersState,
   ) => {
+    const actual = catalogo[linea];
+    const p = page ?? actual.page;
+    const s = size ?? actual.pageSize;
+    const q = search ?? actual.search;
+    const f = filtros ?? actual.filtros;
     // `todos=1`: el dashboard ve TAMBIÉN los que están fuera de la tienda; si no,
     // no habría forma de devolverlos. El servidor solo lo acepta con `catalogo.ver`.
     const res = await http.get<{ data: Perfume[]; total: number }>(urls.perfumes.todos, {
       params: {
-        page, limit: size, todos: 1, familia: 'fabricadas',
-        ...(search ? { search } : {}),
-        ...(Object.keys(filtros).length ? { filtros: JSON.stringify(filtros) } : {}),
+        page: p, limit: s, todos: 1, linea,
+        ...(q ? { search: q } : {}),
+        ...(Object.keys(f).length ? { filtros: JSON.stringify(f) } : {}),
       },
     });
-    setPerfumes(res.cuerpo?.data ?? []);
-    setPerfumesTotal(res.cuerpo?.total ?? 0);
-    setPerfumesPage(page);
-    setPerfumesFiltros(filtros);
-    setPerfumesSearch(search); // con la búsqueda: "Limpiar todo" no debe revivir al recargar
-  };
-
-  const loadProductos = async (
-    page = productosPage, size = productosPageSize, search = productosSearch, filtros = productosFiltros,
-  ) => {
-    // `todos=1`: el dashboard ve TAMBIÉN los que están fuera de la tienda; si no,
-    // no habría forma de devolverlos. El servidor solo lo acepta con `catalogo.ver`.
-    const res = await http.get<{ data: Perfume[]; total: number }>(urls.perfumes.todos, {
-      params: {
-        page, limit: size, todos: 1, familia: 'productos',
-        ...(search ? { search } : {}),
-        ...(Object.keys(filtros).length ? { filtros: JSON.stringify(filtros) } : {}),
-      },
-    });
-    setProductos(res.cuerpo?.data ?? []);
-    setProductosTotal(res.cuerpo?.total ?? 0);
-    setProductosPage(page);
-    setProductosFiltros(filtros);
-    setProductosSearch(search); // con la búsqueda: "Limpiar todo" no debe revivir al recargar
+    setCatalogo((prev) => ({
+      ...prev,
+      [linea]: { items: res.cuerpo?.data ?? [], total: res.cuerpo?.total ?? 0, page: p, pageSize: s, search: q, filtros: f },
+    }));
   };
 
   const loadCombos = async (
@@ -177,7 +176,7 @@ export default function DashboardPage() {
     setCombosSearch(search); // con la búsqueda: "Limpiar todo" no debe revivir al recargar
   };
 
-  const refreshAll = () => { loadLookups(); loadPerfumes(); loadProductos(); loadCombos(); };
+  const refreshAll = () => { loadLookups(); loadCombos(); LINEAS_CATALOGO.forEach(({ linea }) => cargarLinea(linea)); };
 
   /**
    * Carga inicial. Llama a las MISMAS funciones que usa el resto de la
@@ -187,7 +186,7 @@ export default function DashboardPage() {
   useEffect(() => {
     // El catálogo solo lo pide quien lo puede ver (el dueño, o el personal con la casilla)
     if (!puede('catalogo.ver')) { setLoading(false); return; }
-    Promise.all([loadLookups(), loadPerfumes(1), loadProductos(1), loadCombos(1)])
+    Promise.all([loadLookups(), loadCombos(1), ...LINEAS_CATALOGO.map(({ linea }) => cargarLinea(linea, 1))])
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -199,8 +198,8 @@ export default function DashboardPage() {
   const primerRender = useRef(true);
   useEffect(() => {
     if (primerRender.current) { primerRender.current = false; return; }
-    if (tab === 'perfumes') loadPerfumes(1);
-    if (tab === 'productos') loadProductos(1);
+    const linea = LINEAS_CATALOGO.find(({ tab: t }) => t === tab)?.linea;
+    if (linea) cargarLinea(linea, 1);
     if (tab === 'combos') loadCombos(1);
   }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -310,30 +309,23 @@ export default function DashboardPage() {
         ) : (
           // Cada pestaña baja su propio archivo al abrirla (`pestanas.ts`)
           <Suspense fallback={<PerfumeSpinner />}>
-            {tab === 'perfumes' && (
-              <PerfumesTab
-                perfumes={perfumes} page={perfumesPage} total={perfumesTotal} pageSize={perfumesPageSize}
+            {LINEAS_CATALOGO.map(({ tab: tabId, linea }) => tab === tabId && (
+              <LineaTab
+                key={tabId}
+                linea={linea}
+                items={catalogo[linea].items}
+                page={catalogo[linea].page}
+                total={catalogo[linea].total}
+                pageSize={catalogo[linea].pageSize}
                 aromas={aromas} ocasiones={ocasiones} categorias={categorias} presentaciones={presentaciones}
-                onPageChange={p => loadPerfumes(p, perfumesPageSize)}
-                onPageSizeChange={s => { setPerfumesPageSize(s); loadPerfumes(1, s); }}
-                onSearch={t => loadPerfumes(1, perfumesPageSize, t)}
-                onFilter={f => loadPerfumes(1, perfumesPageSize, perfumesSearch, f)}
-                onClearAll={() => loadPerfumes(1, perfumesPageSize, '', {})}
+                onPageChange={p => cargarLinea(linea, p)}
+                onPageSizeChange={s => cargarLinea(linea, 1, s)}
+                onSearch={t => cargarLinea(linea, 1, undefined, t)}
+                onFilter={f => cargarLinea(linea, 1, undefined, undefined, f)}
+                onClearAll={() => cargarLinea(linea, 1, undefined, '', {})}
                 onMutate={refreshAll}
               />
-            )}
-            {tab === 'productos' && (
-              <ProductosTab
-                productos={productos} page={productosPage} total={productosTotal} pageSize={productosPageSize}
-                aromas={aromas} ocasiones={ocasiones} categorias={categorias} presentaciones={presentaciones}
-                onPageChange={p => loadProductos(p, productosPageSize)}
-                onPageSizeChange={s => { setProductosPageSize(s); loadProductos(1, s); }}
-                onSearch={t => loadProductos(1, productosPageSize, t)}
-                onFilter={f => loadProductos(1, productosPageSize, productosSearch, f)}
-                onClearAll={() => loadProductos(1, productosPageSize, '', {})}
-                onMutate={refreshAll}
-              />
-            )}
+            ))}
             {esClasificacion(tab) && <SelectorClasificaciones actual={tab} />}
             {tab === 'aromas' && (
               <LookupTab title="Tipos de Aroma" nuevo="Nuevo aroma" editar="Editar aroma"

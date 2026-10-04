@@ -29,6 +29,12 @@ export interface UsarFichaArgs {
    * solo del dueño y responderían "sin permiso".
    */
   activa?: boolean;
+  /**
+   * La puerta de alta ya elegida al abrir "+ Nuevo" (2026-10-04, catálogo por
+   * línea): en la pestaña 1.1 se crea un 1.1 sin volver a preguntar qué es. Se
+   * puede cambiar con "Cambiar". Sin ella, el alta pregunta primero.
+   */
+  tipoInicial?: TipoAlta;
 }
 
 /** Todo lo que la ficha necesita para vivir: estado, catálogos y acciones. */
@@ -63,7 +69,7 @@ export interface FichaPerfume {
  * la misma lógica en vez de copiarla: una regla vive en un solo sitio. La
  * pestaña se queda con la barra y la tabla; aquí vive el formulario.
  */
-export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, valoresIniciales, activa = true }: UsarFichaArgs): FichaPerfume {
+export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, valoresIniciales, activa = true, tipoInicial }: UsarFichaArgs): FichaPerfume {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   /**
    * Qué se está dando de alta. Null = todavía no lo ha dicho, y entonces el
@@ -115,7 +121,7 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
 
   const abrirNuevo = () => {
     setForm({ ...emptyPerfumeForm(), ...valoresIniciales });
-    setTipoElegido(null);
+    setTipoElegido(tipoInicial ?? null);
     setFormError(''); setImgMode('url'); setModal({ open: true, editId: null });
   };
   const abrirEdicion = (p: Perfume) => {

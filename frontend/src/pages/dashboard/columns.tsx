@@ -8,6 +8,7 @@ import { formatPrice, fmtDate } from './helpers';
 import { EstadoPerfume, faltaParaVender } from './tabs/perfumes/EstadoPerfume';
 import { finalPrice } from '@/lib/format';
 import { textoPlano } from '../../utils/textoPlano';
+import type { LineaCatalogo } from './tabs/perfumes/tipoDeProducto';
 
 /** Clases reutilizables para celdas. */
 const cellName = 'whitespace-nowrap font-medium text-foreground';
@@ -327,6 +328,34 @@ const unidadesDeProducto = (p: Perfume): number | null => {
   return p.frascos_armados;
 };
 
+/** "3 de 4": cuántas tallas de un original tienen precio (las de $0 no salen en la tienda). */
+const columnaTallasConPrecio: ColumnDef<Perfume> = {
+  key: 'tallas_precio', header: 'Tallas con precio', type: 'number', filterable: false, sortable: false,
+  getValue: p => p.precios.filter(t => t.precio > 0).length,
+  render: p => {
+    const con = p.precios.filter(t => t.precio > 0).length;
+    return <span className={con < p.precios.length ? 'font-medium text-amber-700' : undefined}>{con} de {p.precios.length}</span>;
+  },
+  className: cellMeta, noTruncate: true,
+};
+
+/** Cuántas unidades quedan: un 1.1 por frascos armados, un comprado por bodega. */
+const columnaUnidades: ColumnDef<Perfume> = {
+  key: 'stock', header: 'Unidades', type: 'number',
+  getValue: p => unidadesDeProducto(p) ?? -1,
+  render: p => {
+    const n = unidadesDeProducto(p);
+    if (n === null) return <span className={cellMeta}>—</span>;
+    return (
+      <span className={n <= 0 ? 'font-medium text-destructive' : undefined}>
+        {n}
+        <SubText>{p.solo_armado || !p.es_accesorio ? 'armadas' : 'en bodega'}</SubText>
+      </span>
+    );
+  },
+  className: cellMeta, noTruncate: true, filterable: false,
+};
+
 export const productosColumns: ColumnDef<Perfume>[] = [
   columnaImagen<Perfume>(p => p.imagen_url, p => p.nombre),
   { key: 'nombre', header: 'Nombre', type: 'string', getValue: p => p.nombre, className: cellName },
@@ -350,19 +379,7 @@ export const productosColumns: ColumnDef<Perfume>[] = [
    * No cuesta una consulta más: los dos datos ya viajaban en la respuesta del
    * catálogo. Era la razón por la que esta columna llevaba dos olas esperando.
    */
-  { key: 'stock', header: 'Unidades', type: 'number',
-    getValue: p => unidadesDeProducto(p) ?? -1,
-    render: p => {
-      const n = unidadesDeProducto(p);
-      if (n === null) return <span className={cellMeta}>—</span>;
-      return (
-        <span className={n <= 0 ? 'font-medium text-destructive' : undefined}>
-          {n}
-          <SubText>{p.solo_armado || !p.es_accesorio ? 'armadas' : 'en bodega'}</SubText>
-        </span>
-      );
-    },
-    className: cellMeta, noTruncate: true, filterable: false },
+  columnaUnidades,
   { key: 'estado', header: 'Estado', type: 'string',
     getValue: p => [
       p.publicado ? '' : 'Fuera de la tienda',
@@ -372,6 +389,25 @@ export const productosColumns: ColumnDef<Perfume>[] = [
     render: p => <EstadoPerfume perfume={p} />,
     noTruncate: true, filterable: false },
 ];
+
+/**
+ * Las columnas de cada pestaña del catálogo. Un 1.1 es fragancia y además dice
+ * cuántos frascos armados quedan; un comprado/accesorio usa su propio juego.
+ */
+export const columnasDeLinea = (linea: LineaCatalogo): ColumnDef<Perfume>[] => {
+  if (linea === 'producto') return productosColumns;
+  if (linea === 'original') {
+    // Lo que importa de un original es cuántas tallas ya tienen precio: una en $0
+    // no sale en la tienda. Las notas y la duración son de la fragancia, no del trabajo de hoy.
+    const estado = perfumesColumns[perfumesColumns.length - 1];
+    return [...perfumesColumns.slice(0, 3), columnaTallasConPrecio, estado];
+  }
+  if (linea === 'uno_uno') {
+    const estado = perfumesColumns[perfumesColumns.length - 1];
+    return [...perfumesColumns.slice(0, -1), columnaUnidades, estado];
+  }
+  return perfumesColumns;
+};
 
 export const combosColumns: ColumnDef<Combo>[] = [
   columnaImagen<Combo>(c => c.imagen_url, c => c.nombre),

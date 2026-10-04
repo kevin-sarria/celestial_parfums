@@ -74,8 +74,9 @@ describe('los precios de los originales', () => {
     await pagina.screenshot({ path: foto('celular') });
     await pagina.setViewportSize({ width: 1366, height: 900 });
 
-    // La ficha del perfume dice el MISMO costo (una sola cuenta, en el servidor)
-    await irA(pagina, '/dashboard/perfumes');
+    // La ficha del perfume dice el MISMO costo (una sola cuenta, en el servidor).
+    // Es un original (fraccionado), así que vive en SU pestaña.
+    await irA(pagina, '/dashboard/originales');
     await pagina.getByPlaceholder(/Buscar en todos/).fill(NOMBRE);
     await pagina.getByRole('button', { name: `Acciones de ${NOMBRE}` }).first().click();
     await pagina.getByRole('menuitem', { name: 'Editar' }).click();

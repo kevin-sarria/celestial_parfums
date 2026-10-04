@@ -10,9 +10,9 @@ import { filtroEnum, filtroNumero, filtroTexto, type MapaFiltros } from '../util
 // Cómo se lee un perfume (precio efectivo, agotado, frascos armados) vive en su
 // propio archivo: aquí solo se consulta y se escribe.
 import { mapPerfume, mapPerfumePanel, perfumeInclude, NUEVO_DIAS } from './perfume.mapeo';
-// Las dos familias del dashboard (y la pregunta gemela para una ficha nueva)
+// Las cuatro líneas del catálogo del panel (y si una ficha nueva nace apagada)
 // viven en su propio archivo: no cabían aquí sin pasar las ~500 líneas.
-import { WHERE_FAMILIA, naceComoProducto, type FamiliaProducto } from './perfume.familia';
+import { WHERE_LINEA, naceApagado, type LineaCatalogo } from './perfume.linea';
 
 /**
  * Este archivo es SOLO el perfume: consultarlo, crearlo y editarlo. Lo que colgaba de él y no era eso ya se fue a su sitio:
@@ -123,8 +123,8 @@ export const selectParfumsPaginated = async (
   todos = false,
   /** Filtros de columna de la tabla del dashboard (ver `mapaFiltrosPerfumes`). */
   columnasAnd?: object[],
-  /** Solo el dashboard: parte el catálogo en Perfumes / Productos. */
-  familia?: FamiliaProducto,
+  /** Solo el dashboard: parte el catálogo en sus 4 líneas. */
+  linea?: LineaCatalogo,
 ) => {
   const skip = (page - 1) * limit;
   const and: Prisma.PerfumeWhereInput[] = todos
@@ -146,7 +146,7 @@ export const selectParfumsPaginated = async (
   if (filtros?.ocasiones?.length)
     and.push({ ocasiones: { some: { ocasion: { nombre: { in: filtros.ocasiones } } } } });
   if (columnasAnd?.length) and.push(...(columnasAnd as Prisma.PerfumeWhereInput[]));
-  if (familia) and.push(WHERE_FAMILIA[familia]);
+  if (linea) and.push(WHERE_LINEA[linea]);
   const where: Prisma.PerfumeWhereInput | undefined = and.length ? { AND: and } : undefined;
   const orderBy = ORDEN_CATALOGO[filtros?.orden ?? 'destacados'];
   const [rows, total] = await Promise.all([
@@ -204,7 +204,7 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
       // Un PRODUCTO (1.1, comprado, accesorio) nace APAGADO: su ficha se llena
       // después y nadie debe ver una a medio llenar. Un fabricado sigue naciendo
       // publicado — los 222 del dueño cuentan con eso.
-      publicado:    data.publicado ?? !naceComoProducto(data),
+      publicado:    data.publicado ?? !naceApagado(data),
       esencia_premium:  data.esencia_premium ?? false,
       insumo_esencia_id: data.insumo_esencia_id ?? null,
       tipo_producto: data.tipo_producto ?? 'fabricado',

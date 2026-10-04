@@ -71,7 +71,7 @@ describe('crear un 1.1 desde el lote', () => {
     expect(p.insumo_esencia_id).toBeNull();
   });
 
-  it('aparece en la pestaña Productos, no en Perfumes', async () => {
+  it('aparece en la pestaña 1.1, no en Contratipos', async () => {
     const s = await sembrarFabricacion30ml();
 
     await crearProductoArmado({
@@ -81,10 +81,10 @@ describe('crear un 1.1 desde el lote', () => {
       insumo_esencia_id: s.esencia.id,
     });
 
-    const productos = await selectParfumsPaginated(1, 50, undefined, undefined, true, undefined, 'productos');
-    const fabricadas = await selectParfumsPaginated(1, 50, undefined, undefined, true, undefined, 'fabricadas');
-    expect(productos.data.map((p) => p.nombre)).toContain('Khamrah 1.1');
-    expect(fabricadas.data.map((p) => p.nombre)).not.toContain('Khamrah 1.1');
+    const unoUno = await selectParfumsPaginated(1, 50, undefined, undefined, true, undefined, 'uno_uno');
+    const contratipos = await selectParfumsPaginated(1, 50, undefined, undefined, true, undefined, 'contratipo');
+    expect(unoUno.data.map((p) => p.nombre)).toContain('Khamrah 1.1');
+    expect(contratipos.data.map((p) => p.nombre)).not.toContain('Khamrah 1.1');
   });
 
   it('un nombre que ya existe avisa y NO crea otra ficha', async () => {

@@ -66,8 +66,8 @@ describe('el panel del personal', () => {
     await pagina.keyboard.press('Escape');
 
     // Con "ver el catálogo" mira los perfumes, sin crear, importar ni editar
-    await irA(pagina, '/dashboard/perfumes');
-    await pagina.getByRole('heading', { name: /Perfumes/ }).first().waitFor();
+    await irA(pagina, '/dashboard/contratipos');
+    await pagina.getByRole('heading', { name: /Contratipos/ }).first().waitFor();
     expect(await pagina.getByRole('button', { name: '+ Nuevo perfume' }).count()).toBe(0);
     expect(await pagina.getByRole('button', { name: /Importar/ }).count()).toBe(0);
     await pagina.screenshot({ path: foto('catalogo') });

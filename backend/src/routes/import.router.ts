@@ -6,7 +6,7 @@ import { requireAdmin } from '../middleware/auth.middleware';
 import { h } from '../middleware/error.middleware';
 import { badRequest, notFound } from '../utils/httpError';
 // La regla que parte el Catálogo en dos vive en un solo sitio; aquí solo se usa.
-import { esFamilia } from '../repositories/perfume.familia';
+import { esLinea } from '../repositories/perfume.linea';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -66,7 +66,7 @@ importRouter.get('/:entity/template', requireAdmin, h(async (req, res) => {
 /**
  * Exporta los datos actuales de la entidad en Excel con la estructura de la plantilla.
  *
- * `?familia=` existe para el Catálogo, que es UNA tabla partida en dos pestañas:
+ * `?linea=` existe para el Catálogo, que es UNA tabla partida en cuatro pestañas:
  * sin él, el botón Exportar de Productos descargaba también los 222 perfumes.
  * Una familia desconocida se ignora en vez de reventar: la exportación completa
  * sigue siendo la respuesta correcta.
@@ -74,11 +74,11 @@ importRouter.get('/:entity/template', requireAdmin, h(async (req, res) => {
 importRouter.get('/:entity/export', requireAdmin, h(async (req, res) => {
   const entity = String(req.params.entity);
   specDe(entity);
-  const cruda = String(req.query.familia ?? '');
-  const familia = esFamilia(cruda) ? cruda : undefined;
-  const buffer = await exportEntity(entity, familia);
+  const cruda = String(req.query.linea ?? '');
+  const linea = esLinea(cruda) ? cruda : undefined;
+  const buffer = await exportEntity(entity, linea);
   res.setHeader('Content-Type', XLSX_MIME);
-  res.setHeader('Content-Disposition', `attachment; filename="export_${familia ?? entity}.xlsx"`);
+  res.setHeader('Content-Disposition', `attachment; filename="export_${linea ?? entity}.xlsx"`);
   res.send(buffer);
 }));
 

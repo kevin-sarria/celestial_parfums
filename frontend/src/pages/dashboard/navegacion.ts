@@ -2,9 +2,10 @@ import {
   SprayCan, PackageCheck, Package, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText,
   BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX,
-  ChartColumn, Layers, Coins, TriangleAlert, House, Repeat, History, ShieldCheck, Inbox, type LucideIcon,
+  ChartColumn, Layers, Coins, TriangleAlert, House, Repeat, History, ShieldCheck, Inbox, Sparkles, Droplet, type LucideIcon,
 } from 'lucide-react';
 import type { Tab } from './types';
+import type { LineaCatalogo } from './tabs/perfumes/tipoDeProducto';
 
 /**
  * EL MAPA DEL DASHBOARD: cómo se llama cada apartado y en qué grupo vive.
@@ -17,8 +18,10 @@ import type { Tab } from './types';
 
 export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   inicio: { label: 'Inicio', icon: House },
-  perfumes: { label: 'Perfumes', icon: SprayCan },
-  productos: { label: 'Productos', icon: PackageCheck },
+  contratipos: { label: 'Contratipos', icon: SprayCan },
+  uno_uno: { label: '1.1', icon: Sparkles },
+  originales: { label: 'Originales', icon: Droplet },
+  productos: { label: 'Productos y accesorios', icon: PackageCheck },
   aromas: { label: 'Aromas', icon: Flower2 },
   ocasiones: { label: 'Ocasiones', icon: CalendarDays },
   categorias: { label: 'Categorías', icon: Tags },
@@ -83,7 +86,7 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
    */
   { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'solicitudes', 'recompra', 'devoluciones', 'pagos'] },
   { id: 'operacion', label: 'Producción e inventario', tabs: ['producciones', 'armados', 'inventario', 'reposicion', 'alertas', 'formulas', 'costos'] },
-  { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'productos', 'combos', 'empaque', 'precios', 'precios_originales', 'descuentos'] },
+  { id: 'catalogo', label: 'Catálogo', tabs: ['contratipos', 'uno_uno', 'originales', 'productos', 'combos', 'empaque', 'precios', 'precios_originales', 'descuentos'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'pagina', label: 'Página web', tabs: ['publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
   // `aromas` es la puerta a las cinco clasificaciones (ver CLASIFICACIONES)
@@ -105,6 +108,21 @@ export const TAB_INICIO: Tab = 'inicio';
  */
 export const CLASIFICACIONES: Tab[] = ['aromas', 'ocasiones', 'categorias', 'presentaciones', 'gamas'];
 export const esClasificacion = (t: Tab) => CLASIFICACIONES.includes(t);
+
+/**
+ * Las 4 líneas del catálogo y la pestaña que abre cada una. Coincide con
+ * `TAB_DE_LINEA` del backend (perfume.linea.ts): el buscador general navega
+ * con estos ids.
+ */
+export const LINEAS_CATALOGO: { tab: Tab; linea: LineaCatalogo }[] = [
+  { tab: 'contratipos', linea: 'contratipo' },
+  { tab: 'uno_uno', linea: 'uno_uno' },
+  { tab: 'originales', linea: 'original' },
+  { tab: 'productos', linea: 'producto' },
+];
+
+/** Pestañas que cambiaron de nombre: el enlace viejo lleva a la nueva. */
+export const PESTANAS_RENOMBRADAS: Record<string, Tab> = { perfumes: 'contratipos' };
 
 /** Lo que dice el menú para una pestaña: la de las clasificaciones se llama por su grupo. */
 export const etiquetaEnMenu = (t: Tab) => (t === CLASIFICACIONES[0] ? 'Clasificaciones' : TAB_META[t].label);
@@ -131,7 +149,9 @@ const TAB_PERMISO: Partial<Record<Tab, string[] | 'personal'>> = {
   creditos: ['creditos.ver'],
   solicitudes: 'personal',
   // Solo para mirar: sin botones de crear, editar ni borrar (`useSoloVer`)
-  perfumes: ['catalogo.ver'],
+  contratipos: ['catalogo.ver'],
+  uno_uno: ['catalogo.ver'],
+  originales: ['catalogo.ver'],
   productos: ['catalogo.ver'],
   combos: ['catalogo.ver'],
 };

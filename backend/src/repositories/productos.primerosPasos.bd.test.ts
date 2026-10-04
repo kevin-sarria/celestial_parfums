@@ -44,6 +44,9 @@ describe('primeros pasos de Productos', () => {
     await prisma.perfume.create({
       data: { nombre: 'Bon Bon 1.1', precio: 150000, solo_armado: true, publicado: false },
     });
+    await prisma.perfume.create({
+      data: { nombre: 'Splash comprado', precio: 45000, tipo_producto: 'comprado', publicado: false },
+    });
     const p = await primerosPasosProductos();
     expect(p.con_ficha_armado).toBe(1);
     expect(p.productos).toBe(1);

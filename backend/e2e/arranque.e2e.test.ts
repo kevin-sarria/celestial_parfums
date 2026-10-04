@@ -24,7 +24,7 @@ describe('el andamiaje de los recorridos', () => {
   it('sin sesión, el dashboard no deja pasar', async () => {
     const { contexto, pagina } = await abrirTienda();
 
-    await irA(pagina, '/dashboard/perfumes');
+    await irA(pagina, '/dashboard/contratipos');
     await pagina.waitForLoadState('networkidle');
 
     expect(pagina.url()).not.toContain('/dashboard/');
@@ -35,12 +35,16 @@ describe('el andamiaje de los recorridos', () => {
   it('con la sesión de administrador, el dashboard abre', async () => {
     const { contexto, pagina } = await abrirDashboard();
 
-    await irA(pagina, '/dashboard/perfumes');
+    await irA(pagina, '/dashboard/contratipos');
     await pagina.waitForLoadState('networkidle');
 
-    expect(pagina.url()).toContain('/dashboard/perfumes');
+    expect(pagina.url()).toContain('/dashboard/contratipos');
     // Y trae datos: no es la pantalla vacía de "no pudimos cargar".
     await expect(pagina.getByText('Carrito 1').first()).toBeTruthy();
+
+    // El enlace viejo de "Perfumes" lleva a Contratipos, no al Inicio (2026-10-04)
+    await irA(pagina, '/dashboard/perfumes');
+    await pagina.waitForURL(/\/dashboard\/contratipos/);
 
     await contexto.close();
   });

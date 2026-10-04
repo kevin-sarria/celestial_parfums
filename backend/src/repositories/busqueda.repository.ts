@@ -1,5 +1,5 @@
 import { prisma } from '../config/prisma';
-import { naceComoProducto } from './perfume.familia';
+import { lineaDeCatalogo, TAB_DE_LINEA } from './perfume.linea';
 
 /**
  * EL BUSCADOR GENERAL del panel (2026-10-02, segunda tanda de la revisión).
@@ -42,7 +42,7 @@ export const buscarEnTodo = async (texto: string): Promise<ResultadoBusqueda[]> 
   const [perfumes, clientes, ventas, creditos, materiales] = await Promise.all([
     prisma.perfume.findMany({
       where: { nombre: contiene },
-      select: { nombre: true, publicado: true, solo_armado: true, tipo_producto: true },
+      select: { nombre: true, publicado: true, solo_armado: true, tipo_producto: true, es_accesorio: true },
       orderBy: { nombre: 'asc' }, take: POR_GRUPO,
     }),
     prisma.user.findMany({
@@ -71,7 +71,7 @@ export const buscarEnTodo = async (texto: string): Promise<ResultadoBusqueda[]> 
     ...perfumes.map((p): ResultadoBusqueda => ({
       grupo: 'Catálogo', titulo: p.nombre,
       detalle: p.publicado ? 'En la tienda' : 'Fuera de la tienda',
-      tab: naceComoProducto({ solo_armado: p.solo_armado, tipo_producto: p.tipo_producto ?? undefined }) ? 'productos' : 'perfumes',
+      tab: TAB_DE_LINEA[lineaDeCatalogo({ solo_armado: p.solo_armado, tipo_producto: p.tipo_producto ?? undefined, es_accesorio: p.es_accesorio })],
       buscar: p.nombre,
     })),
     ...clientes.map((u): ResultadoBusqueda => ({

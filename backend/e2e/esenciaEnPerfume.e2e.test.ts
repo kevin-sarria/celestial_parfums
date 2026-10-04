@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { elegirTipoDeAlta, abrirDashboard, cerrarNavegador, irA } from './navegador';
+import { abrirDashboard, cerrarNavegador, irA } from './navegador';
 
 /**
  * RECORRIDO 5 — el selector de esencia lista lo que está CLASIFICADO, no lo que
@@ -25,13 +25,12 @@ const SIN_LA_PALABRA = 'Herod by Parfums de Marly';
 describe('con qué esencia se hace un perfume', () => {
   it('lista una esencia clasificada aunque su nombre NO diga "esencia"', async () => {
     const { contexto, pagina } = await abrirDashboard();
-    await irA(pagina, '/dashboard/perfumes');
+    await irA(pagina, '/dashboard/contratipos');
     await pagina.waitForSelector('text=+ Nuevo perfume');
 
     await pagina.getByRole('button', { name: '+ Nuevo perfume' }).click();
-    // El alta pregunta primero qué es (2026-08-25): se elige la puerta y de ahí
+    // La pestaña abre su tipo ya elegido (2026-10-04); antes se elegía la puerta y de ahí
     // sale el formulario con los campos que aplican.
-    await elegirTipoDeAlta(pagina, /Una fragancia que fabrico/);
     await pagina.getByRole('button', { name: /Sin asignar/ }).click();
 
     const panel = pagina.getByRole('listbox');
@@ -44,11 +43,10 @@ describe('con qué esencia se hace un perfume', () => {
 
   it('el panel se despliega POR ENCIMA del modal, no recortado dentro', async () => {
     const { contexto, pagina } = await abrirDashboard();
-    await irA(pagina, '/dashboard/perfumes');
+    await irA(pagina, '/dashboard/contratipos');
     await pagina.waitForSelector('text=+ Nuevo perfume');
 
     await pagina.getByRole('button', { name: '+ Nuevo perfume' }).click();
-    await elegirTipoDeAlta(pagina, /Una fragancia que fabrico/);
     await pagina.getByRole('button', { name: /Sin asignar/ }).click();
     await pagina.getByRole('listbox').waitFor();
 

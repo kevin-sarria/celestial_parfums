@@ -16,7 +16,7 @@ describe('el buscador general del panel', () => {
     });
 
     const r = await buscarEnTodo('khamrah');
-    expect(r.filter((x) => x.grupo === 'Catálogo').map((x) => x.tab)).toEqual(['perfumes', 'productos']);
+    expect(r.filter((x) => x.grupo === 'Catálogo').map((x) => x.tab)).toEqual(['contratipos', 'uno_uno']);
     expect(r.find((x) => x.grupo === 'Clientes')?.tab).toBe('usuarios');
     expect(r.find((x) => x.grupo === 'Ventas')?.detalle).toBe('10/09/2026 · $60.000 · Khamrah');
 

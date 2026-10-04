@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'vitest';
-import { elegirTipoDeAlta, abrirDashboard, cerrarNavegador, irA } from './navegador';
+import { abrirDashboard, cerrarNavegador, irA } from './navegador';
 
 /**
  * RECORRIDO 6 — el desplegable respeta la caja que le da la pantalla.
@@ -36,11 +36,10 @@ afterAll(async () => {
 const abrirFrascoDelTamano = async (ancho: number) => {
   const { pagina } = await sesion;
   await pagina.setViewportSize({ width: ancho, height: 900 });
-  await irA(pagina, '/dashboard/perfumes');
+  await irA(pagina, '/dashboard/contratipos');
   await pagina.waitForSelector('text=+ Nuevo perfume');
   await pagina.getByRole('button', { name: '+ Nuevo perfume' }).click();
-  // El alta pregunta primero qué es (2026-08-25).
-  await elegirTipoDeAlta(pagina, /Una fragancia que fabrico/);
+  // Cada pestaña abre su tipo ya elegido (catálogo por línea, 2026-10-04).
 
   // El selector de frasco solo aparece con una talla marcada, y desde el
   // 2026-10-02 vive plegado en "Frasco distinto por talla".

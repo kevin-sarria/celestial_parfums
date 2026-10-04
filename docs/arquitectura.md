@@ -329,7 +329,7 @@ del menú, "Clasificaciones", que abre Aromas; arriba de cada una, `SelectorClas
 las otras. Cada lista conserva su dirección (`/dashboard/ocasiones`…), así que enlaces y recorridos
 siguen sirviendo. Lo decide `CLASIFICACIONES` / `entradaActiva` en `navegacion.ts`.
 
-### Catálogo: Perfumes y Productos son la MISMA tabla, partida en dos (2026-08-23, Ola 1)
+### Catálogo: la MISMA tabla, partida en cuatro líneas (2026-08-23 Ola 1 → 2026-10-04)
 
 El dueño empezó a vender 1.1 (contratipos con envase premium), accesorios (perfumero, bolsa,
 tarjeta) y reventa (splash comprado hecho) además de sus fragancias fabricadas. Meterlos todos
@@ -339,26 +339,34 @@ insumo se compraron). La solución NO fue crear una tabla nueva: `perfumes` sigu
 sola tabla en la base; el dashboard le pone DOS pestañas encima, cada una pidiendo el mismo
 endpoint con un filtro distinto.
 
-- **`GET /parfums?familia=fabricadas|productos`**. Sin el parámetro, devuelve TODO (lo que
-  siguen usando Ventas, Créditos y la tienda pública — ver el gotcha de abajo). La partición
-  vive en UN solo sitio, `WHERE_FAMILIA` en `perfume.familia.ts` (salió de
-  `perfume.repository.ts` el 2026-08-24: ese archivo ya rozaba las 500 líneas, y ahora la regla
-  la comparten el listado, la exportación a Excel y el alta):
+- **`GET /parfums?linea=contratipo|uno_uno|original|producto`** (desde 2026-10-04; antes
+  `?familia=fabricadas|productos`). Sin el parámetro, devuelve TODO (lo que siguen usando Ventas,
+  Créditos y la tienda pública — ver el gotcha de abajo). La partición vive en UN solo sitio,
+  `WHERE_LINEA` en `perfume.linea.ts` (salió de `perfume.repository.ts` el 2026-08-24: ese archivo
+  ya rozaba las 500 líneas, y ahora la regla la comparten el listado, la exportación a Excel y el
+  alta):
   ```ts
-  const ES_PRODUCTO = { OR: [{ solo_armado: true }, { tipo_producto: 'comprado' }] };
-  WHERE_FAMILIA = {
-    productos:  ES_PRODUCTO,
-    fabricadas: { NOT: ES_PRODUCTO },   // el complemento EXACTO, no una segunda lista
+  const NO_ACCESORIO = { es_accesorio: false };
+  const UNO_UNO      = { es_accesorio: false, solo_armado: true };
+  const ORIGINAL     = { es_accesorio: false, solo_armado: false, tipo_producto: 'fraccionado' };
+  const COMPRADO     = { es_accesorio: false, solo_armado: false, tipo_producto: 'comprado' };
+  WHERE_LINEA = {
+    contratipo: { AND: [NO_ACCESORIO, { solo_armado: false },
+                        { NOT: { tipo_producto: { in: ['fraccionado', 'comprado'] } } }] },
+    uno_uno:    UNO_UNO,
+    original:   ORIGINAL,
+    producto:   { OR: [{ es_accesorio: true }, COMPRADO] },   // accesorio + comprado
   };
   ```
-  **`productos` se define en positivo y `fabricadas` es su `NOT`, a propósito.** La primera
-  versión escribía las dos listas por separado y el enum `tipo_producto` tiene un tercer valor
-  (`fraccionado`, los decants) que no caía en ninguna: un decant no existe antes de venderse
-  (se corta de la botella grande en el momento de la venta — `inventario.consumoVenta.ts`), así
-  que debe caer en Perfumes, y con dos listas paralelas se quedaba huérfano en las DOS pestañas
-  sin que nada avisara. Con el `NOT`, un cuarto valor futuro del enum no puede volver a abrir
-  ese hueco: cae automáticamente en `fabricadas` mientras no se le añada explícitamente a
-  `ES_PRODUCTO`.
+  **`contratipo` es el complemento (`NOT`), a propósito, y las otras tres se escriben en
+  positivo.** La primera versión (de dos familias) escribía dos listas por separado y el enum
+  `tipo_producto` tiene un tercer valor (`fraccionado`) que no caía en ninguna: un decant no
+  existe antes de venderse, así que debía caer en Perfumes, y con dos listas paralelas se quedaba
+  huérfano en las DOS pestañas sin que nada avisara. Con el `NOT`, un valor futuro del enum cae
+  automáticamente en `contratipo` mientras no se le añada su línea. Los predicados coinciden
+  EXACTO con `lineaDe()` (`perfume.mapeo.ts`): un accesorio marcado `solo_armado` es accesorio,
+  no 1.1 — si el `WHERE` preguntara al revés, la pestaña y la etiqueta de la fila dirían cosas
+  distintas.
 - **La ficha es la MISMA en las dos pestañas** (`FichaPerfumeModal.tsx` + `useFichaPerfume.ts`,
   extraída de `PerfumesTab.tsx` en esta misma ola). Solo cambia el sustantivo del título y el
   botón ("perfume" vs. "producto"); los campos que no aplican a un tipo se ocultan por

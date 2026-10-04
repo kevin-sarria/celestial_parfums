@@ -4,6 +4,59 @@ Lo que ya está construido, en el orden en que se hizo. Se conserva **por el por
 se llegó al diseño actual. Nada de esta página es trabajo pendiente — para eso está
 [`pendientes.md`](pendientes.md).
 
+## Sesión del 2026-10-04: el catálogo por línea y la URL del catálogo
+
+Tercer proyecto del rediseño del núcleo de producto (los dos primeros, *Empaque por línea* y
+*Precios de originales*, quedaron hechos esa misma mañana). Diseño en
+[`superpowers/specs/2026-10-04-catalogo-por-linea-design.md`](superpowers/specs/2026-10-04-catalogo-por-linea-design.md).
+
+### El catálogo del panel pasó de 2 pestañas a 4 líneas
+
+**El problema**: el panel partía el catálogo con la pregunta vieja *"¿existe antes de venderse?"*
+(`familia`: Perfumes / Productos), y por eso un **Original** (`fraccionado`) salía listado entre los
+contratipos y un **1.1** entre los accesorios. El cliente ya veía la etiqueta *Contratipo / 1.1 /
+Original* en la tienda; el dueño, no.
+
+**La clave que simplificó todo**: la línea ya estaba construida de punta a punta —`lineaDe()` en
+`perfume.mapeo.ts` la deduce de `solo_armado` + `tipo_producto` + `es_accesorio` y ya viajaba en la
+respuesta del catálogo. Las 4 pestañas que pidió el dueño son **exactamente las 4 puertas de alta**
+(`TIPOS_ALTA`) y **exactamente las líneas** que ya se deducen: una sola clasificación, tres usos.
+
+| Pestaña | `lineaDe` | Puerta de alta |
+|---|---|---|
+| Contratipos | `contratipo` | 🧪 fragancia |
+| 1.1 | `1.1` | ✨ armado |
+| Originales | `original` | 💧 decant |
+| Productos y accesorios | `accesorio` + `producto` | 📦 comprado |
+
+**Lo que cambió**:
+
+- `perfume.familia.ts` → **`perfume.linea.ts`**: `WHERE_LINEA` con las 4 líneas, cada una en
+  positivo salvo `contratipo` (el complemento, para que un valor nuevo del enum no caiga en un
+  hueco silencioso — la lección del `fraccionado` huérfano). `esLinea()`, `lineaDeCatalogo()` y
+  `naceApagado()` (que ahora también deja apagado a un `fraccionado`/original, como manda la regla
+  de que nacen ocultos).
+- El parámetro `?familia=fabricadas|productos` **se reemplazó** por `?linea=<una de las 4>` en el
+  listado (`selectParfumsPaginated`), en la caché y en la exportación a Excel (un `.xlsx` por línea).
+- Frontend: `PerfumesTab` + `ProductosTab` (el mismo archivo dos veces) → **`LineaTab`** único;
+  `columnasDeLinea()` une las columnas (un 1.1 suma la columna *Unidades*); `DashboardPage` pasó de
+  12 `useState` + 2 loaders a **un mapa por línea + una función `cargarLinea`**.
+- El buscador general ahora navega a la línea correcta (`TAB_DE_LINEA` en el backend, `LINEAS_CATALOGO`
+  en el frontend).
+
+**Sin migración**: la línea se deduce, no se guarda. Pruebas: `perfume.linea.bd.test.ts` (16), más
+las corregidas de `busqueda`, `productoArmado` y `productos.primerosPasos` (la 1.1 ya no cuenta como
+"producto").
+
+### La URL del catálogo es compartible
+
+`usePerfumes` leía `?q` y `?categoria` una sola vez al montar y **nunca escribía** el estado: buscar
+y pasar de página dejaba la URL en `celestialparfums.com/perfumes`, sin forma de compartirla ni de
+sobrevivir a un recargado. Ahora **lee** toda la vista al entrar y **escribe** con `replace` los
+cambios (`?q`, `genero`, `categorias`, `aromas`, `ocasiones`, `sort`, `page` — solo lo que cambia
+del default, para que la URL quede corta). Se mantuvo `q` (opción A del dueño): es el parámetro que
+ya usa el buscador de la portada.
+
 ## Rediseño del dashboard — COMPLETO (3 olas, agosto 2026)
 
 El dueño señaló 9 pantallas el 2026-08-01. Diseño y plan en `docs/superpowers/`.

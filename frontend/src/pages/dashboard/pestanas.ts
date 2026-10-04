@@ -13,8 +13,7 @@ import { lazyPagina } from '../../utils/lazyPagina';
  * salió mal" (ver `docs/gotchas.md`, 2026-09-28). Las pestañas exportan con
  * nombre, así que se re-empaquetan como `default`.
  */
-export const PerfumesTab = lazyPagina(() => import('./tabs/PerfumesTab').then((m) => ({ default: m.PerfumesTab })));
-export const ProductosTab = lazyPagina(() => import('./tabs/ProductosTab').then((m) => ({ default: m.ProductosTab })));
+export const LineaTab = lazyPagina(() => import('./tabs/LineaTab').then((m) => ({ default: m.LineaTab })));
 export const CombosTab = lazyPagina(() => import('./tabs/CombosTab').then((m) => ({ default: m.CombosTab })));
 export const PreciosTab = lazyPagina(() => import('./tabs/PreciosTab').then((m) => ({ default: m.PreciosTab })));
 export const DescuentosTab = lazyPagina(() => import('./tabs/DescuentosTab').then((m) => ({ default: m.DescuentosTab })));

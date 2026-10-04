@@ -444,11 +444,11 @@ export const urls = {
     spec: `/import/${entidad}/spec`,
     plantilla: `/import/${entidad}/template`,
     /**
-     * `familia` solo la usa el Catálogo, que son dos pestañas sobre la misma
-     * tabla: sin ella, Exportar desde Productos se traía los 222 perfumes.
+     * `linea` solo la usa el Catálogo, que son cuatro pestañas sobre la misma
+     * tabla: sin ella, Exportar desde una pestaña se traía el catálogo entero.
      */
-    exportar: (familia?: string) =>
-      familia ? `/import/${entidad}/export?familia=${familia}` : `/import/${entidad}/export`,
+    exportar: (linea?: string) =>
+      linea ? `/import/${entidad}/export?linea=${linea}` : `/import/${entidad}/export`,
     importar: `/import/${entidad}`,
   }),
 } as const;

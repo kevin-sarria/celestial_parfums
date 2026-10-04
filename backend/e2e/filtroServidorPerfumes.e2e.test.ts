@@ -19,7 +19,7 @@ afterAll(cerrarNavegador);
 describe('el filtro de columna de Perfumes busca en toda la data', () => {
   it('encuentra un perfume que no está en la primera página', async () => {
     const { contexto, pagina } = await abrirDashboard();
-    await irA(pagina, '/dashboard/perfumes');
+    await irA(pagina, '/dashboard/contratipos');
     await pagina.waitForSelector('text=Ventas 4');
     // Sembrado antes que los demás → queda al final del orden "más nuevo primero".
     expect(await pagina.getByText('Carrito 1', { exact: true }).count()).toBe(0);

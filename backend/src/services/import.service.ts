@@ -7,7 +7,7 @@ import { exportarContenido, importarContenido } from './import/contenido';
 import { exportarResto, importarResto } from './import/resto';
 import * as inv from './import/inventario';
 import type { EntityImportResult } from './import/core';
-import type { FamiliaProducto } from '../repositories/perfume.familia';
+import type { LineaCatalogo } from '../repositories/perfume.linea';
 
 /**
  * Repartidor de importación/exportación por entidad.
@@ -27,13 +27,13 @@ export { importExcel } from './import/legacy';
 export type { ImportResult } from './import/legacy';
 
 /** Exporta los datos actuales de una entidad con la estructura de su plantilla. */
-export const exportEntity = async (entity: string, familia?: FamiliaProducto): Promise<Buffer> => {
+export const exportEntity = async (entity: string, linea?: LineaCatalogo): Promise<Buffer> => {
   if (!IMPORT_SPECS[entity]) throw new Error('Entidad no soportada');
 
   const lookup = await exportarLookup(entity);
   if (lookup) return sheetFromRows(entity, lookup);
 
-  const catalogo = await exportarCatalogo(entity, familia);
+  const catalogo = await exportarCatalogo(entity, linea);
   if (catalogo) return sheetFromRows(entity, catalogo);
 
   const ventas = await exportarVentas(entity);

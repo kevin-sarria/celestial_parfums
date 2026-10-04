@@ -41,7 +41,9 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Dueño: entrar a Catálogo → Precios de originales y ponerle precio a los decants que están sin precio | pendiente |
 | "Te cuesta" de la ficha de un original = el de Precios de originales: lo calcula el servidor (`POST /api/precios-originales/costos`) | hecho |
 | Precios de originales rehecha (el dueño no quedó contento): una fila por talla, paginada, filtros rápidos, precio editable en la celda, meta propia en ventana; el botón en bloque nunca baja precios | hecho |
-| Rediseño, proyecto 3: catálogo con una pestaña por línea (Contratipos · 1.1 · Originales · Productos y accesorios), decisión del dueño 2026-10-04 | en curso |
+| Rediseño, proyecto 3: catálogo con una pestaña por línea (Contratipos · 1.1 · Originales · Productos y accesorios). **Construido**: backend `perfume.linea.ts` (16 pruebas), frontend `LineaTab` + 4 pestañas. Falta verificación visual (e2e) y deploy | hecho, sin verificar/desplegar |
+| Posdata 1: la URL del catálogo guarde búsqueda, filtros y página (`?q`, filtros, `page`, con `replace`). Parámetro `q` confirmado (opción A) | hecho, sin verificar |
+| Posdata 2: auditoría de mejoras (lógica + diseño). 21 hallazgos priorizados (9 tienda/SEO + 12 panel/lógica), entregados en el chat | hecho |
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 

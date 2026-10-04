@@ -4,7 +4,7 @@ import type { EntityImportResult } from './core';
 import { textoDeError } from '../../utils/errorSeguro';
 import { descripcionHtml } from '../../utils/textoEnriquecido';
 // La regla que separa Perfumes de Productos vive en un solo sitio.
-import { WHERE_FAMILIA, type FamiliaProducto } from '../../repositories/perfume.familia';
+import { WHERE_LINEA, type LineaCatalogo } from '../../repositories/perfume.linea';
 
 /**
  * Importación/exportación del catálogo: perfumes, precios, combos y descuentos.
@@ -16,14 +16,14 @@ import { WHERE_FAMILIA, type FamiliaProducto } from '../../repositories/perfume.
 /**
  * Filas de exportación por entidad del catálogo (null = no es de este módulo).
  *
- * `familia` acota "perfumes" a una de las dos pestañas del dashboard. Sin ella
+ * `linea` acota "perfumes" a una de las cuatro pestañas del dashboard. Sin ella
  * se exporta la tabla entera, que es lo correcto para el resto de la aplicación
  * (Excel de todo el catálogo, plantillas, respaldos).
  */
-export const exportarCatalogo = async (entity: string, familia?: FamiliaProducto): Promise<FilaExcel[] | null> => {
+export const exportarCatalogo = async (entity: string, linea?: LineaCatalogo): Promise<FilaExcel[] | null> => {
   if (entity === 'perfumes') {
     const perfumes = await prisma.perfume.findMany({
-      where: familia ? WHERE_FAMILIA[familia] : undefined,
+      where: linea ? WHERE_LINEA[linea] : undefined,
       orderBy: { nombre: 'asc' },
       include: {
         categoria: true,
@@ -161,7 +161,7 @@ export const importarCatalogo = async (
             solo_armado: soloArmado,
             insumo_esencia_id: esenciaId,
             // Un producto nace apagado; un perfume normal, publicado. Misma
-            // regla que el alta por pantalla (ver perfume.familia.ts).
+            // regla que el alta por pantalla (ver perfume.linea.ts).
             publicado: !soloArmado,
             tipos_aroma: { create: ids(r['tipos_aroma'], aromaMap).map(id => ({ tipo_aroma_id: id })) },
             ocasiones: { create: ids(r['ocasiones'], ocasionMap).map(id => ({ ocasion_id: id })) },

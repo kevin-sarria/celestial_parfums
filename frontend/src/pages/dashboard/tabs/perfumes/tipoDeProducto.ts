@@ -104,3 +104,28 @@ export const CAMPOS_POR_TIPO: Record<TipoAlta, CamposDelTipo> = {
     insumoOrigen: true, accesorio: false, preparadoOComprado: false,
   },
 };
+
+/**
+ * LAS 4 LÍNEAS DEL CATÁLOGO DEL PANEL (2026-10-04, proyecto 3 del rediseño).
+ *
+ * Las pestañas del catálogo son exactamente las 4 puertas de alta: cada línea
+ * se deduce de los datos (`lineaDe` en el backend) y cada una abre su puerta.
+ * Accesorio y comprado comparten la pestaña de productos.
+ */
+export type LineaCatalogo = 'contratipo' | 'uno_uno' | 'original' | 'producto';
+
+/** A qué puerta de alta corresponde cada línea. */
+export const TIPO_DE_LINEA: Record<LineaCatalogo, TipoAlta> = {
+  contratipo: 'fragancia',
+  uno_uno: 'armado',
+  original: 'decant',
+  producto: 'comprado',
+};
+
+/** El sustantivo con el que la ficha y el botón "+ Nuevo …" nombran cada línea. */
+export const SUSTANTIVO_LINEA: Record<LineaCatalogo, string> = {
+  contratipo: 'perfume',
+  uno_uno: '1.1',
+  original: 'original',
+  producto: 'producto',
+};

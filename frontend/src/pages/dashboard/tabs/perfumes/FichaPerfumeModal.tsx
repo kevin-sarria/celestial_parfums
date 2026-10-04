@@ -21,8 +21,8 @@ interface FichaPerfumeModalProps {
   ocasiones: Lookup[];
   categorias: Lookup[];
   presentaciones: Lookup[];
-  /** Texto del título y del botón: "perfume" en Perfumes, "producto" en Productos. */
-  sustantivo: 'perfume' | 'producto';
+  /** Texto del título y del botón: "perfume", "1.1", "original" o "producto" según la línea. */
+  sustantivo: string;
 }
 
 const toggleId = (ids: number[], id: number) => ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id];

@@ -27,7 +27,7 @@ const RONDAS = 5;
 describe('el cajón del menú', () => {
   it('abre sin bloquear el hilo y sin animación larga', async () => {
     const { contexto, pagina } = await abrirDashboard();
-    await irA(pagina, '/dashboard/perfumes');
+    await irA(pagina, '/dashboard/contratipos');
     await pagina.getByRole('button', { name: /Abrir menú/ }).waitFor({ timeout: 30_000 });
     // Que la pantalla termine de cargar: se mide el cajón, no la pantalla.
     await pagina.waitForTimeout(2500);

@@ -1,7 +1,7 @@
 import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { elegirTipoDeAlta, abrirDashboard, abrirTienda, cabeceraAdmin, cerrarPopup, cerrarNavegador, campo, irA } from './navegador';
+import { abrirDashboard, abrirTienda, cabeceraAdmin, cerrarPopup, cerrarNavegador, campo, irA } from './navegador';
 import { URL_API } from './arranque';
 
 /**
@@ -31,17 +31,15 @@ const foto = (nombre: string) => path.join(os.tmpdir(), `celestial-${nombre}.png
 
 describe('un producto que solo se vende armado', () => {
   it('sale agotado en la tienda aunque le sobre esencia', async () => {
-    // Un 1.1 es un PRODUCTO (se arma antes de venderse), así que su ficha se
-    // crea desde la pestaña Productos, no desde Perfumes.
+    // Un 1.1 se arma antes de venderse y vive en SU pestaña (1.1): se crea ahí.
     const { contexto, pagina } = await abrirDashboard();
-    await irA(pagina, '/dashboard/productos');
-    await pagina.waitForSelector('text=+ Nuevo producto');
+    await irA(pagina, '/dashboard/uno_uno');
+    await pagina.waitForSelector('text=+ Nuevo 1.1');
 
-    // 1. Se crea la ficha marcando la casilla del 1.1.
-    await pagina.getByRole('button', { name: '+ Nuevo producto' }).click();
+    // 1. Se crea la ficha desde la pestaña 1.1, que ya abre su puerta.
+    await pagina.getByRole('button', { name: '+ Nuevo 1.1' }).click();
     // Un 1.1 tiene su propia puerta desde el 2026-08-25: elegirla deja la ficha
     // marcada como "solo se vende si está armado" sin buscar ninguna casilla.
-    await elegirTipoDeAlta(pagina, /Un 1\.1/);
     await campo(pagina, 'Nombre *').fill(NOMBRE);
     await campo(pagina, 'Precio de respaldo (COP) *').fill('150000');
 
@@ -51,7 +49,7 @@ describe('un producto que solo se vende armado', () => {
 
     await pagina.getByRole('group', { name: 'Tallas que vendes' }).getByRole('button', { name: /^30ml/i }).click();
     await pagina.screenshot({ path: foto('form-1punto1') });
-    await pagina.getByRole('button', { name: 'Crear producto' }).click();
+    await pagina.getByRole('button', { name: 'Crear 1.1' }).click();
 
     // 2. La tabla lo dice, y dice POR QUÉ.
     const fila = pagina.getByRole('row', { name: new RegExp(NOMBRE) });

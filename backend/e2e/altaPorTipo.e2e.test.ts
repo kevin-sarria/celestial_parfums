@@ -5,7 +5,7 @@ import { prisma } from '../src/config/prisma';
 import { abrirDashboard, cerrarNavegador, irA } from './navegador';
 
 /**
- * RECORRIDO — el alta pregunta PRIMERO qué es, y cada tipo pide solo lo suyo.
+ * RECORRIDO — cada tipo de alta pide solo lo suyo (y cada pestaña abre el suyo).
  *
  * Nace de una queja del dueño con captura incluida (2026-08-25): el formulario
  * preguntaba "¿cómo consigues este producto?" en la casilla once, después de
@@ -26,27 +26,28 @@ const contarCampos = (pagina: import('playwright-core').Page) =>
   pagina.locator('[role=dialog] input:visible, [role=dialog] textarea:visible, [role=dialog] [role=combobox]:visible').count();
 
 describe('el alta de un producto', () => {
-  it('empieza preguntando qué es, y un accesorio pide menos de la mitad de campos que una fragancia', async () => {
+  it('cada pestaña abre su tipo ya elegido, y un accesorio pide menos de la mitad de campos que una fragancia', async () => {
     const { contexto, pagina } = await abrirDashboard();
     await irA(pagina, '/dashboard/productos');
     await pagina.waitForSelector('text=+ Nuevo producto');
     await pagina.getByRole('button', { name: '+ Nuevo producto' }).click();
 
-    // 1. Lo primero es la pregunta que gobierna todo lo demás.
-    await pagina.waitForSelector('text=Elige qué es');
-    await pagina.screenshot({ path: foto('alta-tipos') });
-    expect(await contarCampos(pagina)).toBe(0);
-
-    // 2. Un perfumero: sin duración, ni proyección, ni notas, ni tallas.
-    await pagina.getByRole('button', { name: /Algo que compro hecho/ }).click();
+    // 1. La pestaña Productos ya dice qué es (catálogo por línea, 2026-10-04):
+    //    va directo al formulario de lo comprado, sin volver a preguntar.
+    //    Un perfumero: sin duración, ni proyección, ni notas, ni tallas.
     await pagina.waitForSelector('text=¿Qué insumo ES este producto?');
     const camposComprado = await contarCampos(pagina);
     await pagina.screenshot({ path: foto('alta-comprado') });
     expect(await pagina.getByText('Duración').count()).toBe(0);
     expect(await pagina.getByText('Tipos de aroma').count()).toBe(0);
 
-    // 3. Una fragancia sí los pide: es la comparación que da sentido al número.
+    // 2. "Cambiar" vuelve a la pregunta que gobierna todo lo demás.
     await pagina.getByRole('button', { name: 'Cambiar' }).click();
+    await pagina.waitForSelector('text=Elige qué es');
+    await pagina.screenshot({ path: foto('alta-tipos') });
+    expect(await contarCampos(pagina)).toBe(0);
+
+    // 3. Una fragancia sí los pide: es la comparación que da sentido al número.
     await pagina.getByRole('button', { name: /Una fragancia que fabrico/ }).click();
     await pagina.waitForSelector('text=Tipos de aroma');
     const camposFragancia = await contarCampos(pagina);
@@ -91,15 +92,22 @@ describe('las unidades en la pestaña Productos', () => {
     });
 
     const { contexto, pagina } = await abrirDashboard();
-    await irA(pagina, '/dashboard/productos');
-    await pagina.waitForSelector('text=Productos');
 
-    for (const [nombre, unidades] of [[once.nombre, '3'], [comprado.nombre, '7']] as const) {
-      await pagina.getByPlaceholder(/Buscar/).first().fill(nombre);
-      const fila = pagina.locator('tr').filter({ hasText: nombre }).first();
-      await fila.waitFor({ timeout: 20_000 });
-      await expect.poll(() => fila.textContent(), { timeout: 15_000 }).toContain(unidades);
-    }
+    // Un 1.1 se cuenta por frascos armados, y vive en SU pestaña (1.1).
+    await irA(pagina, '/dashboard/uno_uno');
+    await pagina.waitForSelector('text=+ Nuevo 1.1');
+    await pagina.getByPlaceholder(/Buscar/).first().fill(once.nombre);
+    const filaOnce = pagina.locator('tr').filter({ hasText: once.nombre }).first();
+    await filaOnce.waitFor({ timeout: 20_000 });
+    await expect.poll(() => filaOnce.textContent(), { timeout: 15_000 }).toContain('3');
+
+    // Un comprado se cuenta por su material, en Productos y accesorios.
+    await irA(pagina, '/dashboard/productos');
+    await pagina.waitForSelector('text=+ Nuevo producto');
+    await pagina.getByPlaceholder(/Buscar/).first().fill(comprado.nombre);
+    const filaComprado = pagina.locator('tr').filter({ hasText: comprado.nombre }).first();
+    await filaComprado.waitFor({ timeout: 20_000 });
+    await expect.poll(() => filaComprado.textContent(), { timeout: 15_000 }).toContain('7');
 
     await pagina.screenshot({ path: foto('productos-unidades') });
     await contexto.close();

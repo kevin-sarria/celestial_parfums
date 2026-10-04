@@ -17,8 +17,6 @@ interface Progreso {
 }
 
 interface PrimerosPasosProductosProps {
-  /** Abre la ficha en blanco (la misma que "+ Nuevo producto"). */
-  onNuevoProducto: () => void;
   /** Sube un número cada vez que se guarda o borra algo, para refrescar sin recargar la página. */
   recargar?: number;
 }
@@ -46,7 +44,7 @@ interface Paso {
  * registro), y ningún paso bloquea a otro: aquí no hay un orden que corrompa
  * datos si se invierte. Ver la skill `arranque-guiado`.
  */
-export function PrimerosPasosProductos({ onNuevoProducto, recargar = 0 }: PrimerosPasosProductosProps) {
+export function PrimerosPasosProductos({ recargar = 0 }: PrimerosPasosProductosProps) {
   const { dato: p, fallo, cargando, recargar: reintentar } =
     useConsultaDeApoyo<Progreso>(urls.perfumes.primerosPasosProductos, recargar);
   const [abierto, setAbierto] = useState(true);
@@ -73,7 +71,9 @@ export function PrimerosPasosProductos({ onNuevoProducto, recargar = 0 }: Primer
       detalle: p.lotes_sin_ficha_propia > 0
         ? `Tienes ${p.lotes_sin_ficha_propia} lotes armados apuntando al perfume normal. Vender uno cobraría el precio del corriente.`
         : 'Un 1.1 es un perfume con envase premium: lleva su propia ficha y su propio precio.',
-      accion: <Button size="sm" variant="outline" onClick={onNuevoProducto}>Empezar</Button>,
+      // Los 1.1 viven en SU pestaña desde el 2026-10-04: allá "+ Nuevo 1.1" ya
+      // abre su tipo. Abrir la ficha aquí la daba como producto comprado.
+      accion: <Button size="sm" variant="outline" asChild><Link to="/dashboard/uno_uno">Empezar</Link></Button>,
     },
     {
       n: 3,

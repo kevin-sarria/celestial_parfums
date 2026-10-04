@@ -1,6 +1,6 @@
 import { prisma } from '../config/prisma';
 import { SOLO_PUBLICADOS } from './perfume.repository';
-import { WHERE_FAMILIA } from './perfume.familia';
+import { WHERE_LINEA } from './perfume.linea';
 
 /**
  * Los contadores del arranque de la pestaña Productos.
@@ -28,8 +28,8 @@ export const primerosPasosProductos = async (): Promise<PrimerosPasosProductos> 
       prisma.insumoCosto.findMany({ where: { tipo: 'accesorio' }, select: { id: true } }),
       prisma.perfume.count({ where: { es_accesorio: true } }),
       prisma.perfume.count({ where: { solo_armado: true } }),
-      prisma.perfume.count({ where: WHERE_FAMILIA.productos }),
-      prisma.perfume.count({ where: { AND: [WHERE_FAMILIA.productos, SOLO_PUBLICADOS] } }),
+      prisma.perfume.count({ where: WHERE_LINEA.producto }),
+      prisma.perfume.count({ where: { AND: [WHERE_LINEA.producto, SOLO_PUBLICADOS] } }),
       prisma.produccion.count(),
     ]);
 

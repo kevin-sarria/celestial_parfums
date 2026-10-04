@@ -24,8 +24,8 @@ export const guardarArchivo = (blob: Blob, nombre: string) => {
  */
 /** Cómo acotar una exportación (hoy solo el Catálogo la necesita). */
 export interface OpcionesExport {
-  /** Familia del catálogo: `fabricadas` o `productos`. Sin ella, la tabla entera. */
-  familia?: string;
+  /** Línea del catálogo (contratipo / uno_uno / original / producto). Sin ella, la tabla entera. */
+  linea?: string;
   /** Nombre del .xlsx sin extensión. Por defecto, el de la entidad. */
   archivo?: string;
 }
@@ -34,15 +34,15 @@ export function useExportEntity() {
   const [exportando, setExportando] = useState<string | null>(null);
 
   const exportar = async (entity: string, opciones: OpcionesExport = {}) => {
-    const { familia, archivo } = opciones;
-    // La clave del "Exportando…" incluye la familia: Perfumes y Productos son
+    const { linea, archivo } = opciones;
+    // La clave del "Exportando…" incluye la línea: Contratipos y Productos son
     // la misma entidad, y sin esto el botón de una pestaña se veía cargando
     // mientras descargaba la otra.
-    setExportando(familia ?? entity);
+    setExportando(linea ?? entity);
     try {
       // `descargar` lee el mensaje aunque venga como Blob: si no, un error del
       // servidor llegaría aquí como "(400)" sin decir qué pasó.
-      const res = await http.descargar(urls.excel(entity).exportar(familia));
+      const res = await http.descargar(urls.excel(entity).exportar(linea));
       if (!res.ok || !res.cuerpo) { toast.error(res.error, { id: `export-${entity}` }); return; }
       // Dos descargas llamadas "export_perfumes.xlsx" con contenidos distintos
       // se confunden en la carpeta de Descargas, así que quien acota la
