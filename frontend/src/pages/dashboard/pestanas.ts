@@ -48,5 +48,6 @@ export const ReportesClientesTab = lazyPagina(() => import('./tabs/ReportesClien
 export const RolesTab = lazyPagina(() => import('./tabs/RolesTab').then((m) => ({ default: m.RolesTab })));
 export const SolicitudesTab = lazyPagina(() => import('./tabs/SolicitudesTab').then((m) => ({ default: m.SolicitudesTab })));
 export const EmpaqueTab = lazyPagina(() => import('./tabs/EmpaqueTab').then((m) => ({ default: m.EmpaqueTab })));
+export const PreciosOriginalesTab = lazyPagina(() => import('./tabs/PreciosOriginalesTab').then((m) => ({ default: m.PreciosOriginalesTab })));
 export const HistorialTab = lazyPagina(() => import('./tabs/HistorialTab').then((m) => ({ default: m.HistorialTab })));
 export const RedesTab = lazyPagina(() => import('./tabs/RedesTab').then((m) => ({ default: m.RedesTab })));

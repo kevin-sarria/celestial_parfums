@@ -37,7 +37,10 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Precios sugeridos de decants (opción B del dueño: margen mínimo, sugerido por talla y botón para ponerlo a todos los que no tienen precio), en su propio apartado | pendiente: va dentro del rediseño del núcleo de producto |
 | Rediseño del núcleo, proyecto 1: **empaque por línea, talla y combo** (Catálogo → Empaque; "Este pedido lleva" en la venta; la tienda dice qué incluye). **Lleva migración** `20261006120000_empaque_por_linea` | hecho |
 | Dueño: revisar Catálogo → Empaque y el kit de sus 4 combos (arrancaron con 1 perfumero) | pendiente |
-| Rediseño, proyecto 2: apartado de precios sugeridos · proyecto 3: panel por línea · proyecto 4: alertas por velocidad | pendiente, en ese orden |
+| Rediseño, proyecto 2: **Precios de originales** (costo real por talla, meta general en % del precio o en pesos, meta propia por original, redondeo a $1.000, aplicar en bloque). **Lleva migración** `20261007120000_meta_ganancia` | hecho |
+| Dueño: entrar a Catálogo → Precios de originales y ponerle precio a los decants que están sin precio | pendiente |
+| Unificar "Te cuesta" de la ficha del perfume con el costo de Precios de originales (le falta el frasco de la receta y el empaque) | pendiente |
+| Rediseño, proyecto 3: panel por línea · proyecto 4: alertas por velocidad | pendiente, en ese orden |
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 

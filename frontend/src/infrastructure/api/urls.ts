@@ -345,6 +345,13 @@ export const urls = {
   /** Empaque por línea y talla: lo lee quien vende, lo cambia el dueño. */
   empaque: '/empaque',
 
+  /** Costo y precio sugerido de cada talla de los originales (solo el dueño). */
+  preciosOriginales: {
+    lista: '/precios-originales',
+    precios: '/precios-originales/precios',
+    meta: (id: number) => `/precios-originales/${id}/meta`,
+  },
+
   /** Roles del personal y sus permisos (solo el dueño). */
   roles: {
     lista: '/roles',

@@ -471,3 +471,23 @@ con motivo, texto y hasta 3 fotos.
 - **El precio no se escribe a mano** sin esa casilla: lo calcula la app y el servidor lo recalcula.
 - Para darle un rol a alguien, esa persona tiene que tener cuenta (registrarse en la página con su
   correo o con Google); una ficha sin correo no puede entrar.
+
+## Precios sugeridos de los originales (2026-10-04, decisiones del dueño)
+
+Diseño: `docs/superpowers/specs/2026-10-04-precios-originales-design.md`. Pestaña Catálogo →
+Precios de originales (solo el dueño).
+
+- **La ganancia la elige él cada vez** (*"habrá casos en que por ganarme al cliente me ganaré 10
+  mil pesos en un producto"*): un selector en la pantalla, en **% del precio** o en **pesos por
+  unidad**. Un original puede guardar su **meta propia** (`perfumes.meta_ganancia_*`), que manda
+  sobre la general.
+- **El % es margen sobre el precio de venta** (opción A): ganar 30 % → precio = costo ÷ 0,70. Con
+  "30 % encima del costo" en realidad ganaría el 23 % de lo que cobra.
+- **Redondeo al $1.000 más cercano.** Sin costo de compra no se sugiere nada.
+- **Solo originales** (opción A): los contratipos comparten precio de lista en un 90 %; los
+  originales cambian mucho de uno a otro.
+- **El costo es el mismo que descuenta la venta**: líquido + 2 ml de merma + frasco del decant (el
+  de la talla o el de la receta) + empaque de su línea; la botella completa, solo el líquido
+  (`backend/src/precios/costoTalla.ts`).
+- Aplicar escribe el precio propio de la talla. Un decant que estaba en $0 aparece solo en la
+  tienda. Si el sugerido es más bajo que el precio de hoy, la pantalla dice "baja".

@@ -812,3 +812,15 @@ trabaja con él (Usuarios → Rol). El código pregunta por el **permiso**, no p
 - Panel: pestaña `empaque` en Catálogo (solo dueño), `tabs/EmpaqueTab.tsx` + `tabs/empaque/`;
   en Ventas y Créditos, `pedido/EmpaqueDelPedido.tsx` (reemplazó a `KitDelCombo.tsx`).
 - Se retiraron `PATCH /costeo/formulas/:id/accesorios` y `GET /inventario/accesorios-de-lote`.
+
+## Precios de originales (2026-10-04)
+
+- `backend/src/precios/`: `costoTalla.ts` (puro) y `preciosOriginales.repository.ts`
+  (`listarOriginales`, `ponerMeta`, `aplicarPrecios`). Rutas en `/api/precios-originales`, todas
+  `requireAdmin`: `GET /`, `PATCH /:id/meta`, `PATCH /precios` (limpia la caché del catálogo).
+- Panel: pestaña `precios_originales` (Catálogo), `tabs/PreciosOriginalesTab.tsx` +
+  `tabs/preciosOriginales/` (la cuenta del sugerido en `sugerencia.ts`, pura). La meta general vive
+  en `localStorage`: es comodidad de ese navegador, no un dato del negocio.
+- OJO: "Te cuesta" de la ficha del perfume (`TallasDelPerfume.tsx`) todavía calcula su costo en la
+  pantalla, sin el frasco de la receta ni el empaque. Esta pestaña es la cifra completa; unificarlas
+  queda en pendientes.

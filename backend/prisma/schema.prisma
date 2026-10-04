@@ -460,6 +460,10 @@ model Perfume {
   /// fragancias en los buscadores y en los reportes.
   /// Solo tiene sentido con `tipo_producto = comprado`: se valida al guardar.
   es_accesorio       Boolean               @default(false)
+  /// Meta de ganancia PROPIA para sugerirle precio (2026-10-04): un caso puntual
+  /// que manda sobre la meta general de "Precios de originales". null = la general.
+  meta_ganancia_tipo  MetaGanancia?
+  meta_ganancia_valor Decimal?              @db.Decimal(12, 2)
   /// "No hay ahora mismo": SÍ se muestra en la tienda, marcado como agotado, y
   /// el cliente puede pedir que le avisen cuando vuelva.
   agotado            Boolean               @default(false)
@@ -1622,4 +1626,10 @@ model EmpaqueLinea {
   @@unique([linea, presentacion_id, perfume_id])
   @@index([perfume_id])
   @@map("empaque_linea")
+}
+
+/// Cómo se mide una meta de ganancia: % del precio de venta, o pesos por unidad.
+enum MetaGanancia {
+  porcentaje
+  pesos
 }
