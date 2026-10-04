@@ -558,3 +558,21 @@ Arreglo, en este orden:
 - **`menuLateral`** (mide milisegundos de bloqueo, límite 50): una vez dio 53 al final de la
   corrida completa, con el equipo cargado; sola pasa siempre. Si se repite, mirar si algo nuevo
   se monta al abrir el cajón antes de tocar el límite.
+
+## 2026-10-03 · "Limpiar todo" se borraba de la caja pero revivía en la siguiente recarga
+
+En Ventas: buscar, "Limpiar todo", y al darle **Enlazar perfumes** la lista volvía filtrada por la
+búsqueda vieja, sin botón de limpiar. `onServerClearAll` recargaba con `''` pero no tocaba el estado
+`searchTerm`; la siguiente recarga sin argumentos (`load()` tras enlazar, guardar o borrar) usaba
+el valor por defecto = la búsqueda vieja. Pasaba en 7 tablas (Ventas, Créditos, Compras,
+Recompensas, Perfumes, Productos, Combos). **Arreglo de raíz**: el cargador guarda la búsqueda con
+la que cargó, igual que ya guardaba los filtros (`setSearchTerm(term)` junto a
+`setFiltros(...)`). Así ningún llamador puede olvidarse. Prueba: `e2e/limpiarBusqueda.e2e.test.ts`.
+
+## 2026-10-03 · Un rol creado con Prisma en una prueba no existe para el servidor
+
+`permisos.ts` guarda los roles en memoria y solo los olvida cuando se crean o editan **por la API**
+(`olvidarPermisos`). Una prueba que crea el rol con `prisma.role.create` pasa sola y falla en la
+corrida completa (otra prueba ya cargó los roles): la vendedora salía como cliente. Las pruebas
+crean los roles con `POST /api/roles`, como el dueño.
+

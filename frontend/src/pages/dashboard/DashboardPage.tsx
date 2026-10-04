@@ -124,7 +124,7 @@ export default function DashboardPage() {
     page = perfumesPage, size = perfumesPageSize, search = perfumesSearch, filtros = perfumesFiltros,
   ) => {
     // `todos=1`: el dashboard ve TAMBIÉN los que están fuera de la tienda; si no,
-    // no habría forma de devolverlos. El servidor solo lo acepta si eres admin.
+    // no habría forma de devolverlos. El servidor solo lo acepta con `catalogo.ver`.
     const res = await http.get<{ data: Perfume[]; total: number }>(urls.perfumes.todos, {
       params: {
         page, limit: size, todos: 1, familia: 'fabricadas',
@@ -136,13 +136,14 @@ export default function DashboardPage() {
     setPerfumesTotal(res.cuerpo?.total ?? 0);
     setPerfumesPage(page);
     setPerfumesFiltros(filtros);
+    setPerfumesSearch(search); // con la búsqueda: "Limpiar todo" no debe revivir al recargar
   };
 
   const loadProductos = async (
     page = productosPage, size = productosPageSize, search = productosSearch, filtros = productosFiltros,
   ) => {
     // `todos=1`: el dashboard ve TAMBIÉN los que están fuera de la tienda; si no,
-    // no habría forma de devolverlos. El servidor solo lo acepta si eres admin.
+    // no habría forma de devolverlos. El servidor solo lo acepta con `catalogo.ver`.
     const res = await http.get<{ data: Perfume[]; total: number }>(urls.perfumes.todos, {
       params: {
         page, limit: size, todos: 1, familia: 'productos',
@@ -154,6 +155,7 @@ export default function DashboardPage() {
     setProductosTotal(res.cuerpo?.total ?? 0);
     setProductosPage(page);
     setProductosFiltros(filtros);
+    setProductosSearch(search); // con la búsqueda: "Limpiar todo" no debe revivir al recargar
   };
 
   const loadCombos = async (
@@ -170,6 +172,7 @@ export default function DashboardPage() {
     setCombosTotal(res.cuerpo?.total ?? 0);
     setCombosPage(page);
     setCombosFiltros(filtros);
+    setCombosSearch(search); // con la búsqueda: "Limpiar todo" no debe revivir al recargar
   };
 
   const refreshAll = () => { loadLookups(); loadPerfumes(); loadProductos(); loadCombos(); };
@@ -180,8 +183,8 @@ export default function DashboardPage() {
    * lo mismo, y la que se olvidara de actualizar quedaba mintiendo.
    */
   useEffect(() => {
-    // El catálogo y las clasificaciones son pestañas del dueño: el personal no las pide
-    if (!isAdmin) { setLoading(false); return; }
+    // El catálogo solo lo pide quien lo puede ver (el dueño, o el personal con la casilla)
+    if (!puede('catalogo.ver')) { setLoading(false); return; }
     Promise.all([loadLookups(), loadPerfumes(1), loadProductos(1), loadCombos(1)])
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -280,7 +283,7 @@ export default function DashboardPage() {
           {/* En celular estas acciones viven dentro del drawer */}
           <div className="hidden items-center gap-1.5 sm:flex">
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/catalog">Ver catalogo</Link>
+              <Link to={isAdmin ? '/catalog' : '/'}>Ver tienda</Link>
             </Button>
             <Button variant="outline" size="sm" onClick={handleLogout}>
               Salir
@@ -311,7 +314,7 @@ export default function DashboardPage() {
                 aromas={aromas} ocasiones={ocasiones} categorias={categorias} presentaciones={presentaciones}
                 onPageChange={p => loadPerfumes(p, perfumesPageSize)}
                 onPageSizeChange={s => { setPerfumesPageSize(s); loadPerfumes(1, s); }}
-                onSearch={t => { setPerfumesSearch(t); loadPerfumes(1, perfumesPageSize, t); }}
+                onSearch={t => loadPerfumes(1, perfumesPageSize, t)}
                 onFilter={f => loadPerfumes(1, perfumesPageSize, perfumesSearch, f)}
                 onClearAll={() => loadPerfumes(1, perfumesPageSize, '', {})}
                 onMutate={refreshAll}
@@ -323,7 +326,7 @@ export default function DashboardPage() {
                 aromas={aromas} ocasiones={ocasiones} categorias={categorias} presentaciones={presentaciones}
                 onPageChange={p => loadProductos(p, productosPageSize)}
                 onPageSizeChange={s => { setProductosPageSize(s); loadProductos(1, s); }}
-                onSearch={t => { setProductosSearch(t); loadProductos(1, productosPageSize, t); }}
+                onSearch={t => loadProductos(1, productosPageSize, t)}
                 onFilter={f => loadProductos(1, productosPageSize, productosSearch, f)}
                 onClearAll={() => loadProductos(1, productosPageSize, '', {})}
                 onMutate={refreshAll}
@@ -367,7 +370,7 @@ export default function DashboardPage() {
                 categorias={categorias} presentaciones={presentaciones}
                 onPageChange={p => loadCombos(p, combosPageSize)}
                 onPageSizeChange={s => { setCombosPageSize(s); loadCombos(1, s); }}
-                onSearch={t => { setCombosSearch(t); loadCombos(1, combosPageSize, t); }}
+                onSearch={t => loadCombos(1, combosPageSize, t)}
                 onFilter={f => loadCombos(1, combosPageSize, combosSearch, f)}
                 onClearAll={() => loadCombos(1, combosPageSize, '', {})}
                 onMutate={refreshAll}

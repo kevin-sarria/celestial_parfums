@@ -84,6 +84,7 @@ export function PagosTab() {
     setTotal(pRes.cuerpo?.total ?? 0);
     setPage(p);
     setFiltros(filtrosActuales);
+    setSearchTerm(term); // con la búsqueda: "Limpiar todo" no debe revivir en la siguiente recarga
     setTotales(pRes.cuerpo?.totales ?? null);
     setEmpresas(eRes.cuerpo?.data ?? []);
   };
@@ -231,7 +232,7 @@ export function PagosTab() {
           rowKey={p => p.id}
           numerada
           tarjetaMovil
-          onServerSearch={t => { setSearchTerm(t); load(1, pageSize, t); }}
+          onServerSearch={t => load(1, pageSize, t)}
           onServerFilter={f => load(1, pageSize, searchTerm, f)}
           onServerClearAll={() => load(1, pageSize, '', {})}
           pagination={{

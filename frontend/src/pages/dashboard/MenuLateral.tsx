@@ -168,8 +168,8 @@ export function MenuLateral() {
             {/* El respaldo de la base es TODO el negocio en un archivo: solo el dueño */}
             {isAdmin && <BackupSeguridad enMenu />}
             <Button variant="ghost" className="w-full justify-start sm:hidden" asChild>
-              <Link to="/catalog" onClick={() => setDrawerOpen(false)}>
-                <Store className="size-4" /> Ver catalogo
+              <Link to={isAdmin ? '/catalog' : '/'} onClick={() => setDrawerOpen(false)}>
+                <Store className="size-4" /> Ver tienda
               </Link>
             </Button>
             <Button variant="outline" className="w-full justify-start sm:hidden"

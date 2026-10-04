@@ -11,6 +11,7 @@ import { useFichaPerfume } from './perfumes/useFichaPerfume';
 import { PrimerosPasosProductos } from './productos/PrimerosPasosProductos';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import type { Lookup } from '../types';
+import { useAuthContext } from '../../../application/context/useAuthContext';
 
 interface ProductosTabProps {
   productos: Perfume[];
@@ -46,23 +47,27 @@ export function ProductosTab({
   // punto de partida distinto: sin esto, "+ Nuevo producto" heredaba
   // `tipo_producto: 'fabricado'` del formulario en blanco y el producto se
   // iba a la pestaña de Perfumes sin que nada lo avisara.
+  // El personal con `catalogo.ver` solo mira (igual que en Perfumes)
+  const { isAdmin } = useAuthContext();
   const ficha = useFichaPerfume({
-    aromas, ocasiones, presentaciones, onMutate: onMutateConPasos,
+    aromas, ocasiones, presentaciones, onMutate: onMutateConPasos, activa: isAdmin,
     valoresIniciales: { tipo_producto: 'comprado' },
   });
 
   return (
     <div className="space-y-4">
-      <PrimerosPasosProductos onNuevoProducto={ficha.abrirNuevo} recargar={recargarPasos} />
+      {isAdmin && <PrimerosPasosProductos onNuevoProducto={ficha.abrirNuevo} recargar={recargarPasos} />}
 
       <Section>
         <Toolbar>
           <SectionTitle count={productos.length}>Productos</SectionTitle>
-          <ToolbarActions>
-            {/* Solo los productos: el Excel de Perfumes se descarga en su pestaña. */}
-            <ExportButton entity="perfumes" familia="productos" archivo="productos" />
-            <Button size="sm" onClick={ficha.abrirNuevo}>+ Nuevo producto</Button>
-          </ToolbarActions>
+          {isAdmin && (
+            <ToolbarActions>
+              {/* Solo los productos: el Excel de Perfumes se descarga en su pestaña. */}
+              <ExportButton entity="perfumes" familia="productos" archivo="productos" />
+              <Button size="sm" onClick={ficha.abrirNuevo}>+ Nuevo producto</Button>
+            </ToolbarActions>
+          )}
         </Toolbar>
 
         <SmartTable
@@ -74,14 +79,14 @@ export function ProductosTab({
           onServerClearAll={onClearAll}
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
           emptyText="Todavía no tienes productos. Aquí van los 1.1 que armas, los splash que compras hechos y los accesorios."
-          renderActions={p => (
+          renderActions={isAdmin ? p => (
             <AccionesPerfume
               perfume={p}
               onCambiado={onMutateConPasos}
               onEditar={() => ficha.abrirEdicion(p)}
               onEliminar={() => ficha.eliminar(p.id)}
             />
-          )}
+          ) : undefined}
         />
       </Section>
 

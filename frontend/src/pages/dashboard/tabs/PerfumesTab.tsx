@@ -13,6 +13,7 @@ import { FichaPerfumeModal } from './perfumes/FichaPerfumeModal';
 import { useFichaPerfume } from './perfumes/useFichaPerfume';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import type { Lookup } from '../types';
+import { useAuthContext } from '../../../application/context/useAuthContext';
 
 interface PerfumesTabProps {
   perfumes: Perfume[];
@@ -40,7 +41,9 @@ export function PerfumesTab({
 }: PerfumesTabProps) {
   const [importOpen, setImportOpen] = useState(false);
   // La ficha (crear/editar/borrar) vive aparte: la pestaña de Productos usa la misma.
-  const ficha = useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate });
+  // El personal con `catalogo.ver` solo mira: crear, editar e importar es del dueño
+  const { isAdmin } = useAuthContext();
+  const ficha = useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, activa: isAdmin });
 
   return (
     <>
@@ -50,11 +53,15 @@ export function PerfumesTab({
           <ToolbarActions>
             <DescargarCatalogoButton />
             {/* Solo las fragancias: los productos se exportan desde su pestaña. */}
-            <ExportButton entity="perfumes" familia="fabricadas" />
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-              <Upload className="size-4" /> Importar
-            </Button>
-            <Button size="sm" onClick={ficha.abrirNuevo}>+ Nuevo perfume</Button>
+            {isAdmin && (
+              <>
+                <ExportButton entity="perfumes" familia="fabricadas" />
+                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                  <Upload className="size-4" /> Importar
+                </Button>
+                <Button size="sm" onClick={ficha.abrirNuevo}>+ Nuevo perfume</Button>
+              </>
+            )}
           </ToolbarActions>
         </Toolbar>
 
@@ -66,7 +73,7 @@ export function PerfumesTab({
           onServerFilter={onFilter}
           onServerClearAll={onClearAll}
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
-          renderActions={p => (
+          renderActions={isAdmin ? p => (
             <>
               {/* Foto y estado son COLUMNAS (ver `columns.tsx`). Aquí solo queda
                   la puerta de acciones de la fila. */}
@@ -77,7 +84,7 @@ export function PerfumesTab({
                 onEliminar={() => ficha.eliminar(p.id)}
               />
             </>
-          )}
+          ) : undefined}
         />
       </Section>
 

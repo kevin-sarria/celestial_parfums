@@ -128,6 +128,10 @@ const TAB_PERMISO: Partial<Record<Tab, string[] | 'personal'>> = {
   ventas: ['ventas.ver'],
   creditos: ['creditos.ver'],
   solicitudes: 'personal',
+  // Solo para mirar: sin botones de crear, editar ni borrar (`useSoloVer`)
+  perfumes: ['catalogo.ver'],
+  productos: ['catalogo.ver'],
+  combos: ['catalogo.ver'],
 };
 
 export const tabPermitida = (t: Tab, esDueno: boolean, puede: (...p: string[]) => boolean) => {

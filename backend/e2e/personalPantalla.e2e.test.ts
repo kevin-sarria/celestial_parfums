@@ -3,7 +3,8 @@ import path from 'node:path';
 import bcrypt from 'bcryptjs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
-import { abrirComoCliente, abrirDashboard, campo, cerrarNavegador, elegirProducto, irA } from './navegador';
+import { URL_API } from './arranque';
+import { abrirComoCliente, abrirDashboard, cabeceraAdmin, campo, cerrarNavegador, elegirProducto, irA } from './navegador';
 
 /**
  * EL PANEL DEL PERSONAL, en pantalla (2026-10-04). Una vendedora con "ver y
@@ -19,12 +20,16 @@ let rolId = 0;
 
 beforeAll(async () => {
   await prisma.role.upsert({ where: { id: 2 }, update: {}, create: { id: 2, nombre: 'cliente' } });
-  const rol = await prisma.role.create({
-    data: { nombre: 'Vendedora de pantalla', personal: true, permisos: { create: [{ permiso: 'ventas.ver' }, { permiso: 'ventas.registrar' }] } },
+  // Por el panel, como lo hace el dueño: creado directo en la base, el servidor
+  // no se entera (guarda los roles en memoria) si otra prueba ya los cargó.
+  const rol = await fetch(`${URL_API}/api/roles`, {
+    method: 'POST', headers: await cabeceraAdmin(),
+    body: JSON.stringify({ nombre: 'Vendedora de pantalla', permisos: ['ventas.ver', 'ventas.registrar', 'catalogo.ver'] }),
   });
-  rolId = rol.id;
+  expect(rol.status).toBe(201);
+  rolId = (await rol.json()).data.id;
   await prisma.user.create({
-    data: { nombre: 'Sara', apellido: 'Vende', email: VENDEDORA.email, password: await bcrypt.hash(VENDEDORA.clave, 10), rol_id: rol.id, activo: true },
+    data: { nombre: 'Sara', apellido: 'Vende', email: VENDEDORA.email, password: await bcrypt.hash(VENDEDORA.clave, 10), rol_id: rolId, activo: true },
   });
 });
 
@@ -39,6 +44,10 @@ afterAll(async () => {
 describe('el panel del personal', () => {
   it('la vendedora ve solo lo suyo, no escribe el precio y su descuento espera al dueño', async () => {
     const { contexto, pagina } = await abrirComoCliente(VENDEDORA.email, VENDEDORA.clave);
+    // Desde la tienda encuentra la puerta a su panel (antes no había ninguna)
+    await irA(pagina, '/');
+    await pagina.getByRole('link', { name: 'Mi panel' }).waitFor();
+    await pagina.screenshot({ path: foto('tienda') });
     // Nada de lo que pide el panel le responde "sin permiso" (antes la sacaba de la sesión)
     const negadas: string[] = [];
     pagina.on('response', (r) => { if (r.status() === 403 || r.status() === 401) negadas.push(`${r.status()} ${r.url()}`); });
@@ -53,8 +62,18 @@ describe('el panel del personal', () => {
     for (const ajeno of ['Inicio', 'Créditos', 'Inventario', 'Usuarios', 'Historial de cambios']) expect(textoMenu).not.toContain(ajeno);
     await pagina.screenshot({ path: foto('menu') });
     expect(negadas).toEqual([]);
+    expect(textoMenu.toLowerCase()).toContain('catálogo'); // la sección, cerrada: Perfumes vive adentro
     await pagina.keyboard.press('Escape');
 
+    // Con "ver el catálogo" mira los perfumes, sin crear, importar ni editar
+    await irA(pagina, '/dashboard/perfumes');
+    await pagina.getByRole('heading', { name: /Perfumes/ }).first().waitFor();
+    expect(await pagina.getByRole('button', { name: '+ Nuevo perfume' }).count()).toBe(0);
+    expect(await pagina.getByRole('button', { name: /Importar/ }).count()).toBe(0);
+    await pagina.screenshot({ path: foto('catalogo') });
+    expect(negadas).toEqual([]);
+
+    await irA(pagina, '/dashboard/ventas');
     await pagina.getByRole('button', { name: /registrar venta/i }).click();
     await campo(pagina, 'Persona *').fill(CLIENTE);
     await elegirProducto(pagina, 'Ventas 1');

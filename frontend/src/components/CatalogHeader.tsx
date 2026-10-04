@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
-import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, Star, ShoppingBag, Heart, Newspaper, Info, Share2, Package, UserRound, type LucideIcon } from 'lucide-react';
+import { Menu, LogOut, Home, SprayCan, Gift, Mail, HandCoins, Sparkles, Star, ShoppingBag, Heart, Newspaper, Info, Share2, Package, UserRound, LayoutDashboard, type LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import {
@@ -48,7 +48,7 @@ const iniciales = (nombre?: string, apellido?: string) =>
 export default function CatalogHeader({ isHome = false }: Props) {
   const navigate = useNavigate();
   const irALogin = useIrALogin();
-  const { user, logout } = useAuthContext();
+  const { user, logout, esPersonal } = useAuthContext();
   const [drawerOpen, setDrawerOpen] = useState(false);
   // "Mi crédito" solo aparece si el cliente tiene un crédito activo con el negocio
   const { data: portalCredito } = usePortalCredito();
@@ -64,8 +64,11 @@ export default function CatalogHeader({ isHome = false }: Props) {
     ...(user ? [{ to: '/perfume-ideal', label: 'Tu perfume ideal', icon: Sparkles }] : []),
   ];
   // Grupo MI CUENTA: exclusivo de registrados (recompensas, compras y crédito activo).
+  // Quien trabaja en el negocio ve primero la puerta a su panel (dueño,
+  // 2026-10-04: la vendedora entraba y no encontraba cómo volver al panel).
   const grupoCuenta: NavItem[] = user
     ? [
+        ...(esPersonal ? [{ to: '/dashboard', label: 'Mi panel de trabajo', icon: LayoutDashboard }] : []),
         { to: '/mi-cuenta', label: 'Mi cuenta', icon: UserRound },
         { to: '/mis-favoritos', label: 'Mis favoritos', icon: Heart },
         { to: '/mis-recompensas', label: 'Mis recompensas', icon: Star },
@@ -109,6 +112,15 @@ export default function CatalogHeader({ isHome = false }: Props) {
         {/* Se ve en toda la tienda si hay sesión: sus iniciales, que llevan a
             Mi cuenta. Antes todo vivía dentro del ☰ y el cliente no sabía si
             había entrado (dueño, 2026-10-02). Sin sesión, la puerta para entrar. */}
+        {esPersonal && (
+          <Link
+            to="/dashboard"
+            className="flex h-9 items-center gap-1.5 rounded-full border border-primary/40 px-3 text-[13px] font-medium text-primary transition-colors hover:bg-brand-soft"
+          >
+            <LayoutDashboard className="size-4" />
+            Mi panel
+          </Link>
+        )}
         {user ? (
           <Link
             to="/mi-cuenta"

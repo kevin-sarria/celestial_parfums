@@ -18,6 +18,7 @@ import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
 import type { Lookup, ComboForm } from '../types';
 import { emptyComboForm } from '../types';
+import { useAuthContext } from '../../../application/context/useAuthContext';
 import { KitDelComboEditor } from './combos/KitDelComboEditor';
 import EditorHtml from '../../../components/EditorHtml';
 
@@ -51,6 +52,8 @@ export function CombosTab({
   const [uploading, setUploading] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // El personal con `catalogo.ver` solo mira (igual que en Perfumes)
+  const { isAdmin } = useAuthContext();
 
   const openCreate = () => { setForm(emptyComboForm()); setFormError(''); setImgMode('url'); setModal({ open: true, editId: null }); };
   const openEdit = (c: Combo) => {
@@ -113,13 +116,15 @@ export function CombosTab({
       <Section>
         <Toolbar>
           <SectionTitle count={combos.length}>Combos</SectionTitle>
-          <ToolbarActions>
-            <ExportButton entity="combos" />
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-              <Upload className="size-4" /> Importar
-            </Button>
-            <Button size="sm" onClick={openCreate}>+ Nuevo combo</Button>
-          </ToolbarActions>
+          {isAdmin && (
+            <ToolbarActions>
+              <ExportButton entity="combos" />
+              <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                <Upload className="size-4" /> Importar
+              </Button>
+              <Button size="sm" onClick={openCreate}>+ Nuevo combo</Button>
+            </ToolbarActions>
+          )}
         </Toolbar>
 
         <SmartTable
@@ -130,7 +135,7 @@ export function CombosTab({
           onServerFilter={onFilter}
           onServerClearAll={onClearAll}
           pagination={{ page, totalRows: total, pageSize, onPageChange, onPageSizeChange }}
-          renderActions={c => (
+          renderActions={isAdmin ? c => (
             <>
               <Button variant="ghost" size="icon" className="size-8 text-muted-foreground hover:text-foreground" onClick={() => openEdit(c)} title="Editar">
                 <Pencil className="size-4" />
@@ -139,7 +144,7 @@ export function CombosTab({
                 <Trash2 className="size-4" />
               </Button>
             </>
-          )}
+          ) : undefined}
         />
       </Section>
 

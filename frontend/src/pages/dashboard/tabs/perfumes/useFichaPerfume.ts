@@ -23,6 +23,12 @@ export interface UsarFichaArgs {
    * y todo lo creado desde Productos se iba a la pestaña de Perfumes.
    */
   valoresIniciales?: Partial<PerfumeForm>;
+  /**
+   * False = la pestaña solo se mira (personal con `catalogo.ver`): la ficha no
+   * se abre, así que no se piden los materiales ni la lista de precios, que son
+   * solo del dueño y responderían "sin permiso".
+   */
+  activa?: boolean;
 }
 
 /** Todo lo que la ficha necesita para vivir: estado, catálogos y acciones. */
@@ -59,7 +65,7 @@ export interface FichaPerfume {
  * la misma lógica en vez de copiarla: una regla vive en un solo sitio. La
  * pestaña se queda con la barra y la tabla; aquí vive el formulario.
  */
-export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, valoresIniciales }: UsarFichaArgs): FichaPerfume {
+export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, valoresIniciales, activa = true }: UsarFichaArgs): FichaPerfume {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   /**
    * Qué se está dando de alta. Null = todavía no lo ha dicho, y entonces el
@@ -75,6 +81,7 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
   const [envases, setEnvases] = useState<Insumo[]>([]);
   const [accesorios, setAccesorios] = useState<Insumo[]>([]);
   useEffect(() => {
+    if (!activa) return;
     (async () => {
       const [r, rf] = await Promise.all([
         http.get<{ data: Insumo[] }>(urls.costeo.insumos),
@@ -94,7 +101,7 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
         .flatMap((f) => (f.accesorios_default ?? []).map((a) => a.insumo_id)));
       setAccesorios(todos.filter((i: Insumo) => i.tipo === 'accesorio' || deRecetas.has(i.id)));
     })();
-  }, []);
+  }, [activa]);
   const [formError, setFormError] = useState('');
   const [imgMode, setImgMode] = useState<'url' | 'file'>('url');
   const [uploading, setUploading] = useState(false);
@@ -107,7 +114,7 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
       if (res.ok) setPrecios(res.cuerpo?.data ?? []);
     } catch { /* sin lista, el form pide precio propio */ }
   };
-  useEffect(() => { cargarPrecios(); }, []);
+  useEffect(() => { if (activa) cargarPrecios(); }, [activa]);
 
   /** Precio estándar de una presentación para la categoría elegida en el form. */
   const precioDeLista = (presentacionId: number) => {

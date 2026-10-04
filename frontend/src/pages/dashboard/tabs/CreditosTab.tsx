@@ -77,6 +77,7 @@ export function CreditosTab() {
       setTotal(cRes.cuerpo?.total ?? 0);
       setPage(p);
       setFiltros(filtrosActuales);
+      setSearchTerm(term); // con la búsqueda: "Limpiar todo" no debe revivir en la siguiente recarga
       setTotales(cRes.cuerpo?.totales ?? null);
       setErrorCarga('');
     } catch {
@@ -270,7 +271,7 @@ export function CreditosTab() {
             numerada
             tarjetaMovil
             emptyText={cargando ? 'Cargando…' : 'Sin créditos registrados'}
-            onServerSearch={t => { setSearchTerm(t); load(1, pageSize, t); }}
+            onServerSearch={t => load(1, pageSize, t)}
             onServerFilter={f => load(1, pageSize, searchTerm, f)}
             onServerClearAll={() => load(1, pageSize, '', {})}
             pagination={{

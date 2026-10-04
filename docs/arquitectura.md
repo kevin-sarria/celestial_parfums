@@ -791,5 +791,12 @@ trabaja con él (Usuarios → Rol). El código pregunta por el **permiso**, no p
 - **En la pantalla**: `useAuthContext().puede(...)` y `tabPermitida` (navegacion.ts) esconden lo que
   no se puede; quien decide es el servidor. Un 403 ya no cierra la sesión (`http.ts`): con personal
   es la respuesta normal ante algo que su rol no abre.
+- **La puerta al panel desde la tienda** (2026-10-03, dueño: *"no me aparece cómo acceder de nuevo
+  al dashboard"*): `CatalogHeader` muestra "Mi panel" junto a las iniciales y en el menú ☰ para
+  quien `esPersonal`. Antes solo el dueño llegaba solo (la tienda lo redirige al panel).
+- **`catalogo.ver` abre Perfumes, Productos y Combos SOLO PARA MIRAR** (2026-10-03, el dueño marcó
+  la casilla y no encontraba dónde verlo): sin barra de crear/importar/exportar ni acciones por
+  fila, y `useFichaPerfume({ activa: false })` no pide materiales ni lista de precios, que son
+  `requireAdmin`. Editar el catálogo sigue siendo solo del dueño.
 - **Pruebas**: `e2e/permisosPersonal.e2e.test.ts` (contra el servidor: lo que no se puede saltar)
   y `e2e/personalPantalla.e2e.test.ts` (en pantalla).

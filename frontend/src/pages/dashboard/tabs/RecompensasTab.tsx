@@ -78,6 +78,7 @@ export function RecompensasTab() {
     setTotal(res.cuerpo?.total ?? 0);
     setPage(p);
     setFiltros(filtrosActuales);
+    setSearch(term); // con la búsqueda: "Limpiar todo" no debe revivir en la siguiente recarga
   };
 
   useEffect(() => { loadConfig(); loadClientes(1); }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -189,7 +190,7 @@ export function RecompensasTab() {
           columns={columns}
           rows={clientes}
           rowKey={c => c.id}
-          onServerSearch={t => { setSearch(t); loadClientes(1, pageSize, t); }}
+          onServerSearch={t => loadClientes(1, pageSize, t)}
           onServerFilter={f => loadClientes(1, pageSize, search, f)}
           onServerClearAll={() => loadClientes(1, pageSize, '', {})}
           pagination={{
