@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireAdmin } from '../middleware/auth.middleware';
 import { h } from '../middleware/error.middleware';
 import { validate } from '../middleware/validate.middleware';
-import { aplicarPrecios, listarOriginales, ponerMeta } from '../precios/preciosOriginales.repository';
+import { aplicarPrecios, costosDeFicha, listarOriginales, ponerMeta } from '../precios/preciosOriginales.repository';
 import { bustCatalogoCache } from '../services/perfume.service';
 
 /** PRECIOS DE LOS ORIGINALES (2026-10-04). Costo y margen: solo el dueño. */
@@ -22,6 +22,19 @@ const preciosSchema = z.object({
 });
 
 preciosRouter.get('/', h(async (_req, res) => { res.json({ data: await listarOriginales() }); }));
+
+const costosSchema = z.object({
+  insumo_producto_id: z.number().int().positive(),
+  tallas: z.array(z.object({
+    presentacion_id: z.number().int().positive(),
+    envase_insumo_id: z.number().int().positive().nullable(),
+  })).max(50),
+});
+
+/** "Te cuesta" de la ficha de un original mientras se edita (POST: lleva cuerpo, no guarda nada). */
+preciosRouter.post('/costos', validate(costosSchema), h(async (req, res) => {
+  res.json({ data: await costosDeFicha(req.body.insumo_producto_id, req.body.tallas) });
+}));
 
 preciosRouter.patch('/:id/meta', validate(metaSchema), h(async (req, res) => {
   await ponerMeta(Number(req.params.id), req.body.meta);

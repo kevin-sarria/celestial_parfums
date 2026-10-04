@@ -3,7 +3,7 @@ import { prisma } from '../config/prisma';
 import { crearInsumo, limpiarBase } from '../test/baseDePrueba';
 import { findPerfumeBySlug } from '../repositories/perfume.repository';
 import { guardarEmpaqueDeLinea } from '../empaque/empaque.repository';
-import { aplicarPrecios, listarOriginales, ponerMeta } from './preciosOriginales.repository';
+import { aplicarPrecios, costosDeFicha, listarOriginales, ponerMeta } from './preciosOriginales.repository';
 
 /**
  * PRECIOS DE LOS ORIGINALES (dueño, 2026-10-04): el costo de cada talla es el
@@ -31,7 +31,7 @@ const sembrar = async () => {
     data: { nombre: 'Bolsa', precio: 0, tipo_producto: 'comprado', es_accesorio: true, insumo_producto_id: bolsaInsumo.id },
   });
   await guardarEmpaqueDeLinea('decant', [{ presentacion_id: t5.id, perfume_id: bolsa.id, cantidad: 1 }]);
-  return { original, t5, t100 };
+  return { original, t5, t100, botella };
 };
 
 describe('los precios de los originales', () => {
@@ -65,5 +65,18 @@ describe('los precios de los originales', () => {
     await ponerMeta(original.id, null);
     expect((await listarOriginales())[0].meta).toBeNull();
     await expect(ponerMeta(original.id, { tipo: 'porcentaje', valor: 120 })).rejects.toThrow(/1 a 90/);
+  });
+
+  it('la ficha del perfume da el MISMO costo que la lista (una sola cuenta)', async () => {
+    const { t5, t100, botella } = await sembrar();
+    const ficha = await costosDeFicha(botella.id, [
+      { presentacion_id: t5.id, envase_insumo_id: null },
+      { presentacion_id: t100.id, envase_insumo_id: null },
+    ]);
+    const [lista] = await listarOriginales();
+    for (const f of ficha) {
+      expect(f.costo).toEqual(lista.tallas.find((t) => t.presentacion_id === f.presentacion_id)?.costo);
+    }
+    expect(ficha.find((f) => f.presentacion_id === t5.id)?.costo?.total).toBe(15800);
   });
 });

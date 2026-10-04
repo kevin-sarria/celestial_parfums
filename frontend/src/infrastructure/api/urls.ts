@@ -350,6 +350,7 @@ export const urls = {
     lista: '/precios-originales',
     precios: '/precios-originales/precios',
     meta: (id: number) => `/precios-originales/${id}/meta`,
+    costos: '/precios-originales/costos',
   },
 
   /** Roles del personal y sus permisos (solo el dueño). */

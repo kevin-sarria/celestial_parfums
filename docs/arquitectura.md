@@ -821,6 +821,9 @@ trabaja con él (Usuarios → Rol). El código pregunta por el **permiso**, no p
 - Panel: pestaña `precios_originales` (Catálogo), `tabs/PreciosOriginalesTab.tsx` +
   `tabs/preciosOriginales/` (la cuenta del sugerido en `sugerencia.ts`, pura). La meta general vive
   en `localStorage`: es comodidad de ese navegador, no un dato del negocio.
-- OJO: "Te cuesta" de la ficha del perfume (`TallasDelPerfume.tsx`) todavía calcula su costo en la
-  pantalla, sin el frasco de la receta ni el empaque. Esta pestaña es la cifra completa; unificarlas
-  queda en pendientes.
+- "Te cuesta" de la ficha de un original (`TallasDelPerfume.tsx` → `useCostosDeFicha`) lo pide a
+  `POST /api/precios-originales/costos`: UNA sola cuenta en toda la app (antes la ficha calculaba la
+  suya y le faltaban el frasco de la receta y el empaque).
+- La pantalla es una `SmartTable` de una fila por talla (rediseño del mismo día: la primera versión,
+  una tarjeta por original, crecía sin tope). El botón en bloque aplica a lo que muestra el filtro,
+  y **nunca baja un precio** (`aplicableEnBloque`): bajar se hace de a uno con "Usar".

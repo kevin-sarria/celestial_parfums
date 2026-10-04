@@ -39,35 +39,48 @@ beforeAll(async () => {
 afterAll(cerrarNavegador);
 
 describe('los precios de los originales', () => {
-  it('con meta propia sugiere sobre ella, y "ponerle precio a todos" lo guarda', async () => {
+  it('una fila por talla: con meta propia sugiere sobre ella, y aplicar a "Sin precio" lo guarda', async () => {
     const { contexto, pagina } = await abrirDashboard();
-    pagina.on('dialog', (d) => d.accept());
     await irA(pagina, '/dashboard/precios_originales');
-    const card = pagina.getByRole('article', { name: NOMBRE });
-    await card.waitFor();
-    expect(await card.innerText()).toMatch(/Te cuesta \$\s?15\.500/);
+    await pagina.getByPlaceholder(/Buscar en todos/).fill(NOMBRE);
+    const decant = pagina.getByRole('row', { name: /Decant 5 ml/ }).filter({ hasText: NOMBRE });
+    await decant.waitFor();
+    expect(await decant.innerText()).toMatch(/15\.500/);
+    expect(await decant.innerText()).toMatch(/Sin precio/);
 
-    await card.getByRole('button', { name: 'Meta propia para este' }).click();
-    await card.getByLabel('Con este quiero ganar (en qué)').click();
+    // Meta propia de este perfume: ganar $10.000 → 15.500 + 10.000 = 25.500 → $26.000
+    await pagina.getByRole('button', { name: `Meta propia de ${NOMBRE}` }).first().click();
+    const modal = pagina.getByRole('dialog');
+    await modal.getByLabel('Con este quiero ganar (en qué)').click();
     await pagina.getByRole('option', { name: 'pesos por unidad' }).click();
-    await card.getByLabel('Con este quiero ganar (valor)').fill('10000');
-    await card.getByRole('button', { name: 'Guardar' }).click();
-    await card.getByText(/Meta propia: \$\s?10\.000/).waitFor();
-    await expect.poll(async () => card.innerText()).toMatch(/Sugerido \$\s?26\.000/);
-    await pagina.screenshot({ path: foto('pantalla'), fullPage: false });
+    await modal.getByLabel('Con este quiero ganar (valor)').fill('10000');
+    await modal.getByRole('button', { name: 'Guardar meta' }).click();
+    await expect.poll(async () => decant.innerText()).toMatch(/26\.000/);
+    expect(await decant.innerText()).toMatch(/meta propia/);
+    await pagina.screenshot({ path: foto('pantalla') });
 
-    await pagina.getByRole('button', { name: /Ponerle precio a todos los que no tienen/ }).click();
+    await pagina.getByRole('button', { name: /^Sin precio/ }).click();
+    await pagina.getByRole('button', { name: /^Poner el sugerido/ }).click();
+    await pagina.getByRole('dialog').getByRole('button', { name: /^Guardar \d+ precio/ }).click();
     await pagina.getByText(/precio\(s\) guardado\(s\)/).waitFor();
-
     const talla = await prisma.perfumePresentacion.findUniqueOrThrow({
       where: { perfume_id_presentacion_id: { perfume_id: perfumeId, presentacion_id: t5Id } },
     });
     expect(Number(talla.precio)).toBe(26000);
 
     await pagina.setViewportSize({ width: 390, height: 844 });
+    await pagina.getByRole('button', { name: 'Todas' }).click();
     expect(await pagina.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-    await card.scrollIntoViewIfNeeded();
     await pagina.screenshot({ path: foto('celular') });
+    await pagina.setViewportSize({ width: 1366, height: 900 });
+
+    // La ficha del perfume dice el MISMO costo (una sola cuenta, en el servidor)
+    await irA(pagina, '/dashboard/perfumes');
+    await pagina.getByPlaceholder(/Buscar en todos/).fill(NOMBRE);
+    await pagina.getByRole('button', { name: `Acciones de ${NOMBRE}` }).first().click();
+    await pagina.getByRole('menuitem', { name: 'Editar' }).click();
+    await expect.poll(async () => (await pagina.getByRole('dialog').innerText()).replace(/\s+/g, ' '), { timeout: 15_000 })
+      .toMatch(/15\.500/);
     await contexto.close();
   });
 });

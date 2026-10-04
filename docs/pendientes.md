@@ -39,7 +39,8 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Dueño: revisar Catálogo → Empaque y el kit de sus 4 combos (arrancaron con 1 perfumero) | pendiente |
 | Rediseño, proyecto 2: **Precios de originales** (costo real por talla, meta general en % del precio o en pesos, meta propia por original, redondeo a $1.000, aplicar en bloque). **Lleva migración** `20261007120000_meta_ganancia` | hecho |
 | Dueño: entrar a Catálogo → Precios de originales y ponerle precio a los decants que están sin precio | pendiente |
-| Unificar "Te cuesta" de la ficha del perfume con el costo de Precios de originales (le falta el frasco de la receta y el empaque) | pendiente |
+| "Te cuesta" de la ficha de un original = el de Precios de originales: lo calcula el servidor (`POST /api/precios-originales/costos`) | hecho |
+| Precios de originales rehecha (el dueño no quedó contento): una fila por talla, paginada, filtros rápidos, precio editable en la celda, meta propia en ventana; el botón en bloque nunca baja precios | hecho |
 | Rediseño, proyecto 3: panel por línea · proyecto 4: alertas por velocidad | pendiente, en ese orden |
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard

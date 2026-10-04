@@ -5,10 +5,11 @@ import { Field } from '../../ui';
 import { formatPrice } from '../../helpers';
 import type { Lookup, PerfumeForm } from '../../types';
 import { FrascosPorTalla, type Envase } from './FrascosPorTalla';
-import { esBotellaCompleta, heredaPrecioGeneral, mlQueSalenDeLaBotella } from '../../../../domain/entities/decants';
+import { esBotellaCompleta, heredaPrecioGeneral } from '../../../../domain/entities/decants';
+import { useCostosDeFicha } from './useCostosDeFicha';
 
 /** La botella de un original: su costo por ml y cuánto trae. */
-export interface BotellaOriginal { precio: number; ml_botella?: number | null }
+export interface BotellaOriginal { id: number; precio: number; ml_botella?: number | null }
 
 /**
  * De la más pequeña a la más grande, y lo que no es tamaño ("200/250ML",
@@ -53,16 +54,14 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, preci
   const esBotella = (pr: Lookup) => !!botella && pr.ml != null && esBotellaCompleta(pr.ml, botella.ml_botella);
 
   /**
-   * Lo que cuesta UNA venta de esa talla: los ml que salen de la botella (con la
-   * pérdida del trasvase si es decant) más su frasco de decant, si tiene uno
-   * propio. Null = no hay con qué calcularlo (sin botella o sin costo aún).
+   * Lo que cuesta UNA venta de esa talla, desglosado: lo calcula el servidor
+   * con la misma cuenta de Precios de originales (líquido, merma, frasco y
+   * empaque). Null = no hay con qué calcularlo (sin botella o sin costo aún).
    */
-  const costoDe = (pr: Lookup) => {
-    if (!botella || !(botella.precio > 0) || pr.ml == null) return null;
-    const liquido = mlQueSalenDeLaBotella(pr.ml, botella.ml_botella) * botella.precio;
-    const envase = esBotella(pr) ? 0 : envases.find(v => v.id === form.envases_talla[pr.id])?.precio ?? 0;
-    return Math.round(liquido + envase);
-  };
+  const costos = useCostosDeFicha(botella?.id ?? null, activas.map(pr => ({
+    presentacion_id: pr.id, envase_insumo_id: Number(form.envases_talla[pr.id]) || null,
+  })));
+  const costoDe = (pr: Lookup) => costos.get(pr.id)?.total ?? null;
 
   /**
    * El precio con que sale HOY, en la misma cascada que usa el servidor

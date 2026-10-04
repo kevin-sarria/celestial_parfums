@@ -62,3 +62,38 @@ hace falta: el 90 % comparte precio de lista.
   - aplicar precios escribe el precio propio, y el decant deja de estar escondido.
 - **e2e:** la pantalla sugiere con la meta general, una meta propia manda sobre ella, y "Ponerle
   precio a todos los que no tienen" lo guarda.
+
+## Rediseño de la pantalla (2026-10-04, mismo día)
+
+El dueño: *"no me gustó… hazla de nuevo pero ahora bien para que me facilite el trabajo y que no
+se extienda infinitamente hacia abajo, imagínate cuando tenga más de 100 perfumes originales"*.
+La primera versión era una tarjeta por original con todas sus tallas: defecto 13 de
+`dashboard-interno-ux` (la lista que se ve bien solo porque hay pocos datos). Con 100 originales ×
+4 tallas son 400 renglones seguidos.
+
+Rehecha con el método de `dashboard-interno-ux`:
+
+```
+Precios de originales                                     (73 tallas)
+
+ 41 tallas sin precio  ·  no salen en la tienda     Quiero ganar [30] [% del precio ▾]
+ 6 por debajo de tu meta  ·  26 al día
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│ 🔎 Buscar…   [Todas | Sin precio 41 | Bajo tu meta 6]   [Poner el sugerido (41)]│
+│ PERFUME · TALLA          TE CUESTA   PRECIO HOY ✎   GANAS        SUGERIDO        │
+│ Khamrah Waha Original    $15.500     Sin precio     —            $22.000 [Usar] ⊙│
+│ Decant 5 ml                                                                    │
+│ …                                                                              │
+│ Filas: 25 ▾                                                  ‹ 1 2 3 ›         │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
+
+- **Una fila por talla, paginada** (25 por página, buscador, orden y filtro por estado): la
+  `SmartTable` de siempre, que además pone tope de alto y tarjetas en el celular.
+- **Franja de métricas fuera de la tabla**: la principal es lo que cuesta ventas hoy (tallas sin
+  precio); las demás, pequeñas. La meta general vive ahí.
+- **Filtros rápidos** (Todas / Sin precio / Bajo tu meta) y **una acción principal** que aplica el
+  sugerido a lo que muestra el filtro, con confirmación que dice cuántos cambian.
+- **Por fila**: "Usar" pone el sugerido de esa talla de un toque; el precio se edita en la propia
+  celda (Enter guarda, Esc cancela); el icono ⊙ abre la meta propia de ese perfume.

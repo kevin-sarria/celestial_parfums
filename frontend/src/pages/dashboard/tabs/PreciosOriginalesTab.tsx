@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import Modal from '../../../components/Modal';
 import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { NoSePudoCargar } from '../../../components/NoSePudoCargar';
+import { SmartTable } from '../../../components/table/SmartTable';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
-import { Section, SectionTitle, Toolbar } from '../ui';
+import { formatPrice } from '../helpers';
+import { EncabezadoPagina, Section } from '../ui';
+import { columnasPrecios } from './preciosOriginales/columnas';
+import { aplicableEnBloque, cambiaConSugerido, filasDePrecios, type FilaPrecio, type Original } from './preciosOriginales/filas';
 import { MetaGanancia } from './preciosOriginales/MetaGanancia';
-import { claveTalla, OriginalCard, type Original } from './preciosOriginales/OriginalCard';
-import { metaValida, precioSugerido, type Meta } from './preciosOriginales/sugerencia';
+import { MetaPropiaModal } from './preciosOriginales/MetaPropiaModal';
+import { metaValida, type Meta } from './preciosOriginales/sugerencia';
 
 const GUARDADA = 'precios-originales:meta';
 /** La meta general se recuerda en ESTE navegador: es una comodidad, no un dato del negocio. */
@@ -21,20 +27,28 @@ const leerMeta = (): Meta => {
   return { tipo: 'porcentaje', valor: 30 };
 };
 
+type Vista = 'todas' | 'sin_precio' | 'bajo_meta';
+const VISTAS: { id: Vista; texto: string }[] = [
+  { id: 'todas', texto: 'Todas' }, { id: 'sin_precio', texto: 'Sin precio' }, { id: 'bajo_meta', texto: 'Bajo tu meta' },
+];
+const enVista = (v: Vista) => (f: FilaPrecio) =>
+  v === 'todas' || (v === 'sin_precio' ? f.estado === 'Sin precio' : f.estado === 'Bajo tu meta');
+
 /**
- * PRECIOS DE LOS ORIGINALES (dueño, 2026-10-04): lo que cuesta cada talla de
- * verdad y el precio que deja la ganancia que él elija, para ponérselo a una o
- * a todas de una vez. Diseño en
- * `docs/superpowers/specs/2026-10-04-precios-originales-design.md`.
+ * PRECIOS DE LOS ORIGINALES (dueño, 2026-10-04). Una fila por talla, paginada:
+ * la primera versión pintaba una tarjeta por original y con 100 originales
+ * eran 400 renglones seguidos (*"que no se extienda infinitamente hacia
+ * abajo"*). Diseño en `docs/superpowers/specs/2026-10-04-precios-originales-design.md`.
  */
 export function PreciosOriginalesTab() {
   const [originales, setOriginales] = useState<Original[]>([]);
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState('');
   const [meta, setMeta] = useState<Meta>(leerMeta);
-  const [soloSinPrecio, setSoloSinPrecio] = useState(false);
-  const [marcadas, setMarcadas] = useState<Set<string>>(new Set());
+  const [vista, setVista] = useState<Vista>('todas');
+  const [confirmando, setConfirmando] = useState<FilaPrecio[] | null>(null);
   const [guardando, setGuardando] = useState(false);
+  const [metaDe, setMetaDe] = useState<FilaPrecio | null>(null);
 
   const cargar = async () => {
     setCargando(true);
@@ -48,36 +62,40 @@ export function PreciosOriginalesTab() {
   useEffect(() => { cargar(); }, []);
   useEffect(() => { try { localStorage.setItem(GUARDADA, JSON.stringify(meta)); } catch { /* sin almacenamiento */ } }, [meta]);
 
-  /** Cada talla con su sugerido, con la meta que le toca (la propia manda). */
-  const sugeridos = useMemo(() => originales.flatMap(o => o.tallas.map(t => ({
-    clave: claveTalla(o.id, t.presentacion_id), perfume_id: o.id, presentacion_id: t.presentacion_id,
-    precio: t.precio, sugerido: precioSugerido(t.costo?.total ?? null, o.meta ?? meta),
-  }))), [originales, meta]);
-  const sinPrecio = sugeridos.filter(s => s.precio <= 0 && s.sugerido != null);
-  const aGuardar = sugeridos.filter(s => marcadas.has(s.clave) && s.sugerido != null && s.sugerido !== s.precio);
+  const metaUsable = metaValida(meta) ? meta : leerMeta();
+  const filas = useMemo(() => filasDePrecios(originales, metaUsable), [originales, metaUsable.tipo, metaUsable.valor]); // eslint-disable-line react-hooks/exhaustive-deps
+  const cuenta = (v: Vista) => filas.filter(enVista(v)).length;
+  const visibles = filas.filter(enVista(vista));
+  // En bloque nunca se baja un precio: eso se hace de a uno con "Usar"
+  const aplicables = visibles.filter(aplicableEnBloque);
 
-  const visibles = soloSinPrecio ? originales.filter(o => o.tallas.some(t => t.precio <= 0)) : originales;
-
-  const marcar = (clave: string) => setMarcadas(m => { const n = new Set(m); if (!n.delete(clave)) n.add(clave); return n; });
-
-  const aplicar = async (lista: typeof sugeridos) => {
-    if (lista.length === 0) return;
-    if (!window.confirm(`Se van a guardar ${lista.length} precio(s). Las tallas que estaban sin precio aparecen en la tienda. ¿Seguimos?`)) return;
+  /** Guarda precios y deja la pantalla con lo que devolvió el servidor (no se vuelve a pedir). */
+  const guardar = async (lista: { perfume_id: number; presentacion_id: number; precio: number }[]) => {
     setGuardando(true);
     try {
-      const res = await http.patch<{ data: Original[]; message?: string }>(urls.preciosOriginales.precios, {
-        precios: lista.map(s => ({ perfume_id: s.perfume_id, presentacion_id: s.presentacion_id, precio: s.sugerido })),
-      });
-      if (!res.ok || !res.cuerpo) { toast.error(res.error, { id: 'precios-originales' }); return; }
-      setOriginales(res.cuerpo.data); setMarcadas(new Set());
-      toast.success(res.cuerpo.message ?? 'Precios guardados', { id: 'precios-originales' });
-    } catch { toast.error('No se pudo conectar con el servidor', { id: 'precios-originales' }); }
+      const res = await http.patch<{ data: Original[]; message?: string }>(urls.preciosOriginales.precios, { precios: lista });
+      if (!res.ok || !res.cuerpo) { toast.error(res.error, { id: 'precios-originales' }); return false; }
+      setOriginales(res.cuerpo.data);
+      toast.success(res.cuerpo.message ?? 'Precio guardado', { id: 'precios-originales' });
+      return true;
+    } catch { toast.error('No se pudo conectar con el servidor', { id: 'precios-originales' }); return false; }
     finally { setGuardando(false); }
   };
+  const guardarPrecio = (f: FilaPrecio, precio: number) =>
+    guardar([{ perfume_id: f.perfume_id, presentacion_id: f.presentacion_id, precio }]);
+  // Depende solo de `originales` por el cierre de `guardar`; recrear columnas no remonta celdas
+  const columnas = useMemo(() => columnasPrecios(guardarPrecio), [originales]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const ponerMeta = (id: number) => async (m: Meta | null) => {
+  const aplicarConfirmados = async () => {
+    if (!confirmando) return;
+    const ok = await guardar(confirmando.map(f => ({ perfume_id: f.perfume_id, presentacion_id: f.presentacion_id, precio: f.sugerido! })));
+    if (ok) setConfirmando(null);
+  };
+
+  const ponerMetaPropia = async (m: Meta | null) => {
+    if (!metaDe) return false;
     try {
-      const res = await http.patch<{ data: Original[]; message?: string }>(urls.preciosOriginales.meta(id), { meta: m });
+      const res = await http.patch<{ data: Original[]; message?: string }>(urls.preciosOriginales.meta(metaDe.perfume_id), { meta: m });
       if (!res.ok || !res.cuerpo) { toast.error(res.error, { id: 'meta-propia' }); return false; }
       setOriginales(res.cuerpo.data);
       toast.success(res.cuerpo.message ?? 'Listo', { id: 'meta-propia' });
@@ -85,48 +103,104 @@ export function PreciosOriginalesTab() {
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'meta-propia' }); return false; }
   };
 
+  const sinPrecio = cuenta('sin_precio');
+  const bajoMeta = cuenta('bajo_meta');
+
   return (
-    <Section>
-      <Toolbar>
-        <SectionTitle count={originales.length}>Precios de originales</SectionTitle>
-      </Toolbar>
-      <div className="-mt-1 mb-4 space-y-3 rounded-xl border border-primary/25 bg-brand-soft/60 px-3.5 py-3">
-        <p className="flex items-start gap-2 text-[13px] leading-relaxed text-primary">
-          <Calculator className="mt-0.5 size-4 shrink-0" />
-          <span>
-            Lo que te cuesta cada talla (el líquido, lo que se pierde al trasvasar, el frasco y el empaque) y el precio
-            que deja la ganancia que elijas, redondeado a $1.000. Un original con meta propia usa la suya.
-          </span>
-        </p>
-        <MetaGanancia etiqueta="Quiero ganar" meta={meta} onChange={setMeta} />
-        {!metaValida(meta) && <p className="text-[12.5px] text-destructive">En porcentaje va de 1 a 90.</p>}
+    <div className="space-y-4">
+      <EncabezadoPagina titulo="Precios de originales" count={filas.length} />
+
+      {/* Franja: lo que cuesta ventas HOY es la cifra grande; la meta vive aquí, no en la tabla */}
+      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="flex items-baseline gap-2">
+            <span className={cn('font-display text-2xl font-medium tabular-nums', sinPrecio > 0 ? 'text-amber-700' : 'text-foreground')}>{sinPrecio}</span>
+            <span className="text-[13px] text-foreground">{sinPrecio === 1 ? 'talla sin precio' : 'tallas sin precio'}</span>
+            <span className="text-[12.5px] text-muted-foreground">· no salen en la tienda</span>
+          </p>
+          <p className="text-[12.5px] text-muted-foreground">
+            {bajoMeta} por debajo de tu meta · {cuenta('todas') - sinPrecio - bajoMeta} al día o sin costo
+          </p>
+        </div>
+        <div>
+          <MetaGanancia etiqueta="Quiero ganar" meta={meta} onChange={setMeta} />
+          {!metaValida(meta) && <p className="mt-1 text-[12px] text-destructive">En porcentaje va de 1 a 90.</p>}
+        </div>
       </div>
 
-      <div className="mb-3 flex flex-wrap items-center gap-2">
-        <label className="mr-auto flex cursor-pointer items-center gap-2 text-[13px] text-foreground">
-          <input type="checkbox" className="size-4 accent-primary" checked={soloSinPrecio} onChange={e => setSoloSinPrecio(e.target.checked)} />
-          Solo los que tienen tallas sin precio
-        </label>
-        <Button size="sm" variant="outline" disabled={guardando || aGuardar.length === 0} onClick={() => aplicar(aGuardar)}>
-          Poner el sugerido a los marcados ({aGuardar.length})
-        </Button>
-        <Button size="sm" disabled={guardando || sinPrecio.length === 0} onClick={() => aplicar(sinPrecio)}>
-          Ponerle precio a todos los que no tienen ({sinPrecio.length})
-        </Button>
-      </div>
+      <Section>
+        {fallo && <NoSePudoCargar que="los originales" onReintentar={cargar} />}
+        {cargando && originales.length === 0 ? <PerfumeSpinner /> : (
+          <SmartTable
+            columns={columnas}
+            rows={visibles}
+            rowKey={f => f.clave}
+            paginadoLocal
+            tarjetaMovil
+            emptyText={vista === 'todas' ? 'Todavía no hay originales. Entran al registrar la compra de una botella.' : 'Nada en esta vista.'}
+            acciones={(
+              <>
+                <div role="group" aria-label="Qué tallas ver" className="inline-flex rounded-lg border border-border p-0.5">
+                  {VISTAS.map(v => (
+                    <button key={v.id} type="button" aria-pressed={vista === v.id}
+                      className={cn('rounded-md px-2.5 py-1 text-[12.5px] font-medium',
+                        vista === v.id ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground')}
+                      onClick={() => setVista(v.id)}>
+                      {v.texto}{v.id !== 'todas' && ` ${cuenta(v.id)}`}
+                    </button>
+                  ))}
+                </div>
+                <Button size="sm" disabled={guardando || aplicables.length === 0} onClick={() => setConfirmando(aplicables)}>
+                  Poner el sugerido ({aplicables.length})
+                </Button>
+              </>
+            )}
+            renderActions={f => (
+              <Button variant="ghost" size="icon" className={cn('size-8', f.metaPropia ? 'text-primary' : 'text-muted-foreground')}
+                title={`Meta propia de ${f.perfume}`} aria-label={`Meta propia de ${f.perfume}`} onClick={() => setMetaDe(f)}>
+                <Target className="size-4" />
+              </Button>
+            )}
+            accionesMovil={f => (
+              <>
+                {cambiaConSugerido(f) && (
+                  <Button size="sm" className="h-11" disabled={guardando} onClick={() => guardarPrecio(f, f.sugerido!)}>
+                    Usar {formatPrice(f.sugerido!)}
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="h-11" onClick={() => setMetaDe(f)}>
+                  <Target className="size-4" /> Meta propia
+                </Button>
+              </>
+            )}
+          />
+        )}
+      </Section>
 
-      {fallo && <NoSePudoCargar que="los originales" onReintentar={cargar} />}
-      {cargando && originales.length === 0 && <PerfumeSpinner />}
-      {!cargando && !fallo && visibles.length === 0 && (
-        <p className="rounded-xl border border-dashed border-border px-4 py-8 text-center text-[13px] text-muted-foreground">
-          {soloSinPrecio ? 'Todos los originales tienen precio en todas sus tallas.' : 'Todavía no hay originales. Entran al registrar la compra de una botella.'}
-        </p>
-      )}
-      <div className="grid grid-cols-1 gap-3">
-        {visibles.map(o => (
-          <OriginalCard key={o.id} original={o} metaGeneral={meta} marcadas={marcadas} onMarcar={marcar} onMeta={ponerMeta(o.id)} />
-        ))}
-      </div>
-    </Section>
+      <Modal
+        open={confirmando != null}
+        onClose={() => setConfirmando(null)}
+        title="Poner el precio sugerido"
+        onSubmit={e => { e.preventDefault(); aplicarConfirmados(); }}
+        submitLabel={guardando ? 'Guardando…' : `Guardar ${confirmando?.length ?? 0} precio(s)`}
+        loading={guardando}
+        maxWidth={480}
+      >
+        {confirmando && (
+          <p className="text-[13px] text-foreground">
+            Se guardan <strong>{confirmando.length}</strong> precio(s) de la vista «{VISTAS.find(v => v.id === vista)?.texto}».
+            {confirmando.some(f => f.precio <= 0) && ` ${confirmando.filter(f => f.precio <= 0).length} estaban sin precio y aparecen en la tienda.`}
+          </p>
+        )}
+      </Modal>
+
+      <MetaPropiaModal
+        perfume={metaDe?.perfume ?? null}
+        metaPropia={metaDe?.metaPropia ?? null}
+        metaGeneral={metaUsable}
+        onCerrar={() => setMetaDe(null)}
+        onGuardar={ponerMetaPropia}
+      />
+    </div>
   );
 }
