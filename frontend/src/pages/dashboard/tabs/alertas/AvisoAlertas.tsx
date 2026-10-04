@@ -53,6 +53,7 @@ const Lista = ({ alerta }: { alerta: AlertaDisparada }) => (
     {alerta.materiales.map((m) => (
       <li key={m.id} className="rounded-full border border-amber-500/40 bg-card px-2.5 py-0.5 text-[12px]">
         {m.nombre} · <strong>{m.stock.toLocaleString('es-CO')} {m.unidad === 'ml' ? 'ml' : 'u'}</strong>
+        {m.dias_alcanza != null && <span className="text-muted-foreground"> · {m.dias_alcanza} d</span>}
       </li>
     ))}
   </ul>

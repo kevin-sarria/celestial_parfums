@@ -176,3 +176,26 @@ describe('frascos de una fragancia (los de los 1.1)', () => {
     expect(conNumero.find((a) => a.ambito === 'frascos_fragancia')?.materiales.map((m) => m.nombre)).toEqual(['Envase Yara 1.1']);
   });
 });
+
+describe('aviso por velocidad (opción C, 2026-10-04)', () => {
+  beforeEach(limpiarBase);
+
+  it('avisa lo que alcanza para menos de 2 semanas aunque esté lejos de su mínimo', async () => {
+    const { aplicarMovimiento } = await import('./inventario.repository');
+    const { hoyEnColombia } = await import('../utils/fechas');
+    // 100 bolsas; se vendieron 90 en los últimos días → 1 al día, quedan 10 → alcanza para 10 días
+    const rapida = await crearInsumo('Bolsa que vuela', { tipo: 'accesorio', stock: 100 });
+    const lenta = await crearInsumo('Tarjeta que no sale', { tipo: 'accesorio', stock: 10 });
+    await prisma.$transaction((tx) => aplicarMovimiento(tx, { insumo_id: rapida.id, tipo: 'venta', cantidad: -90, fecha: hoyEnColombia() }));
+    // El mínimo de la familia (2) está lejos de las 10 que quedan: solo la velocidad puede avisar
+    await guardarAlerta({ ambito: 'implementos', minimo: 2, forma: 'franja', activo: true });
+
+    const alerta = (await alertasDisparadas()).find((a) => a.ambito === 'implementos');
+    expect(alerta?.materiales.map((m) => [m.nombre, m.dias_alcanza])).toEqual([['Bolsa que vuela', 10]]);
+
+    const pedido = await calcularReposicion();
+    expect(pedido.implementos.map((f) => f.nombre)).toEqual(['Bolsa que vuela']);
+    expect(pedido.implementos[0].dias_alcanza).toBe(10);
+    expect(lenta.id).toBeGreaterThan(0);
+  });
+});

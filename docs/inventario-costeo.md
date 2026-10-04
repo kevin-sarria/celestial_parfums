@@ -1132,3 +1132,18 @@ Diseño completo y decisiones del dueño: `docs/superpowers/specs/2026-10-04-emp
   los de los demás lo cargaban por receta y se respetan.
 - **Sin talla no hay empaque**: un producto comprado sin talla (un splash suelto) no encuentra
   regla; si lleva bolsa, se agrega a mano en la venta.
+
+## Aviso por velocidad: lo que alcanza para menos de 2 semanas (2026-10-04, opción C)
+
+El dueño eligió que, además del mínimo fijo, se avise lo que **alcanza para menos de 2 semanas** de
+lo que se gasta; manda **el que llegue primero**. Una sola regla para la alerta del panel y el
+pedido sugerido (`repositories/consumo.ts`: `consumoDiarioPorInsumo`, `diasQueAlcanza`,
+`llegoAlAviso`, `DIAS_AVISO = 14`, historial de 90 días, sin contar los `ajuste`).
+
+- **Solo cuenta si en 2 semanas se gastaría al menos UNA unidad.** Medido en el respaldo del
+  30-sep: sin esta condición avisaban 7 frascos de 1.1 en cero porque se armó uno en 3 meses. Con
+  ella avisan 2 cosas reales: la botella del Nautica Voyage original (0 días) y la esencia del 212
+  VIP Black (4 días).
+- La alerta del panel sigue saliendo solo para las familias con su alerta encendida; el pedido
+  sugerido mira todo. Las dos muestran "alcanza para N días".
+

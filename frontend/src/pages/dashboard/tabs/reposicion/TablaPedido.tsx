@@ -27,9 +27,15 @@ export interface Fila {
   gama: string | null;
   stock: number; minimo: number; minimo_heredado: boolean;
   consumo_diario: number; sugerido: number;
+  /** Para cuántos días alcanza lo que hay; null = no se gasta (2026-10-04). */
+  dias_alcanza: number | null;
   base: 'consumo' | 'minimo';
   costo_promedio: number; costo_estimado: number;
 }
+
+/** "alcanza para 9 días": lo que hace que algo sin llegar a su mínimo esté en la lista. */
+export const textoAlcanza = (dias: number | null) =>
+  (dias == null ? null : dias === 0 ? 'ya no alcanza' : `alcanza para ${dias} ${dias === 1 ? 'día' : 'días'}`);
 
 export const cantidad = (n: number, unidad: string) =>
   `${n.toLocaleString('es-CO', { maximumFractionDigits: 2 })} ${unidad === 'ml' ? 'ml' : 'u'}`;
@@ -75,6 +81,7 @@ function TarjetaPedido({ f, ajustes, onEnPrueba }: { f: Fila; ajustes: Props['aj
         {f.gama && <>{f.gama} · </>}
         Te queda <span className="font-medium tabular-nums text-destructive">{cantidad(f.stock, f.unidad)}</span>
         {' '}· mínimo {cantidad(f.minimo, f.unidad)}{f.minimo_heredado && ' (de su gama)'}
+        {textoAlcanza(f.dias_alcanza) && <> · {textoAlcanza(f.dias_alcanza)}</>}
       </p>
       <div className="mt-2 flex items-end justify-between gap-3">
         <label className="block">
@@ -162,6 +169,9 @@ export function TablaPedido({ titulo, filas, nota, ajustes, copiado, onCopiar, o
                   </td>
                   <td className="py-1.5 pr-3 text-right tabular-nums text-destructive">
                     {cantidad(f.stock, f.unidad)}
+                    {textoAlcanza(f.dias_alcanza) && (
+                      <span className="block text-[10.5px] text-muted-foreground">{textoAlcanza(f.dias_alcanza)}</span>
+                    )}
                   </td>
                   <td className="py-1.5 pr-3 text-right tabular-nums text-muted-foreground">
                     {cantidad(f.minimo, f.unidad)}

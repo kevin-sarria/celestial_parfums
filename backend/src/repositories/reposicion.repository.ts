@@ -1,6 +1,6 @@
-import type { MovimientoTipo } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { minimoDe, minimosPorAmbito, SELECT_FAMILIA } from './alertas.repository';
+import { consumoDiarioPorInsumo, DIAS_HISTORIAL, diasQueAlcanza, llegoAlAviso } from './consumo';
 
 /**
  * Pedido sugerido: qué material hay que reponer y cuánto pedir.
@@ -23,27 +23,8 @@ import { minimoDe, minimosPorAmbito, SELECT_FAMILIA } from './alertas.repository
 const num = (v: unknown) => Number(v);
 const r3 = (n: number) => Math.round(n * 1000) / 1000;
 
-/** Ventana de historial con la que se estima el consumo diario. */
-const DIAS_HISTORIAL = 90;
 /** Para cuántos días de venta se pide, cuando hay consumo con el que calcular. */
 const DIAS_COBERTURA = 60;
-
-/**
- * Movimientos que cuentan como CONSUMO real.
- *
- * `ajuste` queda FUERA a propósito. Es el conteo físico, y ahí caben dos cosas
- * que no son demanda: el stock inicial que se siembra al arrancar (hoy son 222
- * movimientos que meterían un número enorme) y el desperdicio del día a día,
- * que ya se absorbe al contar. Proyectar eso como si fueran ventas haría pedir
- * de más justo el primer mes.
- */
-/**
- * Los movimientos que CUENTAN como consumo. Escribirlo como `MovimientoTipo[]`
- * y no como texto suelto es lo que hace que un tipo mal escrito —o uno que
- * mañana se renombre en el esquema— no compile, en vez de colarse y estimar el
- * consumo de menos sin que nadie lo note.
- */
-const TIPOS_CONSUMO: MovimientoTipo[] = ['venta', 'produccion', 'muestra', 'merma', 'garantia'];
 
 export interface FilaReposicion {
   id: number;
@@ -57,6 +38,8 @@ export interface FilaReposicion {
   minimo_heredado: boolean;
   /** Cuánto se ha consumido al día, en promedio, en los últimos 90 días. */
   consumo_diario: number;
+  /** Para cuántos días alcanza lo que hay; null = no se gasta. */
+  dias_alcanza: number | null;
   /** Cuánto pedir. */
   sugerido: number;
   /** De dónde sale el sugerido, para poder explicarlo en pantalla. */
@@ -85,28 +68,16 @@ export interface Reposicion {
 }
 
 export const calcularReposicion = async (): Promise<Reposicion> => {
-  const desde = new Date();
-  desde.setDate(desde.getDate() - DIAS_HISTORIAL);
-
-  const [insumos, salidas, porAmbito] = await Promise.all([
+  const [insumos, consumoPorInsumo, porAmbito] = await Promise.all([
     prisma.insumoCosto.findMany({
       where: { activo: true },
       // Los usos como frasco deciden si un envase es genérico o de una fragancia
       include: { gama: true, envase_de: SELECT_FAMILIA.envase_de, envase_de_talla: SELECT_FAMILIA.envase_de_talla },
       orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
     }),
-    prisma.movimientoInventario.groupBy({
-      by: ['insumo_id'],
-      where: { tipo: { in: TIPOS_CONSUMO }, fecha: { gte: desde } },
-      _sum: { cantidad: true },
-    }),
+    consumoDiarioPorInsumo(),
     minimosPorAmbito(),
   ]);
-
-  // Las salidas van en negativo: se le da la vuelta para leerlo como consumo
-  const consumoPorInsumo = new Map(
-    salidas.map((s) => [s.insumo_id, Math.max(0, -num(s._sum.cantidad))]),
-  );
 
   const filas: FilaReposicion[] = [];
   const enPrueba: { id: number; nombre: string }[] = [];
@@ -123,11 +94,13 @@ export const calcularReposicion = async (): Promise<Reposicion> => {
     // Su mínimo → el de su gama → el de su familia. La cascada vive en un solo
     // sitio porque este número lo miran dos pantallas y tienen que coincidir.
     const { minimo, propio } = minimoDe(i, porAmbito);
-    const consumoDiario = r3((consumoPorInsumo.get(i.id) ?? 0) / DIAS_HISTORIAL);
+    const consumoDiario = consumoPorInsumo.get(i.id) ?? 0;
 
-    // Sin mínimo configurado no se alerta: no todo material lo necesita, y
-    // avisar de todo es lo mismo que no avisar de nada.
-    if (minimo <= 0 || stock > minimo) continue;
+    // Entra si bajó de su mínimo O si lo que hay alcanza para menos de 2
+    // semanas de lo que se gasta (opción C del dueño, 2026-10-04): manda el
+    // que llegue primero. Sin mínimo ni consumo no se avisa: avisar de todo es
+    // lo mismo que no avisar de nada.
+    if (!llegoAlAviso({ stock, minimo, consumoDiario })) continue;
 
     /**
      * Cuánto pedir. Con consumo medido se pide para cubrir los próximos
@@ -151,6 +124,7 @@ export const calcularReposicion = async (): Promise<Reposicion> => {
       minimo,
       minimo_heredado: !propio,
       consumo_diario: consumoDiario,
+      dias_alcanza: diasQueAlcanza(stock, consumoDiario),
       sugerido,
       base: porConsumo > porMinimo ? 'consumo' : 'minimo',
       costo_promedio: precio,

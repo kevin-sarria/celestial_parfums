@@ -136,6 +136,8 @@ export function AlertasTab() {
           Este número hace dos cosas: te avisa y le dice al <strong>pedido sugerido</strong> cuánto
           reponer de lo que no tenga mínimo propio ni de su gama. Los mínimos por{' '}
           <strong>gama de esencia</strong> siguen en <em>Pedido sugerido</em> y mandan sobre estos.
+          Además avisa lo que <strong>alcanza para menos de 2 semanas</strong> de lo que gastas, aunque no haya
+          llegado a su mínimo: manda lo que llegue primero.
         </span>
       </p>
 

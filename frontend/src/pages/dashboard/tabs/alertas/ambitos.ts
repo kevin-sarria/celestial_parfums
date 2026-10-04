@@ -26,7 +26,8 @@ export interface AlertaDisparada {
   minimo: number;
   titulo: string;
   mensaje: string | null;
-  materiales: { id: number; nombre: string; stock: number; unidad: string }[];
+  /** `dias_alcanza`: para cuántos días alcanza (null = no se gasta). */
+  materiales: { id: number; nombre: string; stock: number; unidad: string; dias_alcanza: number | null }[];
 }
 
 export const FILAS_ALERTA: {

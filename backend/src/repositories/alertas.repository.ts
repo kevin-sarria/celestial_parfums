@@ -1,5 +1,6 @@
 import type { AlertaAmbito, AlertaForma, InsumoCosto } from '@prisma/client';
 import { prisma } from '../config/prisma';
+import { consumoDiarioPorInsumo, diasQueAlcanza, llegoAlAviso } from './consumo';
 
 /**
  * ALERTAS DE INVENTARIO PARA EL ADMINISTRADOR.
@@ -135,7 +136,8 @@ export interface AlertaDisparada {
   minimo: number;
   titulo: string;
   mensaje: string | null;
-  materiales: { id: number; nombre: string; stock: number; unidad: string }[];
+  /** `dias_alcanza`: para cuántos días alcanza lo que hay (null = no se gasta). */
+  materiales: { id: number; nombre: string; stock: number; unidad: string; dias_alcanza: number | null }[];
 }
 
 const TITULO: Record<Ambito, string> = {
@@ -157,7 +159,7 @@ const TITULO: Record<Ambito, string> = {
  * ignorar es la forma más rápida de que deje de mirar las alertas.
  */
 export const alertasDisparadas = async (): Promise<AlertaDisparada[]> => {
-  const [alertas, insumos] = await Promise.all([
+  const [alertas, insumos, consumo] = await Promise.all([
     prisma.alertaInventario.findMany({
       where: { activo: true }, orderBy: [{ orden: 'asc' }, { id: 'asc' }],
     }),
@@ -173,6 +175,7 @@ export const alertasDisparadas = async (): Promise<AlertaDisparada[]> => {
       },
       orderBy: { nombre: 'asc' },
     }),
+    consumoDiarioPorInsumo(),
   ]);
 
   const porAmbito = new Map(alertas.map((a) => [a.ambito, Number(a.minimo)]));
@@ -181,13 +184,16 @@ export const alertasDisparadas = async (): Promise<AlertaDisparada[]> => {
     const minimoFamilia = Number(a.minimo);
     const materiales = insumos
       .filter((i) => ambitoDeInsumo(i) === a.ambito)
-      // Se compara contra el mínimo EFECTIVO de cada material, no contra el de
-      // la familia a secas: si una esencia tiene el suyo en 100, esa es su raya.
-      .filter((i) => {
-        const { minimo } = minimoDe(i, porAmbito);
-        return minimo > 0 && Number(i.stock) <= minimo;
-      })
-      .map((i) => ({ id: i.id, nombre: i.nombre, stock: Number(i.stock), unidad: i.unidad }));
+      // Se compara contra el mínimo EFECTIVO de cada material (si una esencia
+      // tiene el suyo en 100, esa es su raya) y contra lo que se gasta: también
+      // avisa si alcanza para menos de 2 semanas (opción C, 2026-10-04).
+      .filter((i) => llegoAlAviso({
+        stock: Number(i.stock), minimo: minimoDe(i, porAmbito).minimo, consumoDiario: consumo.get(i.id) ?? 0,
+      }))
+      .map((i) => ({
+        id: i.id, nombre: i.nombre, stock: Number(i.stock), unidad: i.unidad,
+        dias_alcanza: diasQueAlcanza(Number(i.stock), consumo.get(i.id) ?? 0),
+      }));
 
     if (!materiales.length) return [];
     return [{
