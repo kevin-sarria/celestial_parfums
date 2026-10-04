@@ -177,6 +177,11 @@ Reglas:
   `perfume.publicacion.ts` es publicar algo sin NINGÚN precio. Antes (2026-09-29, opción A) se
   exigían todas las tallas con precio, y un original no salía mientras faltara un decant.
   Despublicar nunca se bloquea.
+- **Un decant de un original NO hereda el precio general** (2026-10-03). El precio general de un
+  original es el de la botella; caía a toda talla sin precio propio ni de lista, y en vivo salían
+  19 originales con el 3/5/10 ml a precio de botella ($270.000). Ahora solo la botella completa lo
+  hereda; un decant sin precio queda en $0 y se esconde (regla de arriba). Vive en
+  `heredaPrecioGeneral` (`utils/decants.ts`, copiado en `domain/entities/decants.ts` para la ficha).
 
 ## Las líneas de la tienda: Contratipo, 1.1 y Original (2026-09-29)
 

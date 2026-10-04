@@ -1,6 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { accesoriosPropios } from './accesoriosDeFicha';
-import { esBotellaCompleta, mlQueSalenDeLaBotella } from '../utils/decants';
+import { esBotellaCompleta, heredaPrecioGeneral, mlQueSalenDeLaBotella } from '../utils/decants';
 import { descripcionHtml } from '../utils/textoEnriquecido';
 
 /**
@@ -34,7 +34,8 @@ const esNuevo = (created: Date) => Date.now() - created.getTime() < NUEVO_DIAS *
  */
 const precioDeTalla = (p: PerfumeRow, r: PerfumeRow['presentaciones'][number]): number => {
   const deLista = p.categoria?.precios.find((pr) => pr.presentacion_id === r.presentacion_id)?.precio;
-  return Number(r.precio ?? deLista ?? p.precio);
+  const general = heredaPrecioGeneral(p.tipo_producto, r.presentacion.ml, p.insumo_producto?.ml_botella) ? p.precio : 0;
+  return Number(r.precio ?? deLista ?? general);
 };
 
 /**

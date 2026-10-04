@@ -6,7 +6,7 @@ import { formatPrice } from '../../helpers';
 import type { Lookup, PerfumeForm } from '../../types';
 import type { OpcionAccesorio } from './AccesoriosDeTalla';
 import { FrascosPorTalla, type Envase } from './FrascosPorTalla';
-import { esBotellaCompleta, mlQueSalenDeLaBotella } from '../../../../domain/entities/decants';
+import { esBotellaCompleta, heredaPrecioGeneral, mlQueSalenDeLaBotella } from '../../../../domain/entities/decants';
 
 /** La botella de un original: su costo por ml y cuánto trae. */
 export interface BotellaOriginal { precio: number; ml_botella?: number | null }
@@ -72,9 +72,11 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, acces
    */
   const heredado = (pr: Lookup) => {
     const deLista = precioDeLista(pr.id);
-    return deLista != null
-      ? { valor: deLista, de: 'lista' }
-      : { valor: Number(form.precio) || 0, de: 'general' };
+    if (deLista != null) return { valor: deLista, de: 'lista' };
+    // Un decant de un original no hereda el precio de la botella (`heredaPrecioGeneral`)
+    return heredaPrecioGeneral(form.tipo_producto, pr.ml, botella?.ml_botella)
+      ? { valor: Number(form.precio) || 0, de: 'general' }
+      : { valor: 0, de: 'general' };
   };
   const precioDe = (pr: Lookup) => Number(form.precios_propios[pr.id]) || heredado(pr).valor;
 

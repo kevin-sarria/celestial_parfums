@@ -39,3 +39,14 @@ export const esBotellaCompleta = (ml: number, mlBotella: number | null | undefin
  */
 export const mlQueSalenDeLaBotella = (ml: number, mlBotella?: number | null) =>
   esBotellaCompleta(ml, mlBotella) ? ml : ml + MERMA_TRASVASE_ML;
+
+/**
+ * ¿Esta talla puede caer al PRECIO GENERAL del perfume si no tiene uno propio
+ * ni de la lista? En un original (`fraccionado`) el precio general es el de la
+ * botella: solo la botella completa lo hereda. Un decant sin precio queda en 0
+ * y la tienda lo esconde hasta que el dueño le ponga el suyo (opción B,
+ * 2026-10-02). Antes lo heredaba: en vivo salían decants de 3 ml a $270.000
+ * (2026-10-03). Sin saber cuánto trae la botella, ninguna talla lo hereda.
+ */
+export const heredaPrecioGeneral = (tipoProducto: string | null | undefined, ml: number | null | undefined, mlBotella: number | null | undefined) =>
+  tipoProducto !== 'fraccionado' || (ml != null && esBotellaCompleta(ml, mlBotella));
