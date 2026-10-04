@@ -16,6 +16,8 @@ import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import type { Venta, Usuario } from '../types';
+import { useAuthContext } from '../../../application/context/useAuthContext';
+import { PedirBorrado } from '../pedido/PedirBorrado';
 
 interface Totales {
   total_unidades: number;
@@ -130,23 +132,30 @@ export function VentasTab() {
     finally { setEnlazando(false); }
   };
 
+  // El personal ve solo lo que su rol permite (el servidor lo exige igual).
+  // Sin permiso de borrar, el botón PIDE el borrado al dueño.
+  const { isAdmin, puede } = useAuthContext();
+  const [pedirBorrar, setPedirBorrar] = useState<Venta | null>(null);
+
   const acciones = (v: Venta, conTexto: boolean) => (
     <>
-      <Button
-        variant={conTexto ? 'outline' : 'ghost'}
-        size={conTexto ? 'sm' : 'icon'}
-        className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-foreground'}
-        onClick={() => setModal({ open: true, venta: v })}
-        title="Editar"
-      >
-        <Pencil className="size-4" />{conTexto && ' Editar'}
-      </Button>
+      {puede('ventas.editar') && (
+        <Button
+          variant={conTexto ? 'outline' : 'ghost'}
+          size={conTexto ? 'sm' : 'icon'}
+          className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-foreground'}
+          onClick={() => setModal({ open: true, venta: v })}
+          title="Editar"
+        >
+          <Pencil className="size-4" />{conTexto && ' Editar'}
+        </Button>
+      )}
       <Button
         variant={conTexto ? 'outline' : 'ghost'}
         size={conTexto ? 'sm' : 'icon'}
         className={conTexto ? 'text-destructive' : 'size-8 text-muted-foreground hover:text-destructive'}
-        onClick={() => handleDelete(v)}
-        title="Eliminar"
+        onClick={() => (puede('ventas.borrar') ? handleDelete(v) : setPedirBorrar(v))}
+        title={puede('ventas.borrar') ? 'Eliminar' : 'Pedir al dueño que la borre'}
       >
         <Trash2 className="size-4" />{conTexto && ' Borrar'}
       </Button>
@@ -211,25 +220,38 @@ export function VentasTab() {
             accionesMovil={v => acciones(v, true)}
             acciones={
               <>
-                <ExportButton entity="ventas" />
-                <Button
-                  variant="outline" size="sm" disabled={enlazando}
-                  title="Intenta enlazar por nombre las ventas importadas que aún no tienen producto del catálogo"
-                  onClick={handleEnlazar}
-                >
-                  <Link2 className="size-4" /> {enlazando ? 'Enlazando…' : 'Enlazar perfumes'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                  <Upload className="size-4" /> Importar
-                </Button>
-                <Button size="sm" onClick={() => setModal({ open: true, venta: null })}>
-                  + Registrar venta
-                </Button>
+                {/* Exportar, enlazar e importar son del dueño */}
+                {isAdmin && (
+                  <>
+                    <ExportButton entity="ventas" />
+                    <Button
+                      variant="outline" size="sm" disabled={enlazando}
+                      title="Intenta enlazar por nombre las ventas importadas que aún no tienen producto del catálogo"
+                      onClick={handleEnlazar}
+                    >
+                      <Link2 className="size-4" /> {enlazando ? 'Enlazando…' : 'Enlazar perfumes'}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                      <Upload className="size-4" /> Importar
+                    </Button>
+                  </>
+                )}
+                {puede('ventas.registrar') && (
+                  <Button size="sm" onClick={() => setModal({ open: true, venta: null })}>
+                    + Registrar venta
+                  </Button>
+                )}
               </>
             }
           />
         )}
       </Section>
+
+      <PedirBorrado
+        que={pedirBorrar ? `la venta #${pedirBorrar.id} de ${pedirBorrar.persona}` : null}
+        url={pedirBorrar ? urls.solicitudes.borrarVenta(pedirBorrar.id) : ''}
+        onCerrar={() => setPedirBorrar(null)}
+      />
 
       <ImportModal
         open={importOpen}

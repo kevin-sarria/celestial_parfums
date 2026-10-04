@@ -11,7 +11,7 @@ import { http, type Respuesta } from '../../infrastructure/api/http';
 import { urls, type Clasificacion } from '../../infrastructure/api/urls';
 import type { Tab, Lookup } from './types';
 import { MenuLateral } from './MenuLateral';
-import { TAB_META, TAB_POR_DEFECTO, esClasificacion, esTabValido } from './navegacion';
+import { TAB_META, TAB_POR_DEFECTO, esClasificacion, esTabValido, primeraPermitida, tabPermitida } from './navegacion';
 import { SelectorClasificaciones } from './SelectorClasificaciones';
 import CentroNotificaciones from './CentroNotificaciones';
 import BuscadorGeneral from './BuscadorGeneral';
@@ -29,6 +29,8 @@ import {
   PagosTab,
   UsuariosTab,
   HistorialTab,
+  RolesTab,
+  SolicitudesTab,
   PublicidadTab,
   RecompensasTab,
   ResenasTab,
@@ -59,7 +61,7 @@ import { BrandMark } from '../../components/BrandMark';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
-  const { user, isAdmin, logout } = useAuthContext();
+  const { user, isAdmin, esPersonal, puede, logout } = useAuthContext();
 
   // La pestaña vive en la URL (/dashboard/ventas): al recargar o usar el botón
   // "atrás" del navegador se conserva dónde estabas.
@@ -94,13 +96,16 @@ export default function DashboardPage() {
   const [categorias, setCategorias] = useState<Lookup[]>([]);
   const [presentaciones, setPresentaciones] = useState<Lookup[]>([]);
 
-  useEffect(() => { if (!user || !isAdmin) navigate('/'); }, [user, isAdmin, navigate]);
+  // Entra el dueño y su personal (2026-10-04); un cliente, no
+  useEffect(() => { if (!user || !esPersonal) navigate('/'); }, [user, esPersonal, navigate]);
 
-  // /dashboard (o una pestaña inexistente en la URL) → pestaña por defecto.
-  // `replace` para no ensuciar el historial del navegador.
+  // /dashboard, una pestaña inexistente o una que su rol no abre → la primera
+  // que sí. `replace` para no ensuciar el historial del navegador.
   useEffect(() => {
-    if (!esTabValido(tabParam)) navigate(`/dashboard/${TAB_POR_DEFECTO}`, { replace: true });
-  }, [tabParam, navigate]);
+    if (!esTabValido(tabParam) || !tabPermitida(tabParam, isAdmin, puede)) {
+      navigate(`/dashboard/${primeraPermitida(isAdmin, puede)}`, { replace: true });
+    }
+  }, [tabParam, navigate, isAdmin, puede]);
 
   const loadLookups = async () => {
     const [aRes, oRes, cRes, pRes] = await Promise.all([
@@ -175,6 +180,8 @@ export default function DashboardPage() {
    * lo mismo, y la que se olvidara de actualizar quedaba mintiendo.
    */
   useEffect(() => {
+    // El catálogo y las clasificaciones son pestañas del dueño: el personal no las pide
+    if (!isAdmin) { setLoading(false); return; }
     Promise.all([loadLookups(), loadPerfumes(1), loadProductos(1), loadCombos(1)])
       .finally(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -253,7 +260,7 @@ export default function DashboardPage() {
             <BrandMark className="mr-2 size-6 shrink-0" />
             <span className="truncate">Celestial Parfums</span>
             <span className="ml-2 hidden text-[11px] font-sans font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:inline">
-              Admin
+              {isAdmin ? 'Admin' : 'Panel'}
             </span>
           </span>
 
@@ -268,7 +275,7 @@ export default function DashboardPage() {
           {/* Lo único que queda a la derecha en pantalla pequeña: lo que está
               pendiente. El respaldo se movió al menú lateral porque los dos
               juntos truncaban el nombre de la tienda. */}
-          <BuscadorGeneral />
+          {isAdmin && <BuscadorGeneral />}
           <CentroNotificaciones />
           {/* En celular estas acciones viven dentro del drawer */}
           <div className="hidden items-center gap-1.5 sm:flex">
@@ -384,6 +391,8 @@ export default function DashboardPage() {
             {tab === 'pagos' && <PagosTab />}
             {tab === 'usuarios' && <UsuariosTab />}
             {tab === 'historial' && <HistorialTab />}
+            {tab === 'roles' && <RolesTab />}
+            {tab === 'solicitudes' && <SolicitudesTab />}
             {tab === 'publicidad' && <PublicidadTab categorias={categorias} />}
             {tab === 'recompensas' && <RecompensasTab />}
             {tab === 'resenas' && <ResenasTab />}

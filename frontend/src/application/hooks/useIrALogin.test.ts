@@ -10,6 +10,10 @@ describe('a dónde se va al iniciar sesión', () => {
     expect(destinoTrasLogin({ desde: '/perfume/khamrah' }, 1)).toBe('/dashboard');
   });
 
+  it('el personal también va al panel', () => {
+    expect(destinoTrasLogin({ desde: '/perfume/khamrah' }, 7, true)).toBe('/dashboard');
+  });
+
   it('sin origen, o con uno que no es de la tienda, a la portada', () => {
     expect(destinoTrasLogin(null, 2)).toBe('/');
     expect(destinoTrasLogin({ desde: 'https://otro-sitio.com' }, 2)).toBe('/');

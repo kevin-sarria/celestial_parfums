@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { KeyRound, Pencil, Trash2, UserPlus } from 'lucide-react';
+import { KeyRound, Pencil, ShieldCheck, Trash2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError, BloqueCampos } from '../ui';
 import { useAuthContext } from '../../../application/context/useAuthContext';
 import type { Usuario, UsuarioForm } from '../types';
+import { AsignarRol, type RolPersonal } from './usuarios/AsignarRol';
 
 const emptyForm = (): UsuarioForm => ({
   nombre: '', apellido: '', email: '', activo: true, password: '',
@@ -33,10 +34,22 @@ export function UsuariosTab() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Roles del personal (2026-10-04): para nombrarlos en la tabla y asignarlos
+  const [roles, setRoles] = useState<RolPersonal[]>([]);
+  const [conRol, setConRol] = useState<Usuario | null>(null);
+
   const load = async () => {
-    const res = await http.get<{ data: Usuario[] }>(urls.usuarios.lista);
+    const [res, r] = await Promise.all([
+      http.get<{ data: Usuario[] }>(urls.usuarios.lista),
+      http.get<{ data: RolPersonal[] }>(urls.roles.lista),
+    ]);
     setUsuarios(res.cuerpo?.data ?? []);
+    setRoles(r.cuerpo?.data ?? []);
   };
+  /** "ADMIN", el nombre de su rol del personal, "Ficha" o "Cuenta web". */
+  const tipoDe = (u: Usuario) => (u.rol_id === 1 ? 'ADMIN'
+    : roles.find(r => r.id === u.rol_id)?.nombre ?? (u.sin_cuenta ? 'Ficha' : 'Cuenta web'));
+  const esDelPersonal = (u: Usuario) => u.rol_id !== 1 && roles.some(r => r.id === u.rol_id);
 
   useEffect(() => { load(); }, []);
 
@@ -108,20 +121,20 @@ export function UsuariosTab() {
         </span>
       ),
       className: 'whitespace-nowrap font-medium text-foreground', movil: 'titulo' },
-    { key: 'tipo', header: 'Tipo', type: 'enum', enumOptions: ['ADMIN', 'Cuenta web', 'Ficha'],
-      getValue: u => (u.rol_id === 1 ? 'ADMIN' : u.sin_cuenta ? 'Ficha' : 'Cuenta web'),
+    { key: 'tipo', header: 'Tipo', type: 'enum', enumOptions: ['ADMIN', ...roles.map(r => r.nombre), 'Cuenta web', 'Ficha'],
+      getValue: tipoDe,
       render: u => (
         <Badge
           variant="outline"
           className={
-            u.rol_id === 1
+            u.rol_id === 1 || esDelPersonal(u)
               ? 'border-primary/40 bg-brand-soft text-primary'
               : u.sin_cuenta
                 ? 'text-muted-foreground'
                 : 'border-emerald-300 bg-emerald-50 text-emerald-600'
           }
         >
-          {u.rol_id === 1 ? 'ADMIN' : u.sin_cuenta ? 'Ficha' : 'Cuenta web'}
+          {tipoDe(u)}
         </Badge>
       ), noTruncate: true, movil: 'estado' },
     { key: 'activo', header: 'Estado', type: 'enum', enumOptions: ['activo', 'pendiente'],
@@ -161,6 +174,18 @@ export function UsuariosTab() {
   /** Mismas acciones en dos tamaños: icono en la fila, con texto en la tarjeta. */
   const accionesFila = (u: Usuario, conTexto: boolean) => (
     <>
+      {/* Rol: solo a quien tiene cuenta para entrar, y nunca al dueño */}
+      {u.rol_id !== 1 && !u.sin_cuenta && (
+        <Button
+          variant={conTexto ? 'outline' : 'ghost'}
+          size={conTexto ? 'sm' : 'icon'}
+          className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-foreground'}
+          onClick={() => setConRol(u)}
+          title="Cambiar el rol"
+        >
+          <ShieldCheck className="size-4" />{conTexto && ' Rol'}
+        </Button>
+      )}
       <Button
         variant={conTexto ? 'outline' : 'ghost'}
         size={conTexto ? 'sm' : 'icon'}
@@ -209,6 +234,13 @@ export function UsuariosTab() {
           accionesMovil={u => accionesFila(u, true)}
         />
       </Section>
+
+      <AsignarRol
+        persona={conRol}
+        roles={roles}
+        onCerrar={() => setConRol(null)}
+        onCambiado={(id, rolId) => setUsuarios(prev => prev.map(u => (u.id === id ? { ...u, rol_id: rolId } : u)))}
+      />
 
       <Modal
         open={modal.open}

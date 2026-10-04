@@ -18,6 +18,8 @@ import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import type { Credito, PerfilCredito, Usuario } from '../types';
+import { useAuthContext } from '../../../application/context/useAuthContext';
+import { PedirBorrado } from '../pedido/PedirBorrado';
 
 interface TotalesCartera {
   total_en_deuda: number;
@@ -163,6 +165,11 @@ export function CreditosTab() {
     } catch { toast.error('No se pudo conectar con el servidor', { id: 'creditos' }); }
   };
 
+  // El personal ve solo lo que su rol permite (el servidor lo exige igual).
+  // Sin permiso de borrar, el botón PIDE el borrado al dueño.
+  const { isAdmin, puede } = useAuthContext();
+  const [pedirBorrar, setPedirBorrar] = useState<Credito | null>(null);
+
   const acciones = (c: Credito, conTexto: boolean) => (
     <>
       <Button
@@ -174,15 +181,17 @@ export function CreditosTab() {
       >
         <Gauge className="size-4" />{conTexto && ' Perfil'}
       </Button>
-      <Button
-        variant={conTexto ? 'outline' : 'ghost'}
-        size={conTexto ? 'sm' : 'icon'}
-        className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-primary'}
-        title="Registrar abono"
-        onClick={() => setAbonando(c)}
-      >
-        <CircleDollarSign className="size-4" />{conTexto && ' Abonar'}
-      </Button>
+      {puede('creditos.abonar') && (
+        <Button
+          variant={conTexto ? 'outline' : 'ghost'}
+          size={conTexto ? 'sm' : 'icon'}
+          className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-primary'}
+          title="Registrar abono"
+          onClick={() => setAbonando(c)}
+        >
+          <CircleDollarSign className="size-4" />{conTexto && ' Abonar'}
+        </Button>
+      )}
       <Button
         variant={conTexto ? 'outline' : 'ghost'}
         size={conTexto ? 'sm' : 'icon'}
@@ -192,24 +201,28 @@ export function CreditosTab() {
       >
         <History className="size-4" />{conTexto && ' Pagos'}
       </Button>
-      <Button
-        variant={conTexto ? 'outline' : 'ghost'}
-        size={conTexto ? 'sm' : 'icon'}
-        className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-foreground'}
-        title="Editar crédito"
-        onClick={() => setModal({ open: true, credito: c })}
-      >
-        <Pencil className="size-4" />{conTexto && ' Editar'}
-      </Button>
-      <Button
-        variant={conTexto ? 'outline' : 'ghost'}
-        size={conTexto ? 'sm' : 'icon'}
-        className={conTexto ? 'text-destructive' : 'size-8 text-muted-foreground hover:text-destructive'}
-        onClick={() => handleDelete(c)}
-        title="Eliminar"
-      >
-        <Trash2 className="size-4" />{conTexto && ' Borrar'}
-      </Button>
+      {puede('creditos.registrar') && (
+        <Button
+          variant={conTexto ? 'outline' : 'ghost'}
+          size={conTexto ? 'sm' : 'icon'}
+          className={conTexto ? undefined : 'size-8 text-muted-foreground hover:text-foreground'}
+          title="Editar crédito"
+          onClick={() => setModal({ open: true, credito: c })}
+        >
+          <Pencil className="size-4" />{conTexto && ' Editar'}
+        </Button>
+      )}
+      {puede('creditos.borrar', 'creditos.registrar') && (
+        <Button
+          variant={conTexto ? 'outline' : 'ghost'}
+          size={conTexto ? 'sm' : 'icon'}
+          className={conTexto ? 'text-destructive' : 'size-8 text-muted-foreground hover:text-destructive'}
+          onClick={() => (puede('creditos.borrar') ? handleDelete(c) : setPedirBorrar(c))}
+          title={puede('creditos.borrar') ? 'Eliminar' : 'Pedir al dueño que lo borre'}
+        >
+          <Trash2 className="size-4" />{conTexto && ' Borrar'}
+        </Button>
+      )}
     </>
   );
 
@@ -269,18 +282,31 @@ export function CreditosTab() {
             accionesMovil={c => acciones(c, true)}
             acciones={
               <>
-                <ExportButton entity="creditos" />
-                <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-                  <Upload className="size-4" /> Importar
-                </Button>
-                <Button size="sm" onClick={() => setModal({ open: true, credito: null })}>
-                  + Nuevo crédito
-                </Button>
+                {/* Exportar e importar son del dueño */}
+                {isAdmin && (
+                  <>
+                    <ExportButton entity="creditos" />
+                    <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+                      <Upload className="size-4" /> Importar
+                    </Button>
+                  </>
+                )}
+                {puede('creditos.registrar') && (
+                  <Button size="sm" onClick={() => setModal({ open: true, credito: null })}>
+                    + Nuevo crédito
+                  </Button>
+                )}
               </>
             }
           />
         )}
       </Section>
+
+      <PedirBorrado
+        que={pedirBorrar ? `el crédito #${pedirBorrar.id} de ${pedirBorrar.cliente.nombre}` : null}
+        url={pedirBorrar ? urls.solicitudes.borrarCredito(pedirBorrar.id) : ''}
+        onCerrar={() => setPedirBorrar(null)}
+      />
 
       <ImportModal
         open={importOpen}

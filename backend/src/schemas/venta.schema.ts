@@ -47,6 +47,8 @@ export const createVentaSchema = z.object({
   pagada: z.boolean().optional(),
   // Código único de descuento del pedido de WhatsApp (se canjea al pagar)
   codigo_descuento: z.string().max(20).nullish(),
+  /** Por qué el personal pide un descuento (ver `controlPrecio.ts`). No se guarda en la venta. */
+  motivo_descuento: z.string().max(300).nullish(),
 })
   .superRefine((v, ctx) => {
     // Tiene que venir por una de las dos vías: líneas (nuevo) o ids (viejo)

@@ -27,6 +27,8 @@ import { BloqueCampos, Field, FieldRow, FormError } from '../ui';
 import type { CodigoValidado, ClienteSeleccion, Credito, Usuario } from '../types';
 import { fechaLimitePorDefecto } from '../../../utils/fechas';
 import { CampoFecha } from '@/components/CampoFecha';
+import { PrecioPersonal } from '../pedido/PrecioPersonal';
+import { useAuthContext } from '../../../application/context/useAuthContext';
 
 interface CreditoFormProps {
   open: boolean;
@@ -89,6 +91,7 @@ export function CreditoForm({
   useEffect(() => {
     if (!open) return;
     setError(''); setCodigoCheck(null);
+    setPidiendo(false); setPedido(''); setMotivo('');
     if (!credito) {
       setForm(vacio()); setCuponPrefill(null);
       return;
@@ -137,6 +140,13 @@ export function CreditoForm({
       : null);
   }, [open, credito, porId]);
 
+  // Sin permiso de descuentos la deuda la pone la app (ver `PrecioPersonal`)
+  const { puede } = useAuthContext();
+  const descuentaLibre = puede('descuentos.aplicar');
+  const [pidiendo, setPidiendo] = useState(false);
+  const [pedido, setPedido] = useState('');
+  const [motivo, setMotivo] = useState('');
+
   // ── Números ───────────────────────────────────────────────────────────────
   const subtotal = subtotalDeLineas(form.lineas, porId);
   const unidades = form.lineas.reduce((s, l) => s + l.cantidad, 0);
@@ -157,6 +167,9 @@ export function CreditoForm({
   const cuponPct = cuponActivo?.descuento_pct ?? 0;
   const descuentoCupon = descuentoDeCupon(productosSubtotal, cuponPct, cuponActivo?.max_descuento ?? 0);
   const deudaCalculada = Math.max(0, productosSubtotal - descuentoCupon);
+  const conCupon = descuentoCupon > 0 ? deudaCalculada : null;
+  /** Lo que queda debiendo, si quien lo registra no tiene permiso de descuentos. */
+  const deudaPersonal = pidiendo && Number(pedido) > 0 ? Number(pedido) : conCupon ?? productosSubtotal;
 
   // La deuda sigue al cálculo mientras no se teclee a mano
   useEffect(() => {
@@ -216,7 +229,8 @@ export function CreditoForm({
         })),
         presentacion: presentacionResumen(form.lineas) || null,
         // Valor FINAL: las líneas, el combo y el cupón ya están aplicados aquí
-        deuda_inicial: Number(form.deuda_inicial),
+        deuda_inicial: descuentaLibre ? Number(form.deuda_inicial) : deudaPersonal,
+        ...(descuentaLibre ? {} : { motivo_descuento: motivo.trim() || null }),
         fecha_limite: form.fecha_limite || null,
         codigo_descuento: form.codigo_descuento.trim().toUpperCase() || null,
       };
@@ -353,7 +367,16 @@ export function CreditoForm({
           />
         )}
 
-        <Field label="Deuda del crédito (COP) *">
+        {!descuentaLibre && form.lineas.length > 0 && (
+          <PrecioPersonal
+            etiqueta="Deuda del crédito" normal={productosSubtotal} conCupon={conCupon}
+            pidiendo={pidiendo} onPidiendo={setPidiendo} pedido={pedido} onPedido={setPedido}
+            motivo={motivo} onMotivo={setMotivo}
+            otroDescuento={form.lineas.some(l => l.regalo > 0) || !!form.codigo_descuento.trim()}
+          />
+        )}
+
+        {descuentaLibre && <Field label="Deuda del crédito (COP) *">
           <Input type="number" min="1" required value={form.deuda_inicial}
             onChange={e => setForm(f => ({ ...f, deuda_inicial: e.target.value, deuda_manual: true }))} />
           {form.lineas.length > 0 && form.deuda_manual && String(deudaCalculada) !== form.deuda_inicial && (
@@ -362,7 +385,7 @@ export function CreditoForm({
               Usar el calculado ({formatPrice(deudaCalculada)})
             </button>
           )}
-        </Field>
+        </Field>}
 
         <Field label="Código de descuento (opcional, se canjea al crear)">
           {codigoBloqueado ? (

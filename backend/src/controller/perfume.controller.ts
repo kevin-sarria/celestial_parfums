@@ -5,7 +5,8 @@ import { esFamilia } from '../repositories/perfume.familia';
 import { parsePagination, parseSearch } from '../utils/pagination';
 import { parseFiltros } from '../utils/filtros';
 import { mensajeSeguro } from '../utils/errorSeguro';
-import { esAdminRequest } from '../middleware/auth.middleware';
+import { rolDeRequest } from '../middleware/auth.middleware';
+import { puede } from '../permisos/permisos';
 import { traerImagenRemota } from '../utils/imagenRemota';
 
 export const getRelatedPerfumes = async (req: Request, res: Response) => {
@@ -56,14 +57,17 @@ export const selectAllPerfumes = async (req: Request, res: Response) => {
         ocasiones: parseLista(req.query.ocasiones),
         orden: esOrdenCatalogo(ordenRaw) ? ordenRaw : undefined,
         seccion: req.query.seccion === 'accesorios' ? 'accesorios' : undefined,
-      }, req.query.todos === '1' && esAdminRequest(req), parseFiltros(req.query, mapaFiltrosPerfumes),
+      }, req.query.todos === '1' && await puede(rolDeRequest(req), 'catalogo.ver'), parseFiltros(req.query, mapaFiltrosPerfumes),
         esFamilia(familiaRaw) ? familiaRaw : undefined);
       res.json(result);
     } else {
       // `?todos=1` trae también los que están fuera de la tienda. Se honra SOLO
-      // si quien pregunta es el admin: si no, cualquiera podría listar lo que el
-      // dueño sacó del catálogo con solo agregar el parámetro a la URL.
-      const todos = req.query.todos === '1' && esAdminRequest(req);
+      // si quien pregunta es el dueño o su personal con permiso: si no,
+      // cualquiera podría listar lo que el dueño sacó del catálogo con solo
+      // agregar el parámetro a la URL. Quien registra ventas lo necesita: se
+      // vende lo que hay, publicado o no (el perfumero, la bolsa).
+      const todos = req.query.todos === '1'
+        && await puede(rolDeRequest(req), 'catalogo.ver', 'ventas.registrar', 'creditos.registrar');
       const result = await perfumeService.allPerfumes(todos);
       res.status(200).json({ message: 'Datos Encontrados Correctamente', data: result });
     }

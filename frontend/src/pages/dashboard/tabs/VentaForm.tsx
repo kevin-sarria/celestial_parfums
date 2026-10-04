@@ -15,6 +15,8 @@ import { KitDelCombo } from '../pedido/KitDelCombo';
 import { ArmadorPedido } from '../pedido/ArmadorPedido';
 import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
+import { PrecioPersonal } from '../pedido/PrecioPersonal';
+import { useAuthContext } from '../../../application/context/useAuthContext';
 import {
   descuentoDeCupon, itemsDeLineas, presentacionResumen, subtotalDeLineas, unidadesDeLineas,
   type LineaPedido,
@@ -80,10 +82,18 @@ export function VentaForm({
 
   const porId = useMemo(() => new Map(catalogo.map(p => [p.id, p])), [catalogo]);
 
+  // Sin permiso de descuentos el precio lo pone la app (ver `PrecioPersonal`)
+  const { puede } = useAuthContext();
+  const descuentaLibre = puede('descuentos.aplicar');
+  const [pidiendo, setPidiendo] = useState(false);
+  const [pedido, setPedido] = useState('');
+  const [motivo, setMotivo] = useState('');
+
   // ── Reconstruir el formulario al abrir ────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     setError(''); setCodigoCheck(null); setCuponAplicado(false); setCreoAlgo(false);
+    setPidiendo(false); setPedido(''); setMotivo('');
     if (!venta) {
       setForm(vacio()); setReferenciaInvalida('');
       return;
@@ -160,6 +170,10 @@ export function VentaForm({
     && Math.round((baseCupon * cupon.descuento_pct) / 100) > cupon.max_descuento;
 
   const sugerido = Math.max(0, subtotal - ahorroCombo - descuentoCupon);
+  const normal = Math.max(0, subtotal - ahorroCombo);
+  const conCupon = descuentoCupon > 0 ? sugerido : null;
+  /** Lo que cobra el personal sin permiso de descuentos (el servidor lo vuelve a revisar). */
+  const valorPersonal = pidiendo && Number(pedido) > 0 ? Number(pedido) : conCupon ?? normal;
 
   // ── Alta rápida de producto ───────────────────────────────────────────────
   const [nuevoProd, setNuevoProd] = useState<{ nombre: string; precio: string } | null>(null);
@@ -226,7 +240,8 @@ export function VentaForm({
       lineas: form.lineas.map(l => ({
         perfume_id: l.perfume_id, ml: l.ml, cantidad: l.cantidad, regalo: l.regalo,
       })),
-      valor_venta: Number(form.valor_venta),
+      valor_venta: descuentaLibre ? Number(form.valor_venta) : valorPersonal,
+      ...(descuentaLibre ? {} : { motivo_descuento: motivo.trim() || null }),
       datos_adicionales: form.datos_adicionales.trim() || null,
       pagada: form.pagada,
       codigo_descuento: form.codigo_descuento.trim().toUpperCase() || null,
@@ -322,7 +337,8 @@ export function VentaForm({
           catalogo={catalogo}
           porId={porId}
           permitirExtras
-          onCrearProducto={() => setNuevoProd({ nombre: '', precio: '' })}
+          // Crear una ficha del catálogo es del dueño (el servidor también lo exige)
+          onCrearProducto={puede('catalogo.editar') ? () => setNuevoProd({ nombre: '', precio: '' }) : undefined}
         />
         <KitDelCombo lineas={form.lineas} onChange={lineas => setForm(f => ({ ...f, lineas }))} combos={combos} porId={porId} />
 
@@ -365,15 +381,26 @@ export function VentaForm({
               ? { codigo: form.codigo_descuento.trim().toUpperCase(), pct: cupon.descuento_pct, descuento: descuentoCupon }
               : null}
             etiquetaTotal="Sugerido"
-            onUsar={() => { setForm(f => ({ ...f, valor_venta: String(sugerido) })); setCuponAplicado(true); }}
+            onUsar={descuentaLibre ? () => { setForm(f => ({ ...f, valor_venta: String(sugerido) })); setCuponAplicado(true); } : undefined}
+          />
+        )}
+
+        {!descuentaLibre && form.lineas.length > 0 && (
+          <PrecioPersonal
+            etiqueta="Valor de la venta" normal={normal} conCupon={conCupon}
+            pidiendo={pidiendo} onPidiendo={setPidiendo} pedido={pedido} onPedido={setPedido}
+            motivo={motivo} onMotivo={setMotivo}
+            otroDescuento={form.lineas.some(l => l.regalo > 0) || !!form.codigo_descuento.trim()}
           />
         )}
 
         <FieldRow>
-          <Field label="Valor de la venta (COP) *">
-            <Input type="number" min="0" required value={form.valor_venta}
-              onChange={e => { setCuponAplicado(false); setForm(f => ({ ...f, valor_venta: e.target.value })); }} />
-          </Field>
+          {descuentaLibre && (
+            <Field label="Valor de la venta (COP) *">
+              <Input type="number" min="0" required value={form.valor_venta}
+                onChange={e => { setCuponAplicado(false); setForm(f => ({ ...f, valor_venta: e.target.value })); }} />
+            </Field>
+          )}
           <Field label="Estado de pago">
             <SelectSimple value={form.pagada ? 'pagada' : 'pendiente'}
               onChange={e => setForm(f => ({ ...f, pagada: e.target.value === 'pagada' }))}>
@@ -433,8 +460,10 @@ export function VentaForm({
           )}
 
           <p className="mt-1 text-[12px] text-muted-foreground">
-            El valor se escribe <strong>ya con el descuento restado</strong> (es la plata que
-            entró de verdad). El código se canjea cuando la venta queda marcada como pagada.
+            {descuentaLibre
+              ? <>El valor se escribe <strong>ya con el descuento restado</strong> (es la plata que entró de verdad). </>
+              : 'Un cupón es un descuento: la venta le llega al dueño para aprobarla. '}
+            El código se canjea cuando la venta queda marcada como pagada.
           </p>
         </Field>
 

@@ -441,3 +441,15 @@ con motivo, texto y hasta 3 fotos.
 - **Contáctame**: la imagen de fondo se sube con `POST /api/contacto/fondo` (igual que el
   avatar); deja `fondo_tipo='imagen'` y borra del disco la imagen anterior. `saveConfig` también
   borra el fondo viejo si cambió.
+
+## Personal: permisos, precio y solicitudes (2026-10-04, decisiones del dueño)
+
+- Opción C: el dueño arma los roles con casillas; ADMIN (él) puede todo siempre.
+- **Borrar** ventas o créditos: sin la casilla, el empleado solo lo PIDE; el dueño aprueba o rechaza.
+- **Créditos**: ver cuánto debe cada cliente es una casilla aparte.
+- **Descuentos** (precio menor, unidades de regalo o cupón): sin la casilla, el empleado puede
+  sugerirlo; la venta **espera la aprobación del dueño** y no cuenta en nada mientras tanto. Si
+  aprueba, se registra con el descuento; si rechaza, a precio normal.
+- **El precio no se escribe a mano** sin esa casilla: lo calcula la app y el servidor lo recalcula.
+- Para darle un rol a alguien, esa persona tiene que tener cuenta (registrarse en la página con su
+  correo o con Google); una ficha sin correo no puede entrar.

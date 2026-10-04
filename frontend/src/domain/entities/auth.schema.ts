@@ -25,6 +25,10 @@ export const authUserSchema = z
     nombre: z.string().optional(),
     apellido: z.string().optional(),
     email: z.string().optional(),
+    /** Entra al panel: el dueño o alguien de su personal (2026-10-04). */
+    personal: z.boolean().optional(),
+    /** Lo que puede hacer en el panel. ['*'] = el dueño, todo. */
+    permisos: z.array(z.string()).optional(),
   })
   .passthrough();
 

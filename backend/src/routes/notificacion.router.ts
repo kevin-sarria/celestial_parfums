@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import * as repo from '../repositories/notificacion.repository';
-import { requireAdmin } from '../middleware/auth.middleware';
+import { requirePersonal } from '../middleware/auth.middleware';
 import { h } from '../middleware/error.middleware';
 
 /**
@@ -8,8 +8,12 @@ import { h } from '../middleware/error.middleware';
  * falta y qué perfumes no descuentan, así que van detrás de `requireAdmin`.
  */
 export const notificacionRouter = Router();
-notificacionRouter.use(requireAdmin);
+notificacionRouter.use(requirePersonal);
 
-notificacionRouter.get('/', h(async (_req, res) => {
-  res.json({ data: await repo.calcularNotificaciones() });
+/**
+ * La campana. El dueño ve todo lo pendiente; el personal (2026-10-04) solo lo
+ * suyo, que hoy es nada: lo demás habla de costos, inventario y deudas.
+ */
+notificacionRouter.get('/', h(async (req, res) => {
+  res.json({ data: req.jwtUser!.rol_id === 1 ? await repo.calcularNotificaciones() : [] });
 }));

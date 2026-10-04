@@ -2,7 +2,7 @@ import {
   SprayCan, PackageCheck, Package, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText,
   BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX,
-  ChartColumn, Layers, Coins, TriangleAlert, House, Repeat, History, type LucideIcon,
+  ChartColumn, Layers, Coins, TriangleAlert, House, Repeat, History, ShieldCheck, Inbox, type LucideIcon,
 } from 'lucide-react';
 import type { Tab } from './types';
 
@@ -53,6 +53,8 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   formulas: { label: 'Tamaños y fórmulas', icon: FlaskConical },
   costos: { label: 'Costos de producción', icon: Calculator },
   historial: { label: 'Historial de cambios', icon: History },
+  roles: { label: 'Roles del personal', icon: ShieldCheck },
+  solicitudes: { label: 'Solicitudes', icon: Inbox },
 };
 
 // Menú del dashboard agrupado en secciones colapsables (drawer con burger)
@@ -77,13 +79,13 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
    * Ventas y créditos; si es "cómo lo hago o con qué", al taller; si se
    * configura una vez y se olvida, a Ajustes.
    */
-  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'recompra', 'devoluciones', 'pagos'] },
+  { id: 'negocio', label: 'Ventas y créditos', tabs: ['ventas', 'creditos', 'solicitudes', 'recompra', 'devoluciones', 'pagos'] },
   { id: 'operacion', label: 'Producción e inventario', tabs: ['producciones', 'armados', 'inventario', 'reposicion', 'alertas', 'formulas', 'costos'] },
   { id: 'catalogo', label: 'Catálogo', tabs: ['perfumes', 'productos', 'combos', 'precios', 'descuentos'] },
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'pagina', label: 'Página web', tabs: ['publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
   // `aromas` es la puerta a las cinco clasificaciones (ver CLASIFICACIONES)
-  { id: 'ajustes', label: 'Ajustes', tabs: ['usuarios', 'aromas', 'historial'] },
+  { id: 'ajustes', label: 'Ajustes', tabs: ['usuarios', 'roles', 'aromas', 'historial'] },
   { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'precios_mayoreo'] },
 ];
 
@@ -115,4 +117,27 @@ export const sectionOfTab = (tab: Tab) =>
 /** Al entrar al panel se cae en Inicio (antes era la lista de Perfumes, 2026-09-28). */
 export const TAB_POR_DEFECTO: Tab = TAB_INICIO;
 export const esTabValido = (t?: string): t is Tab => !!t && Object.prototype.hasOwnProperty.call(TAB_META, t);
+
+/**
+ * Qué pestañas abre el PERSONAL (2026-10-04, roles con permisos). Basta con
+ * uno de los permisos de la lista; 'personal' = cualquiera que trabaje en el
+ * panel. Lo que no está aquí es solo del dueño: el servidor lo niega igual,
+ * esto solo evita mostrar una pestaña que respondería "sin permiso".
+ */
+const TAB_PERMISO: Partial<Record<Tab, string[] | 'personal'>> = {
+  ventas: ['ventas.ver'],
+  creditos: ['creditos.ver'],
+  solicitudes: 'personal',
+};
+
+export const tabPermitida = (t: Tab, esDueno: boolean, puede: (...p: string[]) => boolean) => {
+  if (esDueno) return true;
+  const regla = TAB_PERMISO[t];
+  return regla === 'personal' || (!!regla && puede(...regla));
+};
+
+/** A dónde cae quien entra: Inicio el dueño; su primera pestaña permitida el personal. */
+export const primeraPermitida = (esDueno: boolean, puede: (...p: string[]) => boolean): Tab =>
+  esDueno ? TAB_POR_DEFECTO
+    : (NAV_SECTIONS.flatMap(s => s.tabs).find(t => tabPermitida(t, false, puede)) ?? 'solicitudes');
 

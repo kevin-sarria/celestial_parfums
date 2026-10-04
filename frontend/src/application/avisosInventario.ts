@@ -15,9 +15,16 @@ import { toast } from 'sonner';
  * que alcanzar a leer, no un "guardado" que se puede perder.
  */
 /** La parte de la respuesta que interesa aquí: el resto lo ignora quien llama. */
-export interface Respuesta { avisos?: string[] }
+export interface Respuesta {
+  avisos?: string[];
+  /** El pedido llevaba un descuento sin permiso: espera al dueño (2026-10-04). */
+  pendiente?: boolean;
+  message?: string;
+}
 
 export const mostrarAvisos = (cuerpo: Respuesta | null | undefined) => {
+  // Lo primero que hay que saber: NO se registró todavía, espera al dueño
+  if (cuerpo?.pendiente) toast.info(cuerpo.message ?? 'Se envió al dueño para aprobar el descuento', { id: 'pendiente', duration: 8000 });
   const avisos = cuerpo?.avisos ?? [];
   avisos.forEach((texto, i) => {
     toast.warning(texto, { id: `aviso-inventario-${i}`, duration: 12_000 });

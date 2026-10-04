@@ -122,11 +122,62 @@ enum CotizacionTipo {
 // ── Models ──────────────────────────────────────────────────────────────────
 
 model Role {
-  id     Int    @id @default(autoincrement())
-  nombre String @unique @db.VarChar(50)
-  users  User[]
+  id       Int          @id @default(autoincrement())
+  nombre   String       @unique @db.VarChar(50)
+  /// Rol de PERSONAL: entra al panel con los permisos que tenga marcados.
+  /// ADMIN (1) entra con todo sin necesitar casillas; cliente y proveedor, no.
+  personal Boolean      @default(false)
+  users    User[]
+  permisos RolPermiso[]
 
   @@map("roles")
+}
+
+/// Una casilla marcada de un rol. Las claves posibles viven en el código
+/// (`auth/permisos.ts`): un permiso que nadie revisa no debe poder marcarse.
+model RolPermiso {
+  rol_id  Int
+  permiso String @db.VarChar(60)
+  rol     Role   @relation(fields: [rol_id], references: [id], onDelete: Cascade)
+
+  @@id([rol_id, permiso])
+  @@map("rol_permisos")
+}
+
+enum SolicitudTipo {
+  borrar_venta
+  borrar_credito
+  descuento_venta
+  descuento_credito
+}
+
+enum SolicitudEstado {
+  pendiente
+  aprobada
+  rechazada
+}
+
+/// Lo que el personal pide y solo el dueño decide (2026-10-04). Una venta o un
+/// crédito con descuento NO existe hasta que se aprueba o rechaza: su
+/// formulario espera completo en `datos`.
+model Solicitud {
+  id             Int             @id @default(autoincrement())
+  tipo           SolicitudTipo
+  estado         SolicitudEstado @default(pendiente)
+  solicitante_id Int
+  venta_id       Int?
+  credito_id     Int?
+  motivo         String          @db.VarChar(300)
+  datos          Json?
+  resumen        String          @db.VarChar(300)
+  resuelta_por   Int?
+  resuelta_en    DateTime?
+  respuesta      String?         @db.VarChar(300)
+  created_at     DateTime        @default(now())
+
+  @@index([estado])
+  @@index([solicitante_id])
+  @@map("solicitudes")
 }
 
 // Única lista de personas del sistema: cuentas web reales y "fichas" creadas

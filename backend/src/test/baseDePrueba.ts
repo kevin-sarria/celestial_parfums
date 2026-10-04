@@ -1,5 +1,6 @@
 import { prisma } from '../config/prisma';
 import { aplicarMovimiento } from '../repositories/inventario.repository';
+import { olvidarTodo } from '../permisos/permisos';
 
 /**
  * Siembra y limpieza para las pruebas contra base.
@@ -27,6 +28,8 @@ let tablas: string[] | null = null;
  * se corra con otra configuración, este es el último punto donde se puede parar.
  */
 export const limpiarBase = async () => {
+  // Los roles y permisos viven en memoria (`permisos.ts`): con la base vacía, también se olvidan
+  olvidarTodo();
   const base = await nombreDeLaBase();
   if (!base.endsWith('_test')) {
     throw new Error(`limpiarBase() cancelada: la conexión apunta a "${base}", que no es una base de pruebas.`);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Menu, ChevronDown, Store, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import BackupSeguridad from './BackupSeguridad';
 import { BrandMark } from '../../components/BrandMark';
-import { NAV_SECTIONS, TAB_INICIO, TAB_META, TAB_POR_DEFECTO, entradaActiva, esTabValido, etiquetaEnMenu, sectionOfTab } from './navegacion';
+import { NAV_SECTIONS, TAB_INICIO, TAB_META, TAB_POR_DEFECTO, entradaActiva, esTabValido, etiquetaEnMenu, sectionOfTab, tabPermitida } from './navegacion';
 import type { Tab } from './types';
 
 /**
@@ -32,13 +32,19 @@ import type { Tab } from './types';
  */
 export function MenuLateral() {
   const navigate = useNavigate();
-  const { logout } = useAuthContext();
+  const { logout, isAdmin, puede } = useAuthContext();
+  // El personal solo ve las pestañas que su rol le abre (ver `tabPermitida`)
+  const visible = (t: Tab) => tabPermitida(t, isAdmin, puede);
   const { tab: tabParam } = useParams<{ tab?: string }>();
   const tab: Tab = esTabValido(tabParam) ? tabParam : TAB_POR_DEFECTO;
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   /** Secciones desplegadas; la del apartado actual arranca abierta. */
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set([sectionOfTab(tab)]));
+
+  // Al cambiar de pestaña (también la primera redirección del personal, que
+  // llega después de montarse el menú) su sección queda abierta
+  useEffect(() => { setOpenSections(prev => new Set(prev).add(sectionOfTab(tab))); }, [tab]);
 
   const toggleSection = (id: string) =>
     setOpenSections(prev => {
@@ -78,13 +84,13 @@ export function MenuLateral() {
             <BrandMark className="mr-2 size-6" />
             Celestial Parfums
             <span className="ml-2 text-[10px] font-sans font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              Admin
+              {isAdmin ? 'Admin' : 'Panel'}
             </span>
           </SheetTitle>
         </SheetHeader>
 
         <nav className="flex-1 overflow-y-auto p-3">
-          {(() => {
+          {isAdmin && (() => {
             const { label, icon: Icon } = TAB_META[TAB_INICIO];
             return (
               <button
@@ -99,7 +105,7 @@ export function MenuLateral() {
               </button>
             );
           })()}
-          {NAV_SECTIONS.map(sec => {
+          {NAV_SECTIONS.map(sec => ({ ...sec, tabs: sec.tabs.filter(visible) })).filter(sec => sec.tabs.length > 0).map(sec => {
             const abierta = openSections.has(sec.id);
             const contieneActiva = sec.tabs.some(t => entradaActiva(t, tab));
             return (
@@ -159,7 +165,8 @@ export function MenuLateral() {
           */}
         <div className="border-t border-border/70 p-4">
           <div className="flex flex-col gap-2">
-            <BackupSeguridad enMenu />
+            {/* El respaldo de la base es TODO el negocio en un archivo: solo el dueño */}
+            {isAdmin && <BackupSeguridad enMenu />}
             <Button variant="ghost" className="w-full justify-start sm:hidden" asChild>
               <Link to="/catalog" onClick={() => setDrawerOpen(false)}>
                 <Store className="size-4" /> Ver catalogo

@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { prisma } from '../config/prisma';
 import logger from '../config/logger';
+import { esPersonalYa } from '../permisos/permisos';
 
 /**
  * EL HISTORIAL DE CAMBIOS (2026-10-03, tercera tanda de la revisión).
@@ -80,7 +81,9 @@ export const registroCambios = (req: Request, res: Response, next: NextFunction)
   res.on('finish', () => {
     // `jwtUser` lo pone `requireAdmin` dentro del router: aquí, al terminar, ya está
     const quien = req.jwtUser;
-    if (!quien || quien.rol_id !== 1 || res.statusCode >= 400) return;
+    // El dueño y su personal (el rol ya viene revisado por `requirePermiso`). Lo que
+    // hace un cliente desde la tienda no es un cambio del panel.
+    if (!quien || res.statusCode >= 400 || !esPersonalYa(quien.rol_id)) return;
     const ruta = req.originalUrl.split('?')[0].slice(0, 200);
     const { modulo, resumen } = describirCambio(req.method, ruta, req.body);
     void (async () => {

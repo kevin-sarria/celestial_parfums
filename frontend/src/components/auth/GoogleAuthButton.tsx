@@ -98,8 +98,8 @@ export function GoogleAuthButton({ text = 'continue_with', onError }: Props) {
       }
       const user = r.cuerpo.data.user;
       auth.login(r.cuerpo.data.token, user);
-      navigate(destinoTrasLogin(origen.current, user.rol_id));
-      if (user.rol_id !== 1) darBienvenida(user.nombre, () => navigate('/mi-cuenta'));
+      navigate(destinoTrasLogin(origen.current, user.rol_id, user.personal));
+      if (user.rol_id !== 1 && !user.personal) darBienvenida(user.nombre, () => navigate('/mi-cuenta'));
     };
 
     loadGsiScript()

@@ -21,6 +21,8 @@ export const createCreditoSchema = z.object({
   lineas: z.array(lineaVentaSchema).optional(),
   // Resumen de presentaciones vendidas
   presentacion: z.string().max(100).nullish(),
+  /** Por qué el personal pide un descuento (ver `controlPrecio.ts`). No se guarda en el crédito. */
+  motivo_descuento: z.string().max(300).nullish(),
 });
 
 export const addAbonoSchema = z.object({

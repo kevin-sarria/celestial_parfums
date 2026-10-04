@@ -20,11 +20,11 @@ export function useIrALogin() {
 }
 
 /**
- * A dónde ir al entrar: el dueño a su panel; el cliente, a donde estaba, o a
- * la portada (que ya lo saluda con su franja). Solo rutas internas.
+ * A dónde ir al entrar: el dueño y su personal, al panel; el cliente, a donde
+ * estaba, o a la portada (que ya lo saluda con su franja). Solo rutas internas.
  */
-export const destinoTrasLogin = (state: unknown, rolId?: number): string => {
-  if (rolId === 1) return '/dashboard';
+export const destinoTrasLogin = (state: unknown, rolId?: number, personal = false): string => {
+  if (rolId === 1 || personal) return '/dashboard';
   const desde = (state as { desde?: unknown } | null)?.desde;
   return typeof desde === 'string' && desde.startsWith('/') && !desde.startsWith('//')
     && !/^\/(login|register|verify)\b/.test(desde) ? desde : '/';

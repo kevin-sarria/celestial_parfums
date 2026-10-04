@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { esPersonal, puede, rolVigente } from '../permisos/permisos';
 
 // Mismo criterio que auth.service: en producción JWT_SECRET es obligatoria
 // (el arranque ya falla allí si falta); el fallback solo aplica en desarrollo
@@ -68,4 +69,57 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction): v
     }
     next();
   });
+};
+
+/**
+ * Pone en `req.jwtUser` el rol que la persona tiene HOY (ver `rolVigente`):
+ * lo que venga después —el handler, `ocultarCostos`, el historial— decide con
+ * él y no con el del token. Sin rol (cuenta desactivada): -1, que no puede nada.
+ */
+const conRolVigente = async (req: Request) => {
+  if (!req.jwtUser || req.jwtUser.rol_id === 1) return;
+  req.jwtUser = { ...req.jwtUser, rol_id: (await rolVigente(req.jwtUser.id)) ?? -1 };
+};
+
+/**
+ * Pide UNO de estos permisos (ver `permisos/catalogo.ts`). El dueño (rol 1)
+ * pasa siempre. Es el reemplazo de `requireAdmin` en lo que el personal puede
+ * tocar (2026-10-04); lo que sigue con `requireAdmin` es solo del dueño.
+ */
+export const requirePermiso = (...permisos: string[]) =>
+  (req: Request, res: Response, next: NextFunction): void => {
+    requireAuth(req, res, () => {
+      conRolVigente(req)
+        .then(() => puede(req.jwtUser?.rol_id, ...permisos))
+        .then((ok) => {
+          if (ok) { next(); return; }
+          res.status(403).json({ error: 'No tienes permiso para esto. Pídeselo al dueño.' });
+        })
+        .catch(next);
+    });
+  };
+
+/** Cualquiera que trabaje en el panel: el dueño o un rol de personal. */
+export const requirePersonal = (req: Request, res: Response, next: NextFunction): void => {
+  requireAuth(req, res, () => {
+    conRolVigente(req)
+      .then(() => esPersonal(req.jwtUser?.rol_id))
+      .then((ok) => {
+        if (ok) { next(); return; }
+        res.status(403).json({ error: 'Acceso denegado' });
+      })
+      .catch(next);
+  });
+};
+
+/**
+ * El rol de quien hace la petición, haya pasado o no por `requireAuth`. Para
+ * las rutas públicas que cambian según quién pregunta (el catálogo con lo
+ * oculto, esconder costos). Sin sesión válida: undefined.
+ */
+export const rolDeRequest = (req: Request): number | undefined => {
+  if (req.jwtUser) return req.jwtUser.rol_id;
+  const token = extractToken(req);
+  if (!token) return undefined;
+  try { return (jwt.verify(token, JWT_SECRET) as JWTPayload).rol_id; } catch { return undefined; }
 };

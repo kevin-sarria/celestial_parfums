@@ -85,9 +85,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => registrarSesionCaducada(null);
   }, [logout, navigate]);
 
+  const puede = useCallback((...claves: string[]) => {
+    const lista = user?.permisos ?? [];
+    return user?.rol_id === 1 || lista.includes('*') || claves.some((c) => lista.includes(c));
+  }, [user]);
+  const esPersonal = user?.rol_id === 1 || !!user?.personal;
+
   const valor = useMemo(
-    () => ({ user, token: null, isAdmin, login, logout }),
-    [user, isAdmin, login, logout],
+    () => ({ user, token: null, isAdmin, esPersonal, puede, login, logout }),
+    [user, isAdmin, esPersonal, puede, login, logout],
   );
 
   if (!ready) return null;

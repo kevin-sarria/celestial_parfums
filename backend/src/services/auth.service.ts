@@ -15,6 +15,7 @@ import type { LoginDTO, RegisterDTO } from '../types/auth.type';
 import { vincularReferido } from '../repositories/referido.repository';
 import { transporter } from '../config/mailer';
 import logger from '../config/logger';
+import { prisma } from '../config/prisma';
 
 /**
  * Obtiene un secreto obligatorio de firma de tokens.
@@ -133,18 +134,22 @@ export const googleAuthService = async (credential: string) => {
   };
 };
 
-export const refreshService = (refreshToken: string) => {
+/**
+ * Renueva la sesión LEYENDO A LA PERSONA DE LA BASE. Antes copiaba el rol del
+ * token viejo: con roles de personal (2026-10-04), a un empleado al que se le
+ * quitaba el rol la sesión le seguía renovando el permiso durante 7 días. Una
+ * cuenta desactivada tampoco renueva.
+ */
+export const refreshService = async (refreshToken: string) => {
+  let payload: { id: number };
   try {
-    const payload = jwt.verify(refreshToken, REFRESH_SECRET) as { id: number; email: string; rol_id: number };
-    const { accessToken, refreshToken: newRefresh } = generateTokens({
-      id: payload.id,
-      email: payload.email,
-      rol_id: payload.rol_id,
-    });
-    return { accessToken, refreshToken: newRefresh };
+    payload = jwt.verify(refreshToken, REFRESH_SECRET) as { id: number };
   } catch {
     throw new Error('Refresh token inválido o expirado');
   }
+  const user = await prisma.user.findUnique({ where: { id: payload.id }, select: { id: true, email: true, rol_id: true, activo: true } });
+  if (!user?.activo) throw new Error('Refresh token inválido o expirado');
+  return generateTokens({ id: user.id, email: user.email, rol_id: user.rol_id });
 };
 
 const doRegister = async (dto: RegisterDTO) => {

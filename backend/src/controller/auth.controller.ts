@@ -11,6 +11,7 @@ import {
 } from '../services/auth.service';
 import { mensajeSeguro } from '../utils/errorSeguro';
 import { prisma } from '../config/prisma';
+import { esPersonal, permisosDe } from '../permisos/permisos';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -30,7 +31,7 @@ export const login = async (req: Request, res: Response) => {
   try {
     const { accessToken, refreshToken, user } = await loginService(req.body);
     setAuthCookies(res, accessToken, refreshToken);
-    res.status(200).json({ message: 'Login exitoso', data: { token: accessToken, user } });
+    res.status(200).json({ message: 'Login exitoso', data: { token: accessToken, user: await conPermisos(user) } });
   } catch (err) {
     res.status(401).json({ error: mensajeSeguro(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.') });
   }
@@ -40,7 +41,7 @@ export const googleAuth = async (req: Request, res: Response) => {
   try {
     const { accessToken, refreshToken, user } = await googleAuthService(req.body?.credential);
     setAuthCookies(res, accessToken, refreshToken);
-    res.status(200).json({ message: 'Login con Google exitoso', data: { token: accessToken, user } });
+    res.status(200).json({ message: 'Login con Google exitoso', data: { token: accessToken, user: await conPermisos(user) } });
   } catch (err) {
     res.status(401).json({ error: mensajeSeguro(err, 'No se pudo iniciar sesión. Inténtalo de nuevo.') });
   }
@@ -53,7 +54,7 @@ export const refresh = async (req: Request, res: Response) => {
       res.status(401).json({ error: 'No hay refresh token' });
       return;
     }
-    const { accessToken, refreshToken } = refreshService(token);
+    const { accessToken, refreshToken } = await refreshService(token);
     setAuthCookies(res, accessToken, refreshToken);
     res.json({ message: 'Token renovado' });
   } catch (err) {
@@ -82,8 +83,17 @@ export const me = async (req: Request, res: Response) => {
   });
   if (!user?.activo) { res.status(401).json({ error: 'Sesión no válida' }); return; }
   const { activo: _activo, ...perfil } = user;
-  res.json({ data: perfil });
+  res.json({ data: await conPermisos(perfil) });
 };
+
+/**
+ * La persona con lo que puede hacer en el panel (2026-10-04): la pantalla
+ * esconde lo que no puede; el servidor lo niega igual aunque no lo escondiera.
+ * `personal` = entra al panel. `permisos` = ['*'] para el dueño.
+ */
+const conPermisos = async <T extends { rol_id: number }>(u: T) => ({
+  ...u, personal: await esPersonal(u.rol_id), permisos: await permisosDe(u.rol_id),
+});
 
 export const registerAdmin = async (req: Request, res: Response) => {
   try {

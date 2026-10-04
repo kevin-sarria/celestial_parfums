@@ -84,6 +84,10 @@ criterio general reutilizable.
 - **Lo que se puede recalcular, se recalcula; no se guarda.** Sellos, cupo, promedios por gama,
   agotado automático, notificaciones y reportes salen del historial en cada consulta. Un valor
   guardado queda mintiendo el día que el dueño corrija un registro viejo.
+- **Una ruta nueva del panel lleva `requirePermiso('modulo.accion')` si el personal la usa, o
+  `requireAdmin` si es solo del dueño** — y su casilla en `permisos/catalogo.ts` solo si de verdad
+  se revisa. Los campos de costo se nombran con `costo`/`ganancia`/`margen` para que
+  `ocultarCostos` los tape solos (ver `docs/arquitectura.md`, Roles del personal).
 - **No vuelvas a pedir lo que el servidor ya te devolvió**: actualiza el estado con la respuesta,
   o haz que el endpoint devuelva el estado nuevo.
 

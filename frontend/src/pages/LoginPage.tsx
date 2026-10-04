@@ -61,8 +61,8 @@ export default function LoginPage() {
 
       const user = res.cuerpo!.data.user;
       auth.login(res.cuerpo!.data.token, user);
-      navigate(destinoTrasLogin(state, user.rol_id));
-      if (user.rol_id !== 1) darBienvenida(user.nombre, () => navigate('/mi-cuenta'));
+      navigate(destinoTrasLogin(state, user.rol_id, user.personal));
+      if (user.rol_id !== 1 && !user.personal) darBienvenida(user.nombre, () => navigate('/mi-cuenta'));
     } catch (err) {
       if (err instanceof Error && err.message === 'reCAPTCHA no cargado') {
         setError('Verificación de seguridad no disponible. Recarga la página.');

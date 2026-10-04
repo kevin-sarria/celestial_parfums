@@ -38,7 +38,10 @@ import { inventarioRouter } from './routes/inventario.router';
 import { reporteRouter } from './routes/reporte.router';
 import { busquedaRouter } from './routes/busqueda.router';
 import { registroCambios } from './middleware/registroCambios';
+import { ocultarCostos } from './middleware/ocultarCostos';
 import { historialRouter } from './routes/historial.router';
+import { rolRouter } from './routes/rol.router';
+import { solicitudRouter } from './routes/solicitud.router';
 import { notificacionRouter } from './routes/notificacion.router';
 import { seoRouter } from './routes/seo.router';
 import { backupRouter } from './routes/backup.router';
@@ -181,6 +184,8 @@ app.use('/api/auth/register', authLimiter);
 app.use('/api/auth/google', authLimiter);
 // Historial de cambios: cada cambio aceptado en el panel deja rastro (quién, qué, cuándo)
 app.use('/api', registroCambios);
+// Costos, márgenes y ganancias: fuera de toda respuesta para quien no tenga permiso de verlos
+app.use('/api', ocultarCostos);
 app.use('/api/parfums', perfumeRouter);
 app.use('/api/auth', authRouter);
 app.use('/api/upload', uploadRouter);
@@ -208,6 +213,8 @@ app.use('/api/inventario', inventarioRouter);
 app.use('/api/reportes', reporteRouter);
 app.use('/api/buscar', busquedaRouter);
 app.use('/api/historial', historialRouter);
+app.use('/api/roles', rolRouter);
+app.use('/api/solicitudes', solicitudRouter);
 app.use('/api/notificaciones', notificacionRouter);
 app.use('/api/backup', backupRouter);
 

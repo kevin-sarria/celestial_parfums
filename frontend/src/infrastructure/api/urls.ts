@@ -252,6 +252,8 @@ export const urls = {
     usuario: (id: number) => `/usuarios/${id}`,
     /** Cupo y comportamiento de pago, calculado por el servidor (solo admin). */
     perfilCredito: (id: number) => `/usuarios/${id}/perfil-credito`,
+    /** Cliente o un rol del personal (solo el dueño). */
+    rol: (id: number) => `/usuarios/${id}/rol`,
   },
 
   devoluciones: {
@@ -341,6 +343,21 @@ export const urls = {
   notificaciones: '/notificaciones',
 
   reportes: (ruta: string) => `/reportes/${ruta}`,
+
+  /** Roles del personal y sus permisos (solo el dueño). */
+  roles: {
+    lista: '/roles',
+    permisos: '/roles/permisos',
+    uno: (id: number) => `/roles/${id}`,
+  },
+
+  /** Lo que el personal pide y el dueño decide. */
+  solicitudes: {
+    lista: '/solicitudes',
+    borrarVenta: (id: number) => `/solicitudes/borrar-venta/${id}`,
+    borrarCredito: (id: number) => `/solicitudes/borrar-credito/${id}`,
+    decidir: (id: number, decision: 'aprobar' | 'rechazar') => `/solicitudes/${id}/${decision}`,
+  },
 
   /** Historial de cambios del panel: quién cambió qué y cuándo. */
   historial: '/historial',

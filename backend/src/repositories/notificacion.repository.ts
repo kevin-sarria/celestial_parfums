@@ -52,7 +52,7 @@ const ORDEN: Record<TonoNotificacion, number> = { urgente: 0, aviso: 1, info: 2 
 export const calcularNotificaciones = async (): Promise<Notificacion[]> => {
   const [
     reposicion, esenciasSinPerfume, perfumesSinEsencia,
-    resenas, devoluciones, creditos, avisosStock, enNegativo,
+    resenas, devoluciones, creditos, avisosStock, enNegativo, solicitudes,
   ] = await Promise.all([
     // Se reutiliza el cálculo de la pantalla para que los dos números coincidan
     calcularReposicion(),
@@ -66,6 +66,7 @@ export const calcularNotificaciones = async (): Promise<Notificacion[]> => {
     }),
     prisma.avisoStock.count({ where: { notificado: false } }),
     prisma.insumoCosto.count({ where: { activo: true, stock: { lt: 0 } } }),
+    prisma.solicitud.count({ where: { estado: 'pendiente' } }),
   ]);
 
   /**
@@ -87,7 +88,10 @@ export const calcularNotificaciones = async (): Promise<Notificacion[]> => {
     if (n > 0) lista.push({ id, tab, tono, texto: plural(n, uno, varios) });
   };
 
-  // Primero lo que cuesta plata mientras nadie lo mira
+  // Primero lo que alguien de tu equipo está esperando que decidas
+  sumar(solicitudes, 'solicitudes', 'solicitudes', 'urgente',
+    'solicitud de tu equipo espera tu aprobación', 'solicitudes de tu equipo esperan tu aprobación');
+  // Después lo que cuesta plata mientras nadie lo mira
   sumar(vencidos, 'creditos_vencidos', 'creditos', 'urgente',
     'crédito venció sin terminar de pagarse', 'créditos vencieron sin terminar de pagarse');
   sumar(enNegativo, 'stock_negativo', 'inventario', 'urgente',

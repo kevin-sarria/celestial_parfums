@@ -78,7 +78,9 @@ export interface OpcionesPeticion extends AxiosRequestConfig {
 
 /**
  * 401 = el token caducó → se renueva UNA vez y se reintenta.
- * 403 = ya no tienes permiso → fuera.
+ * 403 = no tienes permiso PARA ESTO → lo dice quien llamó, con su aviso. Antes
+ *       sacaba de la sesión: con personal con permisos (2026-10-04) un 403 es
+ *       lo normal ante algo que su rol no abre, y la sacaba del panel entero.
  *
  * `_reintentada` evita el bucle infinito: si el reintento vuelve a dar 401, se
  * cierra sesión en vez de pedir refresco para siempre.
@@ -97,7 +99,6 @@ instancia.interceptors.response.use(
       if (await renovarSesion()) return instancia(original);
       alCaducar?.();
     }
-    if (status === 403) alCaducar?.();
 
     return Promise.reject(error);
   },

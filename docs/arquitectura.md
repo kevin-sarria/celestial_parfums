@@ -761,3 +761,35 @@ Se ignoran `/api/auth` y `/api/notificaciones`. Si escribir el registro falla, l
 está hecha: se anota en el log del servidor. Pantalla: Ajustes → Historial de cambios
 (`GET /api/historial`, paginado y con búsqueda). Cuando existan empleados, el filtro por rol del
 middleware tendrá que incluirlos (hoy solo el admin puede cambiar algo).
+
+## Roles del personal y permisos (2026-10-04, opción C del dueño)
+
+El dueño arma roles marcando casillas (Ajustes → Roles del personal) y se los asigna a quien
+trabaja con él (Usuarios → Rol). El código pregunta por el **permiso**, no por el rol.
+
+- **Catálogo de casillas**: `backend/src/permisos/catalogo.ts`, única fuente. Solo existe una
+  casilla si el servidor la revisa; lo que no tiene casilla es solo del dueño (`requireAdmin`).
+  Primera parte: Ventas, Créditos, Descuentos, Clientes, Catálogo (ver) y Costos. Inventario,
+  producción, compras, reportes, la página y los ajustes siguen siendo solo del dueño.
+- **En el servidor**: `requirePermiso(...)` (basta uno) y `requirePersonal`. El rol se lee de la
+  base, no del token (`rolVigente`, 30 s en memoria): quitarle el rol a alguien le corta el panel
+  enseguida. `refreshService` también relee la persona (antes copiaba el rol del token viejo 7 días).
+- **Costos**: `middleware/ocultarCostos.ts` envuelve `res.json` de toda la API y quita las llaves
+  `costo|ganancia|margen|utilidad|invertid|esencia_precio` a quien no tenga `costos.ver`,
+  **incluidos los visitantes**: tapó una fuga vieja, la tienda pública mandaba
+  `insumo_esencia_precio`. Un endpoint nuevo que devuelva un costo con ese nombre queda tapado solo.
+- **Precio**: el personal sin `descuentos.aplicar` no escribe el precio. `controlPrecio.ts` lo
+  recalcula en el servidor (`permisos/precioPedido.ts`, con la misma detección de combos que
+  `useComboDetector.ts` — copiada, si cambia una hay que cambiar la otra) y si cobran menos,
+  regalan o traen cupón, al registrar se crea una **solicitud** (202) y la venta/crédito NO existe
+  hasta que el dueño decide; al corregir, se rechaza.
+- **Solicitudes** (`repositories/solicitud.repository.ts`, pestaña Solicitudes, campana del
+  dueño): borrar venta/crédito y descuentos. Aprobar ejecuta (registra con descuento o borra);
+  rechazar un descuento registra a precio normal sin regalos ni cupón. Se marca primero con
+  `updateMany … estado: pendiente`, así dos clics no registran dos veces; si ejecutar falla, vuelve
+  a pendiente.
+- **En la pantalla**: `useAuthContext().puede(...)` y `tabPermitida` (navegacion.ts) esconden lo que
+  no se puede; quien decide es el servidor. Un 403 ya no cierra la sesión (`http.ts`): con personal
+  es la respuesta normal ante algo que su rol no abre.
+- **Pruebas**: `e2e/permisosPersonal.e2e.test.ts` (contra el servidor: lo que no se puede saltar)
+  y `e2e/personalPantalla.e2e.test.ts` (en pantalla).

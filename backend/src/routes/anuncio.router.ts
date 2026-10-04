@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAdmin } from '../middleware/auth.middleware';
+import { requireAdmin, requirePermiso } from '../middleware/auth.middleware';
 import { h } from '../middleware/error.middleware';
 import { validate } from '../middleware/validate.middleware';
 import { createAnuncioSchema, estadoCodigoSchema } from '../schemas/anuncio.schema';
@@ -17,7 +17,9 @@ anuncioRouter.get('/', h(async (_req, res) => {
 // (antes de las rutas /:id para que "codigos" no se interprete como id)
 
 // Admin: certificar si un código recibido por WhatsApp es real
-anuncioRouter.get('/codigos/:codigo', requireAdmin, h(async (req, res) => {
+// Validar un cupón lo necesita también quien registra: sin permiso de descuentos
+// lo puede SUGERIR, y la venta espera al dueño (ver `controlPrecio.ts`)
+anuncioRouter.get('/codigos/:codigo', requirePermiso('ventas.registrar', 'creditos.registrar', 'descuentos.aplicar'), h(async (req, res) => {
   res.json({ data: await anuncioService.validarCodigo(String(req.params.codigo)) });
 }));
 

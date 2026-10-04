@@ -19,7 +19,8 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Revisión de la app (2026-10-02). Primera tanda hecha: "Presentaciones y precio" rediseñada; el cliente sabe que entró (saludo, iniciales, Mi cuenta, franja en la portada, vuelve a donde estaba). Arreglado de paso: "Hola undefined undefined" en el menú | hecho |
 | Segunda tanda: buscador general del panel (Ctrl+K), meta del mes en Inicio, beneficios de crear cuenta en login/registro. **Lleva migración** (`20261002120000_meta_mensual`), la aplica el despliegue automático | hecho |
 | Tercera tanda: historial de cambios (Ajustes → Historial de cambios, **lleva migración** `20261003120000_registro_cambios`) | hecho |
-| Empleados con permisos: esperando que el dueño decida qué roles y qué ve cada uno | por decidir |
+| Empleados con permisos, primera parte (opción C): roles con casillas, Ventas/Créditos/Clientes/Catálogo, costos escondidos, precio recalculado en el servidor, solicitudes de borrado y descuento. **Lleva migración** `20261004120000_roles_permisos` | hecho |
+| Segunda parte de permisos: inventario, producción, compras, reportes, página web (hoy solo del dueño) | cuando contrate a alguien para eso |
 | Plan de TikTok orgánico entregado (5 tipos de video, ritmo de 4/semana, cuidado legal con "inspirado en") | hecho |
 | Desplegado el 2026-10-02 (con el despliegue automático) | hecho |
 | Dueño: registrar las compras de los 15 originales, ponerles precio y publicarlos | pendiente |
