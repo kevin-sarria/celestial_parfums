@@ -126,7 +126,7 @@ export const enPruebaSchema = z.object({
  * "envases" corrige la regla en vez de crear una segunda que la contradiga.
  */
 export const alertaSchema = z.object({
-  ambito: z.enum(['esencias', 'envases', 'implementos']),
+  ambito: z.enum(['esencias', 'envases', 'frascos_fragancia', 'implementos']),
   minimo: z.number().min(0).max(9_999_999),
   forma: z.enum(['franja', 'ventana']).default('franja'),
   activo: z.boolean().default(true),

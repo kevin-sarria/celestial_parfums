@@ -7,7 +7,7 @@
  * y eso hay que explicarlo en pantalla o el dueño esperará ver ahí el diluyente.
  */
 
-export type Ambito = 'esencias' | 'envases' | 'implementos';
+export type Ambito = 'esencias' | 'envases' | 'frascos_fragancia' | 'implementos';
 
 export interface Alerta {
   id: number;
@@ -43,7 +43,15 @@ export const FILAS_ALERTA: {
     ambito: 'envases',
     titulo: 'Envases',
     unidad: 'unidades',
-    explicacion: 'Frascos y botellas de todas las tallas.',
+    explicacion: 'Los genéricos: los que usa la receta de cada tamaño (30 ml, 100 ml…).',
+  },
+  {
+    // Dueño, 2026-10-03: los de lujo de los 1.1 salen lento; no se piden de a 40
+    ambito: 'frascos_fragancia',
+    titulo: 'Frascos de una fragancia',
+    unidad: 'unidades',
+    explicacion: 'Los de los 1.1: asignados a un perfume en su ficha. Salen lento, así que llevan su '
+      + 'propio número. Sin número no se piden.',
   },
   {
     ambito: 'implementos',
@@ -56,5 +64,6 @@ export const FILAS_ALERTA: {
 export const ETIQUETA_AMBITO: Record<Ambito, string> = {
   esencias: 'Esencias',
   envases: 'Envases',
+  frascos_fragancia: 'Frascos de fragancia',
   implementos: 'Implementos',
 };

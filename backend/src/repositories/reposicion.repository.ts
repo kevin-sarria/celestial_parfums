@@ -1,6 +1,6 @@
 import type { MovimientoTipo } from '@prisma/client';
 import { prisma } from '../config/prisma';
-import { minimoDe, minimosPorAmbito } from './alertas.repository';
+import { minimoDe, minimosPorAmbito, SELECT_FAMILIA } from './alertas.repository';
 
 /**
  * Pedido sugerido: qué material hay que reponer y cuánto pedir.
@@ -91,7 +91,8 @@ export const calcularReposicion = async (): Promise<Reposicion> => {
   const [insumos, salidas, porAmbito] = await Promise.all([
     prisma.insumoCosto.findMany({
       where: { activo: true },
-      include: { gama: true },
+      // Los usos como frasco deciden si un envase es genérico o de una fragancia
+      include: { gama: true, envase_de: SELECT_FAMILIA.envase_de, envase_de_talla: SELECT_FAMILIA.envase_de_talla },
       orderBy: [{ tipo: 'asc' }, { nombre: 'asc' }],
     }),
     prisma.movimientoInventario.groupBy({

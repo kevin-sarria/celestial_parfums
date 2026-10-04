@@ -147,3 +147,32 @@ describe('la alerta del dashboard', () => {
     expect(todas[0].forma).toBe('ventana');
   });
 });
+
+describe('frascos de una fragancia (los de los 1.1)', () => {
+  beforeEach(limpiarBase);
+
+  /**
+   * Dueño, 2026-10-03: *"no es posible que me pida 40 envases de perfumes 1.1
+   * cuando se sabe que por ser de lujo salen super lento"*. El frasco que solo
+   * está asignado a un perfume tiene su propia familia; el que usa la receta de
+   * un tamaño sigue siendo genérico aunque también esté asignado.
+   */
+  it('el mínimo de los envases genéricos no alcanza al frasco de un 1.1', async () => {
+    const generico = await crearInsumo('Envase 100 ml', { tipo: 'envase', stock: 5 });
+    const frasco11 = await crearInsumo('Envase Yara 1.1', { tipo: 'envase', stock: 1 });
+    await prisma.formulaVolumen.create({ data: { nombre: '100 ml', ml_total: 100, esencia_ml: 30, envase_insumo_id: generico.id } });
+    const perfume = await prisma.perfume.create({ data: { nombre: 'Yara 1.1', precio: 90000 } });
+    const talla = await prisma.presentacion.create({ data: { nombre: '100MLT', ml: 100 } });
+    await prisma.perfumePresentacion.create({ data: { perfume_id: perfume.id, presentacion_id: talla.id, envase_insumo_id: frasco11.id } });
+    await guardarAlerta({ ambito: 'envases', minimo: 40, forma: 'franja', activo: true });
+
+    const disparadas = await alertasDisparadas();
+    expect(disparadas.map((a) => [a.ambito, a.materiales.map((m) => m.nombre)])).toEqual([['envases', ['Envase 100 ml']]]);
+    expect((await calcularReposicion()).implementos.map((f) => f.nombre)).toEqual(['Envase 100 ml']);
+
+    // Con su propio número, sí avisa
+    await guardarAlerta({ ambito: 'frascos_fragancia', minimo: 2, forma: 'franja', activo: true });
+    const conNumero = await alertasDisparadas();
+    expect(conNumero.find((a) => a.ambito === 'frascos_fragancia')?.materiales.map((m) => m.nombre)).toEqual(['Envase Yara 1.1']);
+  });
+});

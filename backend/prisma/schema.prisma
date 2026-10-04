@@ -1026,6 +1026,8 @@ model GamaEsencia {
 enum AlertaAmbito {
   esencias
   envases
+  /// Frascos de una fragancia (1.1): asignados a un perfume, no a la receta de un tamaño.
+  frascos_fragancia
   implementos
 }
 

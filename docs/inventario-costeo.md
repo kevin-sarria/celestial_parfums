@@ -1116,3 +1116,13 @@ números distintos no tienen respuesta correcta, y la pantalla tendría que inve
 
 Diseño completo en
 [`superpowers/specs/2026-08-29-alertas-y-en-prueba-design.md`](superpowers/specs/2026-08-29-alertas-y-en-prueba-design.md).
+
+
+**Frascos de una fragancia (2026-10-03, opción A del dueño).** *"No es posible que me pida 40
+envases de perfumes 1.1 cuando se sabe que por ser de lujo salen super lento."* Cuarta familia,
+`frascos_fragancia`, que nadie marca a mano: un envase que **solo** está asignado como frasco de un
+perfume (`PerfumePresentacion.envase_insumo_id`) es de esa fragancia; si alguna receta de tamaño lo
+usa (`FormulaVolumen.envase_insumo_id`) es genérico aunque también esté asignado
+(`esFrascoDeFragancia`). Sin fila guardada su mínimo es 0: no se piden. Un frasco de 1.1 que no
+esté asignado a su perfume sigue contando como genérico. La opción C (mínimo por velocidad de
+venta) quedó para después.

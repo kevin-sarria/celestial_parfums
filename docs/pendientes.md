@@ -30,7 +30,12 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Dueño: ir a Producciones y pulsar **Corregir** en el aviso de las ventas de 1.1 (ya desplegado) | pendiente |
 | Despliegue automático con GitHub Actions (opción B: cada push a main, con pruebas y respaldo) | **funcionando** desde el 2026-10-02 (servidor instalado, secretos puestos, primer despliegue `8a863a7` en verde). En el servidor ya no se edita ni se hace commit |
 | 2026-09-30: el crédito ya refresca la tienda y borrarlo devuelve la mercancía (`gotchas.md`). Respaldo del día cargado en local como `celestial_prod_20260930` | hecho |
-| Dueño: 11 originales están publicados con TODAS sus tallas al precio de respaldo (el decant de 3 ml vale lo mismo que la botella). Ponerle precio a cada decant o desmarcar esas tallas | pendiente, decide él |
+| Decants de originales al precio de la botella (en vivo eran 19): un decant ya no hereda el precio general; sin precio propio se esconde (2026-10-03, `reglas-negocio.md`) | hecho y desplegado |
+| La vendedora no encontraba el panel desde la tienda ("Mi panel"); `catalogo.ver` abre Perfumes/Productos/Combos para mirar; "Limpiar todo" revivía la búsqueda en 7 tablas (2026-10-03) | hecho y desplegado |
+| Alertas: los frascos de los 1.1 tienen su propia familia ("Frascos de una fragancia", opción A del dueño, 2026-10-03). **Lleva migración** `20261005120000_frascos_fragancia` | hecho |
+| Alertas opción C: el mínimo sale de la velocidad de venta (avisar cuando lo que hay alcanza para menos de X semanas), en vez de un número fijo | pendiente (el dueño la eligió para después de A) |
+| Precios sugeridos de decants (opción B del dueño: margen mínimo, sugerido por talla y botón para ponerlo a todos los que no tienen precio), en su propio apartado | pendiente: va dentro del rediseño del núcleo de producto |
+| **Rediseño del núcleo de producto** (dueño, 2026-10-03): tres líneas —contratipo, 1.1, original (botella + decants)— más productos sueltos; qué acompaña a cada venta (bolsa, perfumero) configurable por producto/combo, no por categoría ni en general | diseño en curso, decide él |
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 

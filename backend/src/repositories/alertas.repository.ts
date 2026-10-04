@@ -19,6 +19,34 @@ import { prisma } from '../config/prisma';
 export type Ambito = AlertaAmbito;
 
 /**
+ * Lo que hay que traer de un material para saber su familia. Las dos listas
+ * de uso viajan con `take: 1`: solo importa si hay alguno.
+ */
+export const SELECT_FAMILIA = {
+  tipo: true, gama_id: true,
+  envase_de: { select: { id: true }, take: 1 },
+  envase_de_talla: { select: { perfume_id: true }, take: 1 },
+} as const;
+
+type InsumoParaFamilia = Pick<InsumoCosto, 'tipo' | 'gama_id'> & {
+  envase_de?: unknown[];
+  envase_de_talla?: unknown[];
+};
+
+/**
+ * ¿Es el frasco de UNA fragancia (el de un 1.1) y no un envase genérico?
+ * (dueño, 2026-10-03: *"no es posible que me pida 40 envases de perfumes 1.1
+ * cuando se sabe que por ser de lujo salen super lento"*).
+ *
+ * No hay que marcarlo a mano: sale de cómo se usa. Un envase que alguna
+ * receta de tamaño usa (el de 30 ml, el de 100 ml) es genérico aunque además
+ * se lo hayan asignado a un perfume; uno que SOLO está asignado como frasco de
+ * un perfume es de esa fragancia. Sin ningún uso, genérico: la vara de siempre.
+ */
+export const esFrascoDeFragancia = (i: InsumoParaFamilia) =>
+  i.tipo === 'envase' && !i.envase_de?.length && !!i.envase_de_talla?.length;
+
+/**
  * A qué familia pertenece un material.
  *
  * **"esencias" NO es "materia prima"**, y es la decisión que más se nota:
@@ -27,10 +55,8 @@ export type Ambito = AlertaAmbito;
  * medirlos con la vara de una esencia llenaría la alerta de ruido el primer día
  * (decisión del dueño, 2026-08-29). Siguen pudiendo tener su mínimo propio.
  */
-export const ambitoDeInsumo = (
-  i: Pick<InsumoCosto, 'tipo' | 'gama_id'>,
-): Ambito | null => {
-  if (i.tipo === 'envase') return 'envases';
+export const ambitoDeInsumo = (i: InsumoParaFamilia): Ambito | null => {
+  if (i.tipo === 'envase') return esFrascoDeFragancia(i) ? 'frascos_fragancia' : 'envases';
   if (i.tipo === 'accesorio') return 'implementos';
   return i.gama_id != null ? 'esencias' : null;
 };
@@ -91,7 +117,7 @@ export const minimosPorAmbito = async (): Promise<Map<Ambito, number>> => {
  * sin mínimo no se avisa: avisar de todo es lo mismo que no avisar de nada.
  */
 export const minimoDe = (
-  i: Pick<InsumoCosto, 'tipo' | 'gama_id' | 'stock_minimo'> & { gama?: { stock_minimo: unknown } | null },
+  i: InsumoParaFamilia & Pick<InsumoCosto, 'stock_minimo'> & { gama?: { stock_minimo: unknown } | null },
   porAmbito: Map<Ambito, number>,
 ): { minimo: number; propio: boolean } => {
   if (i.stock_minimo != null) return { minimo: Number(i.stock_minimo), propio: true };
@@ -115,6 +141,7 @@ export interface AlertaDisparada {
 const TITULO: Record<Ambito, string> = {
   esencias: 'Esencias por debajo del mínimo',
   envases: 'Envases por debajo del mínimo',
+  frascos_fragancia: 'Frascos de fragancia por debajo del mínimo',
   implementos: 'Implementos por debajo del mínimo',
 };
 
@@ -137,7 +164,7 @@ export const alertasDisparadas = async (): Promise<AlertaDisparada[]> => {
     prisma.insumoCosto.findMany({
       where: { activo: true, en_prueba: false },
       select: {
-        id: true, nombre: true, stock: true, unidad: true, tipo: true, gama_id: true,
+        id: true, nombre: true, stock: true, unidad: true, ...SELECT_FAMILIA,
         stock_minimo: true,
         // La gama viaja porque su mínimo va ANTES que el de la familia en la
         // cascada: sin ella, una esencia con gama configurada se mediría con la
