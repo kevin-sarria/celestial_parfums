@@ -16,6 +16,7 @@ import { ArmadorPedido } from '../pedido/ArmadorPedido';
 import { mostrarAvisos, type Respuesta } from '../../../application/avisosInventario';
 import { ResumenPedido } from '../pedido/ResumenPedido';
 import { PrecioPersonal } from '../pedido/PrecioPersonal';
+import { SugerenciaCliente } from '../pedido/SugerenciaCliente';
 import { useAuthContext } from '../../../application/context/useAuthContext';
 import {
   descuentoDeCupon, itemsDeLineas, presentacionResumen, subtotalDeLineas, unidadesDeLineas,
@@ -282,6 +283,17 @@ export function VentaForm({
               onChange={e => setForm(f => ({ ...f, persona: e.target.value }))} />
           </Field>
         </FieldRow>
+
+        {/* El nombre ya está escrito: si es cliente (o no lo es), la app lo dice sola. */}
+        <SugerenciaCliente
+          persona={form.persona}
+          usuarios={usuarios}
+          enlazado={form.user_id !== ''}
+          onEnlazar={id => setForm(f => ({ ...f, user_id: id }))}
+          onGuardar={(nombre, apellido) => setForm(f => ({
+            ...f, user_id: 'nuevo', nuevo_nombre: nombre, nuevo_apellido: apellido,
+          }))}
+        />
 
         <Field label="Cliente enlazado (opcional)">
           <BuscadorSelect

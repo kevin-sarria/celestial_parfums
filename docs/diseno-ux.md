@@ -813,4 +813,35 @@ su ahorro, *"3 perfumes por $ 150.000 (ahorras $ 30.000 · $ 50.000 cada uno)"*.
 tarjeta del catálogo no lo dice —ensucia una rejilla ya cargada— y el modal de agregar no
 interrumpe.
 
+## La venta captura al cliente (2026-10-04)
+
+Medido en la base real: **225 de 342 ventas estaban sin cliente** ($12.028.500) y solo 4 de esos
+nombres coincidían con una cuenta. Sin cliente no hay recompra, ni sellos, ni a quién escribirle; y
+de 37 fichas **una sola tenía teléfono**, así que el botón de WhatsApp de la recompra abría el
+selector de contactos en vez del chat.
+
+El formulario siempre tuvo el desplegable *"Cliente enlazado"*, pero es opcional y cuesta abrirlo.
+Ahora, con el nombre ya escrito en *Persona* (`pedido/SugerenciaCliente.tsx`):
+
+- **Si ya es cliente**, lo dice y lo enlaza de un toque: *"Ya tienes a X · Enlazar esta venta"*.
+- **Si no lo es**, ofrece guardarlo: *"«X» todavía no es cliente · Guardarlo y ponerle el teléfono"*.
+  El bloque de persona nueva aparece con el nombre **ya partido**, así que lo escrito no se teclea
+  dos veces.
+
+La coincidencia la decide `pedido/clienteDeTexto.ts`: **exacta**, no "parecida", y con un mínimo de
+5 letras —con "Ana" se enlazaría a cualquier Ana, y un enlace equivocado mezcla dos historiales sin
+que nadie lo note—.
+
+Y el teléfono ya sirve para algo: **`utils/whatsapp.ts`** es el ÚNICO sitio que arma el enlace
+(`wa.me/57…` con el número limpio), y la recompra abre el chat del cliente cuando su ficha lo tiene.
+Antes la recompra abría el selector y Reposiciones ya lo hacía bien: eran dos reglas distintas para
+lo mismo.
+
+Pruebas: `clienteDeTexto.test.ts` (8), `ventaCapturaCliente.e2e.test.ts` (las dos ramas) y la rama
+del teléfono en `recompra.e2e.test.ts`.
+
+**Lo que queda del lado del dueño**: ir poniendo los teléfonos. El sistema ahora los pide justo
+cuando nace el cliente, que es cuando los tiene a mano (el chat de WhatsApp).
+
+
 

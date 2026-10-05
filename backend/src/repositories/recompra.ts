@@ -23,7 +23,7 @@ export const listaRecompra = async () => {
   const ventas = await prisma.venta.findMany({
     select: {
       dia: true, persona: true, user_id: true, referencia_perfume: true,
-      user: { select: { nombre: true, apellido: true } },
+      user: { select: { nombre: true, apellido: true, telefono: true } },
     },
   });
 
@@ -38,5 +38,12 @@ export const listaRecompra = async () => {
       referencia: v.referencia_perfume,
     });
   }
-  return calcularRecompra(compras, aTexto(hoyEnColombia()));
+  // El teléfono solo existe en las ventas ENLAZADAS a un cliente: las que se
+  // agrupan por el nombre escrito no tienen ficha de quién es. Se pega aquí,
+  // donde vive el dato, en vez de ensuciar `calcularRecompra`, que es puro.
+  const telefonoDe = new Map(
+    ventas.filter((v) => v.user_id).map((v) => [`u:${v.user_id}`, v.user?.telefono ?? null]),
+  );
+  const res = calcularRecompra(compras, aTexto(hoyEnColombia()));
+  return { ...res, clientes: res.clientes.map((c) => ({ ...c, telefono: telefonoDe.get(c.clave) ?? null })) };
 };

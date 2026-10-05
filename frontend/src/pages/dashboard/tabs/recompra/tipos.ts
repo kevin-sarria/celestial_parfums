@@ -5,6 +5,8 @@ export type EstadoRecompra = 'le_toca' | 'pronto' | 'al_dia' | 'dormido';
 export interface ClienteRecompra {
   clave: string;
   nombre: string;
+  /** Teléfono de su ficha. null = la venta no está enlazada, o la ficha no lo tiene. */
+  telefono: string | null;
   compras: number;
   primera: string;
   ultima: string;

@@ -41,4 +41,35 @@ describe('la lista de recompra', () => {
 
     await contexto.close();
   });
+
+  it('abre el chat del cliente cuando su ficha tiene teléfono', async () => {
+    // Antes el botón abría WhatsApp SIN número y el dueño elegía el contacto a
+    // mano —justo en la pantalla que existe para escribirle—. El teléfono solo
+    // lo tienen las ventas enlazadas a una ficha.
+    const rol = await prisma.role.upsert({ where: { id: 2 }, update: {}, create: { id: 2, nombre: 'cliente' } });
+    const clienta = await prisma.user.create({
+      data: {
+        nombre: 'Enlazada', apellido: 'ConTeléfono', telefono: '300 123 4567',
+        email: `enlazada-${Date.now()}@prueba.local`, password: 'x', rol_id: rol.id,
+      },
+    });
+    const base = { cantidad_perfumes: 1, presentacion: '30 ml', valor_venta: 60000, pagada: true };
+    await prisma.venta.createMany({
+      data: [
+        { ...base, dia: haceDias(45), persona: 'Enlazada ConTeléfono', user_id: clienta.id, referencia_perfume: 'Eternity 30ml' },
+        { ...base, dia: haceDias(25), persona: 'Enlazada ConTeléfono', user_id: clienta.id, referencia_perfume: 'Khamrah 30ml' },
+      ],
+    });
+
+    const { contexto, pagina } = await abrirDashboard();
+    await irA(pagina, '/dashboard/recompra');
+
+    const tarjeta = pagina.locator('li', { hasText: 'Enlazada ConTeléfono' });
+    await tarjeta.waitFor();
+    const enlace = await tarjeta.getByRole('link', { name: /WhatsApp/ }).getAttribute('href');
+    // El teléfono se guarda como lo teclea el dueño; el enlace lo limpia.
+    expect(enlace).toContain('https://wa.me/573001234567?text=');
+
+    await contexto.close();
+  });
 });

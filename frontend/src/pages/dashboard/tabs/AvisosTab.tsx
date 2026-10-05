@@ -7,11 +7,16 @@ import { toast } from 'sonner';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar } from '../ui';
+import { telefonoWa } from '../../../utils/whatsapp';
 
 interface Esperando { nombre: string; telefono: string | null; email: string; fecha: string }
 interface Demanda { perfume_id: number; nombre: string; imagen_url: string | null; agotado: boolean; total: number; esperando: Esperando[] }
 
-const waLink = (tel: string | null) => (tel ? `https://wa.me/57${tel.replace(/\D/g, '')}` : null);
+/** null = sin teléfono: sin chat al que ir, se copia el mensaje y se busca a mano. */
+const waLink = (tel: string | null) => {
+  const numero = telefonoWa(tel);
+  return numero ? `https://wa.me/${numero}` : null;
+};
 
 /** Demanda de reposición: quién espera cada perfume agotado, para escribirle. */
 export function AvisosTab() {

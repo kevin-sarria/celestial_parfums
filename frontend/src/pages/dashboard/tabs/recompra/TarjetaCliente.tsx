@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { fechaLegible } from '@/utils/calendario';
 import type { ClienteRecompra, EstadoRecompra } from './tipos';
+import { waLink } from '../../../../utils/whatsapp';
 
 const plural = (n: number, uno: string, varios: string) => `${n} ${n === 1 ? uno : varios}`;
 
@@ -48,8 +49,9 @@ export const mensajeDe = (c: ClienteRecompra) => {
  * Un cliente de la lista. Tarjeta y no fila de tabla: se usa sobre todo desde
  * el celular, justo antes de abrir WhatsApp.
  *
- * El botón abre WhatsApp SIN número: ningún cliente tiene teléfono guardado
- * (medido el 2026-09-28), así que se elige el contacto allá.
+ * El botón abre el chat DEL CLIENTE cuando su ficha tiene teléfono; si no, cae al
+ * selector de contactos —el mensaje va escrito igual—. Medido el 2026-10-04: de
+ * 37 fichas solo una tenía teléfono, por eso casi siempre se elegía a mano.
  */
 export function TarjetaCliente({ c }: { c: ClienteRecompra }) {
   const copiar = async () => {
@@ -81,7 +83,7 @@ export function TarjetaCliente({ c }: { c: ClienteRecompra }) {
           <Copy className="size-4" /> Copiar
         </Button>
         <Button size="sm" asChild>
-          <a href={`https://wa.me/?text=${encodeURIComponent(mensajeDe(c))}`} target="_blank" rel="noreferrer">
+          <a href={waLink(c.telefono, mensajeDe(c))} target="_blank" rel="noreferrer">
             <MessageCircle className="size-4" /> WhatsApp
           </a>
         </Button>
