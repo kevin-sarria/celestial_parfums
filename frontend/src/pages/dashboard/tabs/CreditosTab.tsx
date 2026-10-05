@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CircleDollarSign, Gauge, History, Pencil, Trash2, Upload } from 'lucide-react';
+import { CircleDollarSign, Gauge, History, MessageCircle, Pencil, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import ImportModal from '../../../components/ImportModal';
@@ -20,6 +20,8 @@ import { EncabezadoPagina, FranjaMetricas, Section, StatCard } from '../ui';
 import type { Credito, PerfilCredito, Usuario } from '../types';
 import { useAuthContext } from '../../../application/context/useAuthContext';
 import { PedirBorrado } from '../pedido/PedirBorrado';
+import { RecordarPagoModal } from './RecordarPagoModal';
+import { usePlantillasMensaje } from '../../../application/hooks/usePlantillasMensaje';
 
 interface TotalesCartera {
   total_en_deuda: number;
@@ -170,9 +172,29 @@ export function CreditosTab() {
   // Sin permiso de borrar, el botón PIDE el borrado al dueño.
   const { isAdmin, puede } = useAuthContext();
   const [pedirBorrar, setPedirBorrar] = useState<Credito | null>(null);
+  /** El crédito al que se le va a recordar el pago; null = cerrado. */
+  const [recordando, setRecordando] = useState<Credito | null>(null);
+  /** Los mensajes de cobro que escribió el dueño (Maestro de mensajes). */
+  const { plantillas: mensajesDeCobro } = usePlantillasMensaje('credito');
+  const sinMensajes = mensajesDeCobro.length === 0;
 
   const acciones = (c: Credito, conTexto: boolean) => (
     <>
+      {/* Cobrar: lo que el dueño hace todos los días. Sale apagado —pero se puede
+          tocar— mientras no haya escrito ningún mensaje, y al tocarlo lo explica
+          (`RecordarPagoModal`). Deshabilitado de verdad no se podría tocar y se
+          quedaría sin saber por qué. */}
+      <Button
+        variant={conTexto ? 'outline' : 'ghost'}
+        size={conTexto ? 'sm' : 'icon'}
+        className={conTexto
+          ? (sinMensajes ? 'text-muted-foreground/50' : undefined)
+          : `size-8 ${sinMensajes ? 'text-muted-foreground/50' : 'text-muted-foreground hover:text-primary'}`}
+        title={sinMensajes ? 'Todavía no has escrito el mensaje para cobrar' : 'Recordarle el pago por WhatsApp'}
+        onClick={() => setRecordando(c)}
+      >
+        <MessageCircle className="size-4" />{conTexto && ' Recordar'}
+      </Button>
       <Button
         variant={conTexto ? 'outline' : 'ghost'}
         size={conTexto ? 'sm' : 'icon'}
@@ -351,6 +373,14 @@ export function CreditosTab() {
         onGuardarCupo={saveCupo}
         guardando={cupoSaving}
       />
+
+      {recordando && (
+        <RecordarPagoModal
+          credito={recordando}
+          plantillas={mensajesDeCobro}
+          onClose={() => setRecordando(null)}
+        />
+      )}
     </div>
   );
 }

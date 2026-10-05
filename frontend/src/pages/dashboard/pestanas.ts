@@ -50,3 +50,4 @@ export const EmpaqueTab = lazyPagina(() => import('./tabs/EmpaqueTab').then((m) 
 export const PreciosOriginalesTab = lazyPagina(() => import('./tabs/PreciosOriginalesTab').then((m) => ({ default: m.PreciosOriginalesTab })));
 export const HistorialTab = lazyPagina(() => import('./tabs/HistorialTab').then((m) => ({ default: m.HistorialTab })));
 export const RedesTab = lazyPagina(() => import('./tabs/RedesTab').then((m) => ({ default: m.RedesTab })));
+export const MensajesTab = lazyPagina(() => import('./tabs/MensajesTab').then((m) => ({ default: m.MensajesTab })));

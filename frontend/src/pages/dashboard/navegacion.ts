@@ -2,7 +2,8 @@ import {
   SprayCan, PackageCheck, Package, Flower2, CalendarDays, Tags, Ruler, Gift, BadgePercent,
   CircleDollarSign, ClipboardList, Factory, Share2, Users, Megaphone, Star, MessageSquareText,
   BellRing, ShoppingCart, Info, Newspaper, FileText, FlaskConical, Boxes, Calculator, PackageX,
-  ChartColumn, Layers, Coins, TriangleAlert, House, Repeat, History, ShieldCheck, Inbox, Sparkles, Droplet, type LucideIcon,
+  ChartColumn, Layers, Coins, TriangleAlert, House, Repeat, History, ShieldCheck, Inbox, Sparkles, Droplet,
+  MessageCircle, type LucideIcon,
 } from 'lucide-react';
 import type { Tab } from './types';
 import type { LineaCatalogo } from './tabs/perfumes/tipoDeProducto';
@@ -60,6 +61,7 @@ export const TAB_META: Record<Tab, { label: string; icon: LucideIcon }> = {
   historial: { label: 'Historial de cambios', icon: History },
   roles: { label: 'Roles del personal', icon: ShieldCheck },
   solicitudes: { label: 'Solicitudes', icon: Inbox },
+  mensajes: { label: 'Mensajes', icon: MessageCircle },
 };
 
 // Menú del dashboard agrupado en secciones colapsables (drawer con burger)
@@ -90,7 +92,7 @@ export const NAV_SECTIONS: { id: string; label: string; tabs: Tab[] }[] = [
   { id: 'reportes', label: 'Reportes', tabs: ['rep_ventas', 'rep_compras', 'rep_clientes'] },
   { id: 'pagina', label: 'Página web', tabs: ['publicidad', 'recompensas', 'resenas', 'avisos', 'nosotros', 'blog', 'redes'] },
   // `aromas` es la puerta a las cinco clasificaciones (ver CLASIFICACIONES)
-  { id: 'ajustes', label: 'Ajustes', tabs: ['usuarios', 'roles', 'aromas', 'historial'] },
+  { id: 'ajustes', label: 'Ajustes', tabs: ['usuarios', 'roles', 'mensajes', 'aromas', 'historial'] },
   { id: 'mayoreo', label: 'Mayoreo B2B', tabs: ['cotizaciones', 'precios_mayoreo'] },
 ];
 

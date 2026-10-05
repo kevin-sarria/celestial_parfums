@@ -868,6 +868,57 @@ insumo por insumo sigue ahí abajo, ya cortado.
 
 Pruebas: `ranking.test.ts` (10) y `reportesCompras.e2e.test.ts`, con capturas a 1366 y 390 px.
 
+## El maestro de mensajes: su voz, no la del sistema (2026-10-04)
+
+Los mensajes de WhatsApp que el panel manda **vivían dentro del código**
+(`mensajeDe` en la recompra, `mensajeWhatsappCotizacion`, el del carrito). Cambiar una coma era un
+despliegue, y el dueño escribe distinto según el cliente: *"ey bro, como vamos"* a uno joven, algo
+formal a uno mayor. Un texto fijo nunca le servía.
+
+**Ajustes → Mensajes**: escribe sus variantes por caso y el botón que las usa le deja escoger.
+Arranca con **el cobro**, que era el que hacía falta (el 2026-10-04 tenía **$1.059.500 en la calle**
+y ningún sitio donde escribir el mensaje).
+
+### Las marcas
+
+El texto lleva marcas y el panel les mete el dato. **En el editor son botones** que las insertan
+donde esté el cursor, con una **vista previa** debajo: nadie tiene que aprenderse las llaves, y lo
+que se ve en la vista previa es exactamente lo que sale (es el mismo relleno).
+
+| Marca | Qué pone |
+|---|---|
+| `{nombre}` | El primer nombre |
+| `{saldo}` | Lo que debe |
+| `{vence}` | *vence en 5 días* · *venció hace 3 días* |
+| `{fecha}` | La fecha pactada |
+
+`{vence}` está pensado para que **una sola plantilla sirva antes y después de la fecha**: *"tu
+crédito {vence}"* funciona en los dos casos, y así no tiene que escribir dos.
+
+Una marca que no existe **se deja tal cual**: borrarla en silencio mandaría al cliente un mensaje
+al que le falta un dato sin que nadie se entere, y en la vista previa se ve el `{nombe}` y lo
+corrige.
+
+### El botón que las usa
+
+En **Créditos**, cada fila lleva *Recordar*:
+
+- **Sin mensajes escritos** sale **apagado**, y al tocarlo un aviso lo explica y lleva a escribirlo.
+  Un botón `disabled` de verdad no se podría tocar y lo dejaría sin saber por qué.
+- **Con mensajes**, elige la variante y **lee el mensaje antes de mandarlo**. Nunca se manda solo:
+  abre WhatsApp —el chat del cliente si su ficha tiene teléfono, el selector si no— para que lo
+  cambie si quiere.
+
+### Lo que este módulo cazó
+
+El recorrido `maestroMensajes.e2e` encontró que el backend manda las fechas de calendario como
+**instante ISO** (`2026-10-09T00:00:00.000Z`) y el lector esperaba `AAAA-MM-DD`: el mensaje decía
+*"sigue pendiente"* a alguien que **sí** tenía plazo pactado. Se recorta al día antes de leerla
+(la misma regla que `fmtDate`).
+
+Pruebas: `mensajes.test.ts` (14), `mensaje.bd.test.ts` (6) y el recorrido completo
+`maestroMensajes.e2e.test.ts`.
+
 
 
 

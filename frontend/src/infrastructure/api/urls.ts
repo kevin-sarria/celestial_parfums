@@ -254,6 +254,17 @@ export const urls = {
     rol: (id: number) => `/usuarios/${id}/rol`,
   },
 
+  /**
+   * El maestro de mensajes: los textos de WhatsApp que escribe el dueño.
+   * Escribirlos es solo suyo; leerlos lo necesita también quien cobra.
+   */
+  mensajes: {
+    /** Todas, o solo las de un caso (`?caso=credito`). */
+    lista: '/mensajes',
+    crear: '/mensajes',
+    mensaje: (id: number) => `/mensajes/${id}`,
+  },
+
   devoluciones: {
     lista: '/devoluciones',
     crear: '/devoluciones',

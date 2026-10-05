@@ -28,6 +28,7 @@ const MODULOS: Record<string, string> = {
   usuarios: 'Usuarios', recompensas: 'Recompensas', resenas: 'Reseñas', anuncios: 'Publicidad',
   avisos: 'Reposiciones', blog: 'Blog', contacto: 'Redes sociales', nosotros: 'Sobre nosotros',
   import: 'Importación', upload: 'Imágenes', reportes: 'Inicio', backup: 'Respaldo',
+  mensajes: 'Mensajes',
 };
 
 const VERBO: Record<string, string> = { POST: 'Creó o registró', PATCH: 'Editó', DELETE: 'Borró' };

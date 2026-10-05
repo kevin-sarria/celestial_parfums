@@ -47,7 +47,8 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Posdata 2: auditoría de mejoras (lógica + diseño). 21 hallazgos priorizados (9 tienda/SEO + 12 panel/lógica), entregados en el chat | hecho |
 | El combo se ofrece **EN LA FICHA** del perfume ("3 perfumes por $ 150.000 · ahorras $ 30.000"), no solo en el carrito: 48 de las 98 ventas de 30 ml eran de una sola unidad (`diseno-ux.md`) | hecho (`9a3284c`); lo despliega el push |
 | Palanca 2, captura: la venta ofrece al cliente con el nombre ya escrito y deja el teléfono a la vista (`SugerenciaCliente`); el enlace de WhatsApp vive en un solo sitio (`utils/whatsapp.ts`) y **la recompra ya abre el chat directo** (`diseno-ux.md`) | hecho; lo despliega el push |
-| Palanca 2, cobro: recordarle el pago al que debe desde su crédito (WhatsApp con el saldo listo). Hoy el panel dice QUIÉN debe ($1.059.500) pero no tiene con qué escribirle | pendiente: falta que el dueño diga el texto |
+| Palanca 2, cobro: recordarle el pago al que debe desde su crédito (WhatsApp con el saldo listo). Hoy el panel dice QUIÉN debe ($1.059.500) pero no tiene con qué escribirle | hecho: **maestro de mensajes** (Ajustes → Mensajes) + botón *Recordar* en Créditos |
+| Maestro de mensajes, casos que faltan: la recompra, los avisos de reposición y la cotización siguen con el texto dentro del código | pendiente: el dueño los escribe cuando quiera (la estructura ya está) |
 | Dueño: ir poniendo los teléfonos de sus clientes — el sistema ahora los pide al registrar la venta | pendiente |
 | Reportes: los rankings ya no pintan listas sin fin (127 insumos / ~170 fragancias). Se corta la cola en "Otros N", cada fila dice su **% del total**, el detalle va pegado al nombre, y "en qué se va la plata" **agrupa por familia** (41 % botellas de originales) | hecho; lo despliega el push |
 

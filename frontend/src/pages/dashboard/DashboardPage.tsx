@@ -53,6 +53,7 @@ import {
   ReportesComprasTab,
   ReportesClientesTab,
   RedesTab,
+  MensajesTab,
 } from './pestanas';
 import type { ResultadoLookup } from './tabs/LookupTab';
 import { AvisoAlertas } from './tabs/alertas/AvisoAlertas';
@@ -387,6 +388,7 @@ export default function DashboardPage() {
             {tab === 'rep_clientes' && <ReportesClientesTab />}
             {tab === 'pagos' && <PagosTab />}
             {tab === 'usuarios' && <UsuariosTab />}
+            {tab === 'mensajes' && <MensajesTab />}
             {tab === 'historial' && <HistorialTab />}
             {tab === 'roles' && <RolesTab />}
             {tab === 'solicitudes' && <SolicitudesTab />}

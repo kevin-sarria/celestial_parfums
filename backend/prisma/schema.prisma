@@ -1633,3 +1633,26 @@ enum MetaGanancia {
   porcentaje
   pesos
 }
+
+/// Los mensajes de WhatsApp que el dueño escribe y edita desde el panel.
+///
+/// Nacen VACÍOS a propósito: el texto es su voz y el sistema no la inventa.
+/// Mientras un caso no tenga ninguna plantilla, el botón que la usaría sale
+/// apagado y avisa que hay que configurarla.
+model PlantillaMensaje {
+  id         Int      @id @default(autoincrement())
+  /// Para qué sirve. Hoy solo 'credito' (recordarle el pago a quien debe).
+  caso       String   @db.VarChar(30)
+  /// Cómo la llama él: "Relajado", "Formal".
+  nombre     String   @db.VarChar(60)
+  /// El mensaje. Los marcadores {nombre}, {saldo}, {vence} y {fecha} los
+  /// reemplaza la app al abrir WhatsApp (ver `frontend/src/application/mensajes.ts`).
+  texto      String   @db.Text
+  /// El orden en que salen las variantes en el menú.
+  orden      Int      @default(0)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([caso, orden])
+  @@map("plantillas_mensaje")
+}
