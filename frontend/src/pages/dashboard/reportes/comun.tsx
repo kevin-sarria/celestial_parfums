@@ -4,6 +4,7 @@ import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { EncabezadoPagina, Section } from '../ui';
+import { partirRanking, porcentajeTexto } from './ranking';
 
 /**
  * Piezas que comparten los tres reportes (ventas, compras y clientes).
@@ -77,14 +78,28 @@ interface RankingProps {
   formato: (n: number) => string;
   vacio: string;
   color: string;
+  /** Cuántas filas se ven antes de agrupar la cola. */
+  cuantas?: number;
 }
 
 /**
  * Ranking con barra proporcional. La barra es el dato; el número va SIEMPRE al
  * lado en texto normal (nunca coloreado): el color identifica, no informa.
+ *
+ * Tres cosas que aprendió de un reporte real (2026-10-04), donde el panel de
+ * insumos pintaba **127 filas** y el de ventas **~170**:
+ *
+ * 1. **La cola se agrupa.** Pasado el tope, una sola fila dice cuántos quedaron
+ *    y cuánto suman. Una lista de 127 renglones donde el primero pesa el 4,7 %
+ *    no se lee, se sufre.
+ * 2. **Cada fila dice su PORCENTAJE del total**, que es el número con el que se
+ *    decide ("el 41 % se fue en botellas"). La barra, en cambio, sigue midiendo
+ *    contra la más grande, que es lo que aprovecha el ancho.
+ * 3. **El detalle va pegado al nombre**, no en el borde derecho: "21 pedidos"
+ *    debajo del valor obliga a cruzar la pantalla con la mirada.
  */
-export function Ranking({ titulo, filas, formato, vacio, color }: RankingProps) {
-  const tope = Math.max(...filas.map((f) => f.valor), 1);
+export function Ranking({ titulo, filas, formato, vacio, color, cuantas }: RankingProps) {
+  const { visibles, mayor, total, cola } = partirRanking(filas, cuantas);
   return (
     <Panel>
       <h3 className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -93,23 +108,42 @@ export function Ranking({ titulo, filas, formato, vacio, color }: RankingProps) 
       {filas.length === 0 ? (
         <p className="text-[13px] text-muted-foreground">{vacio}</p>
       ) : (
-        <ul className="flex flex-col gap-2.5">
-          {filas.map((f, i) => (
+        <ul className="flex flex-col gap-2">
+          {visibles.map((f, i) => (
             <li key={`${f.nombre}-${i}`}>
               <div className="flex items-baseline justify-between gap-3">
-                <span className="truncate text-[13px] text-foreground">{f.nombre}</span>
+                <span className="flex min-w-0 items-baseline gap-1.5">
+                  <span className="truncate text-[13px] text-foreground">{f.nombre}</span>
+                  {/* El detalle NO se trunca: en el celular "1 pedido" quedaba en
+                      "1 pe…". El que cede es el nombre, que igual se reconoce. */}
+                  {f.detalle && (
+                    <span className="shrink-0 text-[11.5px] text-muted-foreground">{f.detalle}</span>
+                  )}
+                </span>
                 <span className="shrink-0 text-[13px] font-medium tabular-nums text-foreground">
                   {formato(f.valor)}
+                  <span className="ml-1.5 text-[11.5px] font-normal text-muted-foreground">
+                    {porcentajeTexto(f.valor, total)}
+                  </span>
                 </span>
               </div>
-              <div className="mt-1 flex items-center gap-2">
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-secondary">
-                  <div className="h-full rounded-full" style={{ width: `${(f.valor / tope) * 100}%`, background: color }} />
-                </div>
-                {f.detalle && <span className="shrink-0 text-[11.5px] text-muted-foreground">{f.detalle}</span>}
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-secondary">
+                <div
+                  className="h-full rounded-full"
+                  style={{ width: `${(f.valor / mayor) * 100}%`, background: color }}
+                />
               </div>
             </li>
           ))}
+
+          {cola && (
+            <li className="flex items-baseline justify-between gap-3 border-t border-border/70 pt-2 text-[12px] text-muted-foreground">
+              <span>Otros {cola.cuantas}</span>
+              <span className="shrink-0 tabular-nums">
+                {formato(cola.total)} <span className="ml-1">{porcentajeTexto(cola.total, total)}</span>
+              </span>
+            </li>
+          )}
         </ul>
       )}
     </Panel>

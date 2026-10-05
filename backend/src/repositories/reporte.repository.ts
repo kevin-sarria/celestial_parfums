@@ -51,7 +51,7 @@ export const reporteCompras = async (meses = 12) => {
     // Solo entradas de compra: las producciones y mermas no son gasto nuevo
     prisma.movimientoInventario.findMany({
       where: { tipo: 'compra', fecha: { gte: desde } },
-      select: { cantidad: true, costo_unitario: true, insumo: { select: { id: true, nombre: true, unidad: true } } },
+      select: { cantidad: true, costo_unitario: true, insumo: { select: { id: true, nombre: true, unidad: true, ml_botella: true, gama_id: true, tipo: true } } },
     }),
   ]);
 
@@ -77,6 +77,35 @@ export const reporteCompras = async (meses = 12) => {
     porInsumo.set(m.insumo.id, fila);
   });
 
+  /**
+   * La familia con la que el dueño piensa su bodega.
+   *
+   * Medido en su respaldo del 2026-10-04: en 12 meses compró **127 insumos
+   * distintos** y el primero pesaba el 4,7 % —los diez primeros, el 25 %—, así
+   * que la lista insumo por insumo no dejaba leer nada. Agrupado son cuatro
+   * filas que sí: botellas de originales, esencias, envases y lo demás.
+   *
+   * Se decide por BANDERAS y no por el nombre: `ml_botella` solo lo tienen las
+   * botellas de originales, `gama_id` solo las esencias, y `tipo` es un enum.
+   * El nombre lo edita él, así que no sirve como regla.
+   */
+  const familiaDe = (i: { ml_botella: unknown; gama_id: number | null; tipo: string }) => {
+    if (i.ml_botella != null) return 'Botellas de originales';
+    if (i.gama_id != null) return 'Esencias';
+    if (i.tipo === 'envase') return 'Envases y frascos';
+    if (i.tipo === 'accesorio') return 'Accesorios';
+    return 'Diluyente y otros';
+  };
+
+  const porFamilia = new Map<string, { nombre: string; ids: Set<number>; total: number }>();
+  movimientos.forEach((m) => {
+    const nombre = familiaDe(m.insumo);
+    const fila = porFamilia.get(nombre) ?? { nombre, ids: new Set<number>(), total: 0 };
+    fila.ids.add(m.insumo.id);
+    fila.total += num(m.cantidad) * num(m.costo_unitario);
+    porFamilia.set(nombre, fila);
+  });
+
   const serie = [...filas.values()].map((f) => ({
     mes: f.mes, compras: r2(f.compras), envios: r2(f.envios), total: r2(f.compras + f.envios),
   }));
@@ -91,6 +120,9 @@ export const reporteCompras = async (meses = 12) => {
       .sort((a, b) => b.total - a.total),
     por_insumo: [...porInsumo.values()]
       .map((i) => ({ ...i, cantidad: Math.round(i.cantidad * 1000) / 1000, total: r2(i.total) }))
+      .sort((a, b) => b.total - a.total),
+    por_familia: [...porFamilia.values()]
+      .map((f) => ({ nombre: f.nombre, materiales: f.ids.size, total: r2(f.total) }))
       .sort((a, b) => b.total - a.total),
   };
 };

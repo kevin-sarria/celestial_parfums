@@ -843,5 +843,31 @@ del teléfono en `recompra.e2e.test.ts`.
 **Lo que queda del lado del dueño**: ir poniendo los teléfonos. El sistema ahora los pide justo
 cuando nace el cliente, que es cuando los tiene a mano (el chat de WhatsApp).
 
+## Los reportes: las listas que no se podían leer (2026-10-04)
+
+El dueño lo vio en el reporte de compras: *"no se optimizó la manera de visualizar el contenido"*.
+Medido en su respaldo, tenía razón y era peor de lo que parecía: un año de compras son **127 insumos
+distintos** y el que más pesa es el **4,7 %** —los diez primeros, el 25 %—, y el reporte de ventas
+pintaba **~170 fragancias**. Dos listas interminables donde nada resalta.
+
+Tres cambios, en la pieza que comparten los tres reportes (`reportes/comun.tsx`, con la cuenta en
+`reportes/ranking.ts`):
+
+1. **La cola se agrupa.** Pasadas 8 filas (10 en los insumos), una sola dice cuántos quedaron y
+   cuánto suman: *"Otros 117 · $1.234.567 · 8,4 %"*. Ninguna lista crece ya sin tope.
+2. **Cada fila dice su PORCENTAJE del total**, que es el número con el que se decide. La barra sigue
+   midiendo contra la más grande —es lo que aprovecha el ancho—, pero el % es sobre el total.
+3. **El detalle va pegado al nombre** (*"21 pedidos"*), no en el borde derecho: obligaba a cruzar la
+   pantalla con la mirada. En el celular el que cede es el nombre, **nunca el detalle**.
+
+Y en compras, **"en qué se va la plata" agrupa por FAMILIA** en vez de insumo por insumo: botellas de
+originales, esencias, envases y lo demás. La familia se decide por **banderas** (`ml_botella`,
+`gama_id`, `tipo`), no por el nombre —que el dueño edita, así que no sirve como regla—. Medido en su
+respaldo: **41,1 % en botellas de originales**, 36,3 % en esencias, 22,3 % en envases. El detalle
+insumo por insumo sigue ahí abajo, ya cortado.
+
+Pruebas: `ranking.test.ts` (10) y `reportesCompras.e2e.test.ts`, con capturas a 1366 y 390 px.
+
+
 
 

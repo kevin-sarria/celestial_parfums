@@ -10,6 +10,7 @@ interface ReporteCompras {
   num_compras: number;
   por_proveedor: { nombre: string; total: number; compras: number }[];
   por_insumo: { nombre: string; unidad: string; cantidad: number; total: number }[];
+  por_familia: { nombre: string; materiales: number; total: number }[];
 }
 
 /** Cuánto salió hacia proveedores y en qué se fue. */
@@ -59,8 +60,26 @@ export function ReportesComprasTab() {
               vacio="Todavía no hay pagos a proveedores registrados."
               color={SERIE_A}
             />
+            {/* Por FAMILIA y no insumo por insumo: medido el 2026-10-04, un año de
+                compras son 127 insumos distintos y el que más pesa es el 4,7 %
+                (los diez primeros, el 25 %). Agrupado son cuatro filas que sí
+                dicen algo, y la más grande delata las botellas de originales. */}
             <Ranking
-              titulo="En qué insumos se va la plata"
+              titulo="En qué se va la plata"
+              filas={datos.por_familia.map((f) => ({
+                nombre: f.nombre,
+                valor: f.total,
+                detalle: `${f.materiales} ${f.materiales === 1 ? 'material' : 'materiales'}`,
+              }))}
+              formato={formatPrice}
+              vacio="Aparece cuando registres las compras detalladas en Inventario."
+              color={SERIE_B}
+            />
+          </div>
+
+          <div className="mt-4">
+            <Ranking
+              titulo="Los insumos que más pesan"
               filas={datos.por_insumo.map((i) => ({
                 nombre: i.nombre,
                 valor: i.total,
@@ -69,6 +88,7 @@ export function ReportesComprasTab() {
               formato={formatPrice}
               vacio="Aparece cuando registres las compras detalladas en Inventario."
               color={SERIE_B}
+              cuantas={10}
             />
           </div>
         </div>
