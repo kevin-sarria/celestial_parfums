@@ -51,6 +51,16 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Maestro de mensajes, casos que faltan: la recompra, los avisos de reposición y la cotización siguen con el texto dentro del código | pendiente: el dueño los escribe cuando quiera (la estructura ya está) |
 | Dueño: ir poniendo los teléfonos de sus clientes — el sistema ahora los pide al registrar la venta | pendiente |
 | Reportes: los rankings ya no pintan listas sin fin (127 insumos / ~170 fragancias). Se corta la cola en "Otros N", cada fila dice su **% del total**, el detalle va pegado al nombre, y "en qué se va la plata" **agrupa por familia** (41 % botellas de originales) | hecho; lo despliega el push |
+| **Reporte de compras: el desglose no suma lo de arriba.** La franja dice "comprado (12 meses) **$28.197.356**" y las familias suman **$8.703.699**: los **$19.493.657** que faltan (el 69 %) son facturas registradas solo por su valor, sin las líneas de qué llegó. Falta una familia *"Sin detalle (facturas sin líneas)"* para que el panel explique el 100 % de lo comprado, en vez del 31 % | pendiente (2026-10-04): el dueño decide |
+
+**Acá quedamos el 2026-10-04.** Cerrado, verificado y desplegado ese día: el combo en la ficha del
+perfume (`9a3284c`), la venta que captura al cliente y su teléfono (`f34ddd6`), los reportes que se
+pueden leer (`f3e9b0f`) y el maestro de mensajes con su migración (`8790796`).
+
+Lo que sigue, por orden: **(1)** que el dueño escriba sus mensajes de cobro en Ajustes → Mensajes
+—mientras no haya ninguno, el botón de Créditos sale apagado a propósito—; **(2)** pasar al maestro
+los otros casos que todavía tienen el texto dentro del código (recompra, reposiciones, cotización);
+**(3)** la familia "Sin detalle" del reporte de compras.
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 
