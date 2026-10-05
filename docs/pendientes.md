@@ -45,6 +45,7 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | Tienda: la búsqueda, los filtros, el orden y la página viven en la dirección (un enlace compartido abre ya filtrado; recargar no pierde nada). Aprobado por el dueño. Corregido antes de publicar: borraba las marcas de TikTok y cualquier otro dato del enlace | hecho y desplegado |
 | Posdata 1: la URL del catálogo guarde búsqueda, filtros y página (`?q`, filtros, `page`, con `replace`). Parámetro `q` confirmado (opción A) | hecho, sin verificar |
 | Posdata 2: auditoría de mejoras (lógica + diseño). 21 hallazgos priorizados (9 tienda/SEO + 12 panel/lógica), entregados en el chat | hecho |
+| El combo se ofrece **EN LA FICHA** del perfume ("3 perfumes por $ 150.000 · ahorras $ 30.000"), no solo en el carrito: 48 de las 98 ventas de 30 ml eran de una sola unidad (`diseno-ux.md`) | hecho (`9a3284c`); lo despliega el push |
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 

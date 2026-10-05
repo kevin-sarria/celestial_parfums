@@ -788,3 +788,29 @@ ensuciar el historial). Así el dueño puede mandar por WhatsApp un enlace como
 cero y borraba lo demás, como las marcas `utm_*` de los enlaces de TikTok o un código de invitado.
 Prueba: `e2e/tiendaFiltrosUrl.e2e.test.ts`.
 
+## El combo se ofrece en la ficha (2026-10-04)
+
+El precio de combo (2/3/4 perfumes más baratos) **siempre aplicó**, pero solo lo cobraba el carrito
+—y ahí solo se enteraba quien abría el carrito—. Como agregar al carrito **no lo abre** (lo pidió un
+cliente real), quien compraba de a uno nunca veía que llevando más pagaba menos: de junio en
+adelante, **48 de las 98 ventas de 30 ml fueron de una sola unidad**.
+
+Ahora la ficha lo dice donde el cliente decide cuánto llevar (`CombosDeLaFicha.tsx`): los tramos con
+su ahorro, *"3 perfumes por $ 150.000 (ahorras $ 30.000 · $ 50.000 cada uno)"*.
+
+- **La cuenta la hace `tramosDeCombo`**, la MISMA regla del carrito (`detectarCombos`): misma
+  categoría, misma talla, y **solo si de verdad sale más barato**. Sin ese último filtro la ficha
+  estaría prometiendo un descuento que el carrito no cobra.
+- **No menciona el obsequio a propósito**: el perfumero del combo ya lo anuncia el renglón
+  *"Incluye…"* del empaque, y repetirlo haría creer que van dos.
+- **Una esencia premium no lo muestra**: nunca entra en un combo.
+- Los combos activos los pide `useCombosActivos`, que comparten el carrito y la ficha (antes ese
+  fetch vivía dentro de `useComboDetector`).
+- Pruebas: `tramosDeCombo.test.ts` (7) y `comboEnFicha.e2e.test.ts`, **comprobado que falla sin el
+  renglón**.
+
+**Lo que NO se hizo, a propósito** (eran las otras dos opciones que se le dieron al dueño): la
+tarjeta del catálogo no lo dice —ensucia una rejilla ya cargada— y el modal de agregar no
+interrumpe.
+
+
