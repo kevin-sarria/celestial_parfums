@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { CartItem } from '../context/CartContext';
 import type { Combo } from '../../domain/entities/combo.schema';
-import { http } from '../../infrastructure/api/http';
-import { urls } from '../../infrastructure/api/urls';
 import { finalPrice } from '@/lib/format';
+import { useCombosActivos } from './useCombosActivos';
 
 /** Un combo del catálogo armado automáticamente con los perfumes del carrito. */
 export interface ComboDetectado {
@@ -140,18 +139,6 @@ export function detectarCombos(items: CartItem[], combos: Combo[]): DeteccionCom
 
 /** Combos activos del catálogo + detección sobre los items del carrito. */
 export function useComboDetector(items: CartItem[], habilitado: boolean) {
-  const [combos, setCombos] = useState<Combo[]>([]);
-
-  useEffect(() => {
-    if (!habilitado || combos.length > 0) return;
-    let vivo = true;
-    (async () => {
-      // Sin combos no hay detección y el carrito sigue normal, a precio de lista.
-      const res = await http.getCacheado<{ data?: Combo[] }>(urls.combos.todos);
-      if (vivo) setCombos((res.cuerpo?.data ?? []).filter((c) => c.activo));
-    })();
-    return () => { vivo = false; };
-  }, [habilitado, combos.length]);
-
+  const combos = useCombosActivos(habilitado);
   return useMemo(() => detectarCombos(items, combos), [items, combos]);
 }

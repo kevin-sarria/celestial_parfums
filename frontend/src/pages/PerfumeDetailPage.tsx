@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { formatPrice, finalPrice } from '@/lib/format';
 import PerfumeCard from '../components/PerfumeCard';
+import CombosDeLaFicha from '../components/CombosDeLaFicha';
 import { CardCarousel, CarouselItem } from '../components/catalog/CardCarousel';
 import PerfumeSpinner from '../components/PerfumeSpinner';
 import AddToCartModal from '../components/AddToCartModal';
@@ -180,6 +181,9 @@ export default function PerfumeDetailPage() {
                   ))}
                 </ul>
               )}
+
+              {/* El combo, donde el cliente decide cuánto llevar (2026-10-04). */}
+              <CombosDeLaFicha perfume={perfume} />
 
               {perfume.descripcion && (
                 <TextoEnriquecido html={perfume.descripcion}
