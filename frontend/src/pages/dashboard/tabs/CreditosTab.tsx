@@ -89,14 +89,10 @@ export function CreditosTab() {
   };
 
   /**
-   * `refrescar` se usa cuando la pantalla ACABA de crear una persona o un
-   * producto: la lista guardada ya no los tiene, y sin olvidarla el recién
-   * creado no aparecería hasta que caduque la caché.
+   * Tras crear una persona o un producto se vuelve a llamar: esa escritura ya
+   * vació la caché (`http.ts`), así que la lista llega con el recién creado.
    */
-  const loadCatalogos = async (refrescar = false) => {
-    if (refrescar) {
-      [urls.usuarios.lista, urls.perfumes.todosConOcultos, urls.combos.todos].forEach(http.olvidar);
-    }
+  const loadCatalogos = async () => {
     try {
       // Mismos catálogos que Ventas: con caché se traen una vez por sesión y
       // cambiar entre las dos pantallas deja de pedirlos otra vez.
@@ -348,7 +344,7 @@ export function CreditosTab() {
         onSaved={creoPersona => {
           setModal({ open: false, credito: null });
           load();
-          if (creoPersona) loadCatalogos(true);
+          if (creoPersona) loadCatalogos();
         }}
       />
 

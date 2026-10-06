@@ -5,7 +5,7 @@ import PerfumeSpinner from '../../../components/PerfumeSpinner';
 import { NoSePudoCargar } from '../../../components/NoSePudoCargar';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
-import { olvidarEmpaque, type ConfigEmpaque } from '../../../application/hooks/useEmpaque';
+import { type ConfigEmpaque } from '../../../application/hooks/useEmpaque';
 import type { LineaEmpaque as Linea } from '../pedido/empaque.calculo';
 import { LineaEmpaque } from './empaque/LineaEmpaque';
 import { Section, SectionTitle, Toolbar } from '../ui';
@@ -42,7 +42,7 @@ export function EmpaqueTab() {
   useEffect(() => { cargar(); }, []);
 
   // Lo que devolvió el servidor ES el estado nuevo; las ventas abiertas lo releen
-  const alGuardar = (nueva: ConfigEmpaque) => { setConfig(nueva); olvidarEmpaque(); };
+  const alGuardar = (nueva: ConfigEmpaque) => setConfig(nueva);
 
   return (
     <Section>

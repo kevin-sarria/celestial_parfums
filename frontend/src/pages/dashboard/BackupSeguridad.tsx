@@ -67,8 +67,6 @@ export default function BackupSeguridad({ enMenu = false }: Props) {
       if (!res.ok || !res.cuerpo) { setError(res.error); return; }
       setSetup(res.cuerpo.data);
       setTotpListo(true);
-      // El estado guardado decía "sin segundo factor": ya no es verdad.
-      http.olvidar(urls.backup.estado);
     } finally {
       setTrabajando(false);
     }

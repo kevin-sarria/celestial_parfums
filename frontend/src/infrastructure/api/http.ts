@@ -163,6 +163,24 @@ const enVuelo = new Map<string, Promise<Respuesta<unknown>>>();
 const CADUCIDAD = 5 * 60 * 1000;
 
 /**
+ * Toda escritura que el servidor acepta VACÍA la caché entera.
+ *
+ * Antes cada pantalla tenía que acordarse de `olvidar` lo que su cambio tocaba,
+ * y la ficha del perfume no se acordó: el 2026-10-06 el dueño creó "Island
+ * Bliss", fue a Ventas sin recargar y el buscador no la encontraba (la lista
+ * guardada era de antes de crearla) hasta que pasaran 5 minutos. Una venta
+ * también cambia lo guardado (stock, agotados), un combo, un cliente nuevo… No
+ * hay forma fiable de saber qué toca cada escritura, y las escrituras del panel
+ * son pocas: rehacer las lecturas después de una cuesta una petición, y una
+ * lista vieja cuesta una venta que no se puede registrar.
+ */
+const escribir = async <T>(fn: () => Promise<{ data: T; status: number }>): Promise<Respuesta<T>> => {
+  const res = await ejecutar<T>(fn);
+  if (res.ok) memoria.clear();
+  return res;
+};
+
+/**
  * Igual que `ejecutar`, pero para respuestas binarias.
  *
  * Va aparte por un detalle que muerde: cuando se pide `responseType: 'blob'` y
@@ -225,14 +243,14 @@ export const http = {
   olvidar: (url: string) => { memoria.delete(url); },
 
   post: <T = unknown>(url: string, datos?: unknown, config?: OpcionesPeticion) =>
-    ejecutar<T>(() => instancia.post<T>(url, datos, config)),
+    escribir<T>(() => instancia.post<T>(url, datos, config)),
 
   patch: <T = unknown>(url: string, datos?: unknown, config?: OpcionesPeticion) =>
-    ejecutar<T>(() => instancia.patch<T>(url, datos, config)),
+    escribir<T>(() => instancia.patch<T>(url, datos, config)),
 
   /** `delete` es palabra reservada: el método se llama `borrar`. */
   borrar: <T = unknown>(url: string, config?: OpcionesPeticion) =>
-    ejecutar<T>(() => instancia.delete<T>(url, config)),
+    escribir<T>(() => instancia.delete<T>(url, config)),
 
   /**
    * Subida de archivos. **No se le pone `Content-Type` a mano**: el navegador
@@ -240,7 +258,7 @@ export const http = {
    * rompe la subida en el servidor.
    */
   subir: <T = unknown>(url: string, form: FormData) =>
-    ejecutar<T>(() => instancia.post<T>(url, form, { headers: { 'Content-Type': undefined } })),
+    escribir<T>(() => instancia.post<T>(url, form, { headers: { 'Content-Type': undefined } })),
 
   /** Descargas (Excel, PDF, respaldos): el cuerpo es binario, no JSON. */
   descargar: (url: string) =>

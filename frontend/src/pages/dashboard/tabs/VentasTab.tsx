@@ -82,14 +82,10 @@ export function VentasTab() {
   };
 
   /**
-   * `refrescar` se usa cuando la pantalla ACABA de crear una persona o un
-   * producto: la lista guardada ya no los tiene, y sin olvidarla el recién
-   * creado no aparecería hasta que caduque la caché.
+   * Tras crear una persona o un producto se vuelve a llamar: esa escritura ya
+   * vació la caché (`http.ts`), así que la lista llega con el recién creado.
    */
-  const loadCatalogos = async (refrescar = false) => {
-    if (refrescar) {
-      [urls.usuarios.lista, urls.perfumes.todosConOcultos, urls.combos.todos].forEach(http.olvidar);
-    }
+  const loadCatalogos = async () => {
     try {
       // Los catálogos del formulario (personas, productos, combos) apenas
       // cambian y los piden VARIAS pantallas. Con caché se traen una vez por
@@ -271,7 +267,7 @@ export function VentasTab() {
         onSaved={recargar => {
           setModal({ open: false, venta: null });
           load();
-          if (recargar) loadCatalogos(true);
+          if (recargar) loadCatalogos();
         }}
       />
     </div>

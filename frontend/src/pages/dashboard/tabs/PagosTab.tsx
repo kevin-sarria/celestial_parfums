@@ -145,8 +145,6 @@ export function PagosTab() {
         });
         if (!res.ok || !res.cuerpo) { setError(res.error || 'Error al crear empresa'); setLoading(false); return; }
         empresaId = res.cuerpo.data.id;
-        // La lista guardada no tiene la empresa recién creada.
-        http.olvidar(urls.empresas.lista);
       } catch { setError('No se pudo crear la empresa'); setLoading(false); return; }
     }
 

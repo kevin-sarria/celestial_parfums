@@ -576,3 +576,15 @@ la que cargó, igual que ya guardaba los filtros (`setSearchTerm(term)` junto a
 corrida completa (otra prueba ya cargó los roles): la vendedora salía como cliente. Las pruebas
 crean los roles con `POST /api/roles`, como el dueño.
 
+
+## 2026-10-06 · "No me deja registrar la Island Bliss": la lista del navegador era de antes de crearla
+
+El dueño creó la ficha "Island Bliss" (contratipo, #722), fue a Ventas **sin recargar** y el
+buscador no la encontraba. El servidor estaba bien (con el respaldo de ese día la venta se registró
+sin problema por servicio y por pantalla); el culpable era `http.getCacheado`: Ventas y Créditos
+guardan el catálogo 5 minutos en memoria, y la ficha del perfume no lo olvidaba al guardar. Cada
+pantalla tenía que acordarse de `http.olvidar(...)` lo que su cambio tocaba: Combos, Pagos y
+Empaque se acordaban; la ficha no. **Arreglo de raíz**: toda escritura que el servidor acepta
+(`post`, `patch`, `borrar`, `subir`) vacía la caché entera, en `http.ts`. Se quitaron los
+`olvidar` a mano que sobraban (queda solo el "refrescar" del respaldo, que no viene de una
+escritura). Prueba: `frontend/src/infrastructure/api/http.cache.test.ts` (falla sin el arreglo).

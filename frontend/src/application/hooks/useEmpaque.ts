@@ -12,8 +12,8 @@ export interface ConfigEmpaque {
 
 /**
  * El empaque por línea y talla (2026-10-04). Lo piden Ventas, Créditos y la
- * pantalla Empaque; se guarda en memoria y la pantalla lo olvida al guardar
- * (`olvidarEmpaque`). Sin él, la venta simplemente no ofrece empaque: nunca
+ * pantalla Empaque; se guarda en memoria y guardarlo la vacía (como
+ * toda escritura, ver `http.ts`). Sin él, la venta simplemente no ofrece empaque: nunca
  * bloquea el registrar.
  */
 export function useEmpaque(habilitado = true) {
@@ -28,5 +28,3 @@ export function useEmpaque(habilitado = true) {
   }, [habilitado]);
   return config;
 }
-
-export const olvidarEmpaque = () => http.olvidar(urls.empaque);

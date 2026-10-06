@@ -95,9 +95,6 @@ export function CombosTab({
         ? await http.patch(urls.combos.combo(modal.editId), body)
         : await http.post(urls.combos.crear, body);
       if (!res.ok) { setFormError(res.error); return; }
-      // Ventas y Créditos guardan los combos en caché: sin esto seguirían
-      // ofreciendo el kit viejo hasta recargar la página
-      http.olvidar(urls.combos.todos);
       closeModal(); onMutate();
     } catch { setFormError('No se pudo conectar con el servidor'); }
     finally { setFormLoading(false); }
