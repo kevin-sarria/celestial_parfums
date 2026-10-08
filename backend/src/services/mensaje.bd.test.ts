@@ -36,8 +36,16 @@ describe('el maestro de mensajes', () => {
 
   it('cada caso tiene los suyos', async () => {
     await crear({ ...base, nombre: 'Cobro' });
+    await crear({ caso: 'recompra', nombre: 'Recompra 1', texto: 'Hola {nombre}' });
+    await crear({ caso: 'reposicion', nombre: 'Repo 1', texto: 'Materiales:\n{materiales}' });
+    await crear({ caso: 'cotizacion', nombre: 'Cot 1', texto: 'Cotización {numero}' });
+
+    expect(await listar('credito')).toHaveLength(1);
+    expect(await listar('recompra')).toHaveLength(1);
+    expect(await listar('reposicion')).toHaveLength(1);
+    expect(await listar('cotizacion')).toHaveLength(1);
     expect(await listar('otro')).toEqual([]);
-    expect(await listarTodas()).toHaveLength(1);
+    expect(await listarTodas()).toHaveLength(4);
   });
 
   it('se corrige el texto sin perder el nombre', async () => {

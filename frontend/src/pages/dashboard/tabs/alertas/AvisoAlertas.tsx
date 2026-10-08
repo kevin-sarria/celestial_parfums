@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import Modal from '../../../../components/Modal';
 import { urls } from '../../../../infrastructure/api/urls';
-import { useConsultaDeApoyo } from '../../../../application/hooks/useConsultaDeApoyo';
+import { claves, pedir } from '../../../../infrastructure/api/consultas';
 import { NoSePudoCargar } from '../../../../components/NoSePudoCargar';
 import { hoy } from '../../../../utils/fechas';
 import { ETIQUETA_AMBITO, type AlertaDisparada } from './ambitos';
@@ -59,19 +60,19 @@ const Lista = ({ alerta }: { alerta: AlertaDisparada }) => (
   </ul>
 );
 
-export function AvisoAlertas({ onVerPedido, recargarCon }: {
+export function AvisoAlertas({ onVerPedido }: {
   onVerPedido: () => void;
-  /**
-   * Cambia este valor para que el aviso se vuelva a preguntar. El dashboard le
-   * pasa la pestaña actual: sin esto, el aviso seguía nombrando un material que
-   * el dueño acababa de marcar en prueba, porque solo se consultaba al montar.
-   */
+  /** @deprecated Ya no es necesario con TanStack Query; se conserva por compatibilidad */
   recargarCon?: string;
 }) {
   const [cerradas, setCerradas] = useState<Record<string, string>>(leerCerradas);
-  const { dato, fallo, recargar } =
-    useConsultaDeApoyo<AlertaDisparada[]>(urls.inventario.alertasActivas, recargarCon);
-  const alertas = dato ?? [];
+  const { data: respuesta, isError: fallo, refetch } = useQuery({
+    queryKey: claves.alertas,
+    queryFn: () => pedir<{ data?: AlertaDisparada[] }>(urls.inventario.alertasActivas),
+  });
+  const alertas = respuesta?.data ?? [];
+
+  const recargar = () => { void refetch(); };
 
   const cerrar = (a: AlertaDisparada) => {
     const firma = firmaDe(a);

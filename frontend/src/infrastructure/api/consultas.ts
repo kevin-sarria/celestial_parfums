@@ -60,6 +60,8 @@ export const claves = {
   insumos: ['insumos'] as const,
   /** Lista de precios categoría × talla. */
   listaPrecios: ['lista-precios'] as const,
+  /** Alertas de inventario activas para el panel. */
+  alertas: ['alertas-activas'] as const,
 };
 
 /**

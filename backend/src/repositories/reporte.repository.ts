@@ -110,6 +110,24 @@ export const reporteCompras = async (meses = 12) => {
     mes: f.mes, compras: r2(f.compras), envios: r2(f.envios), total: r2(f.compras + f.envios),
   }));
 
+  /**
+   * FACTURAS SIN LÍNEAS (histórico o compras globales sin detalle de insumos).
+   *
+   * Si lo pagado en compras supera la suma de lo detallado por insumo, se agrega
+   * una familia "Sin detalle (facturas sin líneas)" para que el gráfico explique
+   * el 100 % de la plata comprada en vez de dejar un hueco sin justificar.
+   */
+  const totalDetallado = [...porFamilia.values()].reduce((s, f) => s + f.total, 0);
+  const totalMercancia = r2(serie.reduce((s, f) => s + f.compras, 0));
+  if (totalMercancia > totalDetallado) {
+    const sinDetalle = r2(totalMercancia - totalDetallado);
+    porFamilia.set('Sin detalle (facturas sin líneas)', {
+      nombre: 'Sin detalle (facturas sin líneas)',
+      ids: new Set<number>(),
+      total: sinDetalle,
+    });
+  }
+
   return {
     serie,
     total_gastado: r2(serie.reduce((s, f) => s + f.total, 0)),

@@ -8,7 +8,7 @@ perfume pasó de 10 peticiones a 1. Detalle en `arquitectura.md`, *Estado centra
 | Qué | Estado |
 |---|---|
 | Pasar Ventas y Créditos (las que más usa el dueño), y luego el resto, de `getCacheado`/`useEffect` a consultas. Mismo patrón que el catálogo: `estadoCatalogo.ts` | pendiente: el dueño lo dejó para después (2026-10-08) |
-| `AvisoAlertas` pide `/inventario/alertas/activas` en cada cambio de pestaña | pendiente (1 petición por pestaña) |
+| `AvisoAlertas` al estado central (TanStack Query): 0 peticiones extra al cambiar de pestaña | hecho (2026-10-08) |
 
 ## 🆕 2026-10-08: precios de originales que "no guardaban"
 
@@ -71,19 +71,12 @@ la ficha del contratipo si ya lo vendía (`inventario-costeo.md`, *Originales: c
 | El combo se ofrece **EN LA FICHA** del perfume ("3 perfumes por $ 150.000 · ahorras $ 30.000"), no solo en el carrito: 48 de las 98 ventas de 30 ml eran de una sola unidad (`diseno-ux.md`) | hecho (`9a3284c`); lo despliega el push |
 | Palanca 2, captura: la venta ofrece al cliente con el nombre ya escrito y deja el teléfono a la vista (`SugerenciaCliente`); el enlace de WhatsApp vive en un solo sitio (`utils/whatsapp.ts`) y **la recompra ya abre el chat directo** (`diseno-ux.md`) | hecho; lo despliega el push |
 | Palanca 2, cobro: recordarle el pago al que debe desde su crédito (WhatsApp con el saldo listo). Hoy el panel dice QUIÉN debe ($1.059.500) pero no tiene con qué escribirle | hecho: **maestro de mensajes** (Ajustes → Mensajes) + botón *Recordar* en Créditos |
-| Maestro de mensajes, casos que faltan: la recompra, los avisos de reposición y la cotización siguen con el texto dentro del código | pendiente: el dueño los escribe cuando quiera (la estructura ya está) |
+| Maestro de mensajes, casos que faltan: recompra, reposición y cotización pasados al maestro | hecho (2026-10-08): integrados en backend y pantallas |
 | Dueño: ir poniendo los teléfonos de sus clientes — el sistema ahora los pide al registrar la venta | pendiente |
 | Reportes: los rankings ya no pintan listas sin fin (127 insumos / ~170 fragancias). Se corta la cola en "Otros N", cada fila dice su **% del total**, el detalle va pegado al nombre, y "en qué se va la plata" **agrupa por familia** (41 % botellas de originales) | hecho; lo despliega el push |
-| **Reporte de compras: el desglose no suma lo de arriba.** La franja dice "comprado (12 meses) **$28.197.356**" y las familias suman **$8.703.699**: los **$19.493.657** que faltan (el 69 %) son facturas registradas solo por su valor, sin las líneas de qué llegó. Falta una familia *"Sin detalle (facturas sin líneas)"* para que el panel explique el 100 % de lo comprado, en vez del 31 % | pendiente (2026-10-04): el dueño decide |
+| **Reporte de compras: familia "Sin detalle (facturas sin líneas)"** agregada cuando la mercancía facturada supera las líneas detalladas, explicando el 100 % de lo comprado | hecho (2026-10-08) |
 
-**Acá quedamos el 2026-10-04.** Cerrado, verificado y desplegado ese día: el combo en la ficha del
-perfume (`9a3284c`), la venta que captura al cliente y su teléfono (`f34ddd6`), los reportes que se
-pueden leer (`f3e9b0f`) y el maestro de mensajes con su migración (`8790796`).
-
-Lo que sigue, por orden: **(1)** que el dueño escriba sus mensajes de cobro en Ajustes → Mensajes
-—mientras no haya ninguno, el botón de Créditos sale apagado a propósito—; **(2)** pasar al maestro
-los otros casos que todavía tienen el texto dentro del código (recompra, reposiciones, cotización);
-**(3)** la familia "Sin detalle" del reporte de compras.
+**Acá quedamos el 2026-10-08.** Cerrado, probado y listo para revisión: (1) `AvisoAlertas` migrado a TanStack Query (cero peticiones al cambiar de pestaña); (2) familia "Sin detalle" en el reporte de compras explicando el 100 % de lo comprado; (3) casos de Recompra, Reposición y Cotización integrados en el maestro de mensajes de WhatsApp.
 
 ## 🆕 2026-09-28: historial de pagos, Inicio, y la hoja de ruta del dashboard
 

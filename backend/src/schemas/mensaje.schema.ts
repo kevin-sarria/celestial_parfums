@@ -7,7 +7,7 @@ import { z } from 'zod';
  * hacía falta: el 2026-10-04 el dueño tenía **$1.059.500 en la calle** y ningún
  * sitio donde escribir el mensaje —los textos vivían dentro del código—.
  */
-export const CASOS_MENSAJE = ['credito'] as const;
+export const CASOS_MENSAJE = ['credito', 'recompra', 'reposicion', 'cotizacion'] as const;
 export type CasoMensaje = (typeof CASOS_MENSAJE)[number];
 
 export const plantillaMensajeSchema = z.object({

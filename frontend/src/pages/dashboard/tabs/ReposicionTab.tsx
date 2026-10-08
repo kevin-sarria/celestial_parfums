@@ -9,6 +9,9 @@ import { formatPrice } from '../helpers';
 import { useAjustesPedido } from './reposicion/useAjustesPedido';
 import { TablaPedido, cantidad, type Fila } from './reposicion/TablaPedido';
 import { MinimosModal, type Gama } from './reposicion/MinimosModal';
+import { usePlantillasMensaje } from '../../../application/hooks/usePlantillasMensaje';
+import { datosDeReposicion, rellenar } from '../../../application/mensajes';
+import { hoy } from '../../../utils/fechas';
 
 interface Datos {
   esencias: Fila[]; implementos: Fila[];
@@ -32,6 +35,7 @@ interface Datos {
  * en 219 esencias no lo hace nadie.
  */
 export function ReposicionTab() {
+  const { plantillas: plantillasReposicion } = usePlantillasMensaje('reposicion');
   const [datos, setDatos] = useState<Datos | null>(null);
   const [gamas, setGamas] = useState<Gama[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -129,17 +133,20 @@ export function ReposicionTab() {
       .join('\n');
 
   const copiar = async (filas: Fila[]) => {
-    const texto = textoParaPedir(filas);
-    if (!texto) {
+    const listaMateriales = textoParaPedir(filas);
+    if (!listaMateriales) {
       toast.error('No queda nada por copiar: sacaste todos los materiales de la lista',
         { id: 'copiar' });
       return;
     }
+    const texto = plantillasReposicion.length > 0
+      ? rellenar(plantillasReposicion[0].texto, datosDeReposicion(listaMateriales, hoy()))
+      : listaMateriales;
     try {
       await navigator.clipboard.writeText(texto);
       setCopiado(true);
       setTimeout(() => setCopiado(false), 2000);
-      toast.success(`${texto.split('\n').length} materiales copiados. Pégalos en WhatsApp.`);
+      toast.success(`${listaMateriales.split('\n').length} materiales copiados. Pégalos en WhatsApp.`);
     } catch {
       // Sin permiso de portapapeles el navegador no deja copiar en silencio
       toast.error('Tu navegador no dejó copiar. Selecciona el texto a mano.', { id: 'copiar' });

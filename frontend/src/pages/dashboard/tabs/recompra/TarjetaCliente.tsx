@@ -53,10 +53,18 @@ export const mensajeDe = (c: ClienteRecompra) => {
  * selector de contactos —el mensaje va escrito igual—. Medido el 2026-10-04: de
  * 37 fichas solo una tenía teléfono, por eso casi siempre se elegía a mano.
  */
+import { usePlantillasMensaje } from '../../../../application/hooks/usePlantillasMensaje';
+import { datosDeRecompra, rellenar } from '../../../../application/mensajes';
+
 export function TarjetaCliente({ c }: { c: ClienteRecompra }) {
+  const { plantillas } = usePlantillasMensaje('recompra');
+  const mensajeParaCliente = plantillas.length > 0
+    ? rellenar(plantillas[0].texto, datosDeRecompra(c))
+    : mensajeDe(c);
+
   const copiar = async () => {
     try {
-      await navigator.clipboard.writeText(mensajeDe(c));
+      await navigator.clipboard.writeText(mensajeParaCliente);
       toast.success('Mensaje copiado');
     } catch { toast.error('No se pudo copiar el mensaje'); }
   };
@@ -83,7 +91,7 @@ export function TarjetaCliente({ c }: { c: ClienteRecompra }) {
           <Copy className="size-4" /> Copiar
         </Button>
         <Button size="sm" asChild>
-          <a href={waLink(c.telefono, mensajeDe(c))} target="_blank" rel="noreferrer">
+          <a href={waLink(c.telefono, mensajeParaCliente)} target="_blank" rel="noreferrer">
             <MessageCircle className="size-4" /> WhatsApp
           </a>
         </Button>

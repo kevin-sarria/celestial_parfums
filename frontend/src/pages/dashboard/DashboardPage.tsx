@@ -198,7 +198,7 @@ export default function DashboardPage() {
             inventario. Es el sitio que pidió el dueño. */}
         {isAdmin && (
           <div className="mb-4 empty:mb-0">
-            <AvisoAlertas recargarCon={tab} onVerPedido={() => navigate('/dashboard/reposicion')} />
+            <AvisoAlertas onVerPedido={() => navigate('/dashboard/reposicion')} />
           </div>
         )}
         {/* Cada pestaña baja su propio archivo al abrirla (`pestanas.ts`) y pide sus datos */}

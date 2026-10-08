@@ -14,7 +14,7 @@ import * as mensajeService from '../services/mensaje.service';
  */
 export const mensajeRouter = Router();
 
-mensajeRouter.get('/', requirePermiso('creditos.ver', 'creditos.registrar', 'ventas.ver'), h(async (req, res) => {
+mensajeRouter.get('/', requirePermiso('creditos.ver', 'creditos.registrar', 'ventas.ver', 'clientes.ver', 'inventario.ver'), h(async (req, res) => {
   const caso = typeof req.query.caso === 'string' && req.query.caso ? req.query.caso : null;
   res.json({ data: caso ? await mensajeService.listar(caso) : await mensajeService.listarTodas() });
 }));

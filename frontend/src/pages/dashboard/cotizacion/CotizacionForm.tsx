@@ -13,6 +13,8 @@ import { formatPrice } from '../helpers';
 import { Field, FieldRow, Section } from '../ui';
 import { rentabilidadTotal } from '../../../application/costeoCotizacion';
 import { descargarCotizacionPdf, mensajeWhatsappCotizacion } from '../../../utils/cotizacionPdf';
+import { usePlantillasMensaje } from '../../../application/hooks/usePlantillasMensaje';
+import { datosDeCotizacion, rellenar } from '../../../application/mensajes';
 import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type {
   AccesorioSeleccionado, CondicionesComerciales, Cotizacion, CotizacionConfig, CotizacionItem, CotizacionTipo,
@@ -43,6 +45,7 @@ const CAMPOS_CONDICIONES: { k: keyof CondicionesComerciales; label: string }[] =
  * rentabilidad es interno y no viaja al documento del cliente.
  */
 export default function CotizacionForm({ cotizacion, onVolver, onGuardada }: Props) {
+  const { plantillas: plantillasCotizacion } = usePlantillasMensaje('cotizacion');
   const [cargando, setCargando] = useState(true);
   const [perfumes, setPerfumes] = useState<Perfume[]>([]);
   const [formulas, setFormulas] = useState<FormulaVolumen[]>([]);
@@ -208,7 +211,18 @@ export default function CotizacionForm({ cotizacion, onVolver, onGuardada }: Pro
     // contacto (abrir el chat propio no le sirve a nadie).
     const tel = (doc.cliente_telefono || '').replace(/\D/g, '');
     const destino = tel ? (tel.length <= 10 ? `57${tel}` : tel) : '';
-    window.open(`https://wa.me/${destino}?text=${encodeURIComponent(mensajeWhatsappCotizacion(doc))}`, '_blank');
+    const resumen = doc.tipo === 'general'
+      ? 'Lista general de precios mayoristas por volumen'
+      : (doc.items ?? []).map((i, idx) => `${idx + 1}. ${i.perfume_nombre} (${i.volumen_nombre}) x${i.cantidad} — ${formatPrice(i.subtotal)}`).join('\n');
+    const mensajeTexto = plantillasCotizacion.length > 0
+      ? rellenar(plantillasCotizacion[0].texto, datosDeCotizacion({
+          cliente_nombre: doc.cliente_nombre,
+          numero: doc.numero,
+          total: doc.total,
+          resumen,
+        }))
+      : mensajeWhatsappCotizacion(doc);
+    window.open(`https://wa.me/${destino}?text=${encodeURIComponent(mensajeTexto)}`, '_blank');
     toast.success('Se abrió WhatsApp. Adjunta el PDF que se acaba de descargar.');
     onGuardada();
   };

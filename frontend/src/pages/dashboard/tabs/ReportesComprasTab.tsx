@@ -69,7 +69,9 @@ export function ReportesComprasTab() {
               filas={datos.por_familia.map((f) => ({
                 nombre: f.nombre,
                 valor: f.total,
-                detalle: `${f.materiales} ${f.materiales === 1 ? 'material' : 'materiales'}`,
+                detalle: f.materiales > 0
+                  ? `${f.materiales} ${f.materiales === 1 ? 'material' : 'materiales'}`
+                  : 'facturas sin líneas',
               }))}
               formato={formatPrice}
               vacio="Aparece cuando registres las compras detalladas en Inventario."

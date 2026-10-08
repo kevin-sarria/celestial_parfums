@@ -23,6 +23,21 @@ export const CASOS_MENSAJE = [
     label: 'Recordar el pago',
     ayuda: 'Se manda desde el botón «Recordar el pago» de cada crédito con saldo.',
   },
+  {
+    id: 'recompra',
+    label: 'Aviso de recompra',
+    ayuda: 'Se manda desde la pestaña Recompra cuando al cliente le toca volver a pedir.',
+  },
+  {
+    id: 'reposicion',
+    label: 'Pedido de reposición',
+    ayuda: 'Se manda a proveedores con la lista de materiales ajustados a pedir.',
+  },
+  {
+    id: 'cotizacion',
+    label: 'Cotización B2B',
+    ayuda: 'Se manda por WhatsApp al cliente al compartir una cotización con él.',
+  },
 ] as const;
 
 export type CasoMensaje = (typeof CASOS_MENSAJE)[number]['id'];
@@ -35,25 +50,43 @@ export interface PlantillaMensaje {
   orden: number;
 }
 
-/**
- * Las marcas que el panel reemplaza por el dato real.
- *
- * En el editor son BOTONES que las insertan donde esté el cursor: nadie tiene
- * que aprenderse la sintaxis ni acordarse de las llaves.
- */
-export const MARCADORES = [
-  { marca: '{nombre}', que: 'El primer nombre del cliente', ejemplo: 'Laura' },
-  { marca: '{saldo}', que: 'Lo que todavía debe', ejemplo: '$ 137.000' },
-  { marca: '{vence}', que: 'Cuánto falta, o cuánto pasó', ejemplo: 'vence en 5 días' },
-  { marca: '{fecha}', que: 'La fecha pactada', ejemplo: '15/10/2026' },
-] as const;
-
-export interface DatosMensaje {
-  nombre: string;
-  saldo: string;
-  vence: string;
-  fecha: string;
+export interface Marcador {
+  marca: string;
+  que: string;
+  ejemplo: string;
 }
+
+/**
+ * Las marcas que el panel reemplaza por el dato real, organizadas por caso.
+ */
+export const MARCADORES_POR_CASO: Record<CasoMensaje, readonly Marcador[]> = {
+  credito: [
+    { marca: '{nombre}', que: 'El primer nombre del cliente', ejemplo: 'Laura' },
+    { marca: '{saldo}', que: 'Lo que todavía debe', ejemplo: '$ 137.000' },
+    { marca: '{vence}', que: 'Cuánto falta, o cuánto pasó', ejemplo: 'vence en 5 días' },
+    { marca: '{fecha}', que: 'La fecha pactada', ejemplo: '15/10/2026' },
+  ],
+  recompra: [
+    { marca: '{nombre}', que: 'El primer nombre del cliente', ejemplo: 'Laura' },
+    { marca: '{perfume}', que: 'El último perfume que llevó', ejemplo: 'Khamrah 30ml' },
+    { marca: '{cuando}', que: 'Cuándo le toca o le tocaba', ejemplo: 'hace 3 días' },
+  ],
+  reposicion: [
+    { marca: '{materiales}', que: 'La lista de materiales y cantidades a pedir', ejemplo: 'Eternity - 100 ml\nSauvage - 250 ml' },
+    { marca: '{fecha}', que: 'La fecha del pedido', ejemplo: '08/10/2026' },
+  ],
+  cotizacion: [
+    { marca: '{cliente}', que: 'El nombre del cliente o empresa', ejemplo: 'Distribuidora del Valle' },
+    { marca: '{numero}', que: 'El consecutivo de la cotización', ejemplo: 'COT-042' },
+    { marca: '{total}', que: 'El valor total cotizado', ejemplo: '$ 450.000' },
+    { marca: '{resumen}', que: 'El desglose de los productos cotizados', ejemplo: '1. Khamrah (100ml) x5 — $ 350.000' },
+  ],
+};
+
+/** Marcadores por defecto (caso crédito) para compatibilidad. */
+export const MARCADORES = MARCADORES_POR_CASO.credito;
+
+export type DatosMensaje = Record<string, string>;
 
 /**
  * Cambia cada marca por su dato.
@@ -147,3 +180,52 @@ export const EJEMPLO: DatosMensaje = {
   vence: 'vence en 5 días',
   fecha: '15/10/2026',
 };
+
+export const EJEMPLO_POR_CASO: Record<CasoMensaje, DatosMensaje> = {
+  credito: EJEMPLO,
+  recompra: {
+    nombre: 'Laura',
+    perfume: 'Khamrah 30ml',
+    cuando: 'hace 3 días',
+  },
+  reposicion: {
+    materiales: 'Eternity - 100 ml\nSauvage - 250 ml\nBaccarat - 100 ml',
+    fecha: '08/10/2026',
+  },
+  cotizacion: {
+    cliente: 'Distribuidora del Valle',
+    numero: 'COT-042',
+    total: formatPrice(450000),
+    resumen: '1. Khamrah (100ml) x5 — $ 350.000\n2. Asad (100ml) x2 — $ 100.000',
+  },
+};
+
+/** Datos para rellenar un mensaje de recompra. */
+export const datosDeRecompra = (c: { nombre: string; ultima_referencia: string; dias_para: number }): DatosMensaje => {
+  const d = Math.abs(c.dias_para);
+  const cuando = c.dias_para === 0 ? 'hoy' : c.dias_para < 0 ? `hace ${d} ${d === 1 ? 'día' : 'días'}` : `en ${d} ${d === 1 ? 'día' : 'días'}`;
+  return {
+    nombre: c.nombre.trim().split(/\s+/)[0] ?? '',
+    perfume: c.ultima_referencia,
+    cuando,
+  };
+};
+
+/** Datos para rellenar un mensaje de reposición. */
+export const datosDeReposicion = (materialesTexto: string, fecha: string): DatosMensaje => ({
+  materiales: materialesTexto,
+  fecha: fechaCorta(fecha),
+});
+
+/** Datos para rellenar un mensaje de cotización. */
+export const datosDeCotizacion = (c: {
+  cliente_nombre: string;
+  numero: string;
+  total: number;
+  resumen: string;
+}): DatosMensaje => ({
+  cliente: c.cliente_nombre.trim(),
+  numero: c.numero,
+  total: formatPrice(c.total),
+  resumen: c.resumen,
+});

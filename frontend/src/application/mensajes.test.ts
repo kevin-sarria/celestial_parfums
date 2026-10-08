@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { formatPrice } from '@/lib/format';
-import { datosDeCredito, diasHasta, fraseVence, rellenar, EJEMPLO } from './mensajes';
+import {
+  datosDeCotizacion,
+  datosDeCredito,
+  datosDeRecompra,
+  datosDeReposicion,
+  diasHasta,
+  fraseVence,
+  rellenar,
+  EJEMPLO,
+} from './mensajes';
 
 /**
  * LAS MARCAS Y LA FRASE DE VENCIMIENTO.
@@ -100,3 +109,47 @@ describe('datosDeCredito', () => {
     expect(d.fecha).toBe('15/10/2026');
   });
 });
+
+describe('datosDeRecompra', () => {
+  it('arma las marcas de recompra', () => {
+    const c = { nombre: 'Laura Gómez', ultima_referencia: 'Khamrah 30ml', dias_para: -3 };
+    expect(datosDeRecompra(c)).toEqual({
+      nombre: 'Laura',
+      perfume: 'Khamrah 30ml',
+      cuando: 'hace 3 días',
+    });
+  });
+
+  it('cuando le toca hoy dice "hoy"', () => {
+    const c = { nombre: 'Pedro', ultima_referencia: 'Asad 100ml', dias_para: 0 };
+    expect(datosDeRecompra(c).cuando).toBe('hoy');
+  });
+});
+
+describe('datosDeReposicion', () => {
+  it('arma las marcas de pedido de reposición', () => {
+    const d = datosDeReposicion('Eternity - 100 ml', '2026-10-08');
+    expect(d).toEqual({
+      materiales: 'Eternity - 100 ml',
+      fecha: '08/10/2026',
+    });
+  });
+});
+
+describe('datosDeCotizacion', () => {
+  it('arma las marcas de cotización B2B', () => {
+    const d = datosDeCotizacion({
+      cliente_nombre: 'Distribuidora del Valle',
+      numero: 'COT-042',
+      total: 350000,
+      resumen: '5x Khamrah',
+    });
+    expect(d).toEqual({
+      cliente: 'Distribuidora del Valle',
+      numero: 'COT-042',
+      total: formatPrice(350000),
+      resumen: '5x Khamrah',
+    });
+  });
+});
+
