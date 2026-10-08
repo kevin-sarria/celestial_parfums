@@ -5,7 +5,7 @@ import { prisma } from '../src/config/prisma';
 import { crearInsumo } from '../src/test/baseDePrueba';
 import { toSlug } from '../src/utils/slug';
 import { URL_API } from './arranque';
-import { abrirDashboard, abrirTienda, cabeceraAdmin, campo, cerrarNavegador, cerrarPopup, elegirProducto, irA } from './navegador';
+import { abrirDashboard, abrirTienda, cabeceraAdmin, campo, cerrarNavegador, cerrarPopup, elegirProducto, irA, registrarVenta } from './navegador';
 import { sembrarCategoria } from './tienda';
 
 /**
@@ -60,8 +60,7 @@ const vender = async (persona: string, conBolsa: boolean) => {
   if (!conBolsa) await bolsa.uncheck();
   else await pagina.screenshot({ path: foto('venta') });
   await campo(pagina, 'Valor de la venta (COP) *').fill('60000');
-  await pagina.getByRole('button', { name: /^Registrar$/ }).click();
-  await pagina.waitForSelector(`text=${persona}`, { timeout: 30_000 });
+  await registrarVenta(pagina);
   await contexto.close();
   return prisma.venta.findFirstOrThrow({ where: { persona }, include: { perfumes: true } });
 };

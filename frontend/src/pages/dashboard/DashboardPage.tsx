@@ -1,15 +1,11 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import type { Perfume } from '../../domain/entities/perfume.schema';
-import type { Combo } from '../../domain/entities/combo.schema';
-import type { FiltersState } from '../../components/table/tableTypes';
 import { useAuthContext } from '../../application/context/useAuthContext';
 import { useSeo } from '../../application/hooks/useSeo';
-import { DEFAULT_PAGE_SIZE, conNotaDeTalla } from './helpers';
 import { http, type Respuesta } from '../../infrastructure/api/http';
 import { urls, type Clasificacion } from '../../infrastructure/api/urls';
-import type { Tab, Lookup } from './types';
+import type { Tab } from './types';
 import { MenuLateral } from './MenuLateral';
 import { TAB_META, TAB_POR_DEFECTO, esClasificacion, esTabValido, primeraPermitida, tabPermitida, LINEAS_CATALOGO, PESTANAS_RENOMBRADAS } from './navegacion';
 import { SelectorClasificaciones } from './SelectorClasificaciones';
@@ -58,23 +54,12 @@ import {
 import type { ResultadoLookup } from './tabs/LookupTab';
 import { AvisoAlertas } from './tabs/alertas/AvisoAlertas';
 import PerfumeSpinner from '../../components/PerfumeSpinner';
+import { refrescar, useClasificaciones } from './catalogo/estadoCatalogo';
 import { BrandMark } from '../../components/BrandMark';
-import type { LineaCatalogo } from './tabs/perfumes/tipoDeProducto';
 
 
-/** Estado de UNA línea del catálogo (items + su paginación, búsqueda y filtros). */
-interface EstadoLinea {
-  items: Perfume[];
-  page: number;
-  total: number;
-  pageSize: number;
-  search: string;
-  filtros: FiltersState;
-}
-
-const estadoVacio = (): EstadoLinea => ({
-  items: [], page: 1, total: 0, pageSize: DEFAULT_PAGE_SIZE, search: '', filtros: {},
-});
+/** Pestañas que usan las listas fijas del catálogo (aromas, ocasiones, categorías, tallas). */
+const USAN_CLASIFICACIONES = new Set<Tab>(['aromas', 'ocasiones', 'categorias', 'presentaciones', 'precios', 'publicidad']);
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -86,27 +71,10 @@ export default function DashboardPage() {
   const tab: Tab = esTabValido(tabParam) ? tabParam : TAB_POR_DEFECTO;
   useSeo(`${TAB_META[tab].label} — Dashboard`);
 
-  const [loading, setLoading] = useState(true);
-  // Las 4 líneas del catálogo en UNA estructura: antes eran 12 useState y dos
-  // funciones `load…` casi idénticas; con cuatro pestañas serían 24 estados.
-  const [catalogo, setCatalogo] = useState<Record<LineaCatalogo, EstadoLinea>>(() => ({
-    contratipo: estadoVacio(),
-    uno_uno: estadoVacio(),
-    original: estadoVacio(),
-    producto: estadoVacio(),
-  }));
-
-  const [combos, setCombos] = useState<Combo[]>([]);
-  const [combosPage, setCombosPage] = useState(1);
-  const [combosTotal, setCombosTotal] = useState(0);
-  const [combosPageSize, setCombosPageSize] = useState(DEFAULT_PAGE_SIZE);
-  const [combosSearch, setCombosSearch] = useState('');
-  const [combosFiltros, setCombosFiltros] = useState<FiltersState>({});
-
-  const [aromas, setAromas] = useState<Lookup[]>([]);
-  const [ocasiones, setOcasiones] = useState<Lookup[]>([]);
-  const [categorias, setCategorias] = useState<Lookup[]>([]);
-  const [presentaciones, setPresentaciones] = useState<Lookup[]>([]);
+  // Las listas fijas (aromas, ocasiones, categorías, tallas) del estado central:
+  // se piden una vez y solo si la pestaña abierta las usa (no al entrar a Inicio).
+  const { aromas, ocasiones, categorias, presentaciones } =
+    useClasificaciones(puede('catalogo.ver') && USAN_CLASIFICACIONES.has(tab));
 
   // Entra el dueño y su personal (2026-10-04); un cliente, no
   useEffect(() => { if (!user || !esPersonal) navigate('/'); }, [user, esPersonal, navigate]);
@@ -123,86 +91,14 @@ export default function DashboardPage() {
     }
   }, [tabParam, navigate, isAdmin, puede]);
 
-  const loadLookups = async () => {
-    const [aRes, oRes, cRes, pRes] = await Promise.all([
-      http.get<{ data: Lookup[] }>(urls.clasificaciones('tipos-aroma').lista),
-      http.get<{ data: Lookup[] }>(urls.clasificaciones('ocasiones').lista),
-      http.get<{ data: Lookup[] }>(urls.clasificaciones('categorias').lista),
-      http.get<{ data: Lookup[] }>(urls.clasificaciones('presentaciones').lista),
-    ]);
-    setAromas(aRes.cuerpo?.data ?? []);
-    setOcasiones(oRes.cuerpo?.data ?? []);
-    setCategorias(cRes.cuerpo?.data ?? []);
-    setPresentaciones(conNotaDeTalla(pRes.cuerpo?.data ?? []));
-  };
-
-  const cargarLinea = async (
-    linea: LineaCatalogo,
-    page?: number, size?: number, search?: string, filtros?: FiltersState,
-  ) => {
-    const actual = catalogo[linea];
-    const p = page ?? actual.page;
-    const s = size ?? actual.pageSize;
-    const q = search ?? actual.search;
-    const f = filtros ?? actual.filtros;
-    // `todos=1`: el dashboard ve TAMBIÉN los que están fuera de la tienda; si no,
-    // no habría forma de devolverlos. El servidor solo lo acepta con `catalogo.ver`.
-    const res = await http.get<{ data: Perfume[]; total: number }>(urls.perfumes.todos, {
-      params: {
-        page: p, limit: s, todos: 1, linea,
-        ...(q ? { search: q } : {}),
-        ...(Object.keys(f).length ? { filtros: JSON.stringify(f) } : {}),
-      },
-    });
-    setCatalogo((prev) => ({
-      ...prev,
-      [linea]: { items: res.cuerpo?.data ?? [], total: res.cuerpo?.total ?? 0, page: p, pageSize: s, search: q, filtros: f },
-    }));
-  };
-
-  const loadCombos = async (
-    page = combosPage, size = combosPageSize, search = combosSearch, filtros = combosFiltros,
-  ) => {
-    const res = await http.get<{ data: Combo[]; total: number }>(urls.combos.lista, {
-      params: {
-        page, limit: size,
-        ...(search ? { search } : {}),
-        ...(Object.keys(filtros).length ? { filtros: JSON.stringify(filtros) } : {}),
-      },
-    });
-    setCombos(res.cuerpo?.data ?? []);
-    setCombosTotal(res.cuerpo?.total ?? 0);
-    setCombosPage(page);
-    setCombosFiltros(filtros);
-    setCombosSearch(search); // con la búsqueda: "Limpiar todo" no debe revivir al recargar
-  };
-
-  const refreshAll = () => { loadLookups(); loadCombos(); LINEAS_CATALOGO.forEach(({ linea }) => cargarLinea(linea)); };
-
   /**
-   * Carga inicial. Llama a las MISMAS funciones que usa el resto de la
-   * pantalla, en vez de repetir las peticiones a mano: antes eran dos copias de
-   * lo mismo, y la que se olvidara de actualizar quedaba mintiendo.
+   * Mientras el efecto de arriba redirige, no se pinta ninguna pestaña: si no,
+   * `/dashboard` mostraba un instante Inicio (la de por defecto) a quien no la
+   * puede abrir, e Inicio alcanzaba a pedir sus reportes (403). Antes lo tapaba
+   * la carga del catálogo, que ya no se hace al entrar (2026-10-08).
    */
-  useEffect(() => {
-    // El catálogo solo lo pide quien lo puede ver (el dueño, o el personal con la casilla)
-    if (!puede('catalogo.ver')) { setLoading(false); return; }
-    Promise.all([loadLookups(), loadCombos(1), ...LINEAS_CATALOGO.map(({ linea }) => cargarLinea(linea, 1))])
-      .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  /**
-   * Reacciona al cambio de pestaña venga de donde venga (clic en el menú o
-   * botón atrás/adelante del navegador). En el primer render no recarga: los
-   * datos ya los trae el efecto de carga inicial.
-   */
-  const primerRender = useRef(true);
-  useEffect(() => {
-    if (primerRender.current) { primerRender.current = false; return; }
-    const linea = LINEAS_CATALOGO.find(({ tab: t }) => t === tab)?.linea;
-    if (linea) cargarLinea(linea, 1);
-    if (tab === 'combos') loadCombos(1);
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+  const redirigiendo = !esTabValido(tabParam) || !tabPermitida(tabParam, isAdmin, puede)
+    || (tabParam != null && PESTANAS_RENOMBRADAS[tabParam] != null);
 
   const handleLogout = () => { logout(); navigate('/login'); };
 
@@ -219,7 +115,7 @@ export default function DashboardPage() {
   ): Promise<ResultadoLookup> => {
     const res = await peticion();
     if (!res.ok) return { ok: false, error: res.error };
-    refreshAll();
+    void refrescar.clasificaciones();
     // El id vuelve al crear: sirve para elegir de una lo recién creado
     return { ok: true, id: res.cuerpo?.data?.id };
   };
@@ -305,40 +201,23 @@ export default function DashboardPage() {
             <AvisoAlertas recargarCon={tab} onVerPedido={() => navigate('/dashboard/reposicion')} />
           </div>
         )}
-        {loading ? (
-          <PerfumeSpinner />
-        ) : (
-          // Cada pestaña baja su propio archivo al abrirla (`pestanas.ts`)
-          <Suspense fallback={<PerfumeSpinner />}>
+        {/* Cada pestaña baja su propio archivo al abrirla (`pestanas.ts`) y pide sus datos */}
+        {redirigiendo ? <PerfumeSpinner /> : <Suspense fallback={<PerfumeSpinner />}>
             {LINEAS_CATALOGO.map(({ tab: tabId, linea }) => tab === tabId && (
-              <LineaTab
-                key={tabId}
-                linea={linea}
-                items={catalogo[linea].items}
-                page={catalogo[linea].page}
-                total={catalogo[linea].total}
-                pageSize={catalogo[linea].pageSize}
-                aromas={aromas} ocasiones={ocasiones} categorias={categorias} presentaciones={presentaciones}
-                onPageChange={p => cargarLinea(linea, p)}
-                onPageSizeChange={s => cargarLinea(linea, 1, s)}
-                onSearch={t => cargarLinea(linea, 1, undefined, t)}
-                onFilter={f => cargarLinea(linea, 1, undefined, undefined, f)}
-                onClearAll={() => cargarLinea(linea, 1, undefined, '', {})}
-                onMutate={refreshAll}
-              />
+              <LineaTab key={tabId} linea={linea} />
             ))}
             {esClasificacion(tab) && <SelectorClasificaciones actual={tab} />}
             {tab === 'aromas' && (
               <LookupTab title="Tipos de Aroma" nuevo="Nuevo aroma" editar="Editar aroma"
                 ejemplo="Ej: Amaderado, Cítrico, Oriental" items={aromas}
                 onAdd={handleLookupAdd('tipos-aroma')} onDelete={handleLookupDelete('tipos-aroma', '¿Eliminar este aroma? Los perfumes que lo tengan simplemente dejarán de mostrarlo.')} onEdit={handleLookupEdit('tipos-aroma')}
-                importEntity="aromas" onImported={refreshAll} />
+                importEntity="aromas" onImported={() => { void refrescar.clasificaciones(); }} />
             )}
             {tab === 'ocasiones' && (
               <LookupTab title="Ocasiones" nuevo="Nueva ocasión" editar="Editar ocasión"
                 ejemplo="Ej: Diario, Noche, Oficina" items={ocasiones}
                 onAdd={handleLookupAdd('ocasiones')} onDelete={handleLookupDelete('ocasiones', '¿Eliminar esta ocasión? Los perfumes que la tengan simplemente dejarán de mostrarla.')} onEdit={handleLookupEdit('ocasiones')}
-                importEntity="ocasiones" onImported={refreshAll} />
+                importEntity="ocasiones" onImported={() => { void refrescar.clasificaciones(); }} />
             )}
             {tab === 'categorias' && (
               <LookupTab title="Categorias" nuevo="Nueva categoría" editar="Editar categoría"
@@ -349,35 +228,24 @@ export default function DashboardPage() {
                   onMoverYEliminar: moverYEliminarCategoria,
                 }}
                 onAdd={handleLookupAdd('categorias')} onDelete={handleLookupDelete('categorias', '¿Eliminar esta categoría? OJO: los perfumes que la usan quedarán SIN categoría, y como el precio sale de la lista categoría × talla, pasarán a costar su precio de respaldo. Esto puede cambiar el precio de muchos productos de una vez.')} onEdit={handleLookupEdit('categorias')}
-                importEntity="categorias" onImported={refreshAll} />
+                importEntity="categorias" onImported={() => { void refrescar.clasificaciones(); }} />
             )}
             {tab === 'presentaciones' && (
               <LookupTab title="Presentaciones" nuevo="Nueva presentación" editar="Editar presentación"
                 ejemplo="Escribe el tamaño DELANTE: 30ML, 90 ML, 125 ml. De ahí sale el número con el que el sistema la costea y le enlaza su receta."
                 items={presentaciones}
                 onAdd={handleLookupAdd('presentaciones')} onDelete={handleLookupDelete('presentaciones', '¿Eliminar esta talla? Los perfumes que la ofrezcan dejarán de tenerla, junto con su precio para esa talla.')} onEdit={handleLookupEdit('presentaciones')}
-                importEntity="presentaciones" onImported={refreshAll} />
+                importEntity="presentaciones" onImported={() => { void refrescar.clasificaciones(); }} />
             )}
             {tab === 'gamas' && <GamasTab />}
-            {tab === 'combos' && (
-              <CombosTab
-                combos={combos} page={combosPage} total={combosTotal} pageSize={combosPageSize}
-                categorias={categorias} presentaciones={presentaciones}
-                onPageChange={p => loadCombos(p, combosPageSize)}
-                onPageSizeChange={s => { setCombosPageSize(s); loadCombos(1, s); }}
-                onSearch={t => loadCombos(1, combosPageSize, t)}
-                onFilter={f => loadCombos(1, combosPageSize, combosSearch, f)}
-                onClearAll={() => loadCombos(1, combosPageSize, '', {})}
-                onMutate={refreshAll}
-              />
-            )}
+            {tab === 'combos' && <CombosTab />}
             {tab === 'precios' && (
               <PreciosTab categorias={categorias}
-                presentaciones={presentaciones} onMutate={refreshAll}
+                presentaciones={presentaciones} onMutate={() => { void refrescar.perfumes(); }}
               />
             )}
             {tab === 'descuentos' && (
-              <DescuentosTab onMutate={refreshAll} />
+              <DescuentosTab onMutate={() => { void refrescar.perfumes(); void refrescar.combos(); }} />
             )}
             {tab === 'inicio' && <InicioTab />}
             {tab === 'ventas' && <VentasTab />}
@@ -411,8 +279,7 @@ export default function DashboardPage() {
             {tab === 'alertas' && <AlertasTab />}
             {tab === 'producciones' && <ProduccionesTab />}
             {tab === 'redes' && <RedesTab />}
-          </Suspense>
-        )}
+        </Suspense>}
       </main>
     </div>
   );

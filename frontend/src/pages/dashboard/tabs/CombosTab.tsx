@@ -10,41 +10,25 @@ import ExportButton from '../../../components/ExportButton';
 import type { Combo } from '../../../domain/entities/combo.schema';
 import { toast } from 'sonner';
 import { SmartTable } from '../../../components/table/SmartTable';
-import type { FiltersState } from '../../../components/table/tableTypes';
 import { combosColumns } from '../columns';
 import { subirImagenAdmin } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormError } from '../ui';
-import type { Lookup, ComboForm } from '../types';
+import type { ComboForm } from '../types';
+import { refrescar, useClasificaciones, useCombosLista } from '../catalogo/estadoCatalogo';
 import { emptyComboForm } from '../types';
 import { useAuthContext } from '../../../application/context/useAuthContext';
 import { KitDelComboEditor } from './combos/KitDelComboEditor';
 import EditorHtml from '../../../components/EditorHtml';
 import { CampoPesos } from '@/components/ui/campo-pesos';
 
-interface CombosTabProps {
-  combos: Combo[];
-  page: number;
-  total: number;
-  pageSize: number;
-  categorias: Lookup[];
-  presentaciones: Lookup[];
-  onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
-  /** Búsqueda global contra el backend (toda la data, no solo la página cargada). */
-  onSearch: (term: string) => void;
-  /** Filtros de columna contra el backend (toda la data, no solo la página cargada). */
-  onFilter: (filtros: FiltersState) => void;
-  /** "Limpiar todo": UNA sola recarga con búsqueda y filtros vacíos a la vez. */
-  onClearAll: () => void;
-  onMutate: () => void;
-}
 
-export function CombosTab({
-  combos, page, total, pageSize, categorias, presentaciones,
-  onPageChange, onPageSizeChange, onSearch, onFilter, onClearAll, onMutate,
-}: CombosTabProps) {
+export function CombosTab() {
+  // Datos del estado central: la página de combos y las listas fijas (pedidas una vez)
+  const { categorias, presentaciones } = useClasificaciones();
+  const { combos, total, page, pageSize, onPageChange, onPageSizeChange, onSearch, onFilter, onClearAll } = useCombosLista();
+  const onMutate = () => { void refrescar.combos(); };
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   const [form, setForm] = useState<ComboForm>(emptyComboForm());
   const [formLoading, setFormLoading] = useState(false);
@@ -113,7 +97,7 @@ export function CombosTab({
     <>
       <Section>
         <Toolbar>
-          <SectionTitle count={combos.length}>Combos</SectionTitle>
+          <SectionTitle count={total}>Combos</SectionTitle>
           {isAdmin && (
             <ToolbarActions>
               <ExportButton entity="combos" />

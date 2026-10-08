@@ -45,7 +45,7 @@ describe('el panel, segunda tanda', () => {
     const { contexto, pagina } = await abrirDashboard();
     await irA(pagina, '/dashboard/inicio');
     await pagina.getByRole('button', { name: 'Poner meta' }).click();
-    await pagina.getByRole('spinbutton', { name: /Meta de ventas/ }).fill('3000000');
+    await pagina.getByRole('textbox', { name: /Meta de ventas/ }).fill('3000000');
     await pagina.getByRole('button', { name: 'Guardar' }).click();
     await pagina.getByRole('progressbar').waitFor();
     await pagina.getByText(/Te faltan|Meta cumplida/).waitFor();

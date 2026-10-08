@@ -1,5 +1,15 @@
 # Dónde quedamos y qué sigue
 
+## 🆕 2026-10-08: estado central (TanStack Query)
+
+**Catálogo hecho** (contratipos, 1.1, originales, productos, combos y listas fijas): guardar un
+perfume pasó de 10 peticiones a 1. Detalle en `arquitectura.md`, *Estado central*.
+
+| Qué | Estado |
+|---|---|
+| Pasar Ventas, Créditos y el resto de pantallas de `getCacheado`/`useEffect` a consultas | pendiente, por partes |
+| `AvisoAlertas` pide `/inventario/alertas/activas` en cada cambio de pestaña | pendiente (1 petición por pestaña) |
+
 ## 🆕 2026-10-08: precios de originales que "no guardaban"
 
 **Hecho y desplegado.** La ficha de un original abría con el respaldo en $0 (tomaba el "desde",

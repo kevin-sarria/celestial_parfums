@@ -77,7 +77,8 @@ describe('vender un 1.1 sin frascos armados', () => {
 
     // 1. EL PRECIO viene de la lista de los 1.1, no del corriente.
     const precio = tarjeta.getByLabel(/^Precio/);
-    await expect.poll(() => precio.inputValue(), { timeout: 15_000 }).toBe('120000');
+    // Casilla de pesos: muestra los miles con punto (CampoPesos, 2026-10-08)
+    await expect.poll(() => precio.inputValue(), { timeout: 15_000 }).toBe('120.000');
     await tarjeta.getByLabel('Nombre de la ficha 1.1').fill(NOMBRE);
     await pagina.screenshot({ path: foto('11-precio-de-lista') });
     await tarjeta.getByRole('button', { name: /Crear su ficha 1.1/ }).click();

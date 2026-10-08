@@ -157,6 +157,16 @@ export const selectParfumsPaginated = async (
 };
 
 /** Perfumes por lista de ids, preservando el orden dado (favoritos, etc.). */
+/**
+ * Un perfume tal como lo ve la tabla del panel. Lo devuelve el guardado de la
+ * ficha para que la pantalla cambie SOLO esa fila con la respuesta, en vez de
+ * volver a pedir el catálogo entero (dueño, 2026-10-08).
+ */
+export const perfumePanelPorId = async (id: number) => {
+  const row = await prisma.perfume.findUnique({ where: { id }, include: perfumeInclude });
+  return row ? (await conRatings([mapPerfumePanel(row)]))[0] : null;
+};
+
 export const selectPerfumesByIds = async (ids: number[]) => {
   if (!ids.length) return [];
   // También filtra: un favorito que se sacó del catálogo no debe reaparecer

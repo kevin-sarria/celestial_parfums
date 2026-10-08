@@ -91,6 +91,9 @@ criterio general reutilizable.
   `ocultarCostos` los tape solos (ver `docs/arquitectura.md`, Roles del personal).
 - **No vuelvas a pedir lo que el servidor ya te devolvió**: actualiza el estado con la respuesta,
   o haz que el endpoint devuelva el estado nuevo.
+- **Los datos del servidor viven en TanStack Query** (`infrastructure/api/consultas.ts`): un
+  guardado cambia solo lo que cambió (`setQueriesData` con la respuesta, o `invalidateQueries` de
+  SU clave). Nada de "recargar todo" tras guardar (ver `docs/arquitectura.md`, Estado central).
 
 ### Diseño
 

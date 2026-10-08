@@ -245,6 +245,32 @@ pantalla, no se puede cachear por piezas y `usuarios` deja de poder reutilizarse
 Unir lo que pertenece al mismo dominio (lista + sus totales) sí; mezclar cuatro dominios porque
 coinciden en una pantalla, no.
 
+### Estado central con TanStack Query (2026-10-08)
+
+El dueño, mirando la red: *"¿por qué se disparan múltiples consultas al registrar o editar un
+perfume? … para eso existen los estados globales"*. Medido ese día: guardar un perfume = **1 PATCH +
+9 GET** (`refreshAll`: las 4 listas fijas, los combos y las 4 pestañas del catálogo, aunque solo se
+viera una), y entrar al panel por Inicio ya pedía las 4 pestañas. Opción elegida por el dueño:
+**TanStack Query** (frente a un almacén hecho a mano solo para el catálogo).
+
+- `infrastructure/api/consultas.ts`: el `QueryClient`, las **claves** de cada dato y `pedir` (un
+  `http.get` que lanza, como lo necesita una consulta).
+- `pages/dashboard/catalogo/estadoCatalogo.ts`: `useClasificaciones` (listas fijas, una vez),
+  `useLineaCatalogo` y `useCombosLista` (cada pestaña pide SOLO su página, y solo abierta),
+  `ponerPerfume` y `refrescar`.
+- **Editar** → el servidor devuelve el perfume como lo ve el panel (`perfumePanelPorId`) y
+  `ponerPerfume` lo pone en su fila: **0 consultas**. **Crear/borrar/publicar** →
+  `refrescar.perfumes()`: se pide solo la pestaña que está en pantalla.
+- **Toda escritura aceptada** (`http.ts`, `alEscribir`) marca TODO como viejo **sin pedir nada**
+  (`refetchType: 'none'`), salvo las listas fijas: cada dato se vuelve a pedir cuando una pantalla
+  lo usa. Así un insumo creado en Inventario aparece en la ficha sin que cada pantalla sepa qué
+  toca cada guardado. La ficha pide materiales y lista de precios **al abrirse**, no al entrar a
+  la pestaña.
+
+Medido después: guardar = **1** petición; crear = 2; Inicio = 0 del catálogo; volver a una pestaña
+ya vista = 0. **Falta** pasar a esto las demás pantallas (Ventas y Créditos aún usan
+`getCacheado`, que se vacía en cada escritura): ver `pendientes.md`.
+
 **Ojo con el typecheck**: `npx tsc --noEmit` en `frontend/` **no comprueba nada** — el `tsconfig`
 raíz tiene `files: []` y delega en referencias. Lo real es `npx tsc -p tsconfig.app.json --noEmit`
 o `npm run build`.

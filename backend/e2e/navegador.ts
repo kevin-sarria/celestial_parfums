@@ -182,6 +182,23 @@ export const elegirProducto = async (pagina: Page, nombre: string) => {
   await pagina.getByRole('option', { name: nombre, exact: true }).click();
 };
 
+/**
+ * "Registrar" en el formulario de venta y ESPERA LA RESPUESTA del servidor.
+ *
+ * Antes cada recorrido esperaba ver el nombre del cliente en pantalla. Desde el
+ * 2026-10-04 ese nombre sale DENTRO del formulario ("«X» todavía no es
+ * cliente"), así que la espera terminaba antes de guardar y la prueba leía el
+ * inventario sin descontar (2026-10-08). La respuesta del POST no se adelanta.
+ */
+export const registrarVenta = async (pagina: Page) => {
+  const respuesta = pagina.waitForResponse(
+    (r) => r.url().endsWith('/api/ventas') && r.request().method() === 'POST',
+    { timeout: 30_000 },
+  );
+  await pagina.getByRole('button', { name: /^Registrar$/ }).click();
+  return respuesta;
+};
+
 export const irA = (pagina: Page, ruta: string) =>
   pagina.goto(`${URL_TIENDA}${ruta}`, { waitUntil: 'domcontentloaded' });
 

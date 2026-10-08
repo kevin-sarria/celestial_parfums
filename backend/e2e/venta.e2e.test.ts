@@ -2,7 +2,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
-import { abrirDashboard, campo, cerrarNavegador, elegirProducto, irA } from './navegador';
+import { abrirDashboard, campo, cerrarNavegador, elegirProducto, irA, registrarVenta } from './navegador';
 
 /**
  * RECORRIDO 2 — registrar una venta con líneas descuenta el inventario.
@@ -68,10 +68,8 @@ describe('registrar una venta desde el dashboard', () => {
     await pagina.keyboard.press('Escape');
 
     await campo(pagina, 'Valor de la venta (COP) *').fill('120000');
-    await pagina.getByRole('button', { name: /^Registrar$/ }).click();
-
-    // La fila ya aparece en la tabla: el servidor respondió.
-    await pagina.waitForSelector('text=Cliente del recorrido', { timeout: 30_000 });
+    // Se espera la respuesta del servidor, no el nombre en pantalla (ver `registrarVenta`)
+    await registrarVenta(pagina);
     await contexto.close();
 
     // ── El inventario bajó exactamente la receta × 2 unidades ──

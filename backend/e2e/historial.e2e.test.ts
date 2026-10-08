@@ -21,7 +21,7 @@ describe('el historial de cambios', () => {
     const { contexto, pagina } = await abrirDashboard();
     await irA(pagina, '/dashboard/inicio');
     await pagina.getByRole('button', { name: /Poner meta|Cambiar la meta/ }).click();
-    await pagina.getByRole('spinbutton', { name: /Meta de ventas/ }).fill('4200000');
+    await pagina.getByRole('textbox', { name: /Meta de ventas/ }).fill('4200000');
     await pagina.getByRole('button', { name: 'Guardar' }).click();
     await pagina.getByRole('progressbar').waitFor();
 

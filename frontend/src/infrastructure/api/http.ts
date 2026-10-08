@@ -174,11 +174,20 @@ const CADUCIDAD = 5 * 60 * 1000;
  * son pocas: rehacer las lecturas después de una cuesta una petición, y una
  * lista vieja cuesta una venta que no se puede registrar.
  */
+const trasEscribir = new Set<() => void>();
+
 const escribir = async <T>(fn: () => Promise<{ data: T; status: number }>): Promise<Respuesta<T>> => {
   const res = await ejecutar<T>(fn);
-  if (res.ok) memoria.clear();
+  if (res.ok) { memoria.clear(); trasEscribir.forEach((f) => f()); }
   return res;
 };
+
+/**
+ * Avisa de cada escritura aceptada. Lo usa el estado central (`consultas.ts`)
+ * para marcar sus datos como viejos; va por aquí y no importándolo porque
+ * `consultas.ts` ya depende de este archivo.
+ */
+export const alEscribir = (f: () => void) => { trasEscribir.add(f); };
 
 /**
  * Igual que `ejecutar`, pero para respuestas binarias.

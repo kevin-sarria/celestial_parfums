@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
 import { URL_API } from './arranque';
-import { abrirDashboard, cabeceraAdmin, campo, cerrarNavegador, elegirProducto, irA } from './navegador';
+import { abrirDashboard, cabeceraAdmin, campo, cerrarNavegador, elegirProducto, irA, registrarVenta } from './navegador';
 
 /**
  * RECORRIDO 3 — el cupón canjeado queda amarrado a su venta.
@@ -57,8 +57,7 @@ describe('un cupón canjeado no se puede soltar editando la venta', () => {
     await elegirProducto(pagina, PERFUME);
     await campo(pagina, 'Valor de la venta (COP) *').fill('54000');
     await campo(pagina, 'Código de descuento (si el pedido de WhatsApp traía uno)').fill(CODIGO);
-    await pagina.getByRole('button', { name: /^Registrar$/ }).click();
-    await pagina.waitForSelector(`text=${PERSONA}`, { timeout: 30_000 });
+    await registrarVenta(pagina);
     await contexto.close();
 
     const venta = await prisma.venta.findFirstOrThrow({ where: { persona: PERSONA } });

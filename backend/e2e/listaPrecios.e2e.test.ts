@@ -39,7 +39,8 @@ describe('la lista de precios manda sobre toda su categoría', () => {
     await admin.pagina.waitForSelector('text=Precios');
 
     const fila = admin.pagina.locator('tr', { hasText: 'Precios' }).first();
-    const casilla = fila.locator('input[type="number"]').first();
+    // Casilla de pesos (CampoPesos, 2026-10-08): de texto, ya no numérica
+    const casilla = fila.locator('input[inputmode="numeric"]').first();
     await casilla.fill(String(PRECIOS.nuevo));
     await casilla.press('Enter');
     // Se espera a que el precio esté GUARDADO, no un tiempo fijo: con 1,5 s

@@ -23,10 +23,10 @@ describe('el mayoreo', () => {
     await pagina.waitForSelector('text=Precios al mayoreo');
 
     await pagina.getByRole('button', { name: /agregar rango de precio/i }).first().click();
-    const casillas = pagina.locator('input[type="number"]');
-    await casillas.nth(0).fill('10');
-    await casillas.nth(1).fill('49');
-    await casillas.nth(2).fill('19000');
+    // Por su nombre: el precio es casilla de pesos (de texto) y las cantidades, numéricas
+    await pagina.getByLabel('Desde cuántas unidades').first().fill('10');
+    await pagina.getByLabel('Hasta cuántas unidades').first().fill('49');
+    await pagina.getByLabel('Precio por unidad').first().fill('19000');
     await pagina.getByRole('button', { name: 'Agregar', exact: true }).click();
 
     // La lista se recarga desde el servidor: si el POST no hubiera entrado,

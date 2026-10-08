@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { prisma } from '../src/config/prisma';
 import { crearInsumo } from '../src/test/baseDePrueba';
-import { abrirDashboard, cabeceraAdmin, campo, cerrarNavegador, elegirProducto, irA } from './navegador';
+import { abrirDashboard, cabeceraAdmin, campo, cerrarNavegador, elegirProducto, irA, registrarVenta } from './navegador';
 import { URL_API } from './arranque';
 import { sembrarCategoria } from './tienda';
 
@@ -57,8 +57,7 @@ describe('el kit del combo', () => {
     expect(await kit.isChecked()).toBe(true);
 
     await campo(pagina, 'Valor de la venta (COP) *').fill('150000');
-    await pagina.getByRole('button', { name: /^Registrar$/ }).click();
-    await pagina.waitForSelector('text=Recorrido kit del combo', { timeout: 30_000 });
+    await registrarVenta(pagina);
     await contexto.close();
 
     const venta = await prisma.venta.findFirstOrThrow({

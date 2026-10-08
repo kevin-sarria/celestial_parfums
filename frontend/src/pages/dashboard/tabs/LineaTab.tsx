@@ -6,15 +6,15 @@ import { AccionesPerfume } from './perfumes/AccionesPerfume';
 import ExportButton from '../../../components/ExportButton';
 import ImportModal from '../../../components/ImportModal';
 import DescargarCatalogoButton from '../../../components/DescargarCatalogoButton';
-import type { Perfume } from '../../../domain/entities/perfume.schema';
 import { SmartTable } from '../../../components/table/SmartTable';
-import type { FiltersState } from '../../../components/table/tableTypes';
 import { columnasDeLinea } from '../columns';
 import { FichaPerfumeModal } from './perfumes/FichaPerfumeModal';
 import { useFichaPerfume } from './perfumes/useFichaPerfume';
 import { PrimerosPasosProductos } from './productos/PrimerosPasosProductos';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
-import type { Lookup } from '../types';
+import { NoSePudoCargar } from '../../../components/NoSePudoCargar';
+import PerfumeSpinner from '../../../components/PerfumeSpinner';
+import { ponerPerfume, refrescar, useClasificaciones, useLineaCatalogo } from '../catalogo/estadoCatalogo';
 import { useAuthContext } from '../../../application/context/useAuthContext';
 import { TIPO_DE_LINEA, SUSTANTIVO_LINEA, valoresDeTipo, type LineaCatalogo } from './perfumes/tipoDeProducto';
 
@@ -28,20 +28,6 @@ import { TIPO_DE_LINEA, SUSTANTIVO_LINEA, valoresDeTipo, type LineaCatalogo } fr
  */
 interface LineaTabProps {
   linea: LineaCatalogo;
-  items: Perfume[];
-  page: number;
-  total: number;
-  pageSize: number;
-  aromas: Lookup[];
-  ocasiones: Lookup[];
-  categorias: Lookup[];
-  presentaciones: Lookup[];
-  onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
-  onSearch: (term: string) => void;
-  onFilter: (filtros: FiltersState) => void;
-  onClearAll: () => void;
-  onMutate: () => void;
 }
 
 const TITULOS: Record<LineaCatalogo, string> = {
@@ -58,12 +44,14 @@ const VACIOS: Record<LineaCatalogo, string> = {
   producto: 'Todavía no tienes productos. Aquí van los splash que compras hechos y los accesorios (perfumero, bolsa, tarjeta).',
 };
 
-export function LineaTab({
-  linea, items, page, total, pageSize, aromas, ocasiones, categorias, presentaciones,
-  onPageChange, onPageSizeChange, onSearch, onFilter, onClearAll, onMutate,
-}: LineaTabProps) {
+export function LineaTab({ linea }: LineaTabProps) {
   const [importOpen, setImportOpen] = useState(false);
   const [recargarPasos, setRecargarPasos] = useState(0);
+  // Los datos viven en el estado central del catálogo: esta pestaña pide solo su página
+  const { aromas, ocasiones, categorias, presentaciones } = useClasificaciones();
+  const { items, total, page, pageSize, cargando, error, onPageChange, onPageSizeChange, onSearch, onFilter, onClearAll } = useLineaCatalogo(linea);
+  // Crear, borrar, publicar…: se marca viejo y se pide solo lo que está en pantalla
+  const onMutate = () => { void refrescar.perfumes(); };
   const onMutateConPasos = () => { onMutate(); setRecargarPasos((v) => v + 1); };
 
   const { isAdmin } = useAuthContext();
@@ -71,6 +59,8 @@ export function LineaTab({
   const ficha = useFichaPerfume({
     aromas, ocasiones, presentaciones,
     onMutate: esProducto ? onMutateConPasos : onMutate,
+    // Editar: el servidor devuelve el perfume ya actualizado y se cambia solo esa fila
+    onGuardado: esProducto ? (p) => { ponerPerfume(p); setRecargarPasos((v) => v + 1); } : ponerPerfume,
     activa: isAdmin,
     valoresIniciales: valoresDeTipo(TIPO_DE_LINEA[linea]),
     // Cada pestaña abre su puerta ya elegida (decisión 3 del diseño)
@@ -111,6 +101,8 @@ export function LineaTab({
           </p>
         )}
 
+        {error && <NoSePudoCargar que={TITULOS[linea].toLowerCase()} onReintentar={onMutate} />}
+        {cargando ? <PerfumeSpinner /> : (
         <SmartTable
           columns={columnasDeLinea(linea)}
           rows={items}
@@ -129,6 +121,7 @@ export function LineaTab({
             />
           ) : undefined}
         />
+        )}
       </Section>
 
       {esContratipo && (

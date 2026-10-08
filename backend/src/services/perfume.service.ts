@@ -77,10 +77,11 @@ export const createPerfume = async (data: CreatePerfumeDTO) => {
   return result;
 };
 
+/** Devuelve el perfume ya actualizado, como lo ve el panel: la pantalla cambia solo esa fila. */
 export const editPerfume = async (id: string, data: CreatePerfumeDTO) => {
-  const result = await perfumeRepository.editPerfume(id, data);
+  await perfumeRepository.editPerfume(id, data);
   bustCatalogoCache();
-  return result;
+  return perfumeRepository.perfumePanelPorId(Number(id));
 };
 
 export const deletePerfume = async (id: string) => {

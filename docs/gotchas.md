@@ -604,3 +604,21 @@ guardaba como $17**. `components/ui/campo-pesos.tsx` ignora puntos, comas y `$`,
 con punto. Se pasó a todas las casillas de pesos del panel. Ojo al usarlo: un valor que llega de la BASE
 ("64098.02") trae punto DECIMAL, no de miles; `digitosDeValor` lo redondea en vez de leerlo como
 6.409.802 (lo escrito por el dueño ya entra limpio por `onChange`, así que no hay ambigüedad).
+
+## 2026-10-08 · 14 recorridos en rojo desde el 2026-10-04, sin que nadie lo viera
+
+Al correr la suite completa fallaban 14 recorridos. Tres causas, ninguna era un fallo de producción:
+
+1. **Esperar un texto que sale antes de tiempo.** Los recorridos de venta esperaban ver el nombre
+   del cliente para dar la venta por guardada. Desde `f34ddd6` (2026-10-04) ese nombre sale DENTRO
+   del formulario ("«X» todavía no es cliente"), así que la espera terminaba al instante y la prueba
+   leía el inventario sin descontar (en la base sí había bajado). Ahora `registrarVenta()`
+   (`e2e/navegador.ts`) espera la **respuesta del POST**, que no se adelanta.
+2. **Casillas de pesos.** Con `CampoPesos` ya no son `type="number"`: se buscan por su etiqueta
+   (`getByRole('textbox', …)` / `getByLabel`), y muestran "120.000", no "120000".
+3. **Una pestaña ajena pintada un instante.** Sin la carga del catálogo al entrar, `/dashboard`
+   mostraba Inicio un instante a la vendedora antes de redirigir, e Inicio pedía sus reportes
+   (403). `DashboardPage` ya no pinta pestaña mientras redirige.
+
+**Lección**: correr la suite COMPLETA antes de dar algo por terminado. Ese commit pasó sus dos
+pruebas nuevas y rompió cuatro viejas que nadie volvió a correr.

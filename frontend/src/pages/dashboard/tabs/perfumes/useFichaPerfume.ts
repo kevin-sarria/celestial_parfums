@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import type { Perfume } from '../../../../domain/entities/perfume.schema';
 import { esEsencia } from '../../../../domain/entities/insumo';
 import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
+import { claves, pedir } from '../../../../infrastructure/api/consultas';
 import type { Insumo } from '../../../../domain/entities/cotizacion.types';
 import { subirImagenAdmin } from '../../helpers';
 import type { Lookup, PerfumeForm, PrecioLista } from '../../types';
@@ -14,7 +16,10 @@ export interface UsarFichaArgs {
   aromas: Lookup[];
   ocasiones: Lookup[];
   presentaciones: Lookup[];
+  /** Tras crear o borrar: el servidor no devuelve la ficha, se marca viejo el catálogo. */
   onMutate: () => void;
+  /** Tras editar: el perfume tal como quedó (lo devuelve el servidor), para cambiar solo esa fila. */
+  onGuardado?: (perfume: Perfume) => void;
   /**
    * Con qué arranca el formulario en `abrirNuevo` (se mezcla sobre
    * `emptyPerfumeForm()`). Sigue siendo editable: es un punto de partida,
@@ -69,7 +74,7 @@ export interface FichaPerfume {
  * la misma lógica en vez de copiarla: una regla vive en un solo sitio. La
  * pestaña se queda con la barra y la tabla; aquí vive el formulario.
  */
-export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, valoresIniciales, activa = true, tipoInicial }: UsarFichaArgs): FichaPerfume {
+export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, onGuardado, valoresIniciales, activa = true, tipoInicial }: UsarFichaArgs): FichaPerfume {
   const [modal, setModal] = useState<{ open: boolean; editId: number | null }>({ open: false, editId: null });
   /**
    * Qué se está dando de alta. Null = todavía no lo ha dicho, y entonces el
@@ -79,37 +84,26 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
   const [tipoElegido, setTipoElegido] = useState<TipoAlta | null>(null);
   const [form, setForm] = useState<PerfumeForm>(emptyPerfumeForm());
   const [formLoading, setFormLoading] = useState(false);
-  // Esencias disponibles: una por fragancia, cada una con su costo real por ml
-  const [esencias, setEsencias] = useState<Insumo[]>([]);
-  const [insumosProducto, setInsumosProducto] = useState<Insumo[]>([]);
-  const [envases, setEnvases] = useState<Insumo[]>([]);
-  useEffect(() => {
-    if (!activa) return;
-    (async () => {
-      const r = await http.get<{ data: Insumo[] }>(urls.costeo.insumos);
-      if (!r.ok) return;
-      const todos = r.cuerpo?.data ?? [];
-      // Se reconocen por su GAMA, no por el nombre: ver `esEsencia`. Colgarlo de
-      // la palabra "esencia" dejaba fuera a las que se llaman como su fragancia.
-      setEsencias(todos.filter(esEsencia));
-      // Para comprados/fraccionados: cualquier insumo puede SER el producto
-      setInsumosProducto(todos);
-      setEnvases(todos.filter((i: Insumo) => i.tipo === 'envase'));
-    })();
-  }, [activa]);
+  // Materiales y lista de precios: del estado central, y SOLO al abrir la ficha
+  // (antes se pedían al entrar a cada pestaña, aunque nadie abriera la ficha).
+  const necesita = activa && modal.open;
+  const { data: todos = [] } = useQuery({
+    queryKey: claves.insumos, enabled: necesita,
+    queryFn: () => pedir<{ data: Insumo[] }>(urls.costeo.insumos).then((r) => r.data ?? []),
+  });
+  // La lista de precios dice qué cobra cada talla por defecto; sin ella, el form pide precio propio
+  const { data: precios = [] } = useQuery({
+    queryKey: claves.listaPrecios, enabled: necesita,
+    queryFn: () => pedir<{ data: PrecioLista[] }>(urls.perfumes.precios).then((r) => r.data ?? []),
+  });
+  // Las esencias se reconocen por su GAMA, no por el nombre: ver `esEsencia`.
+  // Para comprados/fraccionados cualquier insumo puede SER el producto.
+  const esencias = todos.filter(esEsencia);
+  const insumosProducto = todos;
+  const envases = todos.filter((i: Insumo) => i.tipo === 'envase');
   const [formError, setFormError] = useState('');
   const [imgMode, setImgMode] = useState<'url' | 'file'>('url');
   const [uploading, setUploading] = useState(false);
-  const [precios, setPrecios] = useState<PrecioLista[]>([]);
-
-  // La lista de precios se usa para mostrar qué cobra cada talla por defecto
-  const cargarPrecios = async () => {
-    try {
-      const res = await http.get<{ data: PrecioLista[] }>(urls.perfumes.precios);
-      if (res.ok) setPrecios(res.cuerpo?.data ?? []);
-    } catch { /* sin lista, el form pide precio propio */ }
-  };
-  useEffect(() => { if (activa) cargarPrecios(); }, [activa]);
 
   /** Precio estándar de una presentación para la categoría elegida en el form. */
   const precioDeLista = (presentacionId: number) => {
@@ -207,10 +201,13 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
     };
     try {
       const res = modal.editId
-        ? await http.patch(urls.perfumes.actualizar(modal.editId), body)
-        : await http.post(urls.perfumes.crear, body);
+        ? await http.patch<{ data?: Perfume | null }>(urls.perfumes.actualizar(modal.editId), body)
+        : await http.post<{ data?: Perfume | null }>(urls.perfumes.crear, body);
       if (!res.ok) { fallar(res.error); return; }
-      cerrar(); onMutate();
+      cerrar();
+      // Editar: la respuesta YA es la fila nueva. Crear: no hay fila que cambiar.
+      const actualizado = modal.editId ? res.cuerpo?.data : null;
+      if (actualizado && onGuardado) onGuardado(actualizado); else onMutate();
     } catch { fallar('No se pudo conectar con el servidor'); }
     finally { setFormLoading(false); }
   };
