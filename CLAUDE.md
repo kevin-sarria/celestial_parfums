@@ -99,6 +99,9 @@ criterio general reutilizable.
   que crecen; `SelectSimple` para 2-5 opciones fijas. Es el fallo que más se repite.
 - **NINGÚN `<input type="date">`**: `CampoFecha` (misma API que el input). El control nativo
   abre el calendario del sistema, feo y distinto en cada teléfono (dueño, 2026-09-28).
+- **NINGÚN `<input type="number">` para pesos**: `CampoPesos`. El nativo lee el punto como
+  decimal y "17.000" se guardaba como $17 (2026-10-08). Quedan pantallas viejas por pasar (ver
+  `docs/pendientes.md`).
 - **Ningún campo escribible con letra de menos de 16 px en el celular**: Safari del iPhone acerca
   la pantalla al darle foco. `Input` y los desplegables ya traen `text-base md:text-sm`; no se
   les pisa la letra.

@@ -57,6 +57,8 @@ export const perfumeSchema = z.object({
   descripcion: z.string().nullable(),
   /** El más barato de sus presentaciones (el "desde $X" de las cards). */
   precio: z.number(),
+  /** Solo el panel: el respaldo guardado, que es lo que edita la ficha (no el "desde"). */
+  precio_respaldo: z.number().optional(),
   precios: z.array(precioPresentacionSchema).default([]),
   /** true = sus presentaciones no valen lo mismo; la card muestra "desde". */
   varios_precios: z.boolean().default(false),

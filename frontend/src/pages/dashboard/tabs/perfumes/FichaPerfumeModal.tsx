@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { Input } from '@/components/ui/input';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 import { SelectSimple } from '@/components/ui/select-simple';
 import { cn } from '@/lib/utils';
 import Modal from '../../../../components/Modal';
@@ -91,7 +92,7 @@ export function FichaPerfumeModal({
           <Input value={form.nombre} onChange={setF('nombre')} required maxLength={100} />
         </Field>
         <Field label="Precio de respaldo (COP) *">
-          <Input type="number" min="0" value={form.precio} onChange={setF('precio')} required />
+          <CampoPesos value={form.precio} onValor={v => setForm(f => ({ ...f, precio: v }))} required />
           <p className="mt-1 text-[12px] text-muted-foreground">
             Solo se usa si la talla no tiene precio abajo ni en la lista.
           </p>

@@ -1,5 +1,17 @@
 # Dónde quedamos y qué sigue
 
+## 🆕 2026-10-08: precios de originales que "no guardaban"
+
+**Hecho y desplegado.** La ficha de un original abría con el respaldo en $0 (tomaba el "desde",
+que contaba los decants sin precio) y el servidor rechazaba el guardado con un error fuera de la
+vista. Ahora la ficha lee el respaldo guardado, el error sale en aviso y el "desde" no cuenta
+tallas en $0. Además "17.000" ya no se guarda como $17 en la ficha ni en Precios de originales
+(`CampoPesos`). Detalle en `gotchas.md`.
+
+| Qué | Estado |
+|---|---|
+| Pasar a `CampoPesos` los demás campos de pesos (`type="number"` en Ventas, Abonos, Compras, Combos…) | pendiente: mismo riesgo del punto |
+
 ## 🆕 2026-09-29: perfumes originales
 
 **Hecho** (sin desplegar; **lleva migración**, `20260929120000_perfumes_originales`). Decisiones del

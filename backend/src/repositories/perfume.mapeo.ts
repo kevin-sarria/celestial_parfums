@@ -252,14 +252,26 @@ export const mapPerfume = (p: PerfumeRow) => mapear(soloTallasConPrecio(p));
  * Un perfume tal como lo ve el PANEL: con todas sus tallas, también las de $0,
  * porque ahí es donde el dueño les pone precio (y vende por WhatsApp).
  */
-export const mapPerfumePanel = (p: PerfumeRow) => mapear(p);
+export const mapPerfumePanel = (p: PerfumeRow) => ({
+  ...mapear(p),
+  /**
+   * El precio de respaldo GUARDADO, para que la ficha lo edite. No es `precio`:
+   * ese es el "desde" de las cards. La ficha usaba el "desde" y, al guardar,
+   * lo escribía como respaldo (2026-10-08): un original con decants en $0 abría
+   * con respaldo 0 y el servidor rechazaba el guardado sin que se viera por qué.
+   */
+  precio_respaldo: Number(p.precio),
+});
 
 const mapear = (p: PerfumeRow) => {
   const precios = resolverPrecios(p);
   const motivo = motivoAgotado(p);
   // El precio "de portada" (cards, PDF, SEO) es el más barato de sus
-  // presentaciones: es el que acompaña al "desde $X" cuando hay varias.
-  const desde = precios.length ? Math.min(...precios.map((x) => x.precio)) : Number(p.precio);
+  // presentaciones: es el que acompaña al "desde $X" cuando hay varias. Las
+  // tallas en $0 no cuentan: todavía no tienen precio (en el panel un original
+  // con decants sin precio salía "$0"; la tienda ya ni las recibe).
+  const conPrecio = precios.map((x) => x.precio).filter((x) => x > 0);
+  const desde = conPrecio.length ? Math.min(...conPrecio) : (precios.length ? 0 : Number(p.precio));
   return {
     id:           p.id,
     nombre:       p.nombre,

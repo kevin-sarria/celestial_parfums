@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { prisma } from '../config/prisma';
 import { crearInsumo, limpiarBase } from '../test/baseDePrueba';
-import { findPerfumeBySlug } from '../repositories/perfume.repository';
+import { findPerfumeBySlug, selectAllParfums } from '../repositories/perfume.repository';
 import { guardarEmpaqueDeLinea } from '../empaque/empaque.repository';
 import { aplicarPrecios, costosDeFicha, listarOriginales, ponerMeta } from './preciosOriginales.repository';
 
@@ -78,5 +78,15 @@ describe('los precios de los originales', () => {
       expect(f.costo).toEqual(lista.tallas.find((t) => t.presentacion_id === f.presentacion_id)?.costo);
     }
     expect(ficha.find((f) => f.presentacion_id === t5.id)?.costo?.total).toBe(15800);
+  });
+
+  it('el panel le da a la ficha el respaldo GUARDADO, no el "desde" (que no cuenta las tallas en $0)', async () => {
+    // El caso real (2026-10-08): un original con decants sin precio abría la
+    // ficha con respaldo $0 y el servidor rechazaba el guardado.
+    const { original } = await sembrar();
+    const enPanel = ((await selectAllParfums(true)).data as { id: number; precio: number; precio_respaldo?: number }[])
+      .find((p) => p.id === original.id)!;
+    expect(enPanel.precio_respaldo).toBe(270000);
+    expect(enPanel.precio).toBe(270000); // el decant en $0 no baja el "desde" a $0
   });
 });

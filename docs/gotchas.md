@@ -588,3 +588,18 @@ Empaque se acordaban; la ficha no. **Arreglo de raíz**: toda escritura que el s
 (`post`, `patch`, `borrar`, `subir`) vacía la caché entera, en `http.ts`. Se quitaron los
 `olvidar` a mano que sobraban (queda solo el "refrescar" del respaldo, que no viene de una
 escritura). Prueba: `frontend/src/infrastructure/api/http.cache.test.ts` (falla sin el arreglo).
+
+## 2026-10-08 · "Actualizar el precio de los originales no hace nada"
+
+En producción el dueño guardó 4 veces la ficha de *Odyssey Go Mango Original*. La causa: el panel
+manda en `precio` el **"desde"** (la talla más barata) y la ficha lo usaba como **precio de
+respaldo**. Con decants en $0, el "desde" era $0 → la ficha abría con respaldo 0 → el servidor
+respondía *"El precio debe ser mayor a 0"*, y ese texto salía arriba del formulario, fuera de la
+vista: el botón parecía no hacer nada. **Arreglo**: el panel manda aparte `precio_respaldo` (el
+guardado) y la ficha edita ese; el "desde" ignora las tallas en $0 (la lista ya no dice "$0"); los
+errores de la ficha salen también en aviso. Prueba: `precios/preciosOriginales.bd.test.ts`.
+
+De paso, otro que muerde: `<input type="number">` lee el punto como decimal, así que **"17.000" se
+guardaba como $17**. `components/ui/campo-pesos.tsx` ignora puntos, comas y `$`, y muestra los miles
+con punto. Ya está en la ficha (respaldo y tallas) y en Precios de originales; las demás pantallas
+están en `pendientes.md`.

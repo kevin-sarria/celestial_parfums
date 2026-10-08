@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pencil } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 import { formatPrice } from '../../helpers';
 
 /**
@@ -28,16 +28,13 @@ export function PrecioEditable({ precio, etiqueta, onGuardar }: {
 
   if (texto != null) {
     return (
-      <Input
+      <CampoPesos
         autoFocus
-        type="number"
-        inputMode="numeric"
-        min={1}
         aria-label={`Precio de ${etiqueta}`}
         className="h-8 w-28 tabular-nums"
         value={texto}
         disabled={guardando}
-        onChange={e => setTexto(e.target.value)}
+        onValor={setTexto}
         onKeyDown={e => {
           if (e.key === 'Enter') { e.preventDefault(); guardar(); }
           if (e.key === 'Escape') { e.stopPropagation(); setTexto(null); }

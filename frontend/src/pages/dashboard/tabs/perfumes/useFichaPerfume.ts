@@ -137,7 +137,7 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
       if (pres) propios[pres.id] = String(pp.precio);
     }
     setForm({
-      nombre: p.nombre, descripcion: p.descripcion ?? '', precio: String(p.precio),
+      nombre: p.nombre, descripcion: p.descripcion ?? '', precio: String(p.precio_respaldo ?? p.precio),
       duracion: p.duracion ?? '', proyeccion: p.proyeccion ?? '', imagen_url: p.imagen_url ?? '',
       genero: p.genero ?? '', categoria_id: p.categoria_id ?? '',
       tipos_aroma: aromaIds, ocasiones: ocasionIds, presentaciones: presentacionIds,
@@ -169,9 +169,16 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
     } finally { setUploading(false); }
   };
 
+  /**
+   * El error va al formulario Y en aviso: el formulario es largo y el texto de
+   * arriba quedaba fuera de la vista, así que "Guardar" parecía no hacer nada
+   * (dueño, 2026-10-08).
+   */
+  const fallar = (mensaje: string) => { setFormError(mensaje); toast.error(mensaje, { id: 'ficha-perfume' }); };
+
   const guardar = async (e: { preventDefault(): void }) => {
     e.preventDefault();
-    if (!form.nombre.trim() || !form.precio) { setFormError('Nombre y precio son obligatorios'); return; }
+    if (!form.nombre.trim() || !form.precio) { fallar('Nombre y precio son obligatorios'); return; }
     setFormLoading(true); setFormError('');
     // Solo viajan los precios propios de las presentaciones marcadas
     const precios_propios = form.presentaciones
@@ -202,9 +209,9 @@ export function useFichaPerfume({ aromas, ocasiones, presentaciones, onMutate, v
       const res = modal.editId
         ? await http.patch(urls.perfumes.actualizar(modal.editId), body)
         : await http.post(urls.perfumes.crear, body);
-      if (!res.ok) { setFormError(res.error); return; }
+      if (!res.ok) { fallar(res.error); return; }
       cerrar(); onMutate();
-    } catch { setFormError('No se pudo conectar con el servidor'); }
+    } catch { fallar('No se pudo conectar con el servidor'); }
     finally { setFormLoading(false); }
   };
 

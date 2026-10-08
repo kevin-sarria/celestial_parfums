@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 import { cn } from '@/lib/utils';
 import { Field } from '../../ui';
 import { formatPrice } from '../../helpers';
@@ -130,12 +130,12 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, preci
                     {esBotella(pr) && <span className="block text-[11px] font-normal text-primary">botella completa</span>}
                   </span>
                   <div className="min-w-0">
-                    <Input
-                      type="number" min="0" className="h-9 sm:h-8"
+                    <CampoPesos
+                      className="h-9 sm:h-8"
                       aria-label={`Precio de ${pr.nombre}`}
                       placeholder={base.valor > 0 ? `${formatPrice(base.valor)} (${base.de})` : 'Sin precio'}
                       value={form.precios_propios[pr.id] ?? ''}
-                      onChange={e => setForm(f => ({ ...f, precios_propios: { ...f.precios_propios, [pr.id]: e.target.value } }))}
+                      onValor={v => setForm(f => ({ ...f, precios_propios: { ...f.precios_propios, [pr.id]: v } }))}
                     />
                     {!(precio > 0) && (
                       <span className="mt-0.5 block text-[11.5px] text-amber-700">Sin precio: no sale en la tienda</span>
