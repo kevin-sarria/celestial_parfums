@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { startTransition, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { Menu, ChevronDown, Store, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +42,11 @@ export function MenuLateral() {
   /** Secciones desplegadas; la del apartado actual arranca abierta. */
   const [openSections, setOpenSections] = useState<Set<string>>(() => new Set([sectionOfTab(tab)]));
 
+  const secciones = useMemo(
+    () => NAV_SECTIONS.map(sec => ({ ...sec, tabs: sec.tabs.filter(visible) })).filter(sec => sec.tabs.length > 0),
+    [isAdmin, puede], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
   // Al cambiar de pestaña (también la primera redirección del personal, que
   // llega después de montarse el menú) su sección queda abierta
   useEffect(() => { setOpenSections(prev => new Set(prev).add(sectionOfTab(tab))); }, [tab]);
@@ -55,14 +60,17 @@ export function MenuLateral() {
     });
 
   /**
-   * Al elegir apartado se navega y se cierra. La sección del destino se deja
-   * abierta: si no, al volver a abrir el menú habría que adivinar en qué grupo
-   * está uno parado.
+   * Al elegir apartado se navega y se cierra. `setDrawerOpen(false)` va
+   * primero y la navegación se difiere con `startTransition`: así el cajón se
+   * desliza limpio a 60 fps sin que la carga pesada de la nueva pantalla le
+   * dé tirones a la animación de salida.
    */
   const handleTabChange = (t: Tab) => {
     setOpenSections(prev => new Set(prev).add(sectionOfTab(t)));
-    navigate(`/dashboard/${t}`);
     setDrawerOpen(false);
+    startTransition(() => {
+      navigate(`/dashboard/${t}`);
+    });
   };
 
   const handleLogout = () => { logout(); navigate('/login'); };
@@ -105,7 +113,7 @@ export function MenuLateral() {
               </button>
             );
           })()}
-          {NAV_SECTIONS.map(sec => ({ ...sec, tabs: sec.tabs.filter(visible) })).filter(sec => sec.tabs.length > 0).map(sec => {
+          {secciones.map(sec => {
             const abierta = openSections.has(sec.id);
             const contieneActiva = sec.tabs.some(t => entradaActiva(t, tab));
             return (

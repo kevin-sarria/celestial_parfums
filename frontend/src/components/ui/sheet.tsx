@@ -34,7 +34,7 @@ function SheetOverlay({
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:duration-100 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:duration-150",
         className
       )}
       {...props}
@@ -58,12 +58,11 @@ function SheetContent({
       <SheetPrimitive.Content
         data-slot="sheet-content"
         className={cn(
-          /* Abrir 200 ms y cerrar 150, no los 500/300 que trae shadcn por
-             defecto. Medido el 2026-08-25 en el menú del dashboard: del clic a
-             que el cajón terminaba de deslizarse pasaban 531 ms, con CERO
-             bloqueo del hilo. Nada iba lento; era la animación, y el dueño la
-             notó justo porque el resto responde al instante. */
-          "fixed z-50 flex flex-col gap-4 bg-background shadow-lg transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:duration-200",
+          /* Abrir 150 ms y cerrar 100 ms para respuesta instantánea.
+             Sin transition ease-in-out (que en Tailwind v4 entra en conflicto con
+             las keyframes de enter/exit y hace sentir pesado el deslizamiento)
+             y con will-change-transform para aceleración por GPU. */
+          "fixed z-50 flex flex-col gap-4 bg-background shadow-lg will-change-transform data-[state=closed]:animate-out data-[state=closed]:duration-100 data-[state=open]:animate-in data-[state=open]:duration-150",
           side === "right" &&
             "inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
           side === "left" &&

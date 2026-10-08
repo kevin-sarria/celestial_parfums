@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { MessageSquareText, Pencil, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import {
-  CASOS_MENSAJE, EJEMPLO, rellenar, type CasoMensaje, type PlantillaMensaje,
+  CASOS_MENSAJE, EJEMPLO, EJEMPLO_POR_CASO, rellenar, type CasoMensaje, type PlantillaMensaje,
 } from '../../../application/mensajes';
 import { useAuthContext } from '../../../application/context/useAuthContext';
 import { EncabezadoPagina, Section, SectionTitle } from '../ui';
@@ -26,11 +27,7 @@ import { MensajeForm } from './mensajes/MensajeForm';
  */
 export function MensajesTab() {
   const { isAdmin } = useAuthContext();
-  /**
-   * Hoy hay UN solo caso (cobrar). Cuando entren los demás, esto se vuelve un
-   * selector arriba y el resto de la pantalla no cambia: ya filtra por `caso`.
-   */
-  const caso: CasoMensaje = CASOS_MENSAJE[0].id;
+  const [caso, setCaso] = useState<CasoMensaje>(CASOS_MENSAJE[0].id);
   const [plantillas, setPlantillas] = useState<PlantillaMensaje[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -81,6 +78,30 @@ export function MensajesTab() {
         botones del editor.
       </p>
 
+      {/* Selector de caso: cobrar, recompra, reposición, cotización */}
+      <div role="tablist" aria-label="Casos de mensajes" className="flex flex-wrap gap-2 border-b border-border pb-3">
+        {CASOS_MENSAJE.map((c) => {
+          const activa = caso === c.id;
+          return (
+            <button
+              key={c.id}
+              type="button"
+              role="tab"
+              aria-selected={activa}
+              onClick={() => setCaso(c.id)}
+              className={cn(
+                'rounded-full border px-3.5 py-1.5 text-[13px] font-medium leading-normal transition-colors cursor-pointer',
+                activa
+                  ? 'border-primary bg-primary text-primary-foreground shadow-xs'
+                  : 'border-border bg-card text-foreground hover:bg-secondary',
+              )}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+
       <Section>
         <SectionTitle count={delCaso.length}>{casoActual.label}</SectionTitle>
         <p className="mb-3 text-[12.5px] text-muted-foreground">{casoActual.ayuda}</p>
@@ -98,8 +119,9 @@ export function MensajesTab() {
           <div className="rounded-xl border border-dashed border-border px-3.5 py-4">
             <p className="text-[13px] font-medium text-foreground">Todavía no has escrito ninguno</p>
             <p className="mt-1 text-[12.5px] text-muted-foreground">
-              Mientras no haya ninguno, el botón «Recordar el pago» de un crédito sale
-              apagado: no tendría qué mandar. Escribe el primero y se enciende.
+              {caso === 'credito'
+                ? 'Mientras no haya ninguno, el botón «Recordar el pago» de un crédito sale apagado: no tendría qué mandar. Escribe el primero y se enciende.'
+                : `Aún no tienes mensajes para ${casoActual.label.toLowerCase()}. Escribe el primero y se usará al mandar por WhatsApp.`}
             </p>
             {isAdmin && (
               <Button className="mt-3" size="sm" onClick={() => setEditando('nuevo')}>
@@ -135,7 +157,7 @@ export function MensajesTab() {
                 {/* Con datos de ejemplo y con el MISMO relleno del botón: lo que
                     se ve aquí es exactamente lo que le llega al cliente. */}
                 <p className="mt-1.5 whitespace-pre-wrap text-[13px] text-muted-foreground">
-                  {rellenar(p.texto, EJEMPLO)}
+                  {rellenar(p.texto, EJEMPLO_POR_CASO[caso] ?? EJEMPLO)}
                 </p>
               </li>
             ))}

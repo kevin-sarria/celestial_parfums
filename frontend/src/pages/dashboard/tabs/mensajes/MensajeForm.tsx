@@ -1,12 +1,19 @@
 import { useRef, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Modal from '../../../../components/Modal';
 import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
-import { EJEMPLO, MARCADORES, rellenar, type PlantillaMensaje } from '../../../../application/mensajes';
+import {
+  EJEMPLO,
+  EJEMPLO_POR_CASO,
+  MARCADORES,
+  MARCADORES_POR_CASO,
+  rellenar,
+  type CasoMensaje,
+  type PlantillaMensaje,
+} from '../../../../application/mensajes';
 import { Field } from '../../ui';
 
 interface Props {
@@ -31,6 +38,9 @@ export function MensajeForm({ plantilla, caso, onClose, onGuardado }: Props) {
   const [error, setError] = useState('');
   const [guardando, setGuardando] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
+
+  const marcadores = MARCADORES_POR_CASO[caso as CasoMensaje] ?? MARCADORES;
+  const ejemplo = EJEMPLO_POR_CASO[caso as CasoMensaje] ?? EJEMPLO;
 
   /**
    * Mete la marca donde esté el cursor y lo deja justo DETRÁS: si no, habría
@@ -100,22 +110,20 @@ export function MensajeForm({ plantilla, caso, onClose, onGuardado }: Props) {
           Meter un dato
         </p>
         <div className="flex flex-wrap gap-1.5">
-          {MARCADORES.map((m) => (
-            <Button
+          {marcadores.map((m) => (
+            <button
               key={m.marca}
               type="button"
-              variant="outline"
-              size="sm"
-              className="h-7 text-[12px]"
               title={m.que}
               onClick={() => insertar(m.marca)}
+              className="rounded-md border border-border bg-card px-2.5 py-1 text-[12px] font-medium leading-normal text-foreground shadow-2xs transition-colors hover:bg-secondary hover:text-accent-foreground cursor-pointer"
             >
               + {m.marca}
-            </Button>
+            </button>
           ))}
         </div>
         <p className="mt-1.5 text-[11.5px] text-muted-foreground">
-          {MARCADORES.map((m) => `${m.marca} ${m.que.toLowerCase()}`).join(' · ')}
+          {marcadores.map((m) => `${m.marca} ${m.que.toLowerCase()}`).join(' · ')}
         </p>
       </div>
 
@@ -124,7 +132,7 @@ export function MensajeForm({ plantilla, caso, onClose, onGuardado }: Props) {
           Así le llega
         </p>
         {texto.trim() ? (
-          <p className="whitespace-pre-wrap text-[13px] text-foreground">{rellenar(texto, EJEMPLO)}</p>
+          <p className="whitespace-pre-wrap text-[13px] text-foreground">{rellenar(texto, ejemplo)}</p>
         ) : (
           <p className="text-[13px] text-muted-foreground">
             Escribe el mensaje y aquí lo ves con datos de ejemplo.
