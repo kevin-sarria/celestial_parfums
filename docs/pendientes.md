@@ -7,7 +7,7 @@ perfume pasó de 10 peticiones a 1. Detalle en `arquitectura.md`, *Estado centra
 
 | Qué | Estado |
 |---|---|
-| Pasar Ventas, Créditos y el resto de pantallas de `getCacheado`/`useEffect` a consultas | pendiente, por partes |
+| Pasar Ventas y Créditos (las que más usa el dueño), y luego el resto, de `getCacheado`/`useEffect` a consultas. Mismo patrón que el catálogo: `estadoCatalogo.ts` | pendiente: el dueño lo dejó para después (2026-10-08) |
 | `AvisoAlertas` pide `/inventario/alertas/activas` en cada cambio de pestaña | pendiente (1 petición por pestaña) |
 
 ## 🆕 2026-10-08: precios de originales que "no guardaban"
