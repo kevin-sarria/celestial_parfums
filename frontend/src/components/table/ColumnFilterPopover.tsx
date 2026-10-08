@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { SelectSimple } from '@/components/ui/select-simple';
 import type { ColumnDef, FilterValue, StringOp, NumberOp, DateOp } from './tableTypes';
 import { CampoFecha } from '@/components/CampoFecha';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface Props<T> {
   column: ColumnDef<T>;
@@ -133,14 +134,24 @@ export function ColumnFilterPopover<T>({ column, active, onApply, onClose, ancho
               <option value="gt">Mayor que</option>
               <option value="lt">Menor que</option>
             </SelectSimple>
-            <Input
-              type="number"
-              placeholder={column.type === 'currency' ? 'Valor en COP...' : 'Valor...'}
-              value={numVal}
-              onChange={e => setNumVal(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleApply()}
-              autoFocus
-            />
+            {column.type === 'currency' ? (
+              <CampoPesos
+                placeholder="Valor en COP..."
+                value={numVal}
+                onChange={e => setNumVal(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleApply()}
+                autoFocus
+              />
+            ) : (
+              <Input
+                type="number"
+                placeholder="Valor..."
+                value={numVal}
+                onChange={e => setNumVal(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleApply()}
+                autoFocus
+              />
+            )}
           </>
         )}
 

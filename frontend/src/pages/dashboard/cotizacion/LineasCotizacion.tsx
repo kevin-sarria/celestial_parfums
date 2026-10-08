@@ -10,6 +10,7 @@ import type { Perfume } from '../../../domain/entities/perfume.schema';
 import type {
   AccesorioSeleccionado, CotizacionItem, FormulaVolumen, Insumo,
 } from '../../../domain/entities/cotizacion.types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface Props {
   lineas: CotizacionItem[];
@@ -141,8 +142,7 @@ export default function LineasCotizacion({
                   </Field>
 
                   <Field label="Precio unitario" className="w-32">
-                    <Input
-                      type="number" min="0" className="h-9"
+                    <CampoPesos className="h-9"
                       value={l.precio_unitario}
                       onChange={(e) => actualizar(idx, { precio_unitario: Number(e.target.value) || 0 })}
                     />

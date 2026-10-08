@@ -135,7 +135,7 @@ export function TallasDelPerfume({ form, setForm, presentaciones, envases, preci
                       aria-label={`Precio de ${pr.nombre}`}
                       placeholder={base.valor > 0 ? `${formatPrice(base.valor)} (${base.de})` : 'Sin precio'}
                       value={form.precios_propios[pr.id] ?? ''}
-                      onValor={v => setForm(f => ({ ...f, precios_propios: { ...f.precios_propios, [pr.id]: v } }))}
+                      onChange={e => setForm(f => ({ ...f, precios_propios: { ...f.precios_propios, [pr.id]: e.target.value } }))}
                     />
                     {!(precio > 0) && (
                       <span className="mt-0.5 block text-[11.5px] text-amber-700">Sin precio: no sale en la tienda</span>

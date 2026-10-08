@@ -34,7 +34,7 @@ export function PrecioEditable({ precio, etiqueta, onGuardar }: {
         className="h-8 w-28 tabular-nums"
         value={texto}
         disabled={guardando}
-        onValor={setTexto}
+        onChange={e => setTexto(e.target.value)}
         onKeyDown={e => {
           if (e.key === 'Enter') { e.preventDefault(); guardar(); }
           if (e.key === 'Escape') { e.stopPropagation(); setTexto(null); }

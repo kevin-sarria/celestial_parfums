@@ -9,6 +9,7 @@ import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import { EncabezadoPagina, Section } from '../ui';
 import type { EscalaPrecio, FormulaVolumen } from '../../../domain/entities/cotizacion.types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 const escalaVacia = { cantidad_min: '', cantidad_max: '', precio: '' };
 
@@ -196,7 +197,7 @@ export function PreciosMayoreoTab() {
                       <span>, le cobras</span>
                       <div className="relative">
                         <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-muted-foreground">$</span>
-                        <Input type="number" min="0" className="h-9 w-32 pl-6 text-center" placeholder="19000"
+                        <CampoPesos className="h-9 w-32 pl-6 text-center" placeholder="19000"
                           aria-label="Precio por unidad"
                           value={escala.precio}
                           onChange={(e) => setEscala((s) => ({ ...s, precio: e.target.value }))} />

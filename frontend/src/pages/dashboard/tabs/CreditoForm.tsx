@@ -29,6 +29,7 @@ import { fechaLimitePorDefecto } from '../../../utils/fechas';
 import { CampoFecha } from '@/components/CampoFecha';
 import { PrecioPersonal } from '../pedido/PrecioPersonal';
 import { useAuthContext } from '../../../application/context/useAuthContext';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface CreditoFormProps {
   open: boolean;
@@ -379,7 +380,7 @@ export function CreditoForm({
         )}
 
         {descuentaLibre && <Field label="Deuda del crédito (COP) *">
-          <Input type="number" min="1" required value={form.deuda_inicial}
+          <CampoPesos required value={form.deuda_inicial}
             onChange={e => setForm(f => ({ ...f, deuda_inicial: e.target.value, deuda_manual: true }))} />
           {form.lineas.length > 0 && form.deuda_manual && String(deudaCalculada) !== form.deuda_inicial && (
             <button type="button" className="mt-1 text-[12px] text-primary underline"

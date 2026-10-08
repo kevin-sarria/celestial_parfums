@@ -1,12 +1,12 @@
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Input } from '@/components/ui/input';
 import Modal from '../../../components/Modal';
 import { formatPrice } from '../helpers';
 import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Field } from '../ui';
 import type { Credito } from '../types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface AbonoModalProps {
   /** null = cerrado. */
@@ -73,7 +73,7 @@ export function AbonoModal({ credito, onClose, onCambio }: AbonoModalProps) {
       )}
 
       <Field label="Monto del abono (COP)">
-        <Input type="number" min="1" inputMode="numeric" value={monto} autoFocus
+        <CampoPesos value={monto} autoFocus
           onChange={e => setMonto(e.target.value)} />
       </Field>
     </Modal>

@@ -17,6 +17,7 @@ import { Section, SectionTitle, Toolbar, ToolbarActions, Field, FieldRow, FormEr
 import type { Anuncio, AnuncioForm, CodigoValidado, Lookup } from '../types';
 import { emptyAnuncioForm } from '../types';
 import { CampoFecha } from '@/components/CampoFecha';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface PublicidadTabProps {
   categorias: Lookup[];
@@ -357,13 +358,13 @@ export function PublicidadTab({ categorias }: PublicidadTabProps) {
                   onChange={e => setForm(f => ({ ...f, min_unidades: e.target.value }))} />
               </Field>
               <Field label="Compra mínima COP (0 = sin mínimo)">
-                <Input type="number" min="0" value={form.min_monto}
+                <CampoPesos value={form.min_monto}
                   onChange={e => setForm(f => ({ ...f, min_monto: e.target.value }))} />
               </Field>
             </FieldRow>
             <FieldRow>
               <Field label="Tope del descuento COP (0 = sin tope)">
-                <Input type="number" min="0" value={form.max_descuento}
+                <CampoPesos value={form.max_descuento}
                   onChange={e => setForm(f => ({ ...f, max_descuento: e.target.value }))} />
               </Field>
               <Field label="Cupo total de canjes (0 = ilimitado)">

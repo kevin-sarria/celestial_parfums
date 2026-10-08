@@ -19,6 +19,7 @@ import { CampoFecha } from '@/components/CampoFecha';
 import type {
   Devolucion, DevolucionEstado, DevolucionMotivo, DevolucionSolucion, VentaParaDevolucion,
 } from '../types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface Props {
   /** Devolución a editar; null = nueva. */
@@ -297,7 +298,7 @@ export default function DevolucionForm({ devolucion, onClose, onGuardada }: Prop
 
         {solucion === 'devolucion_dinero' && (
           <Field label="¿Cuánto dinero le devolviste?">
-            <Input type="number" min="0" value={monto} onChange={(e) => setMonto(e.target.value)} />
+            <CampoPesos value={monto} onChange={(e) => setMonto(e.target.value)} />
             <p className={`mt-1 text-[12px] ${excede ? 'font-medium text-destructive' : 'text-muted-foreground'}`}>
               {excede
                 ? `No puede pasar de ${formatPrice(venta!.valor_venta)}, que fue lo que costó la venta.`
@@ -352,7 +353,7 @@ export default function DevolucionForm({ devolucion, onClose, onGuardada }: Prop
         </div>
 
         <Field label="Envío que pagaste por esta garantía">
-          <Input type="number" min="0" value={costoEnvio}
+          <CampoPesos value={costoEnvio}
             onChange={(e) => setCostoEnvio(e.target.value)} />
           <p className="mt-1 text-[12px] text-muted-foreground">
             Por ley el transporte de la garantía lo asumes tú (art. 11). Anótalo para que entre

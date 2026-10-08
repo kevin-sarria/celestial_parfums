@@ -21,6 +21,7 @@ import { emptyComboForm } from '../types';
 import { useAuthContext } from '../../../application/context/useAuthContext';
 import { KitDelComboEditor } from './combos/KitDelComboEditor';
 import EditorHtml from '../../../components/EditorHtml';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface CombosTabProps {
   combos: Combo[];
@@ -230,7 +231,7 @@ export function CombosTab({
               onChange={e => setForm(f => ({ ...f, cantidad: e.target.value }))} />
           </Field>
           <Field label="Precio (COP) *">
-            <Input type="number" min="0" required value={form.precio}
+            <CampoPesos required value={form.precio}
               onChange={e => setForm(f => ({ ...f, precio: e.target.value }))} />
           </Field>
         </FieldRow>

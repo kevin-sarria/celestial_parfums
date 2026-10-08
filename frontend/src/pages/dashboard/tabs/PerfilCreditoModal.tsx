@@ -1,12 +1,12 @@
 import { ShieldAlert, TrendingDown, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import Modal from '../../../components/Modal';
 import { formatPrice } from '../helpers';
 import { Field } from '../ui';
 import type { PerfilCredito } from '../types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface Props {
   open: boolean;
@@ -68,7 +68,7 @@ export default function PerfilCreditoModal({ open, onClose, perfil, cupoEdit, on
 
           <Field label="Cupo base (COP) — lo defines tu, el factor lo ajusta solo">
             <div className="flex gap-2">
-              <Input type="number" min="0" value={cupoEdit} onChange={e => onCupoEdit(e.target.value)} />
+              <CampoPesos value={cupoEdit} onChange={e => onCupoEdit(e.target.value)} />
               <Button onClick={onGuardarCupo} disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</Button>
             </div>
           </Field>

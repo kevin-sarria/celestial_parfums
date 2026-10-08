@@ -10,6 +10,7 @@ import { urls } from '../../../infrastructure/api/urls';
 import { formatPrice } from '../helpers';
 import { AltaInsumoEnCompra } from './AltaInsumoEnCompra';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 /** Línea de la compra tal como viaja al backend. */
 export interface LineaCompra {
@@ -220,8 +221,8 @@ export default function DetalleCompra({
                       <span className="mb-1 block text-[11.5px] font-medium text-muted-foreground">Lo que costó</span>
                       {/* Sin flechitas: en un precio no sirven de nada y en el
                           celular tapaban un dígito. */}
-                      <Input type="number" min="0" placeholder="$ 0"
-                        className="h-8 text-right text-[12.5px] tabular-nums [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                      <CampoPesos placeholder="$ 0"
+                        className="h-8 text-right text-[12.5px] tabular-nums"
                         value={l.subtotal}
                         onChange={(e) => actualizar(idx, { subtotal: e.target.value })} />
                     </label>

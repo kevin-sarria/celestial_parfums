@@ -23,6 +23,7 @@ import type { Pago, Empresa, PagoForm, IvaModo } from '../types';
 import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { emptyPagoForm } from '../types';
 import { CampoFecha } from '@/components/CampoFecha';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 export function PagosTab() {
   const [pagos, setPagos] = useState<Pago[]>([]);
@@ -273,7 +274,7 @@ export function PagosTab() {
               onChange={e => setForm(f => ({ ...f, dia: e.target.value }))} />
           </Field>
           <Field label="Valor compra (COP) *">
-            <Input type="number" min="0" required value={form.valor_compra}
+            <CampoPesos required value={form.valor_compra}
               onChange={e => setForm(f => ({ ...f, valor_compra: e.target.value }))} />
           </Field>
         </FieldRow>
@@ -328,7 +329,7 @@ export function PagosTab() {
         )}
         <FieldRow>
           <Field label="Costo de envio (COP)">
-            <Input type="number" min="0" value={form.coste_envio}
+            <CampoPesos value={form.coste_envio}
               onChange={e => setForm(f => ({ ...f, coste_envio: e.target.value }))} />
           </Field>
         </FieldRow>

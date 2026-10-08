@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Check, Info, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -13,6 +12,7 @@ import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions } from '../ui';
 import type { Lookup, PrecioLista } from '../types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface Props {
   categorias: Lookup[];
@@ -131,8 +131,7 @@ export function PreciosTab({ categorias, presentaciones, onMutate }: Props) {
                   return (
                     <TableCell key={pr.id}>
                       <div className="flex items-center gap-1.5">
-                        <Input
-                          type="number" min="0" placeholder="—"
+                        <CampoPesos placeholder="—"
                           className="h-8 max-w-28 text-[13px]"
                           value={valor}
                           disabled={guardando === k}

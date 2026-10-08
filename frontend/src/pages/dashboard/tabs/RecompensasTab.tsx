@@ -15,6 +15,7 @@ import { http } from '../../../infrastructure/api/http';
 import { urls } from '../../../infrastructure/api/urls';
 import { Section, SectionTitle, Toolbar, ToolbarActions, Field } from '../ui';
 import type { RecompensaConfig, RecompensaClienteRow } from '../types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 const cellName = 'whitespace-nowrap font-medium text-foreground';
 
@@ -265,7 +266,7 @@ export function RecompensasTab() {
               value={ovForm.premio} onChange={e => setOvForm(f => ({ ...f, premio: e.target.value }))} />
           </Field>
           <Field label="Su compra mínima por sello">
-            <Input type="number" min="0" placeholder={`Global: ${config ? formatPrice(config.min_compra) : ''}`}
+            <CampoPesos placeholder={`Global: ${config ? formatPrice(config.min_compra) : ''}`}
               value={ovForm.min} onChange={e => setOvForm(f => ({ ...f, min: e.target.value }))} />
           </Field>
         </div>

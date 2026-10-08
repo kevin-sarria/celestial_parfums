@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { Pencil, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { formatPrice } from '@/lib/format';
 import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
 import type { MetaMes } from './tipos';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 /**
  * LA META DEL MES en Inicio (2026-10-02, segunda tanda de la revisión).
@@ -44,8 +44,7 @@ export function MetaDelMes({ meta, vendido, mes }: { meta: MetaMes; vendido: num
 
   const formulario = (
     <form className="flex flex-wrap items-center gap-2" onSubmit={e => { e.preventDefault(); guardar(); }}>
-      <Input
-        type="number" min="1" autoFocus value={valor} onChange={e => setValor(e.target.value)}
+      <CampoPesos autoFocus value={valor} onChange={e => setValor(e.target.value)}
         aria-label={`Meta de ventas de ${mes}`} placeholder="Ej: 3000000" className="h-9 w-40"
       />
       <Button type="submit" size="sm" disabled={guardando}>{guardando ? 'Guardando…' : 'Guardar'}</Button>

@@ -601,5 +601,6 @@ errores de la ficha salen también en aviso. Prueba: `precios/preciosOriginales.
 
 De paso, otro que muerde: `<input type="number">` lee el punto como decimal, así que **"17.000" se
 guardaba como $17**. `components/ui/campo-pesos.tsx` ignora puntos, comas y `$`, y muestra los miles
-con punto. Ya está en la ficha (respaldo y tallas) y en Precios de originales; las demás pantallas
-están en `pendientes.md`.
+con punto. Se pasó a todas las casillas de pesos del panel. Ojo al usarlo: un valor que llega de la BASE
+("64098.02") trae punto DECIMAL, no de miles; `digitosDeValor` lo redondea en vez de leerlo como
+6.409.802 (lo escrito por el dueño ya entra limpio por `onChange`, así que no hay ambigüedad).

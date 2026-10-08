@@ -13,6 +13,7 @@ import type { InventarioInsumo, Lookup } from '../../types';
 import type { FormulaVolumen, Insumo } from '../../../../domain/entities/cotizacion.types';
 import type { PerfumeLite } from './ProduccionModal';
 import { CampoFecha } from '@/components/CampoFecha';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface Props {
   perfumes: PerfumeLite[];
@@ -153,8 +154,7 @@ export function CargaInicialArmados({ perfumes, formulas, catalogo, insumos, onC
 
       <FieldRow>
         <Field label="¿Qué te costó cada uno? (COP)">
-          <Input
-            type="number" min="0" value={costo}
+          <CampoPesos value={costo}
             onChange={(e) => { setCosto(e.target.value); setCostoTocado(true); }}
           />
           {costoSugerido !== null && !costoTocado && (

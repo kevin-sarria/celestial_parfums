@@ -30,6 +30,7 @@ import { urls } from '../../../infrastructure/api/urls';
 import { BloqueCampos, Field, FieldRow, FormError } from '../ui';
 import type { CodigoValidado, ClienteSeleccion, Usuario, Venta } from '../types';
 import { CampoFecha } from '@/components/CampoFecha';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface VentaFormProps {
   open: boolean;
@@ -370,7 +371,7 @@ export function VentaForm({
                   onChange={e => setNuevoProd({ ...nuevoProd, nombre: e.target.value })} />
               </Field>
               <Field label="Precio *">
-                <Input type="number" min="0" value={nuevoProd.precio}
+                <CampoPesos value={nuevoProd.precio}
                   onChange={e => setNuevoProd({ ...nuevoProd, precio: e.target.value })} />
               </Field>
             </FieldRow>
@@ -412,7 +413,7 @@ export function VentaForm({
         <FieldRow>
           {descuentaLibre && (
             <Field label="Valor de la venta (COP) *">
-              <Input type="number" min="0" required value={form.valor_venta}
+              <CampoPesos required value={form.valor_venta}
                 onChange={e => { setCuponAplicado(false); setForm(f => ({ ...f, valor_venta: e.target.value })); }} />
             </Field>
           )}

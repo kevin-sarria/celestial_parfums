@@ -1,7 +1,7 @@
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { formatPrice } from '../helpers';
 import { Field } from '../ui';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 /**
  * EL PRECIO, PARA EL PERSONAL SIN PERMISO DE DESCUENTOS (2026-10-04,
@@ -49,7 +49,7 @@ export function PrecioPersonal({ etiqueta, normal, conCupon, pidiendo, onPidiend
       ) : (
         <Field label="¿En cuánto se lo dejas? (COP)">
           <div className="flex items-center gap-2">
-            <Input type="number" min="1" value={pedido} onChange={e => onPedido(e.target.value)} placeholder={String(normal)} />
+            <CampoPesos value={pedido} onChange={e => onPedido(e.target.value)} placeholder={String(normal)} />
             <button type="button" className="shrink-0 text-[12px] text-muted-foreground underline" onClick={() => { onPidiendo(false); onPedido(''); }}>
               Quitar
             </button>

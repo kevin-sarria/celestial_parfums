@@ -10,7 +10,8 @@ tallas en $0. Además "17.000" ya no se guarda como $17 en la ficha ni en Precio
 
 | Qué | Estado |
 |---|---|
-| Pasar a `CampoPesos` los demás campos de pesos (`type="number"` en Ventas, Abonos, Compras, Combos…) | pendiente: mismo riesgo del punto |
+| Pasar a `CampoPesos` los demás campos de pesos (Ventas, Abonos, Compras, Combos, Créditos, Devoluciones, Cupones, Recompensas, Mayoreo, Listas de precios, Meta del mes, filtros de tabla en COP…) | hecho (2026-10-08) |
+| Siguen en casilla numérica, a propósito: cantidades, ml, porcentajes y **costos por ml con decimales** (Material, Ajuste de inventario) | — |
 
 ## 🆕 2026-09-29: perfumes originales
 

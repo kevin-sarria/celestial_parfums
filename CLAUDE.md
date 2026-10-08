@@ -100,8 +100,8 @@ criterio general reutilizable.
 - **NINGÚN `<input type="date">`**: `CampoFecha` (misma API que el input). El control nativo
   abre el calendario del sistema, feo y distinto en cada teléfono (dueño, 2026-09-28).
 - **NINGÚN `<input type="number">` para pesos**: `CampoPesos`. El nativo lee el punto como
-  decimal y "17.000" se guardaba como $17 (2026-10-08). Quedan pantallas viejas por pasar (ver
-  `docs/pendientes.md`).
+  decimal y "17.000" se guardaba como $17 (2026-10-08). Misma API que el input (`e.target.value`
+  trae solo dígitos). Solo pesos enteros: un costo por ml con decimales sigue en su casilla.
 - **Ningún campo escribible con letra de menos de 16 px en el celular**: Safari del iPhone acerca
   la pantalla al darle foco. `Input` y los desplegables ya traen `text-base md:text-sm`; no se
   les pisa la letra.

@@ -8,6 +8,7 @@ import { urls } from '../../../../infrastructure/api/urls';
 import { Field, FieldRow } from '../../ui';
 import { opcionesPorExistencias } from '../../../../domain/entities/insumo';
 import type { InventarioInsumo } from '../../types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 export interface ArmadoCreado { id: number; nombre: string }
 
@@ -95,7 +96,7 @@ export function AltaProductoArmado({
             placeholder="Ej: Bon Bon 1.1" autoFocus />
         </Field>
         <Field label="¿A cuánto lo vendes? *" className="w-44">
-          <Input type="number" min="0" value={precio}
+          <CampoPesos value={precio}
             onChange={(e) => setPrecio(e.target.value)} placeholder="Ej: 150000" />
         </Field>
       </FieldRow>

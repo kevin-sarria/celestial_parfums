@@ -15,6 +15,7 @@ import type { InventarioInsumo, Produccion } from '../../types';
 import type { FormulaVolumen, Insumo } from '../../../../domain/entities/cotizacion.types';
 import { AltaProductoArmado, type ArmadoCreado } from './AltaProductoArmado';
 import { PublicarRecienCreado } from './PublicarRecienCreado';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 /** Lo mínimo que hace falta del catálogo para elegir qué fragancia se armó. */
 export interface PerfumeLite { id: number; nombre: string; insumo_esencia_id: number | null }
@@ -282,7 +283,7 @@ export function ProduccionModal({
 
       {lote && (
         <Field label="¿Cuánto te costó cada frasco?">
-          <Input type="number" min="0" value={costoManual}
+          <CampoPesos value={costoManual}
             placeholder={`Calculado: ${formatPrice(costoLote / (cant || 1))}`}
             onChange={(e) => setCostoManual(e.target.value)} />
           <p className="mt-1 text-[12px] text-muted-foreground">

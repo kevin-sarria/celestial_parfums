@@ -6,6 +6,7 @@ import TarjetaRecompensas3D from '../../../components/recompensas/TarjetaRecompe
 import type { MiTarjeta } from '../../../application/hooks/useMiTarjeta';
 import { Field, FieldRow, FormError, ColorField } from '../ui';
 import type { RecompensaConfig } from '../types';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface Props {
   open: boolean;
@@ -68,7 +69,7 @@ export default function RecompensaConfigModal({ open, onClose, config, onChange,
                 onChange={e => set('sellos_objetivo', Number(e.target.value))} />
             </Field>
             <Field label="Compra mínima por sello (0 = cualquiera)">
-              <Input type="number" min="0" value={config.min_compra}
+              <CampoPesos value={config.min_compra}
                 onChange={e => set('min_compra', Number(e.target.value))} />
             </Field>
           </FieldRow>

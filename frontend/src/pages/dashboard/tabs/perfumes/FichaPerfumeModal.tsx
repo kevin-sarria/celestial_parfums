@@ -92,7 +92,7 @@ export function FichaPerfumeModal({
           <Input value={form.nombre} onChange={setF('nombre')} required maxLength={100} />
         </Field>
         <Field label="Precio de respaldo (COP) *">
-          <CampoPesos value={form.precio} onValor={v => setForm(f => ({ ...f, precio: v }))} required />
+          <CampoPesos value={form.precio} onChange={setF('precio')} required />
           <p className="mt-1 text-[12px] text-muted-foreground">
             Solo se usa si la talla no tiene precio abajo ni en la lista.
           </p>

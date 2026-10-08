@@ -11,6 +11,7 @@ import type { Insumo } from '../../../domain/entities/cotizacion.types';
 import { useCatalogoCompleto } from '../../../application/hooks/useCatalogoCompleto';
 import { toSlug } from '../../../utils/slug';
 import { CamposOriginal } from './CamposOriginal';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 /**
  * Dar de alta un insumo SIN salir de la factura.
@@ -316,8 +317,7 @@ export function AltaInsumoEnCompra({ onCerrar, onCreado }: {
           {nuevo.crear_perfume && (
             <div className="mt-2">
               <Field label="Precio de venta *">
-                <Input
-                  type="number" min="0" value={nuevo.precio_venta}
+                <CampoPesos value={nuevo.precio_venta}
                   placeholder="Ej: 5000"
                   onChange={(e) => setNuevo({ ...nuevo, precio_venta: e.target.value })}
                 />

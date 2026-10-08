@@ -7,6 +7,7 @@ import { http } from '../../../../infrastructure/api/http';
 import { urls } from '../../../../infrastructure/api/urls';
 import { Field } from '../../ui';
 import type { LotePorEnlazar } from './LotesPorEnlazar';
+import { CampoPesos } from '@/components/ui/campo-pesos';
 
 interface Props {
   lote: LotePorEnlazar;
@@ -96,7 +97,7 @@ export function TarjetaLotePorEnlazar({ lote, perfumes, onResuelto }: Props) {
           <Input value={nombre} onChange={(e) => setNombre(e.target.value)} />
         </Field>
         <Field label={`Precio ${lote.talla_nombre ?? ''}`.trim()} className="w-40">
-          <Input type="number" min={0} step={1000} value={precio}
+          <CampoPesos value={precio}
             className={sinLista ? 'border-destructive text-destructive' : undefined}
             onChange={(e) => setPrecio(e.target.value)} />
         </Field>
